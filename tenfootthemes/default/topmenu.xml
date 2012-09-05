@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<torctheme>
+    <window name="topmenu" from="basewindow">
+        <group name="topmenu_menu" position="0,700,1920,100">
+            <layout type="horizontal" selectrange="100,0,1720,100"/>
+            <scroll speed="1000" easingcurve="outquad"/>
+            <button name="topmenu_menu_one" from="templates_button">
+                <message>Grid 1</message>
+                <connect signal="Released" slot="SetAsRootWidget" receiver="gridmenu"/>
+            </button>
+            <button name="topmenu_menu_two" from="templates_button">
+                <message>Vertical 1</message>
+                <connect signal="Released" slot="SetAsRootWidget" receiver="vertical"/>
+            </button>
+            <button name="topmenu_menu_three" from="templates_button">
+                <message>Frogger</message>
+                <connect signal="Released" slot="SetAsRootWidget" receiver="frogger"/>
+            </button>
+            <button name="topmenu_menu_four" from="templates_button">
+                <message>Slots</message>
+                <connect signal="Released" slot="SetAsRootWidget" receiver="slots"/>
+            </button>
+            <button name="topmenu_menu_five" from="templates_button">
+                <message>Five</message>
+            </button>
+            <button name="topmenu_menu_six" from="templates_button">
+                <message>Six</message>
+            </button>
+            <button name="topmenu_menu_seven" from="templates_button">
+                <message>Seven</message>
+            </button>
+        </group>
+    </window>
+    <window name="frogger" from="basewindow">
+        <group name="frogger_menu" position="0,600,1920,320">
+            <layout type="vertical" fixedheight="105"/>
+            <scroll speed="500" easingcurve="linear"/>
+            <group name="frogger_menu_top" from="templates_horizontalgroup" position="0,0,1920,100">
+                <layout fixedwidth="310" selectrange="100,0,1720,100"/>
+                <button name="frogger_menu_top_1" from="templates_button">
+                    <message>Close</message>
+                    <connect signal="Released" slot="SetAsRootWidget" receiver="topmenu"/>
+                </button>
+                <button name="frogger_menu_top_2" from="templates_button">
+                    <message>A</message>
+                </button>
+                <button name="frogger_menu_top_3" from="templates_button">
+                    <message>B</message>
+                </button>
+                <button name="frogger_menu_top_4" from="templates_button">
+                    <message>C</message>
+                </button>
+                <button name="frogger_menu_top_5" from="templates_button">
+                    <message>D</message>
+                </button>
+                <button name="frogger_menu_top_6" from="templates_button">
+                    <message>E</message>
+                </button>
+                <button name="frogger_menu_top_7" from="templates_button">
+                    <message>F</message>
+                </button>
+                <button name="frogger_menu_top_8" from="templates_button">
+                    <message>G</message>
+                </button>
+                <button name="frogger_menu_top_9" from="templates_button">
+                    <message>I</message>
+                </button>
+            </group>
+            <group name="frogger_menu_middle" from="templates_horizontalgroup" position="0,0,1920,100">
+                <layout fixedwidth="310" selectrange="100,0,1720,100"/>
+                <button name="frogger_menu_middle_1" from="templates_button">
+                    <message>T</message>
+                </button>
+                <button name="frogger_menu_middle_2" from="templates_button">
+                    <message>o</message>
+                </button>
+                <button name="frogger_menu_middle_3" from="templates_button">
+                    <message>r</message>
+                </button>
+                <button name="frogger_menu_middle_4" from="templates_button">
+                    <message>c</message>
+                </button>
+                <button name="frogger_menu_middle_5" from="templates_button">
+                    <message></message>
+                </button>
+                <button name="frogger_menu_middle_6" from="templates_button">
+                    <message>T</message>
+                </button>
+                <button name="frogger_menu_middle_7" from="templates_button">
+                    <message>o</message>
+                </button>
+                <button name="frogger_menu_middle_8" from="templates_button">
+                    <message>r</message>
+                </button>
+                <button name="frogger_menu_middle_9" from="templates_button">
+                    <message>c</message>
+                </button>
+            </group>
+            <group name="frogger_menu_bottom" from="templates_horizontalgroup" position="0,0,1920,100">
+                <layout fixedwidth="310" selectrange="100,0,1720,100"/>
+                <button name="frogger_menu_bottom_1" from="templates_button">
+                    <message>F</message>
+                </button>
+                <button name="frogger_menu_bottom_2" from="templates_button">
+                    <message>r</message>
+                </button>
+                <button name="frogger_menu_bottom_3" from="templates_button">
+                    <message>o</message>
+                </button>
+                <button name="frogger_menu_bottom_4" from="templates_button">
+                    <message>g</message>
+                </button>
+                <button name="frogger_menu_bottom_5" from="templates_button">
+                    <message>g</message>
+                </button>
+                <button name="frogger_menu_bottom_6" from="templates_button">
+                    <message>e</message>
+                </button>
+                <button name="frogger_menu_bottom_7" from="templates_button">
+                    <message>r</message>
+                </button>
+                <button name="frogger_menu_bottom_8" from="templates_button">
+                    <message>1</message>
+                </button>
+                <button name="frogger_menu_bottom_9" from="templates_button">
+                    <message>2</message>
+                </button>
+            </group>
+        </group>
+    </window>
+    <window name="vertical" from="basewindow">
+        <group name="vertical_menu" position="100,100,300,700">
+            <layout type="vertical" fixedheight="100" spacingx="5"/>
+            <scroll speed="500" easingcurve="linear"/>
+            <button name="vertical_menu_button" from="templates_button" template="1">
+                <effect centre="left"/>
+            </button>
+            <button name="vertical_menu_1" from="vertical_menu_button">
+                <message>Close</message>
+                <connect signal="Released" slot="SetAsRootWidget" receiver="topmenu"/>
+            </button>
+            <button name="vertical_menu_one" from="vertical_menu_button">
+                <message>1</message>
+            </button>
+            <button name="vertical_menu_2" from="vertical_menu_button">
+                <message>2</message>
+            </button>
+            <button name="vertical_menu_3" from="vertical_menu_button">
+                <message>3</message>
+            </button>
+            <button name="vertical_menu_4" from="vertical_menu_button">
+                <message>4</message>
+            </button>
+            <button name="vertical_menu_5" from="vertical_menu_button">
+                <message>5</message>
+             </button>
+            <button name="vertical_menu_6" from="vertical_menu_button">
+                <message>6</message>
+            </button>
+            <button name="vertical_menu_7" from="vertical_menu_button">
+                <message>7</message>
+            </button>
+            <button name="vertical_menu_8" from="vertical_menu_button">
+                <message>8</message>
+            </button>
+            <button name="vertical_menu_9" from="vertical_menu_button">
+                <message>9</message>
+            </button>
+            <button name="vertical_menu_a" from="vertical_menu_button">
+                <message>10</message>
+            </button>
+        </group>
+    </window>
+    <window name="slots" from="basewindow">
+        <group name="slots_menu" from="templates_horizontalgroup" position="0,600,1200,450">
+            <clip rect="-10,-50,1400,200"/>
+            <button name="slots_menu_1" from="templates_button">
+                <message>Close</message>
+                <connect signal="Released" slot="SetAsRootWidget" receiver="topmenu"/>
+            </button>
+            <group name="slots_menu_left" position="0,0,300,400">
+               <layout type="vertical" fixedheight="105" selectrange="0,0,300,100"/>
+               <scroll speed="400" easingcurve="OutCirc"/>
+               <button name="slots_menu_left_2" from="templates_button">
+                   <message>1</message>
+               </button>
+               <button name="slots_menu_left_3" from="templates_button">
+                   <message>2</message>
+               </button>
+               <button name="slots_menu_left_4" from="templates_button">
+                   <message>3</message>
+               </button>
+               <button name="slots_menu_left_5" from="templates_button">
+                   <message>4</message>
+               </button>
+               <button name="slots_menu_left_6" from="templates_button">
+                   <message>5</message>
+               </button>
+            </group>
+            <group name="slots_menu_middle" position="0,0,300,400">
+               <layout type="vertical" fixedheight="105" selectrange="0,0,300,100"/>
+               <scroll speed="400" easingcurve="OutCirc"/>
+               <button name="slots_menu_middle_2" from="templates_button">
+                   <message>1</message>
+               </button>
+               <button name="slots_menu_middle_3" from="templates_button">
+                   <message>2</message>
+               </button>
+               <button name="slots_menu_middle_4" from="templates_button">
+                   <message>3</message>
+               </button>
+               <button name="slots_menu_middle_5" from="templates_button">
+                   <message>4</message>
+               </button>
+               <button name="slots_menu_middle_6" from="templates_button">
+                   <message>5</message>
+               </button>
+            </group>
+            <group name="slots_menu_right" position="0,0,300,400">
+               <layout type="vertical" fixedheight="105" selectrange="0,0,300,100"/>
+               <scroll speed="400" easingcurve="OutCirc"/>
+               <button name="slots_menu_right_2" from="templates_button">
+                   <message>1</message>
+               </button>
+               <button name="slots_menu_right_3" from="templates_button">
+                   <message>2</message>
+               </button>
+               <button name="slots_menu_right_4" from="templates_button">
+                   <message>3</message>
+               </button>
+               <button name="slots_menu_right_5" from="templates_button">
+                   <message>4</message>
+               </button>
+               <button name="slots_menu_right_6" from="templates_button">
+                   <message>5</message>
+               </button>
+            </group>
+        </group>
+    </window>
+</torctheme>

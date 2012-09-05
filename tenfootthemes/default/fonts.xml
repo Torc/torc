@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<fonts>
+    <font name="base" face="arial" />
+    <font name="splashfont" from="base">
+        <attributes color="000000FF" size="200"/>
+    </font>
+    <font name="main" from="base">
+        <attributes color="FFFFFFFF" size="70" weight="ultralight"/>
+        <outline width="1" color="000000FF"/>
+        <shadow offset="0,0" color="000000FF" fixedblur="3"/>
+    </font>
+    <font name="main_small" from="base">
+        <attributes color="FFFFFFFF" size="40" weight="light"/>
+    </font>
+</fonts>

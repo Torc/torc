@@ -1,0 +1,54 @@
+// Qt
+#include <QCoreApplication>
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 0, 0))
+#include <QtWidgets/QApplication>
+#else
+#include <QApplication>
+#endif
+#include <QThread>
+
+// Torc
+#include "version.h"
+#include "torclocalcontext.h"
+#include "torcexitcodes.h"
+#include "uiwindow.h"
+#include "tenfoottheme.h"
+#include "clientcommandlineparser.h"
+
+using namespace std;
+
+int main(int argc, char **argv)
+{
+    new QApplication(argc, argv);
+    QCoreApplication::setApplicationName("torc-client");
+    QThread::currentThread()->setObjectName(TORC_MAIN_THREAD);
+
+    {
+        QScopedPointer<ClientCommandLineParser> cmdline(new ClientCommandLineParser());
+        if (!cmdline.data())
+            return GENERIC_EXIT_NOT_OK;
+
+        bool justexit = false;
+        if (!cmdline->Parse(argc, argv, justexit))
+            return GENERIC_EXIT_INVALID_CMDLINE;
+        if (justexit)
+            return GENERIC_EXIT_OK;
+
+        if (int error = TorcLocalContext::Create(cmdline.data()))
+            return error;
+    }
+
+    UIWindow *window = UIWindow::Create();
+    TenfootTheme::Load(false, window);
+
+    int ret = qApp->exec();
+
+    delete window;
+
+    TorcLocalContext::TearDown();
+
+    return ret;
+
+}
+
+/* vim: set expandtab tabstop=4 shiftwidth=4: */

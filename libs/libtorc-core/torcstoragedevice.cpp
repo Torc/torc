@@ -1,0 +1,105 @@
+/* Class TorcStorageDevice
+*
+* This file is part of the Torc project.
+*
+* Copyright (C) Mark Kendall 2012
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+* USA.
+*/
+
+// Torc
+#include "torcstoragedevice.h"
+
+TorcStorageDevice::TorcStorageDevice(StorageType Type, int Properties,
+                                     const QString &Name,
+                                     const QString &SystemName,
+                                     const QString &Description)
+  : m_type(Type),
+    m_properties(Properties),
+    m_name(Name),
+    m_systemName(SystemName),
+    m_description(Description)
+{
+}
+
+TorcStorageDevice::TorcStorageDevice()
+  : m_type(Unknown),
+    m_properties(None)
+{
+}
+
+TorcStorageDevice::~TorcStorageDevice()
+{
+}
+
+TorcStorageDevice::StorageType TorcStorageDevice::GetType(void)
+{
+    return m_type;
+}
+
+int TorcStorageDevice::GetProperties(void)
+{
+    return m_properties;
+}
+
+QString TorcStorageDevice::GetName(void)
+{
+    return m_name;
+}
+
+QString TorcStorageDevice::GetSystemName(void)
+{
+    return m_systemName;
+}
+
+QString TorcStorageDevice::GetDescription(void)
+{
+    return m_description;
+}
+
+bool TorcStorageDevice::IsOpticalDisk(void)
+{
+    return m_type == CD || m_type == BD || m_type == DVD;
+}
+
+void TorcStorageDevice::SetType(StorageType Type)
+{
+    m_type = Type;
+
+    // this may need revisiting
+    if (IsOpticalDisk())
+        SetProperties(GetProperties() & ~Writeable);
+}
+
+void TorcStorageDevice::SetProperties(int Properties)
+{
+    m_properties = Properties;
+}
+
+void TorcStorageDevice::SetName(const QString &Name)
+{
+    m_name = Name;
+}
+
+void TorcStorageDevice::SetSystemName(const QString &SystemName)
+{
+    m_systemName = SystemName;
+}
+
+void TorcStorageDevice::SetDescription(const QString &Description)
+{
+    m_description = Description;
+}

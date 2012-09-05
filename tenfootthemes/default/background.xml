@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<torctheme>
+    <window name="basewindow" template="true" position="0,0,1920,1080">
+        <effect alpha="0"/>
+        <animation name="basewindow_Activated">
+            <element duration="250" property="alpha" endvalue="1" easingcurve="outquad"/>
+        </animation>
+        <connect signal="Finished" sender="basewindow_Deactivated" slot="Disable"/>
+        <animation name="basewindow_Deactivated">
+            <element duration="250" property="alpha" endvalue="0" easingcurve="outquad"/>
+        </animation>
+        <shape name="basewindow_background" position="0,0,1920,1080">
+            <path>
+                <brush color="555555FF" brushstyle="Dense4Pattern"/>
+                <addrect rect="0,0,1920,1080"/>
+            </path>
+        </shape>
+    </window>
+    <window name="templates" template="true" position="0,0,1,1">
+        <state disabled="1"/>
+        <button name="templates_button" position="0,0,300,100" template="true">
+            <effect alpha="0.5" centre="middle"/>
+            <connect signal="Selected"   slot="Start" receiver="templates_button_glow_show"/>
+            <connect signal="Deselected" slot="Start" receiver="templates_button_glow_hide"/>
+            <connect signal="Deselected" slot="Stop"  receiver="templates_button_glow_show"/>
+            <animation name="templates_button_Selected">
+                <element property="zoom"  endvalue="1.1" easingcurve="OutQuad" duration="250"/>
+                <element property="alpha" endvalue="1.0" easingcurve="OutQuad" duration="250"/>
+            </animation>
+            <animation name="templates_button_Deselected">
+                <element property="alpha" endvalue="0.5" easingcurve="OutQuad" duration="250"/>
+                <element property="zoom"  endvalue="1.0" easingcurve="OutQuad" duration="250"/>
+            </animation>
+            <shape name="templates_button_glow" position="-15,-15,330,130">
+                <effect alpha="0.0"/>
+                <path>
+                    <pen color="FFA000FF" width="15" penstyle="SolidLine"/>
+                    <addroundedrect rect="17,17,294,94" xradius="11" yradius="11"/>
+                    <fixedblur radius="5"/>
+                </path>
+                <animation name="templates_button_glow_show">
+                    <group type="sequential" loopcount="-1">
+                        <element property="alpha" endvalue="0.8" easingcurve="InCubic" duration="500"/>
+                        <element property="alpha" endvalue="0.5" easingcurve="OutCubic" duration="500"/>
+                    </group>
+                </animation>
+                <animation name="templates_button_glow_hide">
+                    <element property="alpha" endvalue="0" easingcurve="OutCubic" duration="100"/>
+                </animation>
+            </shape>
+            <shape name="templates_button_bg" position="0,0,300,100">
+                <path>
+                    <pen color="FFA000FF" width="3" penstyle="SolidLine"/>
+                    <brush color="FFFFFFFF" brushstyle="SolidPattern"/>
+                    <addroundedrect rect="2,2,294,94" xradius="11" yradius="11"/>
+                </path>
+            </shape>
+            <text name="templates_button_text" position="15,15,270,70">
+                <font name="main" alignment="center"/>
+            </text>
+        </button>
+        <group name="templates_horizontalgroup" position="0,700,1920,100" template="1">
+            <layout type="horizontal" selectrange="100,0,1720,100"/>
+            <scroll speed="1000" easingcurve="outquad"/>
+        </group>
+    </window>
+    <window name="gridmenu" from="basewindow">
+        <shape name="gridmenu_floor" position="0,800,1920,280" decoration="1">
+            <path>
+                <brush color="FFA00033" brushstyle="SolidPattern"/>
+                <addrect rect="0,0,1920,630"/>
+            </path>
+        </shape>
+        <group name="gridmenu_menu" position="200,0,600,800">
+            <effect hreflection="800"/>
+            <clip rect="-100,0,1000,800"/>
+            <layout type="grid" fixedwidth="300" fixedheight="100" selectrange="0,0,600,800"/>
+            <scroll speed="1000" easingcurve="linear"/>
+            <button name="gridmenu_menu_1" from="templates_button">
+                <message>Close</message>
+                <connect signal="Released" slot="SetAsRootWidget" receiver="topmenu"/>
+            </button>
+            <button name="gridmenu_menu_2" from="templates_button">
+                <message>A</message>
+            </button>
+            <button name="gridmenu_menu_calc" from="templates_button">
+                <message>B</message>
+            </button>
+            <button name="gridmenu_menu_41" from="templates_button">
+                <message>C</message>
+            </button>
+            <button name="gridmenu_menu_42" from="templates_button">
+                <checkbox/>
+                <connect signal="Pushed"   slot="Show" receiver="gridmenu_menu_42_toggle"/>
+                <connect signal="Released" slot="Hide" receiver="gridmenu_menu_42_toggle"/>
+                <shape name="gridmenu_menu_42_toggle" position="0,0,20,100">
+                    <state visible="0"/>
+                    <path>
+                        <brush color="FF0000FF" brushstyle="SolidPattern"/>
+                        <addroundedrect rect="2,2,94,94" xradius="11" yradius="11"/>
+                    </path>
+                </shape>
+                <message>Push Me</message>
+            </button>
+            <button name="gridmenu_menu_43" from="templates_button">
+                <message>D</message>
+            </button>
+            <button name="gridmenu_menu_44" from="templates_button">
+                <message>E</message>
+            </button>
+            <button name="gridmenu_menu_45" from="templates_button">
+                <message>F</message>
+            </button>
+            <button name="gridmenu_menu_5" from="templates_button">
+                <message>GG</message>
+            </button>
+            <button name="gridmenu_menu_6" from="templates_button">
+                <message>H</message>
+            </button>
+            <button name="gridmenu_menu_6b" from="templates_button">
+                <message>J</message>
+            </button>
+            <button name="gridmenu_menu_6c" from="templates_button">
+                <message>K</message>
+            </button>
+            <button name="gridmenu_menu_6d" from="templates_button">
+                <message>L</message>
+            </button>
+            <button name="gridmenu_menu_7" from="templates_button">
+                <message>q</message>
+            </button>
+            <button name="gridmenu_menu_8" from="templates_button">
+                <message>w</message>
+            </button>
+            <button name="gridmenu_menu_9" from="templates_button">
+                <message>er</message>
+            </button>
+            <button name="gridmenu_menu_10" from="templates_button">
+                <message>r</message>
+            </button>
+            <button name="gridmenu_menu_11" from="templates_button">
+                <message>y</message>
+            </button>
+            <button name="gridmenu_menu_12" from="templates_button">
+                <message>n</message>
+            </button>
+            <button name="gridmenu_menu_13" from="templates_button">
+                <message>v</message>
+            </button>
+            <button name="gridmenu_menu_14" from="templates_button">
+                <message>d</message>
+            </button>
+            <button name="gridmenu_menu_15" from="templates_button">
+                <message>t</message>
+            </button>
+            <button name="gridmenu_menu_16" from="templates_button">
+                <message>k</message>
+            </button>
+            <button name="gridmenu_menu_17" from="templates_button">
+                <message>l</message>
+            </button>
+            <button name="gridmenu_menu_18" from="templates_button">
+                <message>y</message>
+            </button>
+            <button name="gridmenu_menu_19" from="templates_button">
+                <message>i</message>
+            </button>
+            <button name="gridmenu_menu_20" from="templates_button">
+                <message>-</message>
+            </button>
+            <button name="gridmenu_menu_21" from="templates_button">
+                <message>qw</message>
+            </button>
+            <button name="gridmenu_menu_22" from="templates_button">
+                <message>vz</message>
+            </button>
+            <button name="gridmenu_menu_23" from="templates_button">
+                <message>z</message>
+            </button>
+            <button name="gridmenu_menu_24" from="templates_button">
+                <message>jy</message>
+            </button>
+            <button name="gridmenu_menu_25" from="templates_button">
+                <message>hw</message>
+            </button>
+            <button name="gridmenu_menu_26" from="templates_button">
+                <message>qt</message>
+            </button>
+            <button name="gridmenu_menu_27" from="templates_button">
+                <message>te</message>
+            </button>
+            <button name="gridmenu_menu_28" from="templates_button">
+                <message>cd</message>
+            </button>
+            <button name="gridmenu_menu_29" from="templates_button">
+                <message>jb</message>
+            </button>
+            <button name="gridmenu_menu_30" from="templates_button">
+                <message>q</message>
+            </button>
+            <button name="gridmenu_menu_31" from="templates_button">
+                <message>qqw</message>
+            </button>
+            <button name="gridmenu_menu_32" from="templates_button">
+                <message>bfgr</message>
+            </button>
+            <button name="gridmenu_menu_33" from="templates_button">
+                <message>111</message>
+            </button>
+            <button name="gridmenu_menu_34" from="templates_button">
+                <message>222</message>
+            </button>
+            <button name="gridmenu_menu_35" from="templates_button">
+                <message>333</message>
+            </button>
+            <button name="gridmenu_menu_36" from="templates_button">
+                <message>444</message>
+            </button>
+            <button name="gridmenu_menu_37" from="templates_button">
+                <message>555</message>
+            </button>
+            <button name="gridmenu_menu_38" from="templates_button">
+                <message>666</message>
+            </button>
+            <button name="gridmenu_menu_39" from="templates_button">
+                <message>777</message>
+            </button>
+            <button name="gridmenu_menu_40" from="templates_button">
+                <message>888</message>
+            </button>
+            <button name="gridmenu_menu_51" from="templates_button">
+                <message>999</message>
+            </button>
+        </group>
+    </window>
+</torctheme>
+

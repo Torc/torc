@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<torctheme>
+    <window name="splash" position="0,0,1920,1080">
+        <state visible="false" />
+        <scriptfunction name="Startup">
+            var start = true;
+            if (LocalContext.GetSetting('Theme_Skipsplash', 'no') == 'yes')
+            {
+                Log('Disabling splash screen');
+                if (ThemeRoot.SetRootWidget('topmenu'))
+                    start = false;
+            }
+
+            if (start)
+            {
+                splash_bg_zoom.Start();
+                splash_circles_zoom.Start();
+                splash_text_zoom.Start();
+            }
+            else
+            {
+                this.Disable();
+            }
+        </scriptfunction>
+        <connect signal="Shown" slot="Startup" />
+        <connect signal="Disabled" slot="Close"/>
+        <connect sender="splash_bg_zoom" signal="Finished" receiver="topmenu" slot="Activate" />
+        <connect sender="splash_bg_zoom" signal="Finished" slot="Disable" />
+        <shape name="splash_line" position="0,795,1920,10">
+            <path>
+                 <pen style="SolidLine" width="1" color="FFA000FF"/>
+                 <moveto point="0,5"/>
+                 <lineto point="1920,5"/>
+                 <moveto point="1920,9"/>
+                 <lineto point="0,8"/>
+            </path>
+        </shape>
+        <shape name="splash_bg" position="400,440,1120,200">
+        <effect zoom="0.5" alpha="0"/>
+            <animation name="splash_bg_zoom">
+                <element property="alpha" endvalue="1.0" duration="3000" easingcurve="outquad"/>
+                <element property="zoom" endvalue="1.5" duration="3000" easingcurve="outquad"/>
+            </animation>
+            <path>
+                <brush color="FFA00066" brushstyle="SolidPattern"/>
+                <addrect rect="0,0,1920,200"/>
+            </path>
+        </shape>
+        <group name="splash_circles" position="860,440,250,200">
+            <effect zoom="0.5" alpha="0"/>
+            <animation name="splash_circles_zoom">
+                <element property="alpha" endvalue="1.0" duration="3000" easingcurve="outquad"/>
+                <element property="zoom" endvalue="1.5" duration="3000" easingcurve="outquad"/>
+            </animation>
+            <shape name="splash_circles_1" position="0,0,250,200">
+                <fixedblur radius="5"/>
+                <path>
+                    <pen color="FFA000FF" width="5" style="SolidPen"/>
+                    <addellipse rect="10,10,180,180"/>
+                    <fixedblur radius="2"/>
+                </path>
+                <path>
+                    <pen color="FFA000FF" width="7" style="SolidPen"/>
+                    <addellipse rect="50,25,100,100"/>
+                    <fixedblur radius="1"/>
+                </path>
+                <path>
+                    <pen color="FFA000FF" width="5" style="SolidPen"/>
+                    <addellipse rect="80,10,120,120"/>
+                </path>
+                <path>
+                    <pen color="FFA000FF" width="3" style="SolidPen"/>
+                    <addellipse rect="10,120,150,150"/>
+                </path>
+            </shape>
+        </group>
+        <text name="splash_text" position="0,340,1920,400">
+            <effect zoom="0.5"/>
+            <font name="splashfont" alignment="center" invert="1"/>
+            <message>Torc</message>
+            <animation name="splash_text_zoom">
+                <element duration="3000" property="zoom" endvalue="1" easingcurve="outquad" />
+            </animation>
+        </text>
+    </window>
+</torctheme>

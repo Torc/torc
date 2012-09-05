@@ -1,0 +1,319 @@
+/* Class UIImageTracker
+*
+* This file is part of the Torc project.
+*
+* Copyright (C) Mark Kendall 2012
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+* USA.
+*/
+
+// Qt
+#include <QMutex>
+#include <QThreadPool>
+
+// Torc
+#include "torclogging.h"
+#include "uiimage.h"
+#include "uifont.h"
+#include "uitextrenderer.h"
+#include "uiimageloader.h"
+#include "uishaperenderer.h"
+#include "uiimagetracker.h"
+
+#define LOC QString("UIImageTracker: ")
+
+UIImageTracker::UIImageTracker()
+  : m_hardwareCacheSize(0),    m_softwareCacheSize(0),
+    m_maxHardwareCacheSize(0), m_maxSoftwareCacheSize(0),
+    m_allocatedImageLock(new QMutex(QMutex::Recursive)),
+    m_maxExpireListSize(0),
+    m_completedImagesLock(new QMutex(QMutex::Recursive))
+{
+    SetMaximumCacheSizes(96, 96, 1024);
+}
+
+UIImageTracker::~UIImageTracker()
+{
+    // Force deallocation of any remaining images
+    ExpireImages(true);
+
+    // Clean up any completed images that we haven't used
+    // N.B. UIImages should already be deallocated...
+    {
+        QMutexLocker locker(m_completedImagesLock);
+        QHashIterator<UIImage*,QImage*> it(m_completedImages);
+        while (it.hasNext())
+        {
+            it.next();
+            delete it.value();
+        }
+
+        m_completedImages.clear();
+    }
+
+    delete m_completedImagesLock;
+    m_completedImagesLock = NULL;
+
+    // Sanity check our ref counting
+    if (!m_allocatedImages.isEmpty())
+    {
+        LOG(VB_GENERAL, LOG_WARNING, LOC +
+            QString("%1 images not de-allocated (cache size %2).")
+                .arg(m_allocatedImages.size())
+                .arg(m_softwareCacheSize));
+    }
+
+    delete m_allocatedImageLock;
+    m_allocatedImageLock = NULL;
+}
+
+void UIImageTracker::SetMaximumCacheSizes(quint8 Hardware, quint8 Software,
+                                          quint64 ExpirableItems)
+{
+    m_maxHardwareCacheSize  = 1024 * 1024 * Hardware;
+    m_maxSoftwareCacheSize  = 1024 * 1024 * Software;
+    m_maxExpireListSize = ExpirableItems;
+    LOG(VB_GENERAL, LOG_INFO, LOC +
+        QString("Cache sizes: Hardware %1Mb, Software %2Mb Software items %3")
+        .arg(Hardware).arg(Software).arg(ExpirableItems));
+}
+
+UIImage* UIImageTracker::AllocateImage(const QString &Name,
+                                       const QSize   &Size,
+                                       const QString &FileName)
+{
+    bool file = false;
+
+    if (!FileName.isEmpty() && !Size.isEmpty())
+    {
+        file = true;
+        // Check whether we already have this image loaded at this size or larger
+        if (m_allocatedFileImages.contains(FileName))
+        {
+            foreach (UIImage* image, m_allocatedImages)
+            {
+                if (image->GetFilename() == FileName &&
+                    image->GetMaxSize().width() >= Size.width() &&
+                    image->GetMaxSize().height() >= Size.height())
+                {
+                    image->UpRef();
+                    return image;
+                }
+            }
+        }
+    }
+
+    UIImage* image = new UIImage(this, Name, Size, FileName);
+    if (image)
+    {
+        m_allocatedImageLock->lock();
+
+        if (file)
+            m_allocatedFileImages.append(FileName);
+
+        m_allocatedImages.append(image);
+        m_softwareCacheSize += image->byteCount();
+        m_allocatedImageLock->unlock();
+    }
+    return image;
+}
+
+void UIImageTracker::ReleaseImage(UIImage *Image)
+{
+    if (!Image)
+        return;
+
+    m_allocatedImageLock->lock();
+    while (m_allocatedImages.contains(Image))
+    {
+        m_allocatedImages.removeOne(Image);
+        m_softwareCacheSize -= Image->byteCount();
+        m_allocatedFileImages.removeOne(Image->GetFilename());
+    }
+    m_allocatedImageLock->unlock();
+}
+
+UIImage* UIImageTracker::GetSimpleTextImage(const QString &Text,
+                                            const QRectF  *Rect,
+                                            UIFont        *Font,
+                                            int            Flags,
+                                            int            Blur)
+{
+    UIImage* image = NULL;
+
+    QString hash = "S" + Text + Font->GetHash() +
+                   QChar((uint)Rect->width()  & 0xffff) +
+                   QChar((uint)Rect->height() & 0xffff) +
+                   QChar(Flags & 0xffff) +
+                   QChar((uint)Blur &0xff);
+
+    if (m_imageHash.contains(hash))
+    {
+        image = m_imageHash[hash];
+
+        UIImage::ImageState state = image->GetState();
+
+        if (state == UIImage::ImageReleasedFromGPU)
+        {
+            LOG(VB_GENERAL, LOG_INFO, QString("Image '%1' cache hit").arg(image->GetName()));
+            m_expireList.removeOne(image);
+            m_imageHash.remove(hash);
+            image->DownRef();
+        }
+        else if (state != UIImage::ImageLoaded &&
+                 state != UIImage::ImageUploadedToGPU)
+        {
+            return NULL;
+        }
+        else
+        {
+            m_expireList.removeOne(image);
+            m_expireList.append(image);
+            return image;
+        }
+    }
+
+    image = AllocateImage(hash, QSize());
+    m_imageHash.insert(hash, image);
+    m_expireList.append(image);
+    ExpireImages();
+
+    UITextRenderer *render = new UITextRenderer(this, image, Text, Rect->size(), Font, Flags, Blur);
+    QThreadPool::globalInstance()->start(render, QThread::NormalPriority);
+
+    return image;
+}
+
+UIImage* UIImageTracker::GetShapeImage(UIShapePath *Path, const QRectF *Rect)
+{
+    if (!Path || !Rect)
+        return NULL;
+
+    QString hash = QString::number((quintptr)Path) +
+            QChar((uint)Rect->width() & 0xffff) +
+            QChar((uint)Rect->height() & 0xffff);
+
+    UIImage* image = NULL;
+
+    if (m_imageHash.contains(hash))
+    {
+        image = m_imageHash[hash];
+
+        UIImage::ImageState state = image->GetState();
+
+        if (state == UIImage::ImageReleasedFromGPU)
+        {
+            LOG(VB_GENERAL, LOG_INFO, QString("Image '%1' cache hit").arg(image->GetName()));
+            m_expireList.removeOne(image);
+            m_imageHash.remove(hash);
+            image->DownRef();
+        }
+        else if (state != UIImage::ImageLoaded &&
+                 state != UIImage::ImageUploadedToGPU)
+        {
+            return NULL;
+        }
+        else
+        {
+            m_expireList.removeOne(image);
+            m_expireList.append(image);
+            return image;
+        }
+    }
+
+    image = AllocateImage(hash, QSize());
+    m_imageHash.insert(hash, image);
+    m_expireList.append(image);
+    ExpireImages();
+
+    UIShapeRenderer *render = new UIShapeRenderer(this, image, Path, Rect->size());
+    QThreadPool::globalInstance()->start(render, QThread::NormalPriority);
+
+    return image;
+}
+
+void UIImageTracker::LoadImageFromFile(UIImage *Image)
+{
+    if (!Image)
+        return;
+
+    UIImage::ImageState state = Image->GetState();
+
+    if (state == UIImage::ImageLoaded ||
+        state == UIImage::ImageUploadedToGPU)
+    {
+        LOG(VB_GENERAL, LOG_WARNING, LOC + ("Image already loaded. Ignoring"));
+        return;
+    }
+
+    if (state == UIImage::ImageLoading)
+    {
+        LOG(VB_GENERAL, LOG_ERR, LOC + ("Image already loading. Not reloading."));
+        return;
+    }
+
+    UIImageLoader *loader = new UIImageLoader(this, Image);
+    QThreadPool::globalInstance()->start(loader, QThread::NormalPriority);
+}
+
+void UIImageTracker::ImageCompleted(UIImage *Image, QImage *Text)
+{
+    m_completedImagesLock->lock();
+
+    if (m_completedImages.contains(Image))
+    {
+        LOG(VB_GENERAL, LOG_ERR, LOC + "Image already loaded. Discarding..");
+        delete Text;
+    }
+    else
+    {
+        m_completedImages.insert(Image, Text);
+    }
+
+    m_completedImagesLock->unlock();
+}
+
+void UIImageTracker::UpdateImages(void)
+{
+    m_completedImagesLock->lock();
+    QHash<UIImage*,QImage*> images = m_completedImages;
+    m_completedImages.clear();
+    m_completedImagesLock->unlock();
+
+    QHashIterator<UIImage*,QImage*> it(images);
+    while (it.hasNext())
+    {
+        it.next();
+        m_softwareCacheSize -= it.key()->byteCount();
+        it.key()->Assign(*(it.value()));
+        delete it.value();
+        m_softwareCacheSize += it.key()->byteCount();
+    }
+}
+
+void UIImageTracker::ExpireImages(bool ExpireAll)
+{
+    while (((m_softwareCacheSize >= (ExpireAll ? 0 : m_maxSoftwareCacheSize)) &&
+           !m_expireList.isEmpty()) || (m_expireList.size() > m_maxExpireListSize))
+    {
+        UIImage* image = m_expireList.takeFirst();
+        if (m_imageHash.contains(image->GetName()))
+        {
+            m_imageHash.take(image->GetName());
+            image->DownRef();
+        }
+    }
+}
