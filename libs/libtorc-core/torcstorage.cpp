@@ -144,7 +144,7 @@ void TorcStorage::AddDisk(TorcStorageDevice &Disk)
             LOG(VB_GENERAL, LOG_INFO, QString("New %1 '%2' at '%3'")
                 .arg(TorcStorageDevice::TypeToString(Disk.GetType()))
                 .arg(Disk.GetSystemName())
-                .arg(Disk.GetProperties() & TorcStorageDevice::Mounted ? Disk.GetName() : "Unmounted"));
+                .arg((Disk.GetProperties() & TorcStorageDevice::Mounted) ? Disk.GetName() : "Unmounted"));
 
             // confirm the disk is mounted if it is reported as such
             if ((Disk.GetProperties() & TorcStorageDevice::Mounted) && !DiskIsMounted(Disk.GetName()))

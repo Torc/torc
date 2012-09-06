@@ -141,7 +141,7 @@ bool TorcStorageOSX::ReallyEject(const QString &Disk)
 
         QByteArray name = Disk.toLocal8Bit();
         DADiskRef disk = DADiskCreateFromBSDName(kCFAllocatorDefault, m_daSession, (const char*)name.data());
-        DADiskEject(Disk, kDADiskEjectOptionDefault, DiskEjectCallback, this);
+        DADiskEject(disk, kDADiskEjectOptionDefault, DiskEjectCallback, this);
         CFRelease(disk);
 
         return true;
@@ -244,7 +244,10 @@ TorcStorageDevice TorcStorageOSX::GetDiskDetails(DADiskRef Disk)
 
         // name
         if (volumeref)
+        {
+            device.SetProperties(device.GetProperties() | TorcStorageDevice::Mounted);
             device.SetName("/Volumes/" + CFStringReftoQString(volumeref));
+        }
 
         // removable
         bool removable = kCFBooleanTrue == CFDictionaryGetValue(description, kDADiskDescriptionMediaRemovableKey);
