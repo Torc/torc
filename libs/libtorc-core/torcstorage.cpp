@@ -162,9 +162,6 @@ void TorcStorage::AddDisk(TorcStorageDevice &Disk)
                 .arg((bool)(p & TorcStorageDevice::Mounted)));
 
             m_disks.insert(Disk.GetSystemName(), Disk);
-
-            if (Disk.GetProperties() & TorcStorageDevice::Ejectable)
-                Eject(Disk.GetSystemName());
         }
     }
 }
