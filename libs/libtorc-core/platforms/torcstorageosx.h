@@ -13,9 +13,10 @@ class TorcStorageOSX : public TorcStoragePriv
     TorcStorageOSX(TorcStorage *Parent);
    ~TorcStorageOSX();
 
-    bool Mount   (const QString &Disk);
-    bool Unmount (const QString &Disk);
-    bool Eject   (const QString &Disk);
+    bool Mount        (const QString &Disk);
+    bool Unmount      (const QString &Disk);
+    bool Eject        (const QString &Disk);
+    bool ReallyEject  (const QString &Disk);
 
     static void               DiskAppearedCallback    (DADiskRef Disk, void *Context);
     static void               DiskDisappearedCallback (DADiskRef Disk, void *Context);

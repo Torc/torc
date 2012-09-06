@@ -98,43 +98,99 @@ TorcStorageUnixDBus::~TorcStorageUnixDBus()
 
 bool TorcStorageUnixDBus::Mount(const QString &Disk)
 {
+    QDBusInterface interface("org.freedesktop.UDisks", Disk,
+                             "org.freedesktop.UDisks.Device",
+                             QDBusConnection::systemBus());
+
+    // this needs an fstab entry
+    QList<QVariant> args;
+    args << QString("");
+    args << QStringList();
+    args << QString("");
+
+    if (interface.callWithCallback(QLatin1String("FilesystemMount"), args, (QObject*)this, SLOT(DBusCallback()), SLOT(DBusError(QDBusError))))
+        return true;
+
+    LOG(VB_GENERAL, LOG_ERR, "Mount call failed");
     return false;
 }
 
 bool TorcStorageUnixDBus::Unmount(const QString &Disk)
 {
+    QDBusInterface interface("org.freedesktop.UDisks", Disk,
+                             "org.freedesktop.UDisks.Device",
+                             QDBusConnection::systemBus());
+
+    QStringList arg;
+    arg << QString("force");
+    QList<QVariant> args;
+    args << arg;
+
+    if (interface.callWithCallback(QLatin1String("FilesystemUnmount"), args,(QObject*)this, SLOT(DBusCallback()), SLOT(DBusError(QDBusError))))
+        return true;
+
+    LOG(VB_GENERAL, LOG_ERR, "Unmount call failed");
     return false;
 }
 
 bool TorcStorageUnixDBus::Eject(const QString &Disk)
 {
+    return Unmount(Disk);
+}
+
+bool TorcStorageUnixDBus::ReallyEject(const QString &Disk)
+{
+    LOG(VB_GENERAL, LOG_DEBUG, "Trying to eject " + Disk);
+
+    QDBusInterface interface("org.freedesktop.UDisks", Disk,
+                             "org.freedesktop.UDisks.Device",
+                             QDBusConnection::systemBus());
+
+    QList<QVariant> args;
+    args << QStringList();
+
+    if (interface.callWithCallback(QLatin1String("DriveEject"), args,(QObject*)this, SLOT(DBusCallback()), SLOT(DBusError(QDBusError))))
+        return true;
+
+    LOG(VB_GENERAL, LOG_ERR, "Eject call failed");
     return false;
 }
 
 void TorcStorageUnixDBus::DiskAdded(QDBusObjectPath Path)
 {
-    LOG(VB_GENERAL, LOG_INFO, Path.path());
+    if (!Path.path().isEmpty())
+    {
+        TorcStorageDevice device = GetDiskDetails(Path.path());
+        ((TorcStorage*)parent())->AddDisk(device);
+    }
 }
 
 void TorcStorageUnixDBus::DiskRemoved(QDBusObjectPath Path)
 {
-    LOG(VB_GENERAL, LOG_INFO, Path.path());
+    if (!Path.path().isEmpty())
+    {
+        TorcStorageDevice device = GetDiskDetails(Path.path());
+        device.SetSystemName(Path.path());
+        ((TorcStorage*)parent())->RemoveDisk(device);
+    }
 }
 
 void TorcStorageUnixDBus::DiskChanged(QDBusObjectPath Path)
 {
-    LOG(VB_GENERAL, LOG_INFO, Path.path());
+    if (!Path.path().isEmpty())
+    {
+        TorcStorageDevice device = GetDiskDetails(Path.path());
+        ((TorcStorage*)parent())->ChangeDisk(device);
+    }
 }
 
 TorcStorageDevice TorcStorageUnixDBus::GetDiskDetails(const QString &Disk)
 {
-    LOG(VB_GENERAL, LOG_INFO, "-------------------------------");
-
     TorcStorageDevice device;
-    device.SetSystemName(Disk);
-
     if (Disk.isEmpty())
         return device;
+
+    device.SetSystemName(Disk);
 
     QDBusInterface interface("org.freedesktop.UDisks", Disk,
                              "org.freedesktop.UDisks.Device",
@@ -143,8 +199,11 @@ TorcStorageDevice TorcStorageUnixDBus::GetDiskDetails(const QString &Disk)
     if (interface.isValid())
     {
         QVariant partition = interface.property("DeviceIsPartition");
+        QVariant table     = interface.property("DeviceIsPartitionTable");
+        QVariant internal  = interface.property("DeviceIsSystemInternal");
         QVariant name      = interface.property("DeviceFile");
         QVariant mounted   = interface.property("DeviceIsMounted");
+        QVariant usage     = interface.property("IdUsage");
         QVariant optical   = interface.property("DeviceIsOpticalDisc");
         QVariant removable = interface.property("DeviceIsRemovable");
         QVariant ejectable = interface.property("DriveIsMediaEjectable");
@@ -155,52 +214,88 @@ TorcStorageDevice TorcStorageUnixDBus::GetDiskDetails(const QString &Disk)
         QVariant model     = interface.property("DriveModel");
         QVariant mounts    = interface.property("DeviceMountPaths");
 
-        if (mounts.isValid())
+        if (table.isValid() && table.toBool() == true)
         {
-            foreach(QString mount, mounts.toStringList())
-                LOG(VB_GENERAL, LOG_INFO, mount);
+            LOG(VB_GENERAL, LOG_DEBUG, "Ignoring partition table");
+            return device;
         }
 
+#if 0
+        LOG(VB_GENERAL, LOG_INFO, QString("DeviceIsPartition       : %1").arg(partition.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("DeviceIsPartitionTable  : %1").arg(table.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("DeviceIsSystemInternal  : %1").arg(internal.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("DeviceFile              : %1").arg(name.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("DeviceIsMounted         : %1").arg(mounted.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("IdUsage                 : %1").arg(usage.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("DeviceIsOpticalDisc     : %1").arg(optical.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("DeviceIsRemovable       : %1").arg(removable.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("DriveIsMediaEjectable   : %1").arg(ejectable.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("DriveMedia              : %1").arg(mediatype.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("DeviceIsReadOnly        : %1").arg(readonly.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("DriveVendor             : %1").arg(vendor.toString()));
+        LOG(VB_GENERAL, LOG_INFO, QString("DriveModel              : %1").arg(model.toString()));
+
+        if (mounts.isValid())
+            foreach(QString mount, mounts.toStringList())
+                LOG(VB_GENERAL, LOG_INFO, QString("Mount path: %1").arg(mount));
 
         if (medialist.isValid())
-        {
             foreach(QString media, medialist.toStringList())
-                LOG(VB_GENERAL, LOG_INFO, media);
-        }
-
-        if (name.isValid())
-            device.SetName(name.toString());
+                LOG(VB_GENERAL, LOG_INFO, QString("Media type: %1").arg(media));
+#endif
 
         if (mounted.isValid() && mounted.toBool() == true)
-            device.SetProperties(device.GetProperties() | TorcStorageDevice::Mounted);
-
-        if (optical.isValid() && optical.toBool() == true)
         {
-            LOG(VB_GENERAL, LOG_INFO, "optical");
-            if (mediatype.isValid())
-            {
-                QString type = mediatype.toString();
-                LOG(VB_GENERAL, LOG_INFO, type);
-                if (type.contains("optical_cd"))
-                    device.SetType(TorcStorageDevice::CD);
-                else if (type.contains("optical_dvd"))
-                    device.SetType(TorcStorageDevice::DVD);
-                else if (type.contains("optical_bd"))
-                    device.SetType(TorcStorageDevice::BD);
+            QStringList mountlist;
+            if (mounts.isValid())
+                mountlist = mounts.toStringList();
 
-                device.SetProperties(device.GetProperties() | TorcStorageDevice::Removable);
+            if (!mountlist.isEmpty())
+            {
+                device.SetName(mountlist[0]);
             }
+            else
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Device is marked as mounted but has no mount point");
+            }
+
+            device.SetProperties(device.GetProperties() | TorcStorageDevice::Mounted);
+        }
+
+        // optical disks...
+        if (medialist.isValid() && !medialist.toStringList().isEmpty())
+        {
+            QString media = mediatype.isValid() ? mediatype.toString() : QString("");
+            TorcStorageDevice::StorageType disktype = TorcStorageDevice::Optical;
+
+            if (!media.isEmpty())
+            {
+                if (media.contains("hddvd"))
+                    disktype = TorcStorageDevice::HDDVD;
+                else if (media.contains("dvd"))
+                    disktype = TorcStorageDevice::DVD;
+                else if (media.contains("cd"))
+                    disktype = TorcStorageDevice::CD;
+                else if (media.contains("bd"))
+                    disktype = TorcStorageDevice::BD;
+            }
+
+            device.SetType(disktype);
+            device.SetProperties(device.GetProperties() | TorcStorageDevice::Removable);
         }
         else
         {
-            if (removable.isValid() && removable.toBool() == true)
+            // NB this may be problematic as various properties (removable etc)
+            // seem to be unreliable
+            if (internal.isValid() && internal.toBool() == false)
             {
                 device.SetType(TorcStorageDevice::RemovableDisk);
                 device.SetProperties(device.GetProperties() | TorcStorageDevice::Removable);
             }
             else
             {
-                device.SetType(TorcStorageDevice::FixedDisk);
+                if (usage.isValid() && usage.toString() == "filesystem")
+                    device.SetType(TorcStorageDevice::FixedDisk);
             }
         }
 
@@ -226,4 +321,14 @@ TorcStorageDevice TorcStorageUnixDBus::GetDiskDetails(const QString &Disk)
 
     LOG(VB_GENERAL, LOG_ERR, QString("Failed to create UDisks.Device interface for '%1'").arg(Disk));
     return device;
+}
+
+void TorcStorageUnixDBus::DBusError(QDBusError Error)
+{
+    LOG(VB_GENERAL, LOG_ERR, QString("DBus callback error: %1, %2")
+        .arg(Error.name()).arg(Error.message().trimmed()));
+}
+
+void TorcStorageUnixDBus::DBusCallback(void)
+{
 }

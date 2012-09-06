@@ -121,11 +121,27 @@ bool TorcStorageOSX::Eject(const QString &Disk)
 {
     if (m_daSession)
     {
+        QByteArray name = Disk.toLocal8Bit();
+        DADiskRef disk = DADiskCreateFromBSDName(kCFAllocatorDefault, m_daSession, (const char*)name.data());
+        DADiskUnmount(disk, kDADiskUnmountOptionForce, DiskUnmountCallback, this);
+        CFRelease(disk);
+
+        return true;
+    }
+
+    LOG(VB_GENERAL, LOG_ERR, "Not initialised");
+    return false;
+}
+
+bool TorcStorageOSX::ReallyEject(const QString &Disk)
+{
+    if (m_daSession)
+    {
         LOG(VB_GENERAL, LOG_DEBUG, QString("Trying to eject '%1'").arg(Disk));
 
         QByteArray name = Disk.toLocal8Bit();
         DADiskRef disk = DADiskCreateFromBSDName(kCFAllocatorDefault, m_daSession, (const char*)name.data());
-        DADiskUnmount(disk, kDADiskUnmountOptionForce, DiskUnmountCallback, this);
+        DADiskEject(Disk, kDADiskEjectOptionDefault, DiskEjectCallback, this);
         CFRelease(disk);
 
         return true;
@@ -164,7 +180,7 @@ void TorcStorageOSX::DiskMountCallback(DADiskRef Disk, DADissenterRef Dissenter,
     if (Dissenter)
     {
         CFStringRef reason = DADissenterGetStatusString(Dissenter);
-        LOG(VB_GENERAL, LOG_INFO, QString("Failed to unmount disk - reason '%1', code '%2'")
+        LOG(VB_GENERAL, LOG_INFO, QString("Failed to mount disk - reason '%1', code '%2'")
             .arg(CFStringReftoQString(reason))
             .arg(DADissenterGetStatus(Dissenter) & 0xffffffff, 0, 16));
     }
@@ -364,10 +380,5 @@ void TorcStorageOSX::DiskUnmounted(DADiskRef Disk)
         return;
 
     TorcStorageDevice disk = GetDiskDetails(Disk);
-
-    // actually eject optical disks
-    if (disk.IsOpticalDisk())
-        DADiskEject(Disk, kDADiskEjectOptionDefault, DiskEjectCallback, this);
-
     ((TorcStorage*)parent())->DiskUnmounted(disk);
 }

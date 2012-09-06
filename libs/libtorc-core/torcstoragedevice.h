@@ -15,9 +15,11 @@ class TORC_CORE_PUBLIC TorcStorageDevice
         Unknown,
         FixedDisk,
         RemovableDisk,
+        Optical,
         CD,
         DVD,
-        BD
+        BD,
+        HDDVD
     };
 
     enum StorageProperties
@@ -29,6 +31,8 @@ class TORC_CORE_PUBLIC TorcStorageDevice
         Ejectable = 0x0008,
         Removable = 0x0010
     };
+
+    static QString TypeToString(StorageType Type);
 
   public:
     TorcStorageDevice();

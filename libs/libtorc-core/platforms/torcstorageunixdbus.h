@@ -15,14 +15,17 @@ class TorcStorageUnixDBus : public TorcStoragePriv
     TorcStorageUnixDBus(TorcStorage *Parent);
    ~TorcStorageUnixDBus();
 
-    bool Mount   (const QString &Disk);
-    bool Unmount (const QString &Disk);
-    bool Eject   (const QString &Disk);
+    bool Mount         (const QString &Disk);
+    bool Unmount       (const QString &Disk);
+    bool Eject         (const QString &Disk);
+    bool ReallyEject   (const QString &Disk);
 
   public slots:
-    void DiskAdded   (QDBusObjectPath Path);
-    void DiskRemoved (QDBusObjectPath Path);
-    void DiskChanged (QDBusObjectPath Path);
+    void DiskAdded     (QDBusObjectPath Path);
+    void DiskRemoved   (QDBusObjectPath Path);
+    void DiskChanged   (QDBusObjectPath Path);
+    void DBusError     (QDBusError      Error);
+    void DBusCallback  (void);
 
   private:
     TorcStorageDevice GetDiskDetails (const QString &Disk);

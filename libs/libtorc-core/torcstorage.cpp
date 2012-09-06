@@ -122,8 +122,7 @@ TorcStorage::~TorcStorage()
 
 void TorcStorage::AddDisk(TorcStorageDevice &Disk)
 {
-    if (!Disk.GetName().isEmpty() && !Disk.GetSystemName().isEmpty() &&
-        (Disk.GetType() != TorcStorageDevice::Unknown))
+    if (!Disk.GetSystemName().isEmpty() && (Disk.GetType() != TorcStorageDevice::Unknown))
     {
         QMutexLocker locker(m_disksLock);
 
@@ -142,34 +141,16 @@ void TorcStorage::AddDisk(TorcStorageDevice &Disk)
         }
         else
         {
-            if (Disk.GetType() == TorcStorageDevice::RemovableDisk)
-            {
-                LOG(VB_GENERAL, LOG_INFO, QString("New removable disk: %1 (bsdname %2)")
-                    .arg(Disk.GetName()).arg(Disk.GetSystemName()));
-            }
-            else if (Disk.GetType() == TorcStorageDevice::DVD)
-            {
-                LOG(VB_GENERAL, LOG_INFO, QString("New DVD: %1 (bsdname %2)")
-                    .arg(Disk.GetName()).arg(Disk.GetSystemName()));
-            }
-            else if (Disk.GetType() == TorcStorageDevice::BD)
-            {
-                LOG(VB_GENERAL, LOG_INFO, QString("New BD: %1 (bsdname %2)")
-                    .arg(Disk.GetName()).arg(Disk.GetSystemName()));
-            }
-            else if (Disk.GetType() == TorcStorageDevice::CD)
-            {
-                LOG(VB_GENERAL, LOG_INFO, QString("New CD: %1 (bsdname %2)")
-                    .arg(Disk.GetName()).arg(Disk.GetSystemName()));
-            }
-            else
-            {
-                LOG(VB_GENERAL, LOG_INFO, QString("New fixed disk: %1 (identifier '%2')")
-                    .arg(Disk.GetName()).arg(Disk.GetSystemName()));
-            }
+            LOG(VB_GENERAL, LOG_INFO, QString("New %1 '%2' at '%3'")
+                .arg(TorcStorageDevice::TypeToString(Disk.GetType()))
+                .arg(Disk.GetSystemName())
+                .arg(Disk.GetProperties() & TorcStorageDevice::Mounted ? Disk.GetName() : "Unmounted"));
 
-            if (DiskIsMounted(Disk.GetName()))
-                Disk.SetProperties(Disk.GetProperties() | TorcStorageDevice::Mounted);
+            // confirm the disk is mounted if it is reported as such
+            if ((Disk.GetProperties() & TorcStorageDevice::Mounted) && !DiskIsMounted(Disk.GetName()))
+            {
+                Disk.SetProperties(Disk.GetProperties() & ~TorcStorageDevice::Mounted);
+            }
 
             LOG(VB_GENERAL, LOG_DEBUG, Disk.GetDescription());
 
@@ -206,19 +187,43 @@ void TorcStorage::RemoveDisk(TorcStorageDevice &Disk)
 
 void TorcStorage::ChangeDisk(TorcStorageDevice &Disk)
 {
-    if (!Disk.GetName().isEmpty() && !Disk.GetSystemName().isEmpty())
-    {
-        QMutexLocker locker(m_disksLock);
+    QString name = Disk.GetSystemName();
+    if (name.isEmpty())
+        return;
 
-        if (m_disks.contains(Disk.GetSystemName()) && DiskIsMounted(Disk.GetName()))
-        {
-            LOG(VB_GENERAL, LOG_INFO, QString("Disk '%1' changed name from '%2' to '%3'")
-                .arg(Disk.GetSystemName())
-                .arg(m_disks[Disk.GetSystemName()].GetName())
-                .arg(Disk.GetName()));
-            m_disks[Disk.GetSystemName()].SetName(Disk.GetName());
-        }
+    QMutexLocker locker(m_disksLock);
+
+    QMap<QString,TorcStorageDevice>::iterator it = m_disks.find(name);
+
+    if (it == m_disks.end())
+    {
+        AddDisk(Disk);
+        return;
     }
+
+    if ((*it).GetName() != Disk.GetName())
+    {
+        LOG(VB_GENERAL, LOG_INFO, QString("Disk '%1' changed name from '%2' to '%3'")
+            .arg(name).arg((*it).GetName()).arg(Disk.GetName()));
+        (*it).SetName(Disk.GetName());
+    }
+
+    if ((*it).GetType() != Disk.GetType())
+    {
+        LOG(VB_GENERAL, LOG_INFO, QString("Disk '%1' changed type from '%2' to '%3'")
+            .arg(name)
+            .arg(TorcStorageDevice::TypeToString((*it).GetType()))
+            .arg(TorcStorageDevice::TypeToString(Disk.GetType())));
+        (*it).SetType(Disk.GetType());
+    }
+
+    bool wasmounted = (*it).GetProperties() & TorcStorageDevice::Mounted;
+    bool ismounted  = Disk.GetProperties() & TorcStorageDevice::Mounted;
+
+    if (ismounted && !wasmounted)
+        DiskMounted(Disk);
+    else if (wasmounted && !ismounted)
+        DiskUnmounted(Disk);
 }
 
 void TorcStorage::DiskMounted(TorcStorageDevice &Disk)
@@ -229,9 +234,10 @@ void TorcStorage::DiskMounted(TorcStorageDevice &Disk)
 
         if (m_disks.contains(Disk.GetSystemName()))
         {
-            LOG(VB_GENERAL, LOG_INFO, QString("Disk %1 (%2) mounted")
-                .arg(m_disks[Disk.GetSystemName()].GetName())
-                .arg(Disk.GetSystemName()));
+            LOG(VB_GENERAL, LOG_INFO, QString("Disk '%1' mounted at '%2'")
+                .arg(Disk.GetSystemName())
+                .arg(m_disks[Disk.GetSystemName()].GetName()));
+
             int properties = m_disks[Disk.GetSystemName()].GetProperties();
             properties = properties | TorcStorageDevice::Mounted;
             m_disks[Disk.GetSystemName()].SetProperties(properties);
@@ -247,9 +253,9 @@ void TorcStorage::DiskUnmounted(TorcStorageDevice &Disk)
 
         if (m_disks.contains(Disk.GetSystemName()))
         {
-            LOG(VB_GENERAL, LOG_INFO, QString("Disk %1 (%2) unmounted")
-                .arg(m_disks[Disk.GetSystemName()].GetName())
-                .arg(Disk.GetSystemName()));
+            LOG(VB_GENERAL, LOG_INFO, QString("Disk '%1' unmounted")
+                .arg(Disk.GetSystemName()))
+                    ;
             int properties = m_disks[Disk.GetSystemName()].GetProperties();
             properties = properties & ~TorcStorageDevice::Mounted;
             m_disks[Disk.GetSystemName()].SetProperties(properties);
@@ -262,6 +268,10 @@ void TorcStorage::DiskUnmounted(TorcStorageDevice &Disk)
                 // the RemoveDisk callback correctly...
                 LOG(VB_GENERAL, LOG_INFO, "Disk unmounted and can be safely removed");
                 TorcLocalContext::NotifyEvent(Torc::DiskCanBeSafelyRemoved);
+            }
+            else if (Disk.IsOpticalDisk())
+            {
+                m_priv->ReallyEject(Disk.GetSystemName());
             }
         }
     }

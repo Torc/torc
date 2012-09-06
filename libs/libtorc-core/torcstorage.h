@@ -21,9 +21,10 @@ class TorcStoragePriv : public QObject
     virtual ~TorcStoragePriv();
 
   public:
-    virtual bool Mount   (const QString &Disk) = 0;
-    virtual bool Unmount (const QString &Disk) = 0;
-    virtual bool Eject   (const QString &Disk) = 0;
+    virtual bool Mount       (const QString &Disk) = 0;
+    virtual bool Unmount     (const QString &Disk) = 0;
+    virtual bool Eject       (const QString &Disk) = 0;
+    virtual bool ReallyEject (const QString &Disk) = 0;
 };
 
 class TORC_CORE_PUBLIC TorcStorage : public QObject
