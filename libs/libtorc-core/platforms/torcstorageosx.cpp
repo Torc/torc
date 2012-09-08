@@ -40,7 +40,6 @@
  *  \brief A class to detect fixed and removable storage media on OS X.
  *
  *  \todo Actually remove USB/flash drives after they've been unmounted.
- *  \todo Move device tracking to TorcStorage.
  */
 
 TorcStorageOSX::TorcStorageOSX(TorcStorage *Parent)
