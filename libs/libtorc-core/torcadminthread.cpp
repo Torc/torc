@@ -41,7 +41,7 @@
 */
 
 TorcAdminThread::TorcAdminThread()
-  : TorcThread("AdminLoop")
+  : TorcThread(TORC_ADMIN_THREAD)
 {
 }
 

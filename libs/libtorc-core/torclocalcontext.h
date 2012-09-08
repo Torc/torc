@@ -13,8 +13,6 @@
 
 class TorcAdminObject;
 
-#define TORC_MAIN_THREAD "MainLoop"
-
 class TORC_CORE_PUBLIC Torc
 {
     Q_GADGET
@@ -26,6 +24,8 @@ class TORC_CORE_PUBLIC Torc
         None = 0,
         Custom,
         Exit,
+        KeyPress,
+        KeyRelease,
         // Power management
         Shutdown = 1000,
         Suspend,
