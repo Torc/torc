@@ -265,6 +265,18 @@ QThread *TorcThread::GetQThread(void)
     return m_thread;
 }
 
+QThread* TorcThread::GetQThread(const QString &Thread)
+{
+    QMutexLocker locker(&gTorcThreadsLock);
+
+    QSet<TorcThread*>::const_iterator it;
+    for (it = gTorcThreads.begin(); it != gTorcThreads.end(); ++it)
+        if ((*it)->objectName() == Thread)
+            return (*it)->GetQThread();
+
+    return NULL;
+}
+
 void TorcThread::setObjectName(const QString &name)
 {
     m_thread->setObjectName(name);

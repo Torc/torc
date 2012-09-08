@@ -22,6 +22,7 @@ class TORC_CORE_PUBLIC TorcThread
 
     // TorcThread
     QThread*     GetQThread(void);
+    static QThread* GetQThread(const QString &Thread);
     static bool  IsMainThread(void);
     static bool  IsCurrentThread(TorcThread *Thread);
     static bool  IsCurrentThread(QThread *Thread);
