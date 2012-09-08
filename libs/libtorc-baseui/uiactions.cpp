@@ -46,6 +46,14 @@ int UIActions::GetActionFromKey(QEvent *Event)
     int type = keyevent->type();
     int mods = keyevent->modifiers();
 
+    bool internal = mods == TORC_KEYEVENT_MODIFIERS;
+
+    if (internal)
+    {
+        LOG(VB_GENERAL, LOG_DEBUG, QString("Simulated keypress from %1").arg(keyevent->text()));
+        mods = Qt::NoModifier;
+    }
+
     // ignore straight modifier keypresses
     if ((key == Qt::Key_Shift  ) || (key == Qt::Key_Control   ) ||
         (key == Qt::Key_Meta   ) || (key == Qt::Key_Alt       ) ||
@@ -78,7 +86,8 @@ int UIActions::GetActionFromKey(QEvent *Event)
     if (type == QEvent::KeyRelease)
         return Torc::None;
 
-    LOG(VB_GENERAL, LOG_DEBUG, QString("KeyPress %1").arg(key, 0, 16));
+    LOG(VB_GENERAL, LOG_DEBUG, QString("KeyPress %1 (%2)")
+        .arg(key, 0, 16).arg(keyevent->text()));
 
     switch (key)
     {
@@ -93,6 +102,7 @@ int UIActions::GetActionFromKey(QEvent *Event)
         case Qt::Key_Escape:
             return Torc::Escape;
         case Qt::Key_F1:
+        case Qt::Key_PowerOff:
             return Torc::Suspend;
         default:
             break;

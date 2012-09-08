@@ -22,13 +22,16 @@
 
 // Qt
 #include <QCoreApplication>
+#include <QApplication>
 #include <QLibrary>
+#include <QKeyEvent>
 #include <QTime>
 #include <QTimer>
 
 // Torc
 #include "torclocalcontext.h"
 #include "torcevent.h"
+#include "torcpower.h"
 #include "torclogging.h"
 #include "../uitheme.h"
 #include "../uiimage.h"
@@ -261,8 +264,24 @@ void UIOpenGLWindow::customEvent(QEvent *Event)
 
         int event = torcevent->Event();
 
-        if (Torc::Exit == event)
-            close();
+        switch (event)
+        {
+            case Torc::Exit:
+                close();
+                break;
+            case Torc::KeyPress:
+                {
+                    QKeyEvent *keyevent = new QKeyEvent(
+                                QEvent::KeyPress,
+                                torcevent->Data().value("key").toInt(),
+                                TORC_KEYEVENT_MODIFIERS,
+                                torcevent->Data().value("source").toString());
+                    QApplication::postEvent(this, keyevent);
+                }
+                break;
+            default:
+                break;
+        }
     }
 }
 
@@ -271,7 +290,7 @@ void UIOpenGLWindow::closeEvent(QCloseEvent *Event)
     LOG(VB_GENERAL, LOG_INFO, "Closing window");
     QWidget::closeEvent(Event);
 }
-#include "torcpower.h"
+
 bool UIOpenGLWindow::event(QEvent *Event)
 {
     int type = Event->type();
