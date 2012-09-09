@@ -270,9 +270,10 @@ void UIOpenGLWindow::customEvent(QEvent *Event)
                 close();
                 break;
             case Torc::KeyPress:
+            case Torc::KeyRelease:
                 {
                     QKeyEvent *keyevent = new QKeyEvent(
-                                QEvent::KeyPress,
+                                event == Torc::KeyPress ? QEvent::KeyPress : QEvent::KeyRelease,
                                 torcevent->Data().value("key").toInt(),
                                 TORC_KEYEVENT_MODIFIERS,
                                 torcevent->Data().value("source").toString());

@@ -74,7 +74,8 @@ int UIActions::GetActionFromKey(QEvent *Event)
 
     // pressed and released
     if (key == Qt::Key_Return ||
-        key == Qt::Key_Enter)
+        key == Qt::Key_Enter  ||
+        key == Qt::Key_Select)
     {
         LOG(VB_GENERAL, LOG_DEBUG, QString("KeyPress/Release %1").arg(key, 0, 16));
         return keyevent->type() == QEvent::KeyPress ? Torc::Pushed : Torc::Released;
