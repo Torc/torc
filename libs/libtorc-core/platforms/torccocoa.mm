@@ -68,3 +68,62 @@ CGDirectDisplayID GetOSXCocoaDisplay(void* Window)
     NSDictionary* desc = [screen deviceDescription];
     return (CGDirectDisplayID)[[desc objectForKey:@"NSScreenNumber"] intValue];
 }
+
+QByteArray GetOSXEDID(CGDirectDisplayID Display)
+{
+    QByteArray result;
+    if (!Display)
+        return result;
+
+    io_registry_entry_t displayport = CGDisplayIOServicePort(Display);
+
+    CFDataRef edid = (CFDataRef)IORegistryEntrySearchCFProperty(displayport, kIOServicePlane, CFSTR("EDID"),
+                                                                kCFAllocatorDefault,
+                                                                kIORegistryIterateRecursively | kIORegistryIterateParents);
+
+    const char* buf = (const char*)[(NSData*)edid bytes];
+
+    if (!buf)
+        return result;
+
+    int length = [(NSData*)edid length];
+    result = QByteArray(buf, length);
+
+    return result;
+}
+
+QByteArray GetOSXEDID(void)
+{
+    QByteArray result;
+
+    // pool
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // get displays
+    CGDisplayCount count = 0;
+    CGError err = CGGetActiveDisplayList(0, NULL, &count);
+
+    if (err == CGDisplayNoErr)
+    {
+        CGDirectDisplayID *displays = (CGDirectDisplayID*)calloc((size_t)count, sizeof(CGDirectDisplayID));
+        err = CGGetActiveDisplayList(count, displays, &count);
+
+        if (err == CGDisplayNoErr)
+        {
+            for (uint i = 0; i < count; i++)
+            {
+                QByteArray ediddata = GetOSXEDID(displays[i]);
+
+                if (!ediddata.isEmpty())
+                {
+                    result = ediddata;
+                    break;
+                }
+            }
+        }
+    }
+
+    [pool release];
+
+    return result;
+}
