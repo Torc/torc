@@ -174,7 +174,7 @@ TorcUSB::~TorcUSB()
 
 void TorcUSB::DeviceAdded(const TorcUSBDevice &Device)
 {
-    LOG(VB_GENERAL, LOG_INFO, QString("New device: %1 %2:%3 (%4, %5, %6)")
+    LOG(VB_GENERAL, LOG_DEBUG, QString("New device: %1 %2:%3 (%4, %5, %6)")
         .arg(Device.m_path)
         .arg(Device.m_vendorID, 0, 16)
         .arg(Device.m_productID, 0, 16)
@@ -191,7 +191,7 @@ void TorcUSB::DeviceAdded(const TorcUSBDevice &Device)
 
 void TorcUSB::DeviceRemoved(const TorcUSBDevice &Device)
 {
-    LOG(VB_GENERAL, LOG_INFO, QString("Device removed: %1")
+    LOG(VB_GENERAL, LOG_DEBUG, QString("Device removed: %1")
         .arg(Device.m_path));
 
     if (TorcUSBDeviceHandler::DeviceHandled(Device, false /*removed*/))
