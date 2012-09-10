@@ -1,3 +1,25 @@
+/* Class TorcEDID
+*
+* This file is part of the Torc project.
+*
+* Copyright (C) Mark Kendall 2012
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+* USA.
+*/
+
 // Qt
 #include <QMutex>
 
@@ -7,6 +29,22 @@
 
 TorcEDID* TorcEDID::gTorcEDID   = new TorcEDID();
 QMutex* TorcEDID::gTorcEDIDLock = new QMutex(QMutex::Recursive);
+
+/*! \class TorcEDID
+ *  \brief A parser for Extended Display Identification Data (EDID)
+ *
+ * EDID provides details about the capability of a connected monitor or TV. Torc
+ * uses this directly to assist with CEC setup and detection of 3D video modes.
+ * The underlying video and audio libraries will already be using this data
+ * to detect supported video and audio (over HDMI) modes.
+ *
+ * Depending upon the operating system in use, grabbing the EDID may require
+ * a graphics server to be running. Hence implementations may submit a provisional
+ * EDID which will only be used if a further update is not provided when the
+ * the GUI is created. This revised EDID may provide more accurate data on systems
+ * with multiple connected displays. (EDID data can still be of use to a command
+ * line application that outputs audio of an HDMI link).
+*/
 
 TorcEDID::TorcEDID()
   : m_edidDataProvisional(true),
@@ -110,5 +148,4 @@ void TorcEDID::Process(void)
 
         LOG(VB_GENERAL, LOG_DEBUG, output + "\n");
     }
-
 }
