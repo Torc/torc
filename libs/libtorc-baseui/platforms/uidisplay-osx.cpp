@@ -8,6 +8,7 @@
 
 // Torc
 #include "torclogging.h"
+#include "torcedid.h"
 #include "torccocoa.h"
 #include "uidisplay.h"
 
@@ -50,6 +51,12 @@ bool UIDisplay::InitialiseDisplay(void)
         .arg(m_physicalSize.width()).arg(m_physicalSize.height()));
     LOG(VB_GENERAL, LOG_INFO, QString("Screen size : %1px x %2px")
         .arg(m_pixelSize.width()).arg(m_pixelSize.height()));
+
+    {
+        CocoaAutoReleasePool pool;
+        CGDirectDisplayID disp = GetOSXDisplay(m_widget->winId());
+        TorcEDID::RegisterEDID(GetOSXEDID(disp), false);
+    }
 
     return true;
 }

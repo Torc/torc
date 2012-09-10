@@ -22,7 +22,9 @@
 
 // Torc
 #include "torclogging.h"
+#include "torccocoa.h"
 #include "torcadminthread.h"
+#include "torcedid.h"
 #include "torcrunlooposx.h"
 
 CFRunLoopRef gAdminRunLoop = 0;
@@ -90,6 +92,10 @@ static class TorcRunLoopOSX : public TorcThread, public TorcAdminObject
 
         gAdminRunLoop = CFRunLoopGetCurrent();
 
+        // try getting provisional edid
+        TorcEDID::RegisterEDID(GetOSXEDID(), true /*provisional*/);
+
+        // run the loop
         while (!m_stop)
         {
             TorcThread::msleep(20);
