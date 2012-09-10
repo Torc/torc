@@ -28,6 +28,7 @@ HEADERS += torcevent.h        torcobservable.h
 HEADERS += torclocaldefs.h    torcpower.h
 HEADERS += torcadminthread.h  torcstoragedevice.h
 HEADERS += torcstorage.h      torcusb.h
+HEADERS += torcedid.h
 
 SOURCES += torcloggingimp.cpp torcplist.cpp
 SOURCES += torcthread.cpp     torclocalcontext.cpp
@@ -39,6 +40,7 @@ SOURCES += torcevent.cpp      torcobservable.cpp
 SOURCES += torcpower.cpp      torcadminthread.cpp
 SOURCES += torcstoragedevice.cpp
 SOURCES += torcstorage.cpp    torcusb.cpp
+SOURCES += torcedid.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files  = torclogging.h     torclocalcontext.h
@@ -48,7 +50,7 @@ inc.files += torcdirectories.h torcreferencecounted.h
 inc.files += torccoreutils.h   torccommandlineparser.h
 inc.files += torcevent.h       torcobservable.h
 inc.files += torclocaldefs.h   torcpower.h
-inc.files += torcusb.h
+inc.files += torcusb.h         torcedid.h
 
 unix:using_libudev {
     DEFINES += USING_LIBUDEV
