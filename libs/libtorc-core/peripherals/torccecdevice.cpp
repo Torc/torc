@@ -42,7 +42,7 @@ using namespace std;
 
 #define USING_LIBCEC_VERSION CEC_CLIENT_VERSION_1_7_2
 #define MAX_CEC_DEVICES 10
-#define OSDNAME "Torc2"
+#define OSDNAME "Torc"
 
 TorcCECDevice *gCECDevice = NULL;
 QMutex    *gCECDeviceLock = new QMutex(QMutex::Recursive);
@@ -76,8 +76,10 @@ class TorcCECDevicePriv
         m_powerOffTVOnExit(LIBCEC_POWEROFFTV_ONEXIT_DEFAULT),
         m_powerOnTV(false),
         m_powerOnTVOnStart(LIBCEC_POWERONTV_ONSTART_DEFAULT),
-        m_makeActiveSource(LIBCEC_MAKEACTIVESOURCE_DEFAULT),
-        m_sendInactiveSource(LIBCEC_SENDINACTIVESOURCE_DEFAULT)
+        m_makeActiveSource(false),
+        m_makeActiveSourceOnStart(LIBCEC_MAKEACTIVESOURCE_DEFAULT),
+        m_sendInactiveSource(false),
+        m_sendInactiveSourceDefault(LIBCEC_SENDINACTIVESOURCE_DEFAULT)
     {
         m_callbacks.CBCecLogMessage           = &LogMessageCallback;
         m_callbacks.CBCecKeyPress             = &KeyPressCallback;
@@ -103,15 +105,6 @@ class TorcCECDevicePriv
 
         qint16 detectedphysicaladdress = TorcEDID::PhysicalAddress();
 
-        cec_logical_address logical_address = CECDEVICE_PLAYBACKDEVICE1;
-        if ("auto" != m_defaultBaseDevice)
-        {
-            quint8 la = m_defaultBaseDevice.toInt();
-            if (la < 1 || la > 15)
-                la = 1;
-            logical_address = static_cast<cec_logical_address>(la);
-        }
-
         // create adapter interface
         libcec_configuration config;
         config.Clear();
@@ -122,9 +115,9 @@ class TorcCECDevicePriv
         memcpy(config.strDeviceName, OSDNAME, length);
         config.deviceTypes.Add(CEC_DEVICE_TYPE_PLAYBACK_DEVICE);
         //config.bAutodetectAddress
-        config.iPhysicalAddress   = detectedphysicaladdress ? detectedphysicaladdress : m_defaultPhysicalAddress;
-        config.baseDevice         = logical_address;
-        config.iHDMIPort          = m_defaultHDMIPort;
+        config.iPhysicalAddress = detectedphysicaladdress ? detectedphysicaladdress : m_defaultPhysicalAddress;
+        config.baseDevice       = (cec_logical_address)m_defaultBaseDevice;
+        config.iHDMIPort        = m_defaultHDMIPort;
         //config.tvVendor
         config.wakeDevices.Set(m_powerOnTVOnStart ? CECDEVICE_TV : CECDEVICE_UNKNOWN);
         config.powerOffDevices.Set(m_powerOffTVOnExit ? CECDEVICE_TV : CECDEVICE_UNKNOWN);
@@ -208,6 +201,8 @@ class TorcCECDevicePriv
         QString comm = QString::fromAscii(devices[devicenum].comm);
         LOG(VB_GENERAL, LOG_INFO, QString("Trying to open device %1 (%2)").arg(path).arg(comm));
 
+        m_adapter->InitVideoStandalone();
+
         if (!m_adapter->Open(devices[devicenum].comm))
         {
             LOG(VB_GENERAL, LOG_ERR, "Failed to open device.");
@@ -218,7 +213,9 @@ class TorcCECDevicePriv
             return false;
         }
 
-        m_physicalAddressAutoDetected = config.bAutodetectAddress;
+        libcec_configuration newconfig;
+        m_adapter->GetCurrentConfiguration(&newconfig);
+        m_physicalAddressAutoDetected = newconfig.bAutodetectAddress;
 
         if (m_physicalAddressAutoDetected)
         {
@@ -235,6 +232,11 @@ class TorcCECDevicePriv
                                       "If you experience issues, ensure your settings are correct.");
         }
 
+        // setup initial actions
+        m_powerOnTV        = m_powerOnTVOnStart;
+        m_makeActiveSource = m_makeActiveSourceOnStart;
+        ProcessActions();
+
         delete [] devices;
         return true;
     }
@@ -243,6 +245,9 @@ class TorcCECDevicePriv
     {
         if (!Reinitialising)
         {
+            // make inactive (if configured)
+            m_sendInactiveSource = m_sendInactiveSourceDefault;
+
             // turn off tv (if configured)
             m_powerOffTV = m_powerOffTVOnExit;
             ProcessActions();
@@ -267,21 +272,39 @@ class TorcCECDevicePriv
         if (m_powerOffTV)
         {
             if (m_adapter->StandbyDevices())
-                LOG(VB_GENERAL, LOG_INFO, "Asked TV to turn off.");
+                LOG(VB_GENERAL, LOG_INFO, "Asked TV to turn off");
             else
-                LOG(VB_GENERAL, LOG_ERR,  "Failed to turn TV off.");
+                LOG(VB_GENERAL, LOG_ERR,  "Failed to turn TV off");
         }
 
         if (m_powerOnTV)
         {
             if (m_adapter->PowerOnDevices())
-                LOG(VB_GENERAL, LOG_INFO, "Asked TV to turn on.");
+                LOG(VB_GENERAL, LOG_INFO, "Asked TV to turn on");
             else
-                LOG(VB_GENERAL, LOG_ERR,  "Failed to turn TV on.");
+                LOG(VB_GENERAL, LOG_ERR,  "Failed to turn TV on");
         }
 
-        m_powerOffTV  = false;
-        m_powerOnTV   = false;
+        if (m_makeActiveSource)
+        {
+            if (m_adapter->SetActiveSource())
+                LOG(VB_GENERAL, LOG_INFO, "Made active source");
+            else
+                LOG(VB_GENERAL, LOG_ERR,  "Failed to make source active");
+        }
+
+        if (m_sendInactiveSource)
+        {
+            if (m_adapter->SetInactiveView())
+                LOG(VB_GENERAL, LOG_INFO, "Sent inactive view");
+            else
+                LOG(VB_GENERAL, LOG_ERR,  "Failed to send inactive view");
+        }
+
+        m_powerOffTV         = false;
+        m_powerOnTV          = false;
+        m_makeActiveSource   = false;
+        m_sendInactiveSource = false;
     }
 
     static int CEC_CDECL LogMessageCallback(void *Object, const cec_log_message &Message)
@@ -685,14 +708,16 @@ class TorcCECDevicePriv
 
     quint16       m_defaultPhysicalAddress;
     quint8        m_defaultHDMIPort;
-    QString       m_defaultBaseDevice;
+    quint8        m_defaultBaseDevice;
 
     bool          m_powerOffTV;
     bool          m_powerOffTVOnExit;
     bool          m_powerOnTV;
     bool          m_powerOnTVOnStart;
     bool          m_makeActiveSource;
+    bool          m_makeActiveSourceOnStart;
     bool          m_sendInactiveSource;
+    bool          m_sendInactiveSourceDefault;
 };
 
 /*! \class TorcCECDevice
