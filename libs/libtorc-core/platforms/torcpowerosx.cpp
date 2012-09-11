@@ -142,7 +142,6 @@ bool TorcPowerOSX::Suspend(void)
     if (noErr == error)
     {
         LOG(VB_GENERAL, LOG_INFO, "Sent sleep command.");
-        TorcLocalContext::NotifyEvent(Torc::Suspending);
         return true;
     }
 
@@ -162,7 +161,6 @@ bool TorcPowerOSX::Restart(void)
     if (noErr == error)
     {
         LOG(VB_GENERAL, LOG_INFO, "Sent restart command.");
-        TorcLocalContext::NotifyEvent(Torc::Restarting);
         return true;
     }
 
