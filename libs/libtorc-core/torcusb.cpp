@@ -86,6 +86,7 @@ bool TorcUSBDevice::IgnoreClass(Classes Class)
 }
 
 TorcUSBDeviceHandler* TorcUSBDeviceHandler::gUSBDeviceHandler = NULL;
+int TorcUSBDeviceHandler::gDevicesSeen = TorcUSBDeviceHandler::Unknown;
 
 TorcUSBDeviceHandler::TorcUSBDeviceHandler()
 {
@@ -117,7 +118,21 @@ bool TorcUSBDeviceHandler::DeviceHandled(const TorcUSBDevice &Device, bool Added
         }
     }
 
+    // register known devices that setup may be interesed in
+    if (Device.m_vendorID == 0x22b8 && Device.m_productID == 0x003b)
+    {
+        if (Added)
+            gDevicesSeen = gDevicesSeen | Nyxboard;
+        else
+            gDevicesSeen = gDevicesSeen & ~Nyxboard;
+    }
+
     return false;
+}
+
+bool TorcUSBDeviceHandler::DeviceSeen(KnownDevices Device)
+{
+    return gDevicesSeen & Device;
 }
 
 TorcUSBDeviceHandler* TorcUSBDeviceHandler::GetNextHandler(void)

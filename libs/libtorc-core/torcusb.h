@@ -51,12 +51,20 @@ class TORC_CORE_PUBLIC TorcUSBDeviceHandler
 {
   public:
     static TorcUSBDeviceHandler *gUSBDeviceHandler;
+    static int                   gDevicesSeen;
 
   public:
+    enum KnownDevices
+    {
+        Unknown      = 0x0000,
+        Nyxboard     = 0x0001
+    };
+
     TorcUSBDeviceHandler();
     virtual ~TorcUSBDeviceHandler();
 
     static  bool DeviceHandled (const TorcUSBDevice &Device, bool Added);
+    static  bool DeviceSeen    (KnownDevices Device);
 
   protected:
     virtual bool DeviceAdded   (const TorcUSBDevice &Device) = 0;
