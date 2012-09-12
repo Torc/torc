@@ -18,10 +18,10 @@ class TORC_CORE_PUBLIC TorcBonjour : public QObject
     static  TorcBonjour*     Instance(void);
     static  void             TearDown(void);
 
-    void*   Register        (quint16 Port, const QByteArray &Type,
+    quint32 Register        (quint16 Port, const QByteArray &Type,
                              const QByteArray &Name, const QByteArray &Txt);
-    void*   Browse          (const QByteArray &Type);
-    void    Deregister      (void* Reference);
+    quint32 Browse          (const QByteArray &Type);
+    void    Deregister      (quint32 Reference);
 
   private slots:
     void    socketReadyRead (int Socket);
@@ -31,6 +31,9 @@ class TORC_CORE_PUBLIC TorcBonjour : public QObject
     TorcBonjour();
    ~TorcBonjour();
 
+    bool    event           (QEvent *Event);
+
+  private:
     TorcBonjourPriv *m_priv;
 };
 

@@ -32,6 +32,7 @@
 
 // Torc
 #include "torclogging.h"
+#include "torcevent.h"
 #include "torclocalcontext.h"
 #include "torcadminthread.h"
 #include "torcbonjour.h"
@@ -79,6 +80,7 @@ class TorcBonjourService
         m_dnssRef(NULL),
         m_name(QByteArray()),
         m_type(QByteArray()),
+        m_txt(QByteArray()),
         m_domain(QByteArray()),
         m_interfaceIndex(0),
         m_host(QByteArray()),
@@ -94,6 +96,7 @@ class TorcBonjourService
         m_dnssRef(DNSSRef),
         m_name(Name),
         m_type(Type),
+        m_txt(QByteArray()),
         m_domain(QByteArray()),
         m_interfaceIndex(0),
         m_host(QByteArray()),
@@ -111,6 +114,7 @@ class TorcBonjourService
         m_dnssRef(NULL),
         m_name(Name),
         m_type(Type),
+        m_txt(QByteArray()),
         m_domain(Domain),
         m_interfaceIndex(InterfaceIndex),
         m_host(QByteArray()),
@@ -179,6 +183,7 @@ class TorcBonjourService
     DNSServiceRef    m_dnssRef;
     QByteArray       m_name;
     QByteArray       m_type;
+    QByteArray       m_txt;
     QByteArray       m_domain;
     uint32_t         m_interfaceIndex;
     QByteArray       m_host;
@@ -194,6 +199,7 @@ class TorcBonjourPriv
   public:
     TorcBonjourPriv(TorcBonjour *Parent)
       : m_parent(Parent),
+        m_suspended(false),
         m_serviceLock(new QMutex(QMutex::Recursive)),
         m_discoveredLock(new QMutex(QMutex::Recursive))
     {
@@ -207,16 +213,19 @@ class TorcBonjourPriv
         // deregister any outstanding services (should be empty)
         {
             QMutexLocker locker(m_serviceLock);
-            QMap<DNSServiceRef,TorcBonjourService>::iterator it = m_services.begin();
-            for (; it != m_services.end(); ++it)
-                (*it).Deregister();
+            if (!m_suspended)
+            {
+                QMap<quint32,TorcBonjourService>::iterator it = m_services.begin();
+                for (; it != m_services.end(); ++it)
+                    (*it).Deregister();
+            }
             m_services.clear();
         }
 
         // deallocate resolve queries
         {
             QMutexLocker locker(m_discoveredLock);
-            QMap<DNSServiceRef,TorcBonjourService>::iterator it = m_discoveredServices.begin();
+            QMap<quint32,TorcBonjourService>::iterator it = m_discoveredServices.begin();
             for (; it != m_discoveredServices.end(); ++it)
                 (*it).Deregister();
             m_discoveredServices.clear();
@@ -229,9 +238,72 @@ class TorcBonjourPriv
         m_discoveredLock = NULL;
     }
 
-    void* Register(quint16 Port, const QByteArray &Type,
-                     const QByteArray &Name, const QByteArray &Txt)
+    void Suspend(void)
     {
+        if (m_suspended)
+        {
+            LOG(VB_GENERAL, LOG_INFO, "Bonjour already suspended");
+            return;
+        }
+
+        m_suspended = true;
+
+        {
+            QMutexLocker locker(m_serviceLock);
+
+            // close the services but retain the necessary details
+            QMap<quint32,TorcBonjourService> services;
+            QMap<quint32,TorcBonjourService>::iterator it = m_services.begin();
+            for (; it != m_services.end(); ++it)
+            {
+                TorcBonjourService service((*it).m_serviceType, NULL, (*it).m_name, (*it).m_type);
+                service.m_txt  = (*it).m_txt;
+                service.m_port = (*it).m_port;
+                (*it).Deregister();
+                services.insert(it.key(), service);
+            }
+
+            m_services = services;
+        }
+    }
+
+    void Resume(void)
+    {
+        if (!m_suspended)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Cannot resume - not suspended");
+            return;
+        }
+
+        {
+            QMutexLocker locker(m_serviceLock);
+
+            m_suspended = false;
+
+            QMap<quint32,TorcBonjourService> services = m_services;
+            m_services.clear();
+
+            QMap<quint32,TorcBonjourService>::iterator it = services.begin();
+            for (; it != services.end(); ++it)
+            {
+                if ((*it).m_serviceType == TorcBonjourService::Service)
+                    (void)Register((*it).m_port, (*it).m_type, (*it).m_name, (*it).m_txt, it.key());
+                else
+                    (void)Browse((*it).m_type, it.key());
+            }
+        }
+    }
+
+    quint32 Register(quint16 Port, const QByteArray &Type,
+                   const QByteArray &Name, const QByteArray &Txt,
+                   quint32 Reference = 0)
+    {
+        if (m_suspended)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Trying to register Bonjour service while resumed");
+            return NULL;
+        }
+
         quint16 qport = qToBigEndian(Port);
         DNSServiceRef dnssref = NULL;
         DNSServiceErrorType result =
@@ -250,18 +322,29 @@ class TorcBonjourPriv
         else
         {
             QMutexLocker locker(m_serviceLock);
+            quint32 reference = Reference;
+            while (!reference || m_services.contains(reference))
+                reference++;
             TorcBonjourService service(TorcBonjourService::Service, dnssref, Name, Type);
-            m_services.insert(dnssref, service);
-            m_services[dnssref].SetFileDescriptor(DNSServiceRefSockFD(dnssref), m_parent);
-            return (void*)dnssref;
+            service.m_txt  = Txt;
+            service.m_port = Port;
+            m_services.insert(reference, service);
+            m_services[reference].SetFileDescriptor(DNSServiceRefSockFD(dnssref), m_parent);
+            return reference;
         }
 
         LOG(VB_GENERAL, LOG_ERR, "Failed to register service.");
         return NULL;
     }
 
-    void* Browse(const QByteArray &Type)
+    quint32 Browse(const QByteArray &Type, quint32 Reference = 0)
     {
+        if (m_suspended)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Trying to browse Bonjour service while resumed");
+            return NULL;
+        }
+
         DNSServiceRef dnssref = NULL;
         DNSServiceErrorType result = DNSServiceBrowse(&dnssref, 0,
                                                       kDNSServiceInterfaceIndexAny,
@@ -275,29 +358,31 @@ class TorcBonjourPriv
         else
         {
             QMutexLocker locker(m_serviceLock);
+            quint32 reference = Reference;
+            while (!reference || m_services.contains(reference))
+                reference++;
             static QByteArray dummy("browser");
             TorcBonjourService service(TorcBonjourService::Browse, dnssref, dummy, Type);
-            m_services.insert(dnssref, service);
-            m_services[dnssref].SetFileDescriptor(DNSServiceRefSockFD(dnssref), m_parent);
-            return (void*)dnssref;
+            m_services.insert(reference, service);
+            m_services[reference].SetFileDescriptor(DNSServiceRefSockFD(dnssref), m_parent);
+            return reference;
         }
 
         LOG(VB_GENERAL, LOG_ERR, QString("Failed to browse for '%1'").arg(Type.data()));
-        return NULL;
+        return 0;
     }
 
-    void Deregister(void* Reference)
+    void Deregister(quint32 Reference)
     {
         QByteArray type;
 
         {
             QMutexLocker locker(m_serviceLock);
-            DNSServiceRef reference = (DNSServiceRef)Reference;
-            if (m_services.contains(reference))
+            if (m_services.contains(Reference))
             {
-                type = m_services[reference].m_type;
-                m_services[reference].Deregister();
-                m_services.remove(reference);
+                type = m_services[Reference].m_type;
+                m_services[Reference].Deregister();
+                m_services.remove(Reference);
             }
         }
 
@@ -310,7 +395,7 @@ class TorcBonjourPriv
         // Remove any resolve requests associated with this type
         {
             QMutexLocker locker(m_discoveredLock);
-            QMutableMapIterator<DNSServiceRef,TorcBonjourService> it(m_discoveredServices);
+            QMutableMapIterator<quint32,TorcBonjourService> it(m_discoveredServices);
             while (it.hasNext())
             {
                 it.next();
@@ -327,7 +412,7 @@ class TorcBonjourPriv
     {
         {
             QMutexLocker lock(m_serviceLock);
-            QMap<DNSServiceRef,TorcBonjourService>::iterator it = m_services.begin();
+            QMap<quint32,TorcBonjourService>::iterator it = m_services.begin();
             for ( ; it != m_services.end(); ++it)
             {
                 if ((*it).m_fd == Socket)
@@ -342,7 +427,7 @@ class TorcBonjourPriv
 
         {
             QMutexLocker lock(m_discoveredLock);
-            QMap<DNSServiceRef,TorcBonjourService>::iterator it = m_discoveredServices.begin();
+            QMap<quint32,TorcBonjourService>::iterator it = m_discoveredServices.begin();
             for ( ; it != m_discoveredServices.end(); ++it)
             {
                 if ((*it).m_fd == Socket)
@@ -364,7 +449,18 @@ class TorcBonjourPriv
         {
             // validate against known browsers
             QMutexLocker locker(m_serviceLock);
-            if (!m_services.contains(Reference))
+            bool found = false;
+            QMap<quint32,TorcBonjourService>::iterator it = m_services.begin();
+            for ( ; it != m_services.end(); ++it)
+            {
+                if ((*it).m_dnssRef == Reference)
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
             {
                 LOG(VB_GENERAL, LOG_INFO, "Browser result for unknown browser");
                 return;
@@ -374,7 +470,7 @@ class TorcBonjourPriv
         {
             // have we already seen this service?
             QMutexLocker locker(m_discoveredLock);
-            QMap<DNSServiceRef,TorcBonjourService>::iterator it = m_discoveredServices.begin();
+            QMap<quint32,TorcBonjourService>::iterator it = m_discoveredServices.begin();
             for( ; it != m_discoveredServices.end(); ++it)
             {
                 if ((*it).m_name == Service.m_name &&
@@ -405,21 +501,35 @@ class TorcBonjourPriv
             {
                 // add it to our list
                 TorcBonjourService service = Service;
+                quint32 ref = 1;
+                while (m_discoveredServices.contains(ref))
+                    ref++;
                 service.m_dnssRef = reference;
-                m_discoveredServices.insert(reference, service);
-                m_discoveredServices[reference].SetFileDescriptor(DNSServiceRefSockFD(reference), m_parent);
+                m_discoveredServices.insert(ref, service);
+                m_discoveredServices[ref].SetFileDescriptor(DNSServiceRefSockFD(reference), m_parent);
                 LOG(VB_NETWORK, LOG_INFO, QString("Resolving '%1'").arg(service.m_name.data()));
             }
         }
     }
 
-    void RemoveBrowseResult(DNSServiceRef Ref,
+    void RemoveBrowseResult(DNSServiceRef Reference,
                             const TorcBonjourService &Service)
     {
         {
             // validate against known browsers
             QMutexLocker locker(m_serviceLock);
-            if (!m_services.contains(Ref))
+            bool found = false;
+            QMap<quint32,TorcBonjourService>::iterator it = m_services.begin();
+            for ( ; it != m_services.end(); ++it)
+            {
+                if ((*it).m_dnssRef == Reference)
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
             {
                 LOG(VB_GENERAL, LOG_INFO, "Browser result for unknown browser");
                 return;
@@ -429,7 +539,7 @@ class TorcBonjourPriv
         {
             // validate against known services
             QMutexLocker locker(m_discoveredLock);
-            QMutableMapIterator<DNSServiceRef,TorcBonjourService> it(m_discoveredServices);
+            QMutableMapIterator<quint32,TorcBonjourService> it(m_discoveredServices);
             while (it.hasNext())
             {
                 it.next();
@@ -448,11 +558,11 @@ class TorcBonjourPriv
         }
     }
 
-    void Resolve(DNSServiceRef Ref, DNSServiceErrorType ErrorType, const char *Fullname,
+    void Resolve(DNSServiceRef Reference, DNSServiceErrorType ErrorType, const char *Fullname,
                  const char *HostTarget, uint16_t Port, uint16_t TxtLen,
                  const unsigned char *TxtRecord)
     {
-        if (!Ref)
+        if (!Reference)
             return;
 
         if (ErrorType != kDNSServiceErr_NoError)
@@ -463,16 +573,20 @@ class TorcBonjourPriv
 
         {
             QMutexLocker locker(m_discoveredLock);
-            if (m_discoveredServices.contains(Ref))
+            QMap<quint32,TorcBonjourService>::iterator it = m_discoveredServices.begin();
+            for( ; it != m_discoveredServices.end(); ++it)
             {
-                int port = qToBigEndian(Port);
-                m_discoveredServices[Ref].m_host = HostTarget;
-                m_discoveredServices[Ref].m_port = port;
-                LOG(VB_NETWORK, LOG_INFO, QString("%1 (%2) resolved to %3:%4")
-                    .arg(m_discoveredServices[Ref].m_name.data())
-                    .arg(m_discoveredServices[Ref].m_type.data())
-                    .arg(HostTarget).arg(port));
-                m_discoveredServices[Ref].m_lookupID = QHostInfo::lookupHost(HostTarget, m_parent, SLOT(hostLookup(QHostInfo)));
+                if ((*it).m_dnssRef == Reference)
+                {
+                    int port = qToBigEndian(Port);
+                    (*it).m_host = HostTarget;
+                    (*it).m_port = port;
+                    LOG(VB_NETWORK, LOG_INFO, QString("%1 (%2) resolved to %3:%4")
+                        .arg((*it).m_name.data())
+                        .arg((*it).m_type.data())
+                        .arg(HostTarget).arg(port));
+                    (*it).m_lookupID = QHostInfo::lookupHost(HostTarget, m_parent, SLOT(hostLookup(QHostInfo)));
+                }
             }
         }
     }
@@ -490,7 +604,7 @@ class TorcBonjourPriv
         // search for the lookup id
         {
             QMutexLocker locker(m_discoveredLock);
-            QMap<DNSServiceRef,TorcBonjourService>::iterator it = m_discoveredServices.begin();
+            QMap<quint32,TorcBonjourService>::iterator it = m_discoveredServices.begin();
             for ( ; it != m_discoveredServices.end(); ++it)
             {
                 if ((*it).m_lookupID == HostInfo.lookupId())
@@ -514,11 +628,12 @@ class TorcBonjourPriv
     }
 
   private:
-    TorcBonjour                           *m_parent;
-    QMutex                                *m_serviceLock;
-    QMap<DNSServiceRef,TorcBonjourService> m_services;
-    QMutex                                *m_discoveredLock;
-    QMap<DNSServiceRef,TorcBonjourService> m_discoveredServices;
+    TorcBonjour                     *m_parent;
+    bool                             m_suspended;
+    QMutex                          *m_serviceLock;
+    QMap<quint32,TorcBonjourService> m_services;
+    QMutex                          *m_discoveredLock;
+    QMap<quint32,TorcBonjourService> m_discoveredServices;
 };
 
 void BonjourRegisterCallback(DNSServiceRef Ref, DNSServiceFlags Flags,
@@ -612,30 +727,36 @@ void TorcBonjour::TearDown(void)
 TorcBonjour::TorcBonjour()
   : QObject(NULL), m_priv(new TorcBonjourPriv(this))
 {
+    // listen for power events
+    gLocalContext->AddObserver(this);
 }
 
 TorcBonjour::~TorcBonjour()
 {
+    // stop listening for power events
+    gLocalContext->RemoveObserver(this);
+
+    // delete implementation
     delete m_priv;
     m_priv = NULL;
 }
 
-void* TorcBonjour::Register(quint16 Port, const QByteArray &Type,
-                            const QByteArray &Name, const QByteArray &Txt)
+quint32 TorcBonjour::Register(quint16 Port, const QByteArray &Type,
+                              const QByteArray &Name, const QByteArray &Txt)
 {
     if (m_priv)
         return m_priv->Register(Port, Type, Name, Txt);
-    return NULL;
+    return 0;
 }
 
-void* TorcBonjour::Browse(const QByteArray &Type)
+quint32 TorcBonjour::Browse(const QByteArray &Type)
 {
     if (m_priv)
         return m_priv->Browse(Type);
-    return NULL;
+    return 0;
 }
 
-void TorcBonjour::Deregister(void* Reference)
+void TorcBonjour::Deregister(quint32 Reference)
 {
     if (m_priv && Reference)
         m_priv->Deregister(Reference);
@@ -653,12 +774,41 @@ void TorcBonjour::hostLookup(QHostInfo HostInfo)
         m_priv->HostLookup(HostInfo);
 }
 
+bool TorcBonjour::event(QEvent *Event)
+{
+    if (Event->type() == TorcEvent::TorcEventType && m_priv)
+    {
+        TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
+        if (torcevent)
+        {
+            int event = torcevent->Event();
+
+            if (event == Torc::Suspending ||
+                event == Torc::ShuttingDown ||
+                event == Torc::Hibernating)
+            {
+                LOG(VB_GENERAL, LOG_INFO, "Suspending bonjour acivities");
+                m_priv->Suspend();
+                return true;
+            }
+            else if (event == Torc::WokeUp)
+            {
+                LOG(VB_GENERAL, LOG_INFO, "Restarting bonjour acivities");
+                m_priv->Resume();
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 static class TorcBrowserObject : public TorcAdminObject
 {
   public:
     TorcBrowserObject()
       : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY /* start early and delete last to close TorcBonjour */),
-        m_browserReference(NULL)
+        m_browserReference(0)
     {
     }
 
@@ -678,7 +828,7 @@ static class TorcBrowserObject : public TorcAdminObject
     }
 
   private:
-    void* m_browserReference;
+    quint32 m_browserReference;
 
 } TorcBrowserObject;
 
@@ -687,8 +837,8 @@ static class TorcAnnounceObject : public TorcAdminObject
   public:
     TorcAnnounceObject()
       : TorcAdminObject(TORC_ADMIN_LOW_PRIORITY /* advertise last */),
-        m_torcReference(NULL),
-        m_httpReference(NULL)
+        m_torcReference(0),
+        m_httpReference(0)
     {
     }
 
@@ -712,16 +862,14 @@ static class TorcAnnounceObject : public TorcAdminObject
 
     void Destroy(void)
     {
-        if (m_httpReference)
-            TorcBonjour::Instance()->Deregister(m_httpReference);
-        if (m_torcReference)
-            TorcBonjour::Instance()->Deregister(m_torcReference);
-        m_httpReference = NULL;
-        m_torcReference = NULL;
+        TorcBonjour::Instance()->Deregister(m_httpReference);
+        TorcBonjour::Instance()->Deregister(m_torcReference);
+        m_httpReference = 0;
+        m_torcReference = 0;
     }
 
   private:
-    void* m_torcReference;
-    void* m_httpReference;
+    quint32 m_torcReference;
+    quint32 m_httpReference;
 
 } TorcAnnounceObject;
