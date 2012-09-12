@@ -301,7 +301,7 @@ class TorcBonjourPriv
         if (m_suspended)
         {
             LOG(VB_GENERAL, LOG_ERR, "Trying to register Bonjour service while resumed");
-            return NULL;
+            return 0;
         }
 
         quint16 qport = qToBigEndian(Port);
@@ -334,7 +334,7 @@ class TorcBonjourPriv
         }
 
         LOG(VB_GENERAL, LOG_ERR, "Failed to register service.");
-        return NULL;
+        return 0;
     }
 
     quint32 Browse(const QByteArray &Type, quint32 Reference = 0)
@@ -342,7 +342,7 @@ class TorcBonjourPriv
         if (m_suspended)
         {
             LOG(VB_GENERAL, LOG_ERR, "Trying to browse Bonjour service while resumed");
-            return NULL;
+            return 0;
         }
 
         DNSServiceRef dnssref = NULL;
