@@ -34,7 +34,7 @@ extern "C" {
 #include <sys/ucontext.h>
 #include <sys/thr.h>
 }
-#elif CONFIG_DARWIN
+#elif defined(Q_OS_MAC)
 #include <mach/mach.h>
 #endif
 
@@ -136,7 +136,7 @@ class LogItem
             int dummy = thr_self( &lwpid );
             (void)dummy;
             tid = (int64_t)lwpid;
-#elif CONFIG_DARWIN
+#elif defined(Q_OS_MAC)
             tid = (int64_t)mach_thread_self();
 #endif
             gLogThreadtidHash[this->threadId] = tid;
