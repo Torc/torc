@@ -61,12 +61,11 @@ $(addsuffix _uninstall,$(SUBDIRS)): $(addsuffix /Makefile,$(SUBDIRS))
 clean: $(addsuffix _clean,$(SUBDIRS))
 
 distclean: $(addsuffix _distclean,$(SUBDIRS))
-	-rm -f libs/libtorc-core/mythconfig.mak config.mak
-	-rm -f libs/libtorc-core/mythconfig.h   config.h
+        -rm -f libs/libtorc-core/torcconfig.mak config.mak
+        -rm -f libs/libtorc-core/torcconfig.h   config.h
 	-rm -f libs/libtorc-core/version.h
 	-rm -f libs/libavutil/avconfig.h
-	-rm -f external/FFmpeg/libavutil/avconfig.h
-	-rm -f config.ep
+        -rm -f libs/libtorc-av/libavutil/avconfig.h
 	-rm -f $(addsuffix /Makefile,$(QT_SUBDIRS))
 
 install: $(addsuffix _install,$(SUBDIRS))
