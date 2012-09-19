@@ -1,0 +1,23 @@
+libtorc-av is a clone of the libav master branch:-
+
+git://git.libav.org/libav.git
+
+The current version is:
+
+aeeb782c2ab6be783f7658dfccf11fa89b33566c
+
+(http://git.libav.org/?p=libav.git;a=commit;h=aeeb782c2ab6be783f7658dfccf11fa89b33566c)
+
+The following files have been modified for Torc:
+
+common.mak
+library.mak
+
+The latest diff against upstream libav can be foun in:
+
+torc.diff
+
+If any changes are made to libtorc-av, this file and torc.diff MUST be updated.
+This file and torc.diff MUST be updated after a resync with libav upstream.
+The Torc configure script MUST also be updated following any resync.
+
