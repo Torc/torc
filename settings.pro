@@ -136,15 +136,3 @@ QMAKE_LIBDIR_OPENGL =
     }
 }
 EXTRA_LIBS  = $$EXTRALIBS
-
-#EXTRA_LIBS += $$FREETYPE_LIBS
-#EXTRA_LIBS += $$CONFIG_FIREWIRE_LIBS
-
-#EXTRA_LIBS += $$LOCAL_LIBDIR_OGL
-#EXTRA_LIBS += $$LOCAL_LIBDIR_X11
-#EXTRA_LIBS += $$CONFIG_OPENGL_LIBS
-
-# FIXME - old mythtv config
-macx:using_firewire {
-    using_backend:EXTRA_LIBS += -F$${CONFIG_MAC_AVC} -framework AVCVideoServices
-}
