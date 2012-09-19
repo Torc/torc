@@ -148,14 +148,14 @@ QString UITheme::GetThemeFile(const QString &ThemeType, const QString &Override)
     QDir directory(dir);
     if (!directory.exists())
     {
-        LOG(VB_GENERAL, LOG_ERR, "Directory '%1'' does not exist.");
+        LOG(VB_GENERAL, LOG_ERR, QString("Directory '%1' does not exist.").arg(dir));
         valid = false;
     }
 
     // find 'theme.xml'
-    if (!QFile::exists(file))
+    if (valid && !QFile::exists(file))
     {
-        LOG(VB_GENERAL, LOG_ERR, "File '%1'' does not exist.");
+        LOG(VB_GENERAL, LOG_ERR, QString("File '%1'' does not exist.").arg(file));
         valid = false;
     }
 

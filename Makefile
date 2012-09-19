@@ -1,5 +1,7 @@
 include config.mak
 
+
+MAKE_SUBDIRS = libs/libtorc-av
 QT_SUBDIRS = libs programs tenfootthemes
 
 SUBDIRS += $(MAKE_SUBDIRS) $(QT_SUBDIRS)
