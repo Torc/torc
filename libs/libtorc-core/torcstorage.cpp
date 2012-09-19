@@ -31,7 +31,7 @@
 #include "torcstoragedevice.h"
 #include "torcstorage.h"
 
-#if defined(Q_WS_MAC)
+#if defined(Q_OS_MAC)
 #include "torcstorageosx.h"
 #elif defined(linux)
 #ifdef USING_DBUS
@@ -99,7 +99,7 @@ TorcStorage::TorcStorage()
     m_disksLock(new QMutex(QMutex::Recursive)),
     m_priv(NULL)
 {
-#if defined(Q_WS_MAC)
+#if defined(Q_OS_MAC)
     m_priv = new TorcStorageOSX(this);
 #elif defined(linux)
 #ifdef USING_DBUS

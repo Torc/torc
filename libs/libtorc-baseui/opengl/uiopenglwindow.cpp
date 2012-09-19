@@ -61,7 +61,7 @@ UIOpenGLWindow* UIOpenGLWindow::Create(void)
 
     bool setswapinterval = false;
 
-#if defined(Q_WS_MAC)
+#if defined(Q_OS_MAC)
     LOG(VB_GENERAL, LOG_INFO, "Forcing swap interval for OS X.");
     setswapinterval = true;
 #endif

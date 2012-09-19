@@ -24,7 +24,7 @@
 #include <QtGlobal>
 
 // Torc
-#ifdef Q_WS_MAC
+#ifdef Q_OS_MAC
 #include "torcusbprivosx.h"
 #elif defined(linux)
 #ifdef USING_LIBUDEV
@@ -154,7 +154,7 @@ TorcUSB::TorcUSB()
     m_priv(NULL),
     m_managedDevicesLock(new QMutex())
 {
-#ifdef Q_WS_MAC
+#ifdef Q_OS_MAC
     m_priv = new TorcUSBPriv(this);
 #elif defined(linux)
 #ifdef USING_LIBUDEV

@@ -24,7 +24,7 @@
 #include <QtGlobal>
 
 // Torc
-#ifdef Q_WS_MAC
+#ifdef Q_OS_MAC
 #include "torcpowerosx.h"
 #elif defined(linux)
 #ifdef USING_DBUS
@@ -157,7 +157,7 @@ TorcPower::TorcPower()
     m_allowRestart(false),
     m_priv(NULL)
 {
-#ifdef Q_WS_MAC
+#ifdef Q_OS_MAC
     m_priv = new TorcPowerOSX(this);
 #elif defined(linux)
 #ifdef USING_DBUS
