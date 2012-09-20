@@ -632,6 +632,12 @@ class TorcCECDevicePriv
             case CEC_USER_CONTROL_CODE_POWER_OFF_FUNCTION:
                 code = "POWER_OFF_FUNCTION";
                 break;
+            case CEC_USER_CONTROL_CODE_AN_RETURN:
+                code = "AN_RETURN";
+                break;
+            case CEC_USER_CONTROL_CODE_AN_CHANNELS_LIST:
+                code = "AN_CHANNELS_LIST";
+                break;
         }
 
         LOG(VB_GENERAL, LOG_INFO, QString("Keypress %1 %2")
