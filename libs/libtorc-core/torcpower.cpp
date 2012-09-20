@@ -24,16 +24,14 @@
 #include <QtGlobal>
 
 // Torc
-#ifdef Q_OS_MAC
-#include "torcpowerosx.h"
-#elif defined(linux)
-#ifdef USING_DBUS
-#include "torcpowerunixdbus.h"
-#endif
-#endif
 #include "torclocalcontext.h"
 #include "torcadminthread.h"
 #include "torcpower.h"
+#ifdef Q_OS_MAC
+#include "torcpowerosx.h"
+#elif CONFIG_QTDBUS
+#include "torcpowerunixdbus.h"
+#endif
 
 TorcPower *gPower = NULL;
 QMutex* TorcPower::gPowerLock = new QMutex(QMutex::Recursive);
@@ -159,12 +157,11 @@ TorcPower::TorcPower()
 {
 #ifdef Q_OS_MAC
     m_priv = new TorcPowerOSX(this);
-#elif defined(linux)
-#ifdef USING_DBUS
+#elif CONFIG_QTDBUS
     if (TorcPowerUnixDBus::Available())
         m_priv = new TorcPowerUnixDBus(this);
 #endif
-#endif
+
     if (!m_priv)
         m_priv = new TorcPowerNull();
 

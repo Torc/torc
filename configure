@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Libav configure script
+# Torc configure script, which extends the Libav configure script
 #
 # Copyright (c) 2000-2002 Fabrice Bellard
 # Copyright (c) 2005-2008 Diego Biurrun
@@ -282,6 +282,22 @@ Developer options (useful when working on Libav itself):
   --random-seed=VALUE      seed value for --enable/disable-random
 
 NOTE: Object files are built at the place where configure is launched.
+
+Torc:
+  --cxx=CXX                use C++ compiler CXX [$cxx_default]
+  --extra-cxxflags=ECXFLAGS add ECXXFLAGS to list of flags for C++ compile
+  --qmake=QMAKE            use specified qmake [$qmake_default]
+
+Torc external library support:
+  --disable-libcec         disable CEC via libcec [autodetect]
+  --disable-libdns_sd      disable Bonjour via libdns_sd [autodetect]
+  --disable-libudev        disable udev via libudev [autodetect]
+  --disable-qtdbus         disable DBus via QtDbus [autodetect]
+  --disable-x11base        disable default X11 support [autodetect]
+
+Torc paths:
+  --libcec-path            location of directory containing
+                           'libcec/cec.h' (not cec.h) [$libcec_path_default]
 EOF
   exit 0
 }
@@ -658,6 +674,29 @@ check_cc(){
     check_cmd $cc $CPPFLAGS $CFLAGS "$@" $CC_C $(cc_o $TMPO) $TMPC
 }
 
+check_cxx(){
+    log check_cxx "$@"
+    cat > $TMPCPP
+    log_file $TMPCPP
+    check_cmd $cxx $CPPFLAGS $CXXFLAGS "$@" -c -o $TMPO $TMPCPP
+}
+
+add_cxxflags(){
+    append ECXXFLAGS "$@"
+}
+
+add_cxxppflags(){
+    append CXXPPFLAGS "$@"
+}
+
+check_cxxflags(){
+    log check_cxxflags "$@"
+    check_cxx "$@" <<EOF && add_cxxflags "$@" || echolog "WARNING! An unknown C++ compiler flag in: \"$@\". Option(s) will be ignored."
+class X {};
+int x;
+EOF
+}
+
 check_cpp(){
     log check_cpp "$@"
     cat > $TMPC
@@ -790,17 +829,20 @@ EOF
 check_func_headers(){
     log check_func_headers "$@"
     headers=$1
-    funcs=$2
+    func=$2
     shift 2
-    {
-        for hdr in $headers; do
-            echo "#include <$hdr>"
-        done
-        for func in $funcs; do
-            echo "long check_$func(void) { return (long) $func; }"
-        done
-        echo "int main(void) { return 0; }"
-    } | check_ld "$@" && enable $funcs && enable_safe $headers
+    disable $func
+    incs=""
+    for hdr in $headers; do
+        incs="$incs
+#include <$hdr>"
+    done
+    check_ld "$@" <<EOF && enable $func && enable_safe $headers
+$incs
+int main(int argc, char **argv){
+    return (long) $func;
+}
+EOF
 }
 
 check_cpp_condition(){
@@ -1045,6 +1087,12 @@ CONFIG_LIST="
     xmm_clobber_test
     x11grab
     zlib
+    libcec
+    libdns_sd
+    libudev
+    qmake
+    qtdbus
+    x11base
 "
 
 THREADS_LIST='
@@ -1292,6 +1340,7 @@ PATHS_LIST='
     bindir
     datadir
     incdir
+    libcec_path
     libdir
     mandir
     prefix
@@ -1307,6 +1356,7 @@ CMDLINE_SET="
     cc
     cpu
     cross_prefix
+    cxx
     dep_cc
     extra_version
     host_cc
@@ -1761,15 +1811,17 @@ logfile="config.log"
 # installation paths
 prefix_default="/usr/local"
 bindir_default='${prefix}/bin'
-datadir_default='${prefix}/share/avconv'
-incdir_default='${prefix}/include'
+datadir_default='${prefix}/share/torc'
+incdir_default='${prefix}/include/torc'
 libdir_default='${prefix}/lib'
 mandir_default='${prefix}/share/man'
 shlibdir_default="$libdir_default"
+libdir_name='lib'
 
 # toolchain
 ar_default="ar"
 cc_default="gcc"
+cxx_default="g++"
 host_cc_default="gcc"
 ln_s="ln -sf"
 nm_default="nm -g"
@@ -1808,14 +1860,35 @@ enable safe_bitstream_reader
 enable static
 enable swscale_alpha
 
+# Torc requirements
+echo "Torc:"
+echo
+echo "Forcing shared libraries (and disabling static)"
+echo
+disable avdevice
+disable indevs
+disable outdevs
+disable static
+disable doc
+enable shared
+enable x11base
+
+# Torc configurable options
+enable libcec
+enable libdns_sd
+enable libudev
+enable qtdbus
+libcec_path_default="${sysroot}/usr/include"
+qmake_default="qmake"
+
 # build settings
 SHFLAGS='-shared -Wl,-soname,$$(@F)'
 AVSERVERLDFLAGS=-Wl,-E
-LIBPREF="lib"
+LIBPREF="libtorc-"
 LIBSUF=".a"
 FULLNAME='$(NAME)$(BUILDSUF)'
 LIBNAME='$(LIBPREF)$(FULLNAME)$(LIBSUF)'
-SLIBPREF="lib"
+SLIBPREF="libtorc-"
 SLIBSUF=".so"
 SLIBNAME='$(SLIBPREF)$(FULLNAME)$(SLIBSUF)'
 SLIBNAME_WITH_VERSION='$(SLIBNAME).$(LIBVERSION)'
@@ -1833,6 +1906,7 @@ AS_O='-o $@'
 CC_C='-c'
 CC_E='-E -o $@'
 CC_O='-o $@'
+CXX_O='-o $@'
 LD_O='-o $@'
 LD_LIB='-l%'
 LD_PATH='-L'
@@ -1877,17 +1951,17 @@ find_things(){
     sed -n "s/^[^#]*$pattern.*([^,]*, *\([^,]*\)\(,.*\)*).*/\1_$thing/p" "$file"
 }
 
-ENCODER_LIST=$(find_things  encoder  ENC      libavcodec/allcodecs.c)
-DECODER_LIST=$(find_things  decoder  DEC      libavcodec/allcodecs.c)
-HWACCEL_LIST=$(find_things  hwaccel  HWACCEL  libavcodec/allcodecs.c)
-PARSER_LIST=$(find_things   parser   PARSER   libavcodec/allcodecs.c)
-BSF_LIST=$(find_things      bsf      BSF      libavcodec/allcodecs.c)
-MUXER_LIST=$(find_things    muxer    _MUX     libavformat/allformats.c)
-DEMUXER_LIST=$(find_things  demuxer  DEMUX    libavformat/allformats.c)
-OUTDEV_LIST=$(find_things   outdev   OUTDEV   libavdevice/alldevices.c)
-INDEV_LIST=$(find_things    indev    _IN      libavdevice/alldevices.c)
-PROTOCOL_LIST=$(find_things protocol PROTOCOL libavformat/allformats.c)
-FILTER_LIST=$(find_things   filter   FILTER   libavfilter/allfilters.c)
+ENCODER_LIST=$(find_things  encoder  ENC      libs/libtorc-av/libavcodec/allcodecs.c)
+DECODER_LIST=$(find_things  decoder  DEC      libs/libtorc-av/libavcodec/allcodecs.c)
+HWACCEL_LIST=$(find_things  hwaccel  HWACCEL  libs/libtorc-av/libavcodec/allcodecs.c)
+PARSER_LIST=$(find_things   parser   PARSER   libs/libtorc-av/libavcodec/allcodecs.c)
+BSF_LIST=$(find_things      bsf      BSF      libs/libtorc-av/libavcodec/allcodecs.c)
+MUXER_LIST=$(find_things    muxer    _MUX     libs/libtorc-av/libavformat/allformats.c)
+DEMUXER_LIST=$(find_things  demuxer  DEMUX    libs/libtorc-av/libavformat/allformats.c)
+OUTDEV_LIST=$(find_things   outdev   OUTDEV   libs/libtorc-av/libavdevice/alldevices.c)
+INDEV_LIST=$(find_things    indev    _IN      libs/libtorc-av/libavdevice/alldevices.c)
+PROTOCOL_LIST=$(find_things protocol PROTOCOL libs/libtorc-av/libavformat/allformats.c)
+FILTER_LIST=$(find_things   filter   FILTER   libs/libtorc-av/libavfilter/allfilters.c)
 
 ALL_COMPONENTS="
     $BSF_LIST
@@ -1903,23 +1977,13 @@ ALL_COMPONENTS="
     $PROTOCOL_LIST
 "
 
-find_tests(){
-    map "echo ${2}\${v}_test" $(ls "$source_path"/tests/ref/$1 | grep -v '[^-a-z0-9_]')
-}
-
-LAVF_TESTS=$(find_tests lavf)
-LAVFI_TESTS=$(find_tests lavfi)
-SEEK_TESTS=$(find_tests seek seek_)
-
-ALL_TESTS="$LAVF_TESTS $LAVFI_TESTS $SEEK_TESTS"
-
 for n in $COMPONENT_LIST; do
     v=$(toupper ${n%s})_LIST
     eval enable \$$v
     eval ${n}_if_any="\$$v"
 done
 
-enable $ARCH_EXT_LIST $ALL_TESTS
+enable $ARCH_EXT_LIST
 
 die_unknown(){
     echo "Unknown option \"$1\"."
@@ -1958,6 +2022,8 @@ do_random(){
 for opt do
     optval="${opt#*=}"
     case "$opt" in
+    --extra-cxxflags=*) add_cxxflags $optval
+    ;;
     --extra-ldflags=*) add_ldflags $optval
     ;;
     --extra-libs=*) add_extralibs $optval
@@ -2018,6 +2084,15 @@ for opt do
     esac
 done
 
+#setting default runtime prefix and libdir
+if test -n "${prefix}"; then
+    libdir_default="${prefix}/${libdir_name}"
+    shlibdir_default="${prefix}/${libdir_name}"
+else
+    libdir_default="${prefix_default}/${libdir_name}"
+    shlibdir_default="${prefix_default}/${libdir_name}"
+fi
+
 disabled logging && logfile=/dev/null
 
 echo "# $0 $LIBAV_CONFIGURATION" > $logfile
@@ -2034,6 +2109,7 @@ set_default arch target_os
 
 ar_default="${cross_prefix}${ar_default}"
 cc_default="${cross_prefix}${cc_default}"
+cxx_default="${cross_prefix}${cxx_default}"
 nm_default="${cross_prefix}${nm_default}"
 pkg_config_default="${cross_prefix}${pkg_config_default}"
 ranlib="${cross_prefix}${ranlib}"
@@ -2051,7 +2127,7 @@ case "$toolchain" in
     ;;
 esac
 
-set_default cc pkg_config sysinclude
+set_default cc nm pkg_config sysinclude cxx qmake
 enabled cross_compile || host_cc_default=$cc
 set_default host_cc
 
@@ -2094,6 +2170,7 @@ trap 'rm -f -- $TMPFILES' EXIT
 
 tmpfile TMPASM .asm
 tmpfile TMPC   .c
+tmpfile TMPCPP .cpp
 tmpfile TMPE   $EXESUF
 tmpfile TMPH   .h
 tmpfile TMPO   .o
@@ -2733,6 +2810,7 @@ case $target_os in
         add_extralibs -lpoll -lgnugetopt
         ;;
     darwin)
+        disable x11base
         gas="gas-preprocessor.pl $cc"
         enabled ppc && add_asflags -force_cpusubtype_ALL
         SHFLAGS='-dynamiclib -Wl,-single_module -Wl,-install_name,$(SHLIBDIR)/$(SLIBNAME_WITH_MAJOR),-current_version,$(LIBVERSION),-compatibility_version,$(LIBMAJOR)'
@@ -2935,6 +3013,8 @@ enable_pic() {
     add_cppflags -DPIC
     add_cflags   -fPIC
     add_asflags  -fPIC
+    add_cxxflags -fPIC
+    add_cxxppflags -DPIC
 }
 
 enabled pic && enable_pic
@@ -2951,7 +3031,7 @@ EOF
 
 _restrict=
 for restrict_keyword in restrict __restrict__ __restrict; do
-    check_cc <<EOF && _restrict=$restrict_keyword && break
+    check_cxx <<EOF && _restrict=$restrict_keyword && break
 void foo(char * $restrict_keyword p);
 EOF
 done
@@ -3197,6 +3277,7 @@ check_header direct.h
 check_header dlfcn.h
 check_header dxva.h
 check_header dxva2api.h
+check_struct dxva2api.h DXVA_PictureParameters wDecodedPictureIndex
 check_header io.h
 check_header malloc.h
 check_header poll.h
@@ -3301,6 +3382,9 @@ enabled openssl    && { check_lib openssl/ssl.h SSL_library_init -lssl -lcrypto 
                         check_lib openssl/ssl.h SSL_library_init -lssl32 -leay32 ||
                         check_lib openssl/ssl.h SSL_library_init -lssl -lcrypto -lws2_32 -lgdi32 ||
                         die "ERROR: openssl not found"; }
+enabled dxva2 && enabled dxva2api_h && enabled windows || disable dxva2
+enabled x11base && check_lib X11/Xlib.h XQueryExtension -lX11 || disable x11base
+enabled x11base && check_lib X11/extensions/xf86vmode.h XF86VidModeSetClientVersion -lXxf86vm || disable x11base
 
 if enabled gnutls; then
     { check_lib nettle/bignum.h nettle_mpz_get_str_256 -lnettle -lhogweed -lgmp && enable nettle; } ||
@@ -3373,7 +3457,7 @@ if ! disabled vdpau && enabled vdpau_vdpau_h; then
         { echolog "Please upgrade to libvdpau >= 0.2 if you would like vdpau support." && disable vdpau; }
 fi
 
-enabled debug && add_cflags -g"$debuglevel" && add_asflags -g"$debuglevel"
+enabled debug && add_cflags -g"$debuglevel" && add_asflags -g"$debuglevel" && add_cxxflags -g"$debuglevel"
 
 # add some useful compiler flags if supported
 check_cflags -Wdeclaration-after-statement
@@ -3392,6 +3476,12 @@ check_cflags -Wundef
 check_cflags -Wmissing-prototypes
 check_cflags -Wstrict-prototypes
 enabled extra_warnings && check_cflags -Winline
+check_cxxflags -Wall
+check_cxxflags -Wpointer-arith
+check_cxxflags -Wno-non-virtual-dtor
+#needed for INT64_C in libs/libavformat under g++
+check_cxxflags -D__STDC_CONSTANT_MACROS
+check_cxxflags -D__STDC_LIMIT_MACROS
 
 # add some linker flags
 check_ldflags -Wl,--warn-common
@@ -3424,12 +3514,16 @@ fi
 
 if [ -n "$optflags" ]; then
     add_cflags $optflags
+    add_cxxflags $optflags
 elif enabled small; then
     add_cflags $cflags_size
+    add_cxxflags $size_cflags
 elif enabled optimizations; then
     add_cflags $cflags_speed
+    add_cxxflags $speed_cflags
 else
     add_cflags $cflags_noopt
+    add_cxxflags $noopt_cflags
 fi
 check_cflags -fno-math-errno
 check_cflags -fno-signed-zeros
@@ -3504,6 +3598,8 @@ check_deps $CONFIG_LIST       \
 
 ! enabled_any memalign posix_memalign aligned_malloc &&
     enabled_any $need_memalign && enable memalign_hack
+
+disable $INDEV_LIST $OUTDEV_LIST
 
 echo "install prefix            $prefix"
 echo "source path               $source_path"
@@ -3616,6 +3712,74 @@ fi
 
 echo "License: $license"
 
+# Torc
+
+# Qt
+if ! expr $($qmake -query QT_VERSION) : "5\.[0-9]\.[0-9]" >/dev/null; then
+  if ! expr $($qmake -query QT_VERSION) : "4\.[7-9]\.[0-9]" >/dev/null; then
+      die "qmake for Qt4.7 or newer not found.\nPlease specify the correct qmake with --qmake="
+  fi
+fi
+
+if test $target_os = mingw32 ; then
+    qt_inc="-I`cd $(${qmake} -query QT_INSTALL_HEADERS); pwd`"
+    qt_libs="-L`cd $(${qmake} -query QT_INSTALL_LIBS) ; pwd`"
+else
+    qt_inc="-I${sysroot}/$(${qmake} -query QT_INSTALL_HEADERS)"
+    qt_libs="-L${sysroot}/$(${qmake} -query QT_INSTALL_LIBS)"
+fi
+
+# QtDbus support
+if enabled qtdbus && ! $(pkg-config --exists QtDBus) ; then
+    check_cxx ${qt_inc} <<EOF || { disable qtdbus; }
+#include <QtDBus/QtDBus>
+#include <QtDBus/QDBusInterface>
+int main(void)
+{
+    QDBusInterface test("org.kde.test", "/test", "org.kde.blah");
+    return 0;
+}
+EOF
+fi
+
+# udev support for linux disk detection
+enabled libudev && check_lib2 libudev.h udev_new -ludev || disable libudev
+
+# CEC support
+if enabled libcec ; then
+    check_cxx -I"$libcec_path" <<EOF || { disable libcec; }
+#include <libcec/cec.h>
+#include <iostream>
+using namespace std;
+using namespace CEC;
+#include <libcec/cecloader.h>
+int main(void) {
+    if (CEC_LIB_VERSION_MAJOR < 1 || (CEC_LIB_VERSION_MAJOR == 1 &&
+                                      CEC_LIB_VERSION_MINOR < 7))
+        return 0;
+    return (long) LibCecInit;
+}
+EOF
+fi
+
+# Bonjour support for service discovery and registration
+if test $target_os != darwin ; then
+    enabled libdns_sd && check_lib dns_sd.h DNSServiceRegister -ldns_sd || disable libdns_sd
+fi
+
+echo
+echo "Torc:"
+
+echo "C++ compiler                 $(which $cxx)"
+echo "qmake                        $(which $qmake) [$($qmake -query QT_VERSION)]"
+echo "libcec enabled               ${libcec-no} [$libcec_path]"
+echo "libdns_sd (Bonjour) enabled  ${libdns_sd-no}"
+echo "libudev enabled              ${libudev-no}"
+echo "QtDbus enabled               ${qtdbus-no}"
+echo "X11 enabled                  ${x11base-no}"
+echo
+#end Torc
+
 echo "Creating config.mak and config.h..."
 
 test -e Makefile || $ln_s "$source_path/Makefile" .
@@ -3625,13 +3789,18 @@ config_files="$TMPH config.mak"
 cat > config.mak <<EOF
 # Automatically generated by configure - do not modify!
 LIBAV_CONFIGURATION=$LIBAV_CONFIGURATION
+PREFIX=$prefix
+BUILD_ROOT="$PWD"
+SYSROOT=$sysroot
 prefix=$prefix
-LIBDIR=\$(DESTDIR)$libdir
-SHLIBDIR=\$(DESTDIR)$shlibdir
-INCDIR=\$(DESTDIR)$incdir
-BINDIR=\$(DESTDIR)$bindir
-DATADIR=\$(DESTDIR)$datadir
-MANDIR=\$(DESTDIR)$mandir
+LIBDIRNAME=$libdir_name
+LIBDIR=$libdir
+SHLIBDIR=$shlibdir
+INCDIR=$incdir
+BINDIR=$bindir
+DATADIR=$datadir
+RUNPREFIX=$(eval eval c_escape $datadir)
+MANDIR=$mandir
 SRC_PATH=$source_path
 CC_IDENT=$cc_ident
 ARCH=$arch
@@ -3660,7 +3829,15 @@ LD_PATH=$LD_PATH
 DLLTOOL=$dlltool
 LDFLAGS=$LDFLAGS
 LDFLAGS-avserver=$AVSERVERLDFLAGS
-SHFLAGS=$SHFLAGS
+#SHFLAGS=$SHFLAGS
+CXX_O=$CXX_O
+ECXXFLAGS=$ECXXFLAGS
+CXXPPFLAGS=$CXXPPFLAGS
+CONFIG-=app_bundle
+QMAKE=$qmake
+QMAKE_CC=$cc
+QMAKE_CXX=$cxx
+QMAKE_LINK=$cxx
 YASMFLAGS=$YASMFLAGS
 BUILDSUF=$build_suffix
 FULLNAME=$FULLNAME
@@ -3715,7 +3892,7 @@ EOF
 get_version(){
     lcname=$1
     name=$(toupper $lcname)
-    file=$source_path/$lcname/version.h
+    file=$source_path/libs/libtorc-av/$lcname/version.h
     eval $(grep "#define ${name}_VERSION_M" "$file" | awk '{ print $2"="$3 }')
     eval ${name}_VERSION=\$${name}_VERSION_MAJOR.\$${name}_VERSION_MINOR.\$${name}_VERSION_MICRO
     eval echo "${lcname}_VERSION=\$${name}_VERSION" >> config.mak
@@ -3766,11 +3943,15 @@ EOF
 
 echo "#endif /* LIBAV_CONFIG_H */" >> $TMPH
 
-# Do not overwrite an unchanged config.h to avoid superfluous rebuilds.
-cp_if_changed $TMPH config.h
-touch .config
+sed 's/#SHFLAGS=/SHFLAGS=/' config.mak > libs/libtorc-av/config.mak
+#cp_if_changed config.mak libs/libtorc-av/config.mak
 
-enabled yasm && cp_if_changed $TMPASM config.asm
+# Do not overwrite an unchanged config.h to avoid superfluous rebuilds.
+cp_if_changed $TMPH libs/libtorc-core/torcconfig.h
+cp_if_changed $TMPH libs/libtorc-av/config.h
+touch libs/libtorc-av/.config
+
+enabled yasm && cp_if_changed $TMPASM libs/libtorc-av/config.asm
 
 cat > $TMPH <<EOF
 /* Generated by ffconf */
@@ -3782,57 +3963,6 @@ print_config AV_HAVE_ $TMPH $HAVE_LIST_PUB
 
 echo "#endif /* AVUTIL_AVCONFIG_H */" >> $TMPH
 
-cp_if_changed $TMPH libavutil/avconfig.h
+cp_if_changed $TMPH libs/libtorc-av/libavutil/avconfig.h
 
 test -n "$WARNINGS" && printf "\n$WARNINGS"
-
-# build pkg-config files
-
-pkgconfig_generate(){
-    name=$1
-    shortname=${name#lib}${build_suffix}
-    comment=$2
-    version=$3
-    libs=$4
-    requires=$5
-    enabled ${name#lib} || return 0
-    mkdir -p $name
-    cat <<EOF > $name/$name.pc
-prefix=$prefix
-exec_prefix=\${prefix}
-libdir=$libdir
-includedir=$incdir
-
-Name: $name
-Description: $comment
-Version: $version
-Requires: $(enabled shared || echo $requires)
-Requires.private: $(enabled shared && echo $requires)
-Conflicts:
-Libs: -L\${libdir} -l${shortname} $(enabled shared || echo $libs)
-Libs.private: $(enabled shared && echo $libs)
-Cflags: -I\${includedir}
-EOF
-    cat <<EOF > $name/$name-uninstalled.pc
-prefix=
-exec_prefix=
-libdir=\${pcfiledir}
-includedir=${source_path}
-
-Name: $name
-Description: $comment
-Version: $version
-Requires: $requires
-Conflicts:
-Libs: \${libdir}/${LIBPREF}${shortname}${LIBSUF} $libs
-Cflags: -I\${includedir}
-EOF
-}
-
-pkgconfig_generate libavutil "Libav utility library" "$LIBAVUTIL_VERSION" "$LIBM"
-pkgconfig_generate libavcodec "Libav codec library" "$LIBAVCODEC_VERSION" "$extralibs" "libavutil = $LIBAVUTIL_VERSION"
-pkgconfig_generate libavformat "Libav container format library" "$LIBAVFORMAT_VERSION" "$extralibs" "libavcodec = $LIBAVCODEC_VERSION"
-pkgconfig_generate libavdevice "Libav device handling library" "$LIBAVDEVICE_VERSION" "$extralibs" "libavformat = $LIBAVFORMAT_VERSION"
-pkgconfig_generate libavfilter "Libav video filtering library" "$LIBAVFILTER_VERSION" "$extralibs"
-pkgconfig_generate libavresample "Libav audio resampling library" "$LIBAVRESAMPLE_VERSION" "$extralibs"
-pkgconfig_generate libswscale "Libav image rescaling library" "$LIBSWSCALE_VERSION" "$LIBM" "libavutil = $LIBAVUTIL_VERSION"

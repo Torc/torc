@@ -52,22 +52,19 @@ inc.files += torcevent.h       torcobservable.h
 inc.files += torclocaldefs.h   torcpower.h
 inc.files += torcusb.h         torcedid.h
 
-unix:using_libudev {
-    DEFINES += USING_LIBUDEV
+unix:contains(CONFIG_LIBUDEV, yes) {
     HEADERS += torcusbprivunix.h
     SOURCES += torcusbprivunix.cpp
     LIBS    += -ludev
 }
 
-using_qtdbus {
+unix:contains(CONFIG_QTDBUS, yes) {
     QT += dbus
-    DEFINES += USING_DBUS
     HEADERS += torcpowerunixdbus.h   torcstorageunixdbus.h
     SOURCES += torcpowerunixdbus.cpp torcstorageunixdbus.cpp
 }
 
-using_libcec {
-    DEFINES += USING_LIBCEC
+contains(CONFIG_LIBCEC, yes) {
     HEADERS += torccecdevice.h
     SOURCES += torccecdevice.cpp
     LIBS += -lcec
@@ -85,8 +82,7 @@ macx {
     inc.files += torccocoa.h torcosxutils.h
 }
 
-using_libdns_sd {
-    DEFINES   += USING_LIBDNS_SD
+contains(CONFIG_LIBDNS_SD, yes) {
     HEADERS   += torcbonjour.h
     SOURCES   += torcbonjour.cpp
     inc.files += torcbonjour.h
@@ -97,6 +93,7 @@ using_libdns_sd {
 inc2.path  = $${PREFIX}/include/$${PROJECTNAME}/lib$${THIS_LIB}
 inc2.files = $${inc.files}
 
+DEFINES += PREFIX=\\\"$${PREFIX}\\\"
 DEFINES += RUNPREFIX=\\\"$${RUNPREFIX}\\\"
 DEFINES += LIBDIRNAME=\\\"$${LIBDIRNAME}\\\"
 DEFINES += TORC_CORE_API

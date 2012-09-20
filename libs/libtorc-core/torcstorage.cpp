@@ -33,10 +33,8 @@
 
 #if defined(Q_OS_MAC)
 #include "torcstorageosx.h"
-#elif defined(linux)
-#ifdef USING_DBUS
+#elif CONFIG_QTDBUS
 #include "torcstorageunixdbus.h"
-#endif
 #endif
 
 TorcStorage* gStorage     = NULL;
@@ -101,10 +99,8 @@ TorcStorage::TorcStorage()
 {
 #if defined(Q_OS_MAC)
     m_priv = new TorcStorageOSX(this);
-#elif defined(linux)
-#ifdef USING_DBUS
+#elif CONFIG_QTDBUS
     m_priv = new TorcStorageUnixDBus(this);
-#endif
 #endif
 }
 

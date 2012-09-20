@@ -24,17 +24,15 @@
 #include <QtGlobal>
 
 // Torc
-#ifdef Q_OS_MAC
-#include "torcusbprivosx.h"
-#elif defined(linux)
-#ifdef USING_LIBUDEV
-#include "torcusbprivunix.h"
-#endif
-#endif
-
 #include "torclocalcontext.h"
 #include "torcadminthread.h"
 #include "torcusb.h"
+
+#ifdef Q_OS_MAC
+#include "torcusbprivosx.h"
+#elif CONFIG_LIBUDEV
+#include "torcusbprivunix.h"
+#endif
 
 TorcUSBDevice::TorcUSBDevice()
     : m_path(QString("")),
@@ -68,6 +66,7 @@ QString TorcUSBDevice::ClassToString(Classes Class)
         case Data:         return "Data";
         case AppSpec:      return "AppSpec";
         case VendorSpec:   return "VendorSpec";
+        default:           break;
     }
 
     return "Unknown";
@@ -156,10 +155,8 @@ TorcUSB::TorcUSB()
 {
 #ifdef Q_OS_MAC
     m_priv = new TorcUSBPriv(this);
-#elif defined(linux)
-#ifdef USING_LIBUDEV
+#elif CONFIG_LIBUDEV
     m_priv = new TorcUSBPriv(this);
-#endif
 #endif
 }
 

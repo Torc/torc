@@ -59,7 +59,7 @@ SOURCES += uiactions.cpp      uishaperenderer.cpp
 greaterThan(QT_MAJOR_VERSION, 4) {
     SOURCES += uidisplay-qt5.cpp
 }
-else:using_x11 {
+else:contains(CONFIG_X11BASE, yes) {
     SOURCES += uidisplay-x11.cpp
     LIBS += -lXxf86vm
 }

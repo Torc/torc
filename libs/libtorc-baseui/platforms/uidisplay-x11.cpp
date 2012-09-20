@@ -8,7 +8,6 @@
 #define V_INTERLACE (0x010)
 #endif
 extern "C" {
-#include <X11/extensions/Xinerama.h>
 #include <X11/extensions/xf86vmode.h>
 }
 

@@ -7,6 +7,7 @@
 
 // Torc
 #include "torclocaldefs.h"
+#include "torcconfig.h"
 #include "torccoreexport.h"
 #include "torcobservable.h"
 #include "torccommandlineparser.h"
