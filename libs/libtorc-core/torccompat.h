@@ -326,12 +326,10 @@ static inline struct tm* localtime_r(const time_t *timep, struct tm *result)
 #define WTERMSIG(w)    ((w) & 0x7f)
 #endif // USING_MINGW
 
-
 #ifndef _MSC_VER
 #include <sys/param.h>  // Defines BSD on FreeBSD, Mac OS X
 #endif
 #include <sys/stat.h>   // S_IREAD/WRITE on MinGW, umask() on BSD
-
 
 // suseconds_t
 #include <sys/types.h>
@@ -341,10 +339,6 @@ static inline struct tm* localtime_r(const time_t *timep, struct tm *result)
 #endif
 
 #include "torcconfig.h"
-
-#if CONFIG_DARWIN && ! defined (_SUSECONDS_T)
-    typedef int32_t suseconds_t;   // 10.3 or earlier don't have this
-#endif
 
 // Libdvdnav now uses off64_t lseek64(), which BSD/Darwin doesn't have.
 // Luckily, its lseek() is already 64bit compatible
