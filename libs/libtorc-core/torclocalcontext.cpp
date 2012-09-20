@@ -45,10 +45,6 @@
 #include "torcdirectories.h"
 #include "version.h"
 
-#ifdef USING_LIBDNS_SD
-#include "torcbonjour.h"
-#endif
-
 TorcLocalContext *gLocalContext = NULL;
 QMutex*       gLocalContextLock = new QMutex(QMutex::Recursive);
 QMutex*            gAVCodecLock = new QMutex(QMutex::Recursive);
