@@ -317,15 +317,31 @@ QString TorcLocalContext::GetSetting(const QString &Name,
     return m_priv->GetSetting(Name, DefaultValue);
 }
 
-bool TorcLocalContext::GetSetting(const QString &Name, bool DefaultValue)
+bool TorcLocalContext::GetSetting(const QString &Name, const bool &DefaultValue)
 {
     QString value = GetSetting(Name, DefaultValue ? QString("1") : QString("0"));
     return value.trimmed() == "1";
 }
 
+int TorcLocalContext::GetSetting(const QString &Name, const int &DefaultValue)
+{
+    QString value = GetSetting(Name, QString::number(DefaultValue));
+    return value.toInt();
+}
+
 void TorcLocalContext::SetSetting(const QString &Name, const QString &Value)
 {
     m_priv->SetSetting(Name, Value);
+}
+
+void TorcLocalContext::SetSetting(const QString &Name, const bool &Value)
+{
+    m_priv->SetSetting(Name, Value ? QString("1") : QString("0"));
+}
+
+void TorcLocalContext::SetSetting(const QString &Name, const int &Value)
+{
+    m_priv->SetSetting(Name, QString::number(Value));
 }
 
 void TorcLocalContext::SetUIObject(QObject *UI)

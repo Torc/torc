@@ -103,8 +103,11 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     static void   NotifyEvent (int Event);
 
     Q_INVOKABLE   QString    GetSetting    (const QString &Name, const QString &DefaultValue);
-    Q_INVOKABLE   bool       GetSetting    (const QString &Name, bool DefaultValue);
+    Q_INVOKABLE   bool       GetSetting    (const QString &Name, const bool    &DefaultValue);
+    Q_INVOKABLE   int        GetSetting    (const QString &Name, const int     &DefaultValue);
     Q_INVOKABLE   void       SetSetting    (const QString &Name, const QString &Value);
+    Q_INVOKABLE   void       SetSetting    (const QString &Name, const bool    &Value);
+    Q_INVOKABLE   void       SetSetting    (const QString &Name, const int     &Value);
     Q_INVOKABLE   QObject*   GetUIObject   (void);
     void          SetUIObject              (QObject* UI);
     void          CloseDatabaseConnections (void);
