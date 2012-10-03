@@ -28,19 +28,21 @@ HEADERS += torcevent.h        torcobservable.h
 HEADERS += torclocaldefs.h    torcpower.h
 HEADERS += torcadminthread.h  torcstoragedevice.h
 HEADERS += torcstorage.h      torcusb.h
-HEADERS += torcedid.h
+HEADERS += torcedid.h         torcbuffer.h
+HEADERS += torcfilebuffer.h   torclanguage.h
 
 SOURCES += torcloggingimp.cpp torcplist.cpp
 SOURCES += torcthread.cpp     torclocalcontext.cpp
 SOURCES += torctimer.cpp      torcsqlitedb.cpp
 SOURCES += torcdb.cpp         torcdirectories.cpp
-SOURCES += torccoreutils.cpp   torcreferencecounted.cpp
+SOURCES += torccoreutils.cpp  torcreferencecounted.cpp
 SOURCES += torccommandlineparser.cpp
 SOURCES += torcevent.cpp      torcobservable.cpp
 SOURCES += torcpower.cpp      torcadminthread.cpp
 SOURCES += torcstoragedevice.cpp
 SOURCES += torcstorage.cpp    torcusb.cpp
-SOURCES += torcedid.cpp
+SOURCES += torcedid.cpp       torcbuffer.cpp
+SOURCES += torcfilebuffer.cpp torclanguage.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files  = torclogging.h     torclocalcontext.h
@@ -51,6 +53,7 @@ inc.files += torccoreutils.h   torccommandlineparser.h
 inc.files += torcevent.h       torcobservable.h
 inc.files += torclocaldefs.h   torcpower.h
 inc.files += torcusb.h         torcedid.h
+inc.files += torcbuffer.h
 
 unix:contains(CONFIG_LIBUDEV, yes) {
     HEADERS += torcusbprivunix.h

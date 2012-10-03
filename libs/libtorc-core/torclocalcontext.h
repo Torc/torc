@@ -9,6 +9,7 @@
 #include "torclocaldefs.h"
 #include "torcconfig.h"
 #include "torccoreexport.h"
+#include "torclanguage.h"
 #include "torcobservable.h"
 #include "torccommandlineparser.h"
 
@@ -109,6 +110,7 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     Q_INVOKABLE   void       SetSetting    (const QString &Name, const bool    &Value);
     Q_INVOKABLE   void       SetSetting    (const QString &Name, const int     &Value);
     Q_INVOKABLE   QObject*   GetUIObject   (void);
+    QLocale::Language        GetLanguage   (void);
     void          SetUIObject              (QObject* UI);
     void          CloseDatabaseConnections (void);
 

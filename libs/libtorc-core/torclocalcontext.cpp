@@ -75,6 +75,7 @@ class TorcLocalContextPriv
     QReadWriteLock       *m_localSettingsLock;
     QObject              *m_UIObject;
     TorcAdminThread      *m_adminThread;
+    TorcLanguage          m_language;
 };
 
 TorcLocalContextPriv::TorcLocalContextPriv()
@@ -153,6 +154,9 @@ bool TorcLocalContextPriv::Init(void)
     // Qt version?
     LOG(VB_GENERAL, LOG_INFO, QString("Qt runtime version '%1' (compiled with '%2')")
         .arg(qVersion()).arg(QT_VERSION_STR));
+
+    // Load language preferences
+    m_language.LoadPreferences();
 
     // create an admin thread (and associated objects)
     m_adminThread = new TorcAdminThread();
@@ -355,6 +359,11 @@ void TorcLocalContext::SetUIObject(QObject *UI)
 QObject* TorcLocalContext::GetUIObject(void)
 {
     return m_priv->m_UIObject;
+}
+
+QLocale::Language TorcLocalContext::GetLanguage(void)
+{
+    return m_priv->m_language.GetLanguage();
 }
 
 void TorcLocalContext::CloseDatabaseConnections(void)
