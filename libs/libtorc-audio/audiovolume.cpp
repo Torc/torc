@@ -1,4 +1,4 @@
-/* Class TorcFileBuffer
+/* Class AudioVolume
 *
 * This file is part of the Torc project.
 *
