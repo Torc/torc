@@ -3484,6 +3484,7 @@ check_cxxflags -Wno-non-virtual-dtor
 #needed for INT64_C in libs/libavformat under g++
 check_cxxflags -D__STDC_CONSTANT_MACROS
 check_cxxflags -D__STDC_LIMIT_MACROS
+check_cxxflags -Woverloaded-virtual
 
 # add some linker flags
 check_ldflags -Wl,--warn-common
@@ -3926,7 +3927,7 @@ LIBS-avplay=$sdl_libs
 CFLAGS-avplay=$sdl_cflags
 ZLIB=$($ldflags_filter -lz)
 LIB_INSTALL_EXTRA_CMD=$LIB_INSTALL_EXTRA_CMD
-EXTRALIBS=$extralibs
+#EXTRALIBS=$extralibs
 INSTALL=install
 LIBTARGET=${LIBTARGET}
 SLIBNAME=${SLIBNAME}
@@ -3995,7 +3996,7 @@ EOF
 
 echo "#endif /* LIBAV_CONFIG_H */" >> $TMPH
 
-sed 's/#SHFLAGS=/SHFLAGS=/' config.mak > libs/libtorc-av/config.mak
+sed -e 's/#SHFLAGS=/SHFLAGS=/' -e 's/#EXTRALIBS=/EXTRALIBS=/' config.mak > libs/libtorc-av/config.mak
 #cp_if_changed config.mak libs/libtorc-av/config.mak
 
 # Do not overwrite an unchanged config.h to avoid superfluous rebuilds.
