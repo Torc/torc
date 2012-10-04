@@ -1,6 +1,9 @@
 #ifndef AUDIOOUTPUTLISTENERS_H
 #define AUDIOOUTPUTLISTENERS_H
 
+// Qt
+#include <QList>
+
 // Torc
 #include "torcaudioexport.h"
 
