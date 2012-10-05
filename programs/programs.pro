@@ -3,5 +3,4 @@ include ( ../settings.pro )
 TEMPLATE = subdirs
 
 # Directories
-SUBDIRS += torc-client
-
+SUBDIRS += torc-client torc-utils
