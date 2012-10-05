@@ -94,8 +94,8 @@ class TORC_AUDIO_PUBLIC AudioELD
     int        m_edidVersion;
     int        m_manufacturerId;
     int        m_productId;
-    uint64_t   m_portId;
-    uint64_t   m_formats;
+    quint64    m_portId;
+    quint64    m_formats;
     int        m_supportsHDCP;
     int        m_supportsAI;
     int        m_connectionType;

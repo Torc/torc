@@ -67,6 +67,7 @@ SOURCES += cpu_detect_x86.cpp
 contains(ARCH_X86, yes) {
     DEFINES += ALLOW_SSE2 ALLOW_SSE3
     SOURCES += sse_optimized.cpp
+    unix:QMAKE_CXXFLAGS += -msse3
 }
 
 # samplerate

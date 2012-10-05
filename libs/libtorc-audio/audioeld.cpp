@@ -273,9 +273,9 @@ void AudioELD::Parse(void)
     m_numSADs           = GRAB_BITS(buffer, 5, 4, 4);
     m_audioSyncDelay    = GRAB_BITS(buffer, 6, 0, 8) * 2;
     m_speakerAllocation = GRAB_BITS(buffer, 7, 0, 7);
-    m_portId            = qFromLittleEndian(*((uint64_t *)(buffer + 8)));
-    m_manufacturerId    = qFromLittleEndian(*((uint16_t *)(buffer + 16)));
-    m_productId         = qFromLittleEndian(*((uint16_t *)(buffer + 18)));
+    m_portId            = qFromLittleEndian(*((quint64*)(buffer + 8)));
+    m_manufacturerId    = qFromLittleEndian(*((quint16*)(buffer + 16)));
+    m_productId         = qFromLittleEndian(*((quint16*)(buffer + 18)));
 
     if (m_eldVersion != ELD_VER_CEA_861D && m_eldVersion != ELD_VER_PARTIAL)
     {
