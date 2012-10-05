@@ -10,10 +10,9 @@ INSTALLS = target
 
 QT -= gui
 
-DEPENDPATH  += ./platforms ./samplerate ./soundtouch ./freesurround
+DEPENDPATH  += ./platforms ./samplerate ./soundtouch ./freesurround ../libtorc-av
 INCLUDEPATH += ../libtorc-core ../libtorc-core/platforms
 INCLUDEPATH += ../.. ../
-INCLUDEPATH += ../libtorc-av
 INCLUDEPATH += $$DEPENDPATH
 
 LIBS += -L../libtorc-core -ltorc-core-$$LIBVERSION
@@ -37,8 +36,8 @@ SOURCES += audiooutputlisteners.cpp audiooutputdownmix.cpp
 SOURCES += audiovolume.cpp          audioeld.cpp
 SOURCES += audiospdifencoder.cpp    audiooutputdigitalencoder.cpp
 
-HEADERS += torcavutils.h
-SOURCES += torcavutils.cpp
+HEADERS += torcavutils.h            torcdecoder.h
+SOURCES += torcavutils.cpp          torcdecoder.cpp
 
 contains(CONFIG_LIBPULSE, yes) {
     HEADERS += audiopulsehandler.h
@@ -54,6 +53,12 @@ macx {
     FC = $$join(FWKS,",","{","}")
     QMAKE_CXXFLAGS += -F/System/Library/Frameworks/$${FC}.framework/Frameworks
     LIBS           += -framework $$join(FWKS," -framework ")
+}
+
+contains(CONFIG_ALSA_OUTDEV, yes) {
+    HEADERS += audiooutputalsa.h
+    SOURCES += audiooutputalsa.cpp
+    LIBS    += -lasound
 }
 
 #soundtouch
@@ -80,7 +85,7 @@ SOURCES += el_processor.cpp         freesurround.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files += audiosettings.h audiooutput.h audiooutputsettings.h
-inc.files += torcavutils.h
+inc.files += torcavutils.h   torcdecoder.h
 
 inc2.path  = $${PREFIX}/include/$${PROJECTNAME}/lib$${THIS_LIB}
 inc2.files = $${inc.files}

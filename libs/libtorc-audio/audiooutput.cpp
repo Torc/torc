@@ -25,7 +25,7 @@
 #ifdef USING_OSS
 #include "audiooutputoss.h"
 #endif
-#ifdef USING_ALSA
+#ifdef CONFIG_ALSA_OUTDEV
 #include "audiooutputalsa.h"
 #endif
 #ifdef Q_OS_MAC
@@ -121,7 +121,7 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
     if (WillSuspendPulse)
     {
         bool ispulse = false;
-#ifdef USING_ALSA
+#ifdef CONFIG_ALSA_OUTDEV
         // Check if using ALSA, that the device doesn't contain the word
         // "pulse" in its hint
         if (device.startsWith("ALSA:"))
@@ -155,7 +155,7 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
 
     if (device.startsWith("ALSA:"))
     {
-#ifdef USING_ALSA
+#ifdef CONFIG_ALSA_OUTDEV
         Settings.TrimDeviceType();
         ret = new AudioOutputALSA(Settings);
 #else
@@ -478,13 +478,12 @@ QList<AudioDeviceConfig> AudioOutput::GetOutputList(void)
     bool pasuspended = PulseHandler::Suspend(PulseHandler::kPulseSuspend);
 #endif
 
-#ifdef USING_ALSA
-    QMap<QString, QString> *alsadevs = AudioOutputALSA::GetDevices("pcm");
+#ifdef CONFIG_ALSA_OUTDEV
+    QMap<QString, QString> alsadevs = AudioOutputALSA::GetDevices("pcm");
 
-    if (!alsadevs->empty())
+    if (!alsadevs.empty())
     {
-        for (QMap<QString, QString>::const_iterator i = alsadevs->begin();
-             i != alsadevs->end(); ++i)
+        for (QMap<QString, QString>::const_iterator i = alsadevs.begin(); i != alsadevs.end(); ++i)
         {
             QString key = i.key();
             QString desc = i.value();
@@ -497,7 +496,6 @@ QList<AudioDeviceConfig> AudioOutput::GetOutputList(void)
             delete adc;
         }
     }
-    delete alsadevs;
 #endif
 
 #ifdef USING_OSS
