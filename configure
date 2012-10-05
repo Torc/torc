@@ -3602,7 +3602,7 @@ check_deps $CONFIG_LIST       \
 ! enabled_any memalign posix_memalign aligned_malloc &&
     enabled_any $need_memalign && enable memalign_hack
 
-disable $INDEV_LIST $OUTDEV_LIST
+disable $INDEV_LIST
 
 echo "install prefix            $prefix"
 echo "source path               $source_path"
