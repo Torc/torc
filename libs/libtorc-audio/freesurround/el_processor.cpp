@@ -67,12 +67,8 @@ public:
         dftL = (FFTComplexArray*)av_malloc(sizeof(FFTComplex)*N*2);
         dftR = (FFTComplexArray*)av_malloc(sizeof(FFTComplex)*N*2);
         src = (FFTComplexArray*)av_malloc(sizeof(FFTComplex)*N*2);
-        fftContextForward = (FFTContext*)av_malloc(sizeof(FFTContext));
-        memset(fftContextForward, 0, sizeof(FFTContext));
-        fftContextReverse = (FFTContext*)av_malloc(sizeof(FFTContext));
-        memset(fftContextReverse, 0, sizeof(FFTContext));
-        ff_fft_init(fftContextForward, 13, 0);
-        ff_fft_init(fftContextReverse, 13, 1);
+        fftContextForward = av_fft_init(13, 0);
+        fftContextReverse = av_fft_init(13, 1);
 #endif
         // resize our own buffers
         frontR.resize(N);
@@ -118,8 +114,8 @@ public:
         fftwf_free(rt);
         fftwf_free(lt);
 #else
-        ff_fft_end(fftContextForward);
-        ff_fft_end(fftContextReverse);
+        av_fft_end(fftContextForward);
+        av_fft_end(fftContextReverse);
         av_free(src); 
         av_free(dftR);
         av_free(dftL);
