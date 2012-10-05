@@ -22,16 +22,16 @@
 #include "audiooutputdx.h"
 #include "audiooutputwin.h"
 #endif
-#ifdef CONFIG_OSS_OUTDEV
+#if CONFIG_OSS_OUTDEV
 #include "audiooutputoss.h"
 #endif
-#ifdef CONFIG_ALSA_OUTDEV
+#if CONFIG_ALSA_OUTDEV
 #include "audiooutputalsa.h"
 #endif
 #ifdef Q_OS_MAC
 #include "audiooutputosx.h"
 #endif
-#ifdef CONFIG_LIBPULSE
+#if CONFIG_LIBPULSE
 #include "audiopulsehandler.h"
 #endif
 
@@ -49,7 +49,7 @@ AudioDeviceConfig::AudioDeviceConfig(const QString &Name, const QString &Descrip
 
 void AudioOutput::Cleanup(void)
 {
-#ifdef CONFIG_LIBPULSE
+#if CONFIG_LIBPULSE
     PulseHandler::Suspend(PulseHandler::kPulseCleanup);
 #endif
 }
@@ -85,7 +85,7 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
     QString &device = Settings.m_mainDevice;
     AudioOutput *ret = NULL;
 
-#ifdef CONFIG_LIBPULSE
+#if CONFIG_LIBPULSE
     bool pulsestatus = false;
 #else
     {
@@ -103,7 +103,7 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
 
     if (device.startsWith("PulseAudio:"))
     {
-#ifdef CONFIG_LIBPULSE_DISABLED_DELIBERATELY
+#if CONFIG_LIBPULSE_DISABLED_DELIBERATELY
         return new AudioOutputPulseAudio(Settings);
 #else
         LOG(VB_GENERAL, LOG_ERR, "Audio output device is set to PulseAudio "
@@ -116,11 +116,11 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
         return new AudioOutputNULL(Settings);
     }
 
-#ifdef CONFIG_LIBPULSE
+#if CONFIG_LIBPULSE
     if (WillSuspendPulse)
     {
         bool ispulse = false;
-#ifdef CONFIG_ALSA_OUTDEV
+#if CONFIG_ALSA_OUTDEV
         // Check if using ALSA, that the device doesn't contain the word
         // "pulse" in its hint
         if (device.startsWith("ALSA:"))
@@ -153,7 +153,7 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
 
     if (device.startsWith("ALSA:"))
     {
-#ifdef CONFIG_ALSA_OUTDEV
+#if CONFIG_ALSA_OUTDEV
         Settings.TrimDeviceType();
         ret = new AudioOutputALSA(Settings);
 #else
@@ -180,7 +180,7 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
                                  "in!");
 #endif
     }
-#ifdef CONFIG_OSS_OUTDEV
+#if CONFIG_OSS_OUTDEV
     else
         ret = new AudioOutputOSS(Settings);
 #elif defined(Q_OS_MAC)
@@ -193,13 +193,13 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
         LOG(VB_GENERAL, LOG_CRIT, "No useable audio output driver found.");
         LOG(VB_GENERAL, LOG_ERR, "Don't disable OSS support unless you're "
                                  "not running on Linux.");
-#ifdef CONFIG_LIBPULSE
+#if CONFIG_LIBPULSE
         if (pulsestatus)
             PulseHandler::Suspend(PulseHandler::kPulseResume);
 #endif
         return NULL;
     }
-#ifdef CONFIG_LIBPULSE
+#if CONFIG_LIBPULSE
     ret->m_pulseWasSuspended = pulsestatus;
 #endif
     return ret;
@@ -214,7 +214,7 @@ AudioOutput::AudioOutput()
 
 AudioOutput::~AudioOutput()
 {
-#ifdef CONFIG_LIBPULSE
+#if CONFIG_LIBPULSE
     if (m_pulseWasSuspended)
         PulseHandler::Suspend(PulseHandler::kPulseResume);
 #endif
@@ -446,7 +446,7 @@ AudioDeviceConfig* AudioOutput::GetAudioDeviceConfig(QString &Name, QString &Des
     return adc;
 }
 
-#ifdef CONFIG_OSS_OUTDEV
+#if CONFIG_OSS_OUTDEV
 static void FillSelectionFromDir(const QDir &dir, QList<AudioDeviceConfig> *List)
 {
     QFileInfoList il = dir.entryInfoList();
@@ -469,11 +469,11 @@ QList<AudioDeviceConfig> AudioOutput::GetOutputList(void)
     QList<AudioDeviceConfig> list;
     AudioDeviceConfig *adc = NULL;
 
-#ifdef CONFIG_PULSE
+#if CONFIG_PULSE
     bool pasuspended = PulseHandler::Suspend(PulseHandler::kPulseSuspend);
 #endif
 
-#ifdef CONFIG_ALSA_OUTDEV
+#if CONFIG_ALSA_OUTDEV
     QMap<QString, QString> alsadevs = AudioOutputALSA::GetDevices("pcm");
 
     if (!alsadevs.empty())
@@ -493,7 +493,7 @@ QList<AudioDeviceConfig> AudioOutput::GetOutputList(void)
     }
 #endif
 
-#ifdef CONFIG_OSS_OUTDEV
+#if CONFIG_OSS_OUTDEV
     {
         QDir dev("/dev", "dsp*", QDir::Name, QDir::System);
         FillSelectionFromDir(dev, &list);
@@ -572,7 +572,7 @@ QList<AudioDeviceConfig> AudioOutput::GetOutputList(void)
     }
 #endif
 
-#ifdef CONFIG_PULSE
+#if CONFIG_PULSE
     if (pasuspended)
         PulseHandler::Suspend(PulseHandler::kPulseResume);
 
