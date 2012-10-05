@@ -61,6 +61,11 @@ contains(CONFIG_ALSA_OUTDEV, yes) {
     LIBS    += -lasound
 }
 
+contains(CONFIG_OSS_OUTDEV, yes) {
+    HEADERS += audiooutputoss.h
+    SOURCES += audiooutputoss.cpp
+}
+
 #soundtouch
 HEADERS += AAFilter.h       cpu_detect.h FIRFilter.h
 HEADERS += RateTransposer.h TDStretch.h  STTypes.h

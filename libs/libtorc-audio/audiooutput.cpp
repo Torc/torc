@@ -22,7 +22,7 @@
 #include "audiooutputdx.h"
 #include "audiooutputwin.h"
 #endif
-#ifdef USING_OSS
+#ifdef CONFIG_OSS_OUTDEV
 #include "audiooutputoss.h"
 #endif
 #ifdef CONFIG_ALSA_OUTDEV
@@ -31,8 +31,7 @@
 #ifdef Q_OS_MAC
 #include "audiooutputosx.h"
 #endif
-#ifdef CONFIG_PULSE
-#include "audiooutputpulse.h"
+#ifdef CONFIG_LIBPULSE
 #include "audiopulsehandler.h"
 #endif
 
@@ -50,7 +49,7 @@ AudioDeviceConfig::AudioDeviceConfig(const QString &Name, const QString &Descrip
 
 void AudioOutput::Cleanup(void)
 {
-#ifdef CONFIG_PULSE
+#ifdef CONFIG_LIBPULSE
     PulseHandler::Suspend(PulseHandler::kPulseCleanup);
 #endif
 }
@@ -86,7 +85,7 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
     QString &device = Settings.m_mainDevice;
     AudioOutput *ret = NULL;
 
-#ifdef CONFIG_PULSE
+#ifdef CONFIG_LIBPULSE
     bool pulsestatus = false;
 #else
     {
@@ -104,7 +103,7 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
 
     if (device.startsWith("PulseAudio:"))
     {
-#ifdef CONFIG_PULSE
+#ifdef CONFIG_LIBPULSE_DISABLED_DELIBERATELY
         return new AudioOutputPulseAudio(Settings);
 #else
         LOG(VB_GENERAL, LOG_ERR, "Audio output device is set to PulseAudio "
@@ -117,7 +116,7 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
         return new AudioOutputNULL(Settings);
     }
 
-#ifdef CONFIG_PULSE
+#ifdef CONFIG_LIBPULSE
     if (WillSuspendPulse)
     {
         bool ispulse = false;
@@ -129,23 +128,22 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
             QString device_name = device;
 
             device_name.remove(0, 5);
-            QMap<QString, QString> *alsadevs =
-                AudioOutputALSA::GetDevices("pcm");
-            if (!alsadevs->empty() && alsadevs->contains(device_name))
+            QMap<QString, QString> alsadevs = AudioOutputALSA::GetDevices("pcm");
+            if (!alsadevs.empty() && alsadevs.contains(device_name))
             {
-                if (alsadevs->value(device_name).contains("pulse",
+                if (alsadevs.value(device_name).contains("pulse",
                                                           Qt::CaseInsensitive))
                 {
                     ispulse = true;
                 }
             }
-            delete alsadevs;
         }
 #endif
         if (device.contains("pulse", Qt::CaseInsensitive))
         {
             ispulse = true;
         }
+
         if (!ispulse)
         {
             pulsestatus = PulseHandler::Suspend(PulseHandler::kPulseSuspend);
@@ -182,7 +180,7 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
                                  "in!");
 #endif
     }
-#if defined(USING_OSS)
+#ifdef CONFIG_OSS_OUTDEV
     else
         ret = new AudioOutputOSS(Settings);
 #elif defined(Q_OS_MAC)
@@ -195,13 +193,13 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
         LOG(VB_GENERAL, LOG_CRIT, "No useable audio output driver found.");
         LOG(VB_GENERAL, LOG_ERR, "Don't disable OSS support unless you're "
                                  "not running on Linux.");
-#ifdef CONFIG_PULSE
+#ifdef CONFIG_LIBPULSE
         if (pulsestatus)
             PulseHandler::Suspend(PulseHandler::kPulseResume);
 #endif
         return NULL;
     }
-#ifdef CONFIG_PULSE
+#ifdef CONFIG_LIBPULSE
     ret->m_pulseWasSuspended = pulsestatus;
 #endif
     return ret;
@@ -216,7 +214,7 @@ AudioOutput::AudioOutput()
 
 AudioOutput::~AudioOutput()
 {
-#ifdef CONFIG_PULSE
+#ifdef CONFIG_LIBPULSE
     if (m_pulseWasSuspended)
         PulseHandler::Suspend(PulseHandler::kPulseResume);
 #endif
@@ -448,23 +446,20 @@ AudioDeviceConfig* AudioOutput::GetAudioDeviceConfig(QString &Name, QString &Des
     return adc;
 }
 
-#ifdef USING_OSS
-static void fillSelectionsFromDir(const QDir &dir,
-                                  AudioOutput::ADCVect *list)
+#ifdef CONFIG_OSS_OUTDEV
+static void FillSelectionFromDir(const QDir &dir, QList<AudioDeviceConfig> *List)
 {
     QFileInfoList il = dir.entryInfoList();
-    for (QFileInfoList::Iterator it = il.begin();
-         it != il.end(); ++it )
+    for (QFileInfoList::Iterator it = il.begin(); it != il.end(); ++it )
     {
-        QFileInfo &fi = *it;
-        QString name = fi.absoluteFilePath();
+        QString name = (*it).absoluteFilePath();
         QString desc = QObject::tr("OSS device");
-        AudioOutput::AudioDeviceConfig *adc =
-            AudioOutput::GetAudioDeviceConfig(name, desc);
-        if (!adc)
+        AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(name, desc);
+        if (!config)
             continue;
-        list->append(*adc);
-        delete adc;
+
+        List->append(*config);
+        delete config;
     }
 }
 #endif
@@ -498,20 +493,20 @@ QList<AudioDeviceConfig> AudioOutput::GetOutputList(void)
     }
 #endif
 
-#ifdef USING_OSS
+#ifdef CONFIG_OSS_OUTDEV
     {
         QDir dev("/dev", "dsp*", QDir::Name, QDir::System);
-        fillSelectionsFromDir(dev, &list);
+        FillSelectionFromDir(dev, &list);
         dev.setNameFilters(QStringList("adsp*"));
-        fillSelectionsFromDir(dev, &list);
+        FillSelectionFromDir(dev, &list);
 
         dev.setPath("/dev/sound");
         if (dev.exists())
         {
             dev.setNameFilters(QStringList("dsp*"));
-            fillSelectionsFromDir(dev, &list);
+            FillSelectionFromDir(dev, &list);
             dev.setNameFilters(QStringList("adsp*"));
-            fillSelectionsFromDir(dev, &list);
+            FillSelectionFromDir(dev, &list);
         }
     }
 #endif
