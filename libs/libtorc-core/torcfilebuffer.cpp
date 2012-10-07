@@ -204,7 +204,7 @@ qint64 TorcFileBuffer::BytesAvailable(void)
 
 int TorcFileBuffer::BestBufferSize(void)
 {
-    return 4096;
+    return 32768;
 }
 
 static class TorcFileBufferFactory : public TorcBufferFactory

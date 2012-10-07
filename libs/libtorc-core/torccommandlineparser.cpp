@@ -2489,11 +2489,14 @@ void TorcCommandLineParser::AddJob(void)
             "ability to update runtime status in the database.");
 }
 
-void TorcCommandLineParser::AddInFile(bool addOutFile)
+void TorcCommandLineParser::AddInFile(void)
 {
     Add("--infile", "infile", "", "Input file URI", "");
-    if (addOutFile)
-        Add("--outfile", "outfile", "", "Output file URI", "");
+}
+
+void TorcCommandLineParser::AddOutFile(void)
+{
+    Add("--outfile", "outfile", "", "Output file URI", "");
 }
 
 LogLevel TorcCommandLineParser::GetLoggingLevel(void)

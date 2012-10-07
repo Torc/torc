@@ -6,9 +6,9 @@
 #include "version.h"
 #include "torclocalcontext.h"
 #include "torcexitcodes.h"
+#include "torcutils.h"
 #include "utilscommandlineparser.h"
 
-using namespace std;
 
 int main(int argc, char **argv)
 {
@@ -29,6 +29,9 @@ int main(int argc, char **argv)
 
         if (int error = TorcLocalContext::Create(cmdline.data()))
             return error;
+
+        if (cmdline.data()->ToBool("probe"))
+            TorcUtils::Probe(cmdline.data());
     }
 
     TorcLocalContext::TearDown();

@@ -173,7 +173,8 @@ class TORC_CORE_PUBLIC TorcCommandLineParser
                                                  LogLevel DefaultLogging = LOG_INFO);
     void                    AddPIDFile          (void);
     void                    AddJob              (void);
-    void                    AddInFile           (bool AddOutFile = false);
+    void                    AddInFile           (void);
+    void                    AddOutFile          (void);
 
   private:
     int                     GetOpt(int argc, const char * const * argv, int &argpos,

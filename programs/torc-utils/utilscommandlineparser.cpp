@@ -13,14 +13,21 @@ UtilsCommandLineParser::~UtilsCommandLineParser()
 
 void UtilsCommandLineParser::LoadArguments(void)
 {
+    CommandLineArg::AllowOneOf(QList<CommandLineArg*>()
+        << Add("--probe", "probe", false,
+                "Probe the given URI for media content (audio, video and still images).", "")
+                ->SetGroup("File")
+                ->SetRequiredChild(QStringList("infile")));
+
     AddHelp();
     AddVersion();
     AddLogging();
     AddPIDFile();
     AddSettingsOverride();
+    AddInFile();
 }
 
 QString UtilsCommandLineParser::GetHelpHeader(void) const
 {
-    return "Torc-utils provides a set of helper utilities for Torc.";
+    return "torc-utils provides a set of helper utilities for Torc.";
 }
