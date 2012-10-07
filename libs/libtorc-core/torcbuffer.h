@@ -54,6 +54,7 @@ class TORC_CORE_PUBLIC TorcBuffer
     virtual qint64     GetPosition        (void) = 0;
     virtual bool       IsSequential       (void) = 0;
     virtual qint64     BytesAvailable     (void) = 0;
+    virtual int        BestBufferSize     (void) = 0;
     virtual bool       Pause              (void);
     virtual bool       Unpause            (void);
     virtual bool       TogglePause        (void);

@@ -23,6 +23,7 @@ class TorcFileBuffer : public TorcBuffer
     qint64 GetPosition     (void);
     bool   IsSequential    (void);
     qint64 BytesAvailable  (void);
+    int    BestBufferSize  (void);
 
   private:
     QFile   *m_file;
