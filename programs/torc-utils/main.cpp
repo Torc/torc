@@ -27,7 +27,7 @@ int main(int argc, char **argv)
         if (justexit)
             return GENERIC_EXIT_OK;
 
-        if (int error = TorcLocalContext::Create(cmdline.data()))
+        if (int error = TorcLocalContext::Create(cmdline.data(), Torc::NoFlags))
             return error;
 
         if (cmdline.data()->ToBool("probe"))

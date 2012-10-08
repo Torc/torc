@@ -34,7 +34,8 @@ int main(int argc, char **argv)
         if (justexit)
             return GENERIC_EXIT_OK;
 
-        if (int error = TorcLocalContext::Create(cmdline.data()))
+        int flags = Torc::Database | Torc::Server | Torc::Storage | Torc::Power | Torc::USB;
+        if (int error = TorcLocalContext::Create(cmdline.data(), flags))
             return error;
     }
 

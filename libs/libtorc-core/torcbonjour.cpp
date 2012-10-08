@@ -814,7 +814,8 @@ static class TorcBrowserObject : public TorcAdminObject
 
     void Create(void)
     {
-        if (gLocalContext && gLocalContext->GetSetting(TORC_CORE + "BrowseForTorc", true))
+        if (gLocalContext && gLocalContext->GetFlag(Torc::Client) &&
+            gLocalContext->GetSetting(TORC_CORE + "BrowseForTorc", true))
         {
             m_browserReference = TorcBonjour::Instance()->Browse("_torc._tcp.");
         }
@@ -822,7 +823,10 @@ static class TorcBrowserObject : public TorcAdminObject
 
     void Destroy(void)
     {
-        TorcBonjour::Instance()->Deregister(m_browserReference);
+        if (m_browserReference)
+            TorcBonjour::Instance()->Deregister(m_browserReference);
+        m_browserReference = 0;
+
         // N.B. We delete the global instance here
         TorcBonjour::TearDown();
     }
@@ -846,7 +850,8 @@ static class TorcAnnounceObject : public TorcAdminObject
     {
         Destroy();
 
-        if (gLocalContext && gLocalContext->GetSetting(TORC_CORE + "AdvertiseService", true))
+        if (gLocalContext && gLocalContext->GetFlag(Torc::Server) &&
+            gLocalContext->GetSetting(TORC_CORE + "AdvertiseService", true))
         {
             QByteArray dummy;
             int port = 7547; // NB
@@ -862,8 +867,10 @@ static class TorcAnnounceObject : public TorcAdminObject
 
     void Destroy(void)
     {
-        TorcBonjour::Instance()->Deregister(m_httpReference);
-        TorcBonjour::Instance()->Deregister(m_torcReference);
+        if (m_httpReference)
+            TorcBonjour::Instance()->Deregister(m_httpReference);
+        if (m_torcReference)
+            TorcBonjour::Instance()->Deregister(m_torcReference);
         m_httpReference = 0;
         m_torcReference = 0;
     }

@@ -143,7 +143,8 @@ void TorcPower::TearDown(void)
 {
     QMutexLocker lock(gPowerLock);
 
-    gPower->deleteLater();
+    if (gPower)
+        gPower->deleteLater();
     gPower = NULL;
 }
 
@@ -275,7 +276,8 @@ static class TorcPowerObject : public TorcAdminObject
 
     void Create(void)
     {
-        TorcPower::Create();
+        if (gLocalContext->GetFlag(Torc::Power))
+            TorcPower::Create();
     }
 
     void Destroy(void)

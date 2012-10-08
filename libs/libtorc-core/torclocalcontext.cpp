@@ -61,7 +61,7 @@ static void ExitHandler(int Sig)
 class TorcLocalContextPriv
 {
   public:
-    TorcLocalContextPriv();
+    TorcLocalContextPriv(int ApplicatinFlags);
    ~TorcLocalContextPriv();
 
     bool    Init                 (void);
@@ -69,6 +69,7 @@ class TorcLocalContextPriv
     void    SetSetting           (const QString &Name, const QString &Value);
     void    PrintSessionSettings (void);
 
+    int                   m_flags;
     TorcSQLiteDB         *m_sqliteDB;
     QMap<QString,QString> m_localSettings;
     QMap<QString,QString> m_sessionSettings;
@@ -78,8 +79,9 @@ class TorcLocalContextPriv
     TorcLanguage          m_language;
 };
 
-TorcLocalContextPriv::TorcLocalContextPriv()
-  : m_sqliteDB(NULL),
+TorcLocalContextPriv::TorcLocalContextPriv(int ApplicationFlags)
+  : m_flags(ApplicationFlags),
+    m_sqliteDB(NULL),
     m_localSettingsLock(new QReadWriteLock(QReadWriteLock::Recursive)),
     m_UIObject(NULL),
     m_adminThread(NULL)
@@ -126,16 +128,23 @@ bool TorcLocalContextPriv::Init(void)
     }
 
     // Open the local database
-    QString dbname = configdir + "/torc-settings.sqlite";
-    m_sqliteDB = new TorcSQLiteDB(dbname);
-
-    if (!m_sqliteDB || (m_sqliteDB && !m_sqliteDB->IsValid()))
-        return false;
-
-    // Load the settings
+    if (m_flags & Torc::Database)
     {
-        QWriteLocker locker(m_localSettingsLock);
-        m_sqliteDB->LoadSettings(m_localSettings);
+        QString dbname = configdir + "/torc-settings.sqlite";
+        m_sqliteDB = new TorcSQLiteDB(dbname);
+
+        if (!m_sqliteDB || (m_sqliteDB && !m_sqliteDB->IsValid()))
+            return false;
+
+        // Load the settings
+        {
+            QWriteLocker locker(m_localSettingsLock);
+            m_sqliteDB->LoadSettings(m_localSettings);
+        }
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Running without database");
     }
 
     // don't expire threads
@@ -185,7 +194,8 @@ QString TorcLocalContextPriv::GetSetting(const QString &Name,
 void TorcLocalContextPriv::SetSetting(const QString &Name, const QString &Value)
 {
     QWriteLocker locker(m_localSettingsLock);
-    m_sqliteDB->SetSetting(Name, Value);
+    if (m_sqliteDB)
+        m_sqliteDB->SetSetting(Name, Value);
     m_localSettings[Name] = Value;
 }
 
@@ -210,13 +220,13 @@ QString Torc::ActionToString(Actions Action)
     return  metaEnum.valueToKey(Action);
 }
 
-qint16 TorcLocalContext::Create(TorcCommandLineParser* CommandLine)
+qint16 TorcLocalContext::Create(TorcCommandLineParser* CommandLine, int ApplicationFlags)
 {
     QMutexLocker locker(gLocalContextLock);
     if (gLocalContext)
         return GENERIC_EXIT_OK;
 
-    gLocalContext = new TorcLocalContext(CommandLine);
+    gLocalContext = new TorcLocalContext(CommandLine, ApplicationFlags);
     if (gLocalContext && gLocalContext->Init())
         return GENERIC_EXIT_OK;
 
@@ -239,9 +249,9 @@ void TorcLocalContext::NotifyEvent(int Event)
         gLocalContext->Notify(event);
 }
 
-TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine)
+TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine, int ApplicationFlags)
   : QObject(),
-    m_priv(new TorcLocalContextPriv)
+    m_priv(new TorcLocalContextPriv(ApplicationFlags))
 {
     setObjectName("LocalContext");
 
@@ -315,8 +325,7 @@ bool TorcLocalContext::Init(void)
     return true;
 }
 
-QString TorcLocalContext::GetSetting(const QString &Name,
-                                     const QString &DefaultValue)
+QString TorcLocalContext::GetSetting(const QString &Name, const QString &DefaultValue)
 {
     return m_priv->GetSetting(Name, DefaultValue);
 }
@@ -370,4 +379,9 @@ void TorcLocalContext::CloseDatabaseConnections(void)
 {
     if (m_priv && m_priv->m_sqliteDB)
         m_priv->m_sqliteDB->CloseThreadConnection();
+}
+
+bool TorcLocalContext::GetFlag(int Flag)
+{
+    return m_priv->m_flags & Flag;
 }

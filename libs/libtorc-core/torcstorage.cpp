@@ -348,7 +348,8 @@ static class TorcStorageObject : public TorcAdminObject
 
     void Create(void)
     {
-        TorcStorage::Create();
+        if (gLocalContext->GetFlag(Torc::Storage))
+            TorcStorage::Create();
     }
 
     void Destroy(void)

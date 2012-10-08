@@ -21,6 +21,17 @@ class TORC_CORE_PUBLIC Torc
     Q_ENUMS(Actions)
 
   public:
+    enum ApplicationFlags
+    {
+        NoFlags     = (0 << 0),
+        Database    = (1 << 0),
+        Client      = (1 << 1),
+        Server      = (1 << 2),
+        Power       = (1 << 3),
+        Storage     = (1 << 4),
+        USB         = (1 << 5)
+    };
+
     enum Actions
     {
         None = 0,
@@ -99,7 +110,7 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     Q_OBJECT
 
   public:
-    static qint16 Create      (TorcCommandLineParser* CommandLine);
+    static qint16 Create      (TorcCommandLineParser* CommandLine, int ApplicationFlags);
     static void   TearDown    (void);
     static void   NotifyEvent (int Event);
 
@@ -113,9 +124,10 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     QLocale::Language        GetLanguage   (void);
     void          SetUIObject              (QObject* UI);
     void          CloseDatabaseConnections (void);
+    bool          GetFlag                  (int Flag);
 
   private:
-    TorcLocalContext(TorcCommandLineParser* CommandLine);
+    TorcLocalContext(TorcCommandLineParser* CommandLine, int ApplicationFlags);
    ~TorcLocalContext();
 
     bool          Init(void);
