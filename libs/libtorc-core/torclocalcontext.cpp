@@ -249,6 +249,45 @@ void TorcLocalContext::NotifyEvent(int Event)
         gLocalContext->Notify(event);
 }
 
+#define MESSAGE_TIMEOUT_DEFAULT 3000
+#define MESSAGE_TIMEOUT_SHORT   1000
+#define MESSAGE_TIMEOUT_LONG    10000
+
+void TorcLocalContext::SendMessage(Torc::MessageType Type,
+                                   Torc::MessageDestination Destination,
+                                   Torc::MessageTimeout Timeout, QString Uuid,
+                                   const QString &Header, const QString &Body)
+{
+    if (Body.isEmpty())
+        return;
+
+    int timeout = -1;
+    switch (Timeout)
+    {
+        case Torc::DefaultTimeout:
+            timeout = MESSAGE_TIMEOUT_DEFAULT;
+            break;
+        case Torc::ShortTimeout:
+            timeout = MESSAGE_TIMEOUT_SHORT;
+            break;
+        case Torc::LongTimeout:
+            timeout = MESSAGE_TIMEOUT_LONG;
+            break;
+        default:
+            break;
+    }
+
+    QVariantMap data;
+    data.insert("type", Type);
+    data.insert("destination", Destination);
+    data.insert("timeout", timeout);
+    data.insert("uuid", Uuid);
+    data.insert("header", Header);
+    data.insert("body", Body);
+    TorcEvent event(Torc::Message, data);
+    gLocalContext->Notify(event);
+}
+
 TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine, int ApplicationFlags)
   : QObject(),
     m_priv(new TorcLocalContextPriv(ApplicationFlags))

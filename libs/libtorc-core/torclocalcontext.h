@@ -32,6 +32,30 @@ class TORC_CORE_PUBLIC Torc
         USB         = (1 << 5)
     };
 
+    typedef enum MessageTypes
+    {
+        GenericError,
+        CriticalError,
+        GenericWarning,
+        ExternalMessage,
+        InternalMessage
+    } MessageType;
+
+    typedef enum MessageDestinations
+    {
+        Internal  = (0 << 0),
+        Local     = (1 << 0),
+        Broadcast = (1 << 1)
+    } MessageDestination;
+
+    typedef enum MessageTimeouts
+    {
+        DefaultTimeout,
+        ShortTimeout,
+        LongTimeout,
+        Acknowledge
+    } MessageTimeout;
+
     enum Actions
     {
         None = 0,
@@ -125,6 +149,9 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     static qint16 Create      (TorcCommandLineParser* CommandLine, int ApplicationFlags);
     static void   TearDown    (void);
     static void   NotifyEvent (int Event);
+    static void   SendMessage (Torc::MessageType Type, Torc::MessageDestination Destination,
+                               Torc::MessageTimeout Timeout, QString Uuid,
+                               const QString &Header, const QString &Body);
 
     Q_INVOKABLE   QString    GetSetting    (const QString &Name, const QString &DefaultValue);
     Q_INVOKABLE   bool       GetSetting    (const QString &Name, const bool    &DefaultValue);
