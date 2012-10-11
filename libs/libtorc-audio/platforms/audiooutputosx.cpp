@@ -1426,6 +1426,7 @@ bool AudioOutputOSX::StartOutputThread(void)
 
 void AudioOutputOSX::StopOutputThread(void)
 {
+    m_killAudio = true;
 }
 
 // Reimplement GetAudiotime() so that we don't use gettimeofday or Qt mutexes.
