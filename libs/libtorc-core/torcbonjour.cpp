@@ -785,6 +785,7 @@ bool TorcBonjour::event(QEvent *Event)
 
             if (event == Torc::Suspending ||
                 event == Torc::ShuttingDown ||
+                event == Torc::Restarting ||
                 event == Torc::Hibernating)
             {
                 LOG(VB_GENERAL, LOG_INFO, "Suspending bonjour acivities");
