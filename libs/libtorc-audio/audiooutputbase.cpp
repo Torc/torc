@@ -149,9 +149,9 @@ AudioOutputBase::AudioOutputBase(const AudioSettings &settings) :
     memset(m_sourceInputBuffer,  0, sizeof(m_sourceInputBuffer));
     memset(m_audioBuffer, 0, sizeof(m_audioBuffer));
 
-    if (gLocalContext->GetSetting("SRCQualityOverride", false))
+    if (gLocalContext->GetSetting(TORC_CORE + "SRCQualityOverride", false))
     {
-        m_srcQuality = gLocalContext->GetSetting("SRCQuality", QUALITY_MEDIUM);
+        m_srcQuality = gLocalContext->GetSetting(TORC_CORE + "SRCQuality", QUALITY_MEDIUM);
         LOG(VB_AUDIO, LOG_INFO,  QString("SRC quality: %1").arg(QualityToString(m_srcQuality)));
     }
 }
@@ -164,9 +164,7 @@ AudioOutputBase::AudioOutputBase(const AudioSettings &settings) :
 AudioOutputBase::~AudioOutputBase()
 {
     if (!m_killAudio)
-    {
-        LOG(VB_GENERAL, LOG_ERR,   "Programmer Error: ~AudioOutputBase called, but KillAudio has not been called!");
-    }
+        LOG(VB_GENERAL, LOG_ERR, "Programmer Error: ~AudioOutputBase called, but KillAudio has not been called!");
 
     // We got this from a subclass, delete it
     delete m_outputSettings;
@@ -207,7 +205,7 @@ void AudioOutputBase::InitSettings(const AudioSettings &Settings)
     m_configuredChannels = m_maxChannels;
 
     m_upmixDefault = m_maxChannels > 2 ?
-        gLocalContext->GetSetting("AudioDefaultUpmix", false) : false;
+        gLocalContext->GetSetting(TORC_CORE + "AudioDefaultUpmix", false) : false;
 
     if (Settings.m_upmixer == 1) // music, upmixer off
         m_upmixDefault = false;
@@ -314,7 +312,7 @@ bool AudioOutputBase::CanPassthrough(int Samplerate, int Channels, int Codec, in
     ret &= m_outputSettingsDigital->IsSupportedRate(Samplerate);
     // if we must resample to 48kHz ; we can't passthrough
     ret &= !((Samplerate != 48000) &&
-             gLocalContext->GetSetting("Audio48kOverride", false));
+             gLocalContext->GetSetting(TORC_CORE + "Audio48kOverride", false));
     // Don't know any cards that support spdif clocked at < 44100
     // Some US cable transmissions have 2ch 32k AC-3 streams
     ret &= Samplerate >= 44100;
@@ -713,7 +711,7 @@ void AudioOutputBase::Reconfigure(const AudioSettings &Settings)
     // Force resampling if we are encoding to AC3 and sr > 48k
     // or if 48k override was checked in settings
     if ((m_samplerate != 48000 &&
-         gLocalContext->GetSetting("Audio48kOverride", false)) ||
+         gLocalContext->GetSetting(TORC_CORE + "Audio48kOverride", false)) ||
          (m_encode && (m_samplerate > 48000)))
     {
         LOG(VB_AUDIO, LOG_INFO,  "Forcing resample to 48 kHz");
@@ -850,7 +848,7 @@ void AudioOutputBase::Reconfigure(const AudioSettings &Settings)
     if (m_setInitialVolume && m_internalVolumeControl && SWVolume())
     {
         LOG(VB_AUDIO, LOG_INFO,  "Software volume enabled");
-        m_softwareVolumeControl  = gLocalContext->GetSetting("MixerControl", "PCM");
+        m_softwareVolumeControl  = gLocalContext->GetSetting(TORC_CORE + "MixerControl", QString("PCM"));
         m_softwareVolumeControl += "MixerVolume";
         m_softwareVolume = gLocalContext->GetSetting(m_softwareVolumeControl, 80);
     }
@@ -862,7 +860,7 @@ void AudioOutputBase::Reconfigure(const AudioSettings &Settings)
     if (m_needsUpmix && IS_VALID_UPMIX_CHANNEL(m_sourceChannels) &&
         m_configuredChannels > 2)
     {
-        m_surroundMode = gLocalContext->GetSetting("AudioUpmixType", QUALITY_HIGH);
+        m_surroundMode = gLocalContext->GetSetting(TORC_CORE + "AudioUpmixType", QUALITY_HIGH);
         if ((m_upmixer = new FreeSurround(m_samplerate, m_sourceType== AUDIOOUTPUT_VIDEO,
                                     (FreeSurround::SurroundMode)m_surroundMode)))
             LOG(VB_AUDIO, LOG_INFO,  QString("Create %1 quality upmixer done")
@@ -1647,6 +1645,11 @@ bool AudioOutputBase::NeedDecodingBeforePassthrough(void) const
 qint64 AudioOutputBase::LengthLastData(void) const
 {
     return m_lengthLastData;
+}
+
+int AudioOutputBase::GetFillStatus(void)
+{
+    return kAudioRingBufferSize - audiofree();
 }
 
 /**

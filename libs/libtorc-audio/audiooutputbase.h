@@ -72,6 +72,7 @@ class AudioOutputBase : public AudioOutput, public TorcThread
     virtual qint64       GetAudiotime             (void);
     virtual qint64       GetAudioBufferedTime     (void);
     virtual void         SetSourceBitrate         (int  Rate);
+    virtual int          GetFillStatus            (void);
     virtual void         GetBufferStatus          (uint &Fill, uint &Total);
     virtual void         BufferOutputData         (bool Buffer);
     virtual int          ReadOutputData           (unsigned char *ReadBuffer, int MaxLength);

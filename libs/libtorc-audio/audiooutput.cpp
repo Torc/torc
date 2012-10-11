@@ -301,6 +301,11 @@ QString AudioOutput::GetWarning(void) const
     return m_lastWarning;
 }
 
+int AudioOutput::GetFillStatus(void)
+{
+    return -1;
+}
+
 void AudioOutput::GetBufferStatus(uint &Fill, uint &Total)
 {
     Fill = Total = 0;

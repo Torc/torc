@@ -81,6 +81,7 @@ class TORC_AUDIO_PUBLIC AudioOutput : public AudioVolume, public AudioOutputList
     virtual void    SetSourceBitrate     (int Rate);
     QString         GetError             (void) const;
     QString         GetWarning           (void) const;
+    virtual int     GetFillStatus        (void);
     virtual void    GetBufferStatus      (uint &Fill, uint &Total);
 
     //  Only really used by the AudioOutputNULL object

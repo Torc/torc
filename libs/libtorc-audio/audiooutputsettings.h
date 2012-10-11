@@ -105,4 +105,25 @@ class TORC_AUDIO_PUBLIC AudioOutputSettings
     QList<AudioFormat>   m_formats;
 };
 
+class TORC_AUDIO_PUBLIC AudioDescription
+{
+  public:
+    AudioDescription();
+    AudioDescription(int Codec,      AudioFormat Format, int  Samplerate,
+                     int Channels,   bool Passthrough,   int  OriginalChannels,
+                     int Profile = 0);
+    QString     ToString(void);
+
+    int         m_codecId;
+    AudioFormat m_format;
+    int         m_sampleSize;
+    int         m_sampleRate;
+    int         m_channels;
+    int         m_codecProfile;
+    bool        m_passthrough;
+    int         m_originalChannels;
+    uint        m_bufferTime;
+    uint        m_bestFillSize;
+};
+
 #endif // AUDIOOUTPUTSETTINGS_H

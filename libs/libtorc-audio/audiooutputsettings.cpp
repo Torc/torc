@@ -8,6 +8,7 @@
 // Torc
 #include "torclocalcontext.h"
 #include "torclogging.h"
+#include "torcavutils.h"
 #include "audiooutputsettings.h"
 
 extern "C" {
@@ -365,31 +366,31 @@ AudioOutputSettings* AudioOutputSettings::GetUsers(bool NewCopy)
     if (aosettings->m_invalid)
         return aosettings;
 
-    int currentchannels = gLocalContext->GetSetting("MaxChannels", 2);
+    int currentchannels = gLocalContext->GetSetting(TORC_CORE + "MaxChannels", 2);
     int maxchannels     = aosettings->BestSupportedChannels();
 
     bool bAC3  = aosettings->CanFeature(FEATURE_AC3) &&
-        gLocalContext->GetSetting("AC3PassThru", false);
+        gLocalContext->GetSetting(TORC_CORE + "AC3PassThru", false);
 
     bool bDTS  = aosettings->CanFeature(FEATURE_DTS) &&
-        gLocalContext->GetSetting("DTSPassThru", false);
+        gLocalContext->GetSetting(TORC_CORE + "DTSPassThru", false);
 
     bool bLPCM = aosettings->CanFeature(FEATURE_LPCM) &&
-        !gLocalContext->GetSetting("StereoPCM", false);
+        !gLocalContext->GetSetting(TORC_CORE + "StereoPCM", false);
 
     bool bEAC3 = aosettings->CanFeature(FEATURE_EAC3) &&
-        gLocalContext->GetSetting("EAC3PassThru", false) &&
-        !gLocalContext->GetSetting("Audio48kOverride", false);
+        gLocalContext->GetSetting(TORC_CORE + "EAC3PassThru", false) &&
+        !gLocalContext->GetSetting(TORC_CORE + "Audio48kOverride", false);
 
     // TrueHD requires HBR support.
     bool bTRUEHD = aosettings->CanFeature(FEATURE_TRUEHD) &&
-        gLocalContext->GetSetting("TrueHDPassThru", false) &&
-        !gLocalContext->GetSetting("Audio48kOverride", false) &&
-        gLocalContext->GetSetting("HBRPassthru", true);
+        gLocalContext->GetSetting(TORC_CORE + "TrueHDPassThru", false) &&
+        !gLocalContext->GetSetting(TORC_CORE + "Audio48kOverride", false) &&
+        gLocalContext->GetSetting(TORC_CORE + "HBRPassthru", true);
 
     bool bDTSHD = aosettings->CanFeature(FEATURE_DTSHD) &&
-        gLocalContext->GetSetting("DTSHDPassThru", false) &&
-        !gLocalContext->GetSetting("Audio48kOverride", false);
+        gLocalContext->GetSetting(TORC_CORE + "DTSHDPassThru", false) &&
+        !gLocalContext->GetSetting(TORC_CORE + "Audio48kOverride", false);
 
     if (maxchannels > 2 && !bLPCM)
         maxchannels = 2;
@@ -416,7 +417,7 @@ int AudioOutputSettings::GetMaxHDRate()
         return 0;
 
     // If no HBR or no LPCM, limit bitrate to 6.144Mbit/s
-    if (!gLocalContext->GetSetting("HBRPassthru", true) ||
+    if (!gLocalContext->GetSetting(TORC_CORE + "HBRPassthru", true) ||
         !CanFeature(FEATURE_LPCM))
     {
         return 192000;  // E-AC3/DTS-HD High Res: 192k, 16 bits, 2 ch
@@ -573,4 +574,46 @@ int AudioOutputSettings::BestSupportedPCMChannelsELD(void)
 
     int eld = m_ELD.GetMaxLPCMChannels();
     return eld < chan ? eld : chan;
+}
+
+AudioDescription::AudioDescription()
+  : m_codecId(CODEC_ID_NONE),
+    m_format(FORMAT_NONE),
+    m_sampleSize(-1),
+    m_sampleRate(-1),
+    m_channels(-1),
+    m_codecProfile(0),
+    m_passthrough(false),
+    m_originalChannels(-1),
+    m_bufferTime(1),
+    m_bestFillSize(0)
+{
+}
+
+AudioDescription::AudioDescription(int  Codec,       AudioFormat Format,
+                                   int  Samplerate,  int Channels,
+                                   bool Passthrough, int OriginalChannels,
+                                   int  Profile)
+  : m_codecId(Codec),
+    m_format(Format),
+    m_sampleSize(Channels * AudioOutputSettings::SampleSize(Format)),
+    m_sampleRate(Samplerate),
+    m_channels(Channels),
+    m_codecProfile(Profile),
+    m_passthrough(Passthrough),
+    m_originalChannels(OriginalChannels),
+    m_bufferTime(100) //ms
+{
+    m_bestFillSize = (m_sampleSize * m_sampleRate) * m_bufferTime / 1000;
+}
+
+QString AudioDescription::ToString(void)
+{
+    return QString("'%1' %2Hz %3ch %4bps %5(profile %6)")
+        .arg(AVCodecToString((CodecID)m_codecId))
+        .arg(m_sampleRate)
+        .arg(m_channels)
+        .arg(AudioOutputSettings::FormatToBits(m_format))
+        .arg(m_passthrough ? "Passthrough " : "")
+        .arg(m_codecProfile);
 }
