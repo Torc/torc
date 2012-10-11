@@ -40,12 +40,13 @@ class TORC_CORE_PUBLIC TorcBuffer
     static int         Write       (void* Object, quint8* Buffer, qint32 BufferSize);
     static qint64      Seek        (void* Object, qint64  Offset, int Whence);
 
-    virtual int        (*GetReadFunction  (void))(void*, quint8*, qint32) { return &TorcBuffer::Read;  }
-    virtual int        (*GetWriteFunction (void))(void*, quint8*, qint32) { return &TorcBuffer::Write; }
-    virtual qint64     (*GetSeekFunction  (void))(void*, qint64, int)     { return &TorcBuffer::Seek;  }
+    virtual int        (*GetReadFunction  (void))(void*, quint8*, qint32);
+    virtual int        (*GetWriteFunction (void))(void*, quint8*, qint32);
+    virtual qint64     (*GetSeekFunction  (void))(void*, qint64, int);
 
     virtual bool       Open               (void);
     virtual void       Close              (void);
+    virtual bool       HandleAction       (int Action);
     virtual int        Read               (quint8 *Buffer, qint32 BufferSize) = 0;
     virtual int        Peek               (quint8 *Buffer, qint32 BufferSize) = 0;
     virtual int        Write              (quint8 *Buffer, qint32 BufferSize) = 0;

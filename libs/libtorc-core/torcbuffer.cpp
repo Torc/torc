@@ -90,6 +90,21 @@ qint64 TorcBuffer::Seek(void *Object, qint64 Offset, int Whence)
     return -1;
 }
 
+int (*TorcBuffer::GetReadFunction(void))(void*, quint8*, qint32)
+{
+    return &TorcBuffer::Read;
+}
+
+int (*TorcBuffer::GetWriteFunction(void))(void*, quint8*, qint32)
+{
+    return &TorcBuffer::Write;
+}
+
+qint64 (*TorcBuffer::GetSeekFunction(void))(void*, qint64, int)
+{
+    return &TorcBuffer::Seek;
+}
+
 bool TorcBuffer::Open(void)
 {
     LOG(VB_GENERAL, LOG_INFO, QString("Opened '%1'").arg(m_uri));
@@ -99,6 +114,11 @@ bool TorcBuffer::Open(void)
 void TorcBuffer::Close(void)
 {
     LOG(VB_GENERAL, LOG_INFO, QString("Closing '%1'").arg(m_uri));
+}
+
+bool TorcBuffer::HandleAction(int Action)
+{
+    return false;
 }
 
 bool TorcBuffer::Pause(void)
