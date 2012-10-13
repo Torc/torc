@@ -16,7 +16,7 @@
 #include "torclogging.h"
 #include "torccompat.h"
 #include "torcavutils.h"
-#include "torcdecoder.h"
+#include "audiodecoder.h"
 #include "audiospdifencoder.h"
 
 extern "C" {
@@ -39,7 +39,7 @@ AudioSPDIFEncoder::AudioSPDIFEncoder(QString Muxer, int CodecId)
     m_stream(NULL),
     m_size(0)
 {
-    TorcDecoder::InitialiseLibav();
+    AudioDecoder::InitialiseLibav();
 
     QByteArray dev_ba = Muxer.toAscii();
     AVOutputFormat *fmt = av_guess_format(dev_ba.constData(), NULL, NULL);

@@ -28,6 +28,7 @@ HEADERS += audiooutputnull.h        audiooutpututil.h
 HEADERS += audiooutputlisteners.h   audiooutputdownmix.h
 HEADERS += audiovolume.h            audioeld.h
 HEADERS += audiospdifencoder.h      audiooutputdigitalencoder.h
+HEADERS += audiowrapper.h
 
 SOURCES += audiosettings.cpp        audiooutputsettings.cpp
 SOURCES += audiooutput.cpp          audiooutputbase.cpp
@@ -35,9 +36,12 @@ SOURCES += audiooutputnull.cpp      audiooutpututil.cpp
 SOURCES += audiooutputlisteners.cpp audiooutputdownmix.cpp
 SOURCES += audiovolume.cpp          audioeld.cpp
 SOURCES += audiospdifencoder.cpp    audiooutputdigitalencoder.cpp
+SOURCES += audiowrapper.cpp
 
-HEADERS += torcavutils.h            torcdecoder.h
-SOURCES += torcavutils.cpp          torcdecoder.cpp
+HEADERS += audioplayer.h            audiodecoder.h
+HEADERS += audiointerface.h         torcavutils.h
+SOURCES += audioplayer.cpp          audiodecoder.cpp
+SOURCES += audiointerface.cpp       torcavutils.cpp
 
 contains(CONFIG_LIBPULSE, yes) {
     HEADERS += audiopulsehandler.h
@@ -90,7 +94,8 @@ SOURCES += el_processor.cpp         freesurround.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files += audiosettings.h audiooutput.h audiooutputsettings.h
-inc.files += torcavutils.h   torcdecoder.h
+inc.files += audiowrapper.h  audioplayer.h audiointerface.h
+inc.files += torcavutils.h   audiodecoder.h
 
 inc2.path  = $${PREFIX}/include/$${PROJECTNAME}/lib$${THIS_LIB}
 inc2.files = $${inc.files}

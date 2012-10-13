@@ -7,7 +7,8 @@
 class TorcUtils
 {
   public:
-    static int Probe(const UtilsCommandLineParser *Cmdline);
+    static int Probe (const UtilsCommandLineParser *Cmdline);
+    static int Play  (const UtilsCommandLineParser *Cmdline);
 };
 
 #endif // TORCUTILS_H

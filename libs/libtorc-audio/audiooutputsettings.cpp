@@ -586,7 +586,7 @@ AudioDescription::AudioDescription()
     m_passthrough(false),
     m_originalChannels(-1),
     m_bufferTime(1),
-    m_bestFillSize(0)
+    m_bestFillSize(1)
 {
 }
 

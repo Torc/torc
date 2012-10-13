@@ -37,13 +37,13 @@ HEADERS += uitimer.h          uianimation.h
 HEADERS += uitext.h           uishape.h
 HEADERS += uiimagewidget.h    uigroup.h
 HEADERS += uibutton.h         uiactions.h
-HEADERS += uishaperenderer.h
+HEADERS += uishaperenderer.h  uimedia.h
 
 SOURCES += uiimage.cpp        uiimagetracker.cpp
 SOURCES += uifont.cpp         uitextrenderer.cpp
 SOURCES += uiopenglwindow.cpp uieffect.cpp
 SOURCES += uiwindow.cpp       uiopenglshaders.cpp
-SOURCES += uiopenglfence.cpp
+SOURCES += uiopenglfence.cpp  uimedia.cpp
 SOURCES += uiopenglmatrix.cpp uiopengltextures.cpp
 SOURCES += uiopenglview.cpp   uiopenglbufferobjects.cpp
 SOURCES += uiopenglframebuffers.cpp
@@ -78,7 +78,7 @@ inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files += uiimage.h        uifont.h
 inc.files += uieffect.h       uiwindow.h
 inc.files += uiwidget.h       uitheme.h
-inc.files += uitext.h
+inc.files += uitext.h         uimedia.h
 inc.files += uishape.h        uiimagewidget.h
 inc.files += uigroup.h        uibutton.h
 

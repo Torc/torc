@@ -15,7 +15,7 @@
 #include "torccompat.h"
 #include "torclocalcontext.h"
 #include "torclogging.h"
-#include "torcdecoder.h"
+#include "audiodecoder.h"
 #include "torcavutils.h"
 #include "audiooutpututil.h"
 #include "audiospdifencoder.h"
@@ -98,7 +98,7 @@ void *AudioOutputDigitalEncoder::Reallocate(void *Pointer, size_t OldSize, size_
 
 bool AudioOutputDigitalEncoder::Init(CodecID CodecId, int Bitrate, int Samplerate, int Channels)
 {
-    TorcDecoder::InitialiseLibav();
+    AudioDecoder::InitialiseLibav();
 
     LOG(VB_AUDIO, LOG_INFO, QString("Init CodecId: %1 Bitrate: %2 Samplerate: %3 Channels: %4")
         .arg(AVCodecToString(CodecId)).arg(Bitrate).arg(Samplerate).arg(Channels));

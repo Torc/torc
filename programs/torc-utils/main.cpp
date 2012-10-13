@@ -32,6 +32,9 @@ int main(int argc, char **argv)
 
         if (cmdline.data()->ToBool("probe"))
             TorcUtils::Probe(cmdline.data());
+
+        if (cmdline.data()->ToBool("play"))
+            TorcUtils::Play(cmdline.data());
     }
 
     TorcLocalContext::TearDown();

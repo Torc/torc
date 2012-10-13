@@ -105,6 +105,18 @@ int UIActions::GetActionFromKey(QEvent *Event)
         case Qt::Key_F1:
         case Qt::Key_PowerOff:
             return Torc::Suspend;
+        case Qt::Key_P:
+            return Torc::Pause;
+        case Qt::Key_O:
+            return Torc::Play;
+        case Qt::Key_Space:
+            return Torc::TogglePause;
+        case Qt::Key_Q:
+            return Torc::Stop;
+        case Qt::Key_Comma:
+            return Torc::JumpBackwardSmall;
+        case Qt::Key_Period:
+            return Torc::JumpForwardSmall;
         default:
             break;
     }

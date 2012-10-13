@@ -17,6 +17,10 @@ void UtilsCommandLineParser::LoadArguments(void)
         << Add("--probe", "probe", false,
                 "Probe the given URI for media content (audio, video and still images).", "")
                 ->SetGroup("File")
+                ->SetRequiredChild(QStringList("infile"))
+        << Add("--play", "play", false,
+                "Play the given URI", "")
+                ->SetGroup("Media")
                 ->SetRequiredChild(QStringList("infile")));
 
     AddHelp();
