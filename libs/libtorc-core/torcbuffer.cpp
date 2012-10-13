@@ -80,7 +80,7 @@ int TorcBuffer::Write(void *Object, quint8 *Buffer, qint32 BufferSize)
     return -1;
 }
 
-qint64 TorcBuffer::Seek(void *Object, qint64 Offset, int Whence)
+int64_t TorcBuffer::Seek(void *Object, int64_t Offset, int Whence)
 {
     TorcBuffer* buffer = (TorcBuffer*)Object;
 
@@ -100,7 +100,7 @@ int (*TorcBuffer::GetWriteFunction(void))(void*, quint8*, qint32)
     return &TorcBuffer::Write;
 }
 
-qint64 (*TorcBuffer::GetSeekFunction(void))(void*, qint64, int)
+int64_t (*TorcBuffer::GetSeekFunction(void))(void*, int64_t, int)
 {
     return &TorcBuffer::Seek;
 }

@@ -128,7 +128,7 @@ int TorcFileBuffer::Write(quint8 *Buffer, qint32 BufferSize)
     return -1;
 }
 
-qint64 TorcFileBuffer::Seek(qint64 Offset, int Whence)
+int64_t TorcFileBuffer::Seek(int64_t Offset, int Whence)
 {
     int whence = Whence & ~AVSEEK_FORCE;
 

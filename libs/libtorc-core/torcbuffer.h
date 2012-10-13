@@ -42,7 +42,7 @@ class TORC_CORE_PUBLIC TorcBuffer
 
     virtual int        (*GetReadFunction  (void))(void*, quint8*, qint32);
     virtual int        (*GetWriteFunction (void))(void*, quint8*, qint32);
-    virtual qint64     (*GetSeekFunction  (void))(void*, qint64, int);
+    virtual int64_t    (*GetSeekFunction  (void))(void*, int64_t, int);
 
     virtual bool       Open               (void);
     virtual void       Close              (void);
@@ -50,7 +50,7 @@ class TORC_CORE_PUBLIC TorcBuffer
     virtual int        Read               (quint8 *Buffer, qint32 BufferSize) = 0;
     virtual int        Peek               (quint8 *Buffer, qint32 BufferSize) = 0;
     virtual int        Write              (quint8 *Buffer, qint32 BufferSize) = 0;
-    virtual qint64     Seek               (qint64  Offset, int Whence) = 0;
+    virtual int64_t    Seek               (int64_t  Offset, int Whence) = 0;
     virtual qint64     GetSize            (void) = 0;
     virtual qint64     GetPosition        (void) = 0;
     virtual bool       IsSequential       (void) = 0;

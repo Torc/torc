@@ -13,17 +13,17 @@ class TorcFileBuffer : public TorcBuffer
     explicit TorcFileBuffer(const QString &URI);
     ~TorcFileBuffer();
 
-    bool   Open            (void);
-    void   Close           (void);
-    int    Read            (quint8 *Buffer, qint32 BufferSize);
-    int    Peek            (quint8 *Buffer, qint32 BufferSize);
-    int    Write           (quint8 *Buffer, qint32 BufferSize);
-    qint64 Seek            (qint64  Offset, int Whence);
-    qint64 GetSize         (void);
-    qint64 GetPosition     (void);
-    bool   IsSequential    (void);
-    qint64 BytesAvailable  (void);
-    int    BestBufferSize  (void);
+    bool     Open            (void);
+    void     Close           (void);
+    int      Read            (quint8 *Buffer, qint32 BufferSize);
+    int      Peek            (quint8 *Buffer, qint32 BufferSize);
+    int      Write           (quint8 *Buffer, qint32 BufferSize);
+    int64_t  Seek            (int64_t  Offset, int Whence);
+    qint64   GetSize         (void);
+    qint64   GetPosition     (void);
+    bool     IsSequential    (void);
+    qint64   BytesAvailable  (void);
+    int      BestBufferSize  (void);
 
   private:
     QFile   *m_file;
