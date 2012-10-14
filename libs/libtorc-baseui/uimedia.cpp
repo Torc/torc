@@ -96,6 +96,9 @@ void UIMedia::CopyFrom(UIWidget *Other)
 
 bool UIMedia::Draw(quint64 TimeNow, UIWindow *Window, qreal XOffset, qreal YOffset)
 {
+    if (m_player)
+        m_player->Refresh();
+
     return UIWidget::Draw(TimeNow, Window, XOffset, YOffset);
 }
 
@@ -110,7 +113,7 @@ bool UIMedia::Finalise(void)
 
 bool UIMedia::InitialisePlayer(void)
 {
-    m_player = TorcPlayer::Create(this, TorcPlayer::NoFlags, TorcDecoder::DecodeAudio);
+    m_player = TorcPlayer::Create(this, TorcPlayer::NoFlags, TorcDecoder::DecodeVideo | TorcDecoder::DecodeAudio);
 
     if (m_player)
     {
