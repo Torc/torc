@@ -56,7 +56,10 @@ bool AudioInterface::InitialisePlayer(void)
     m_player = TorcPlayer::Create(this, TorcPlayer::NoFlags, TorcDecoder::DecodeAudio);
 
     if (m_player)
-        connect(m_player, SIGNAL(StateChanged(TorcPlayer::PlayerState)), this, SLOT(PlayerStateChanged(TorcPlayer::PlayerState)));
+    {
+        connect(m_player, SIGNAL(StateChanged(TorcPlayer::PlayerState)),
+                this, SLOT(PlayerStateChanged(TorcPlayer::PlayerState)));
+    }
 
     return m_player;
 }
