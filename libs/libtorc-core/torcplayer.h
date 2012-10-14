@@ -14,7 +14,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 {
     Q_OBJECT
 
-    friend class TorcPlayerFactory;
+    // TODO remove this
     friend class AudioWrapper;
 
   public:
@@ -45,6 +45,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 
     virtual ~TorcPlayer();
 
+    void            Refresh            (void);
     void            Reset              (void);
     bool            HandleEvent        (QEvent *Event);
     bool            HandleAction       (int Action);
@@ -73,7 +74,6 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 
     void            StartTimer         (int &Timer, int Timeout);
     void            KillTimer          (int &Timer);
-    void            Refresh            (void);
     void            DestroyNextDecoder (void);
     void            DestroyOldDecoder  (void);
     void            SendUserMessage    (const QString &Message);
