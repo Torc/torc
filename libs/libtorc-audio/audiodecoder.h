@@ -91,9 +91,12 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
   protected:
     TorcPlayer                          *m_parent;
 
+    qint64                               m_audioPts;
     AudioWrapper                        *m_audio;
     AudioDescription                    *m_audioIn;
     AudioDescription                    *m_audioOut;
+
+    qint64                               m_videoPts;
 
     int                                  m_interruptDecoder;
     QString                              m_uri;
