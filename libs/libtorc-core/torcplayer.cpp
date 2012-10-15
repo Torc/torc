@@ -95,7 +95,9 @@ TorcPlayer::TorcPlayer(QObject *Parent, int PlaybackFlags, int DecoderFlags)
     m_nextUri(QString()),
     m_nextDecoder(NULL),
     m_nextDecoderPlay(false),
-    m_oldDecoder(NULL)
+    m_nextDecoderStartTimer(0),
+    m_oldDecoder(NULL),
+    m_oldDecoderStopTimer(0)
 {
 }
 
