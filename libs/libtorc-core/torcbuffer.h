@@ -6,6 +6,7 @@
 #include <QString>
 
 // Torc
+#include "torccompat.h"
 #include "torccoreexport.h"
 
 // this avoids a dependancy on libavformat
@@ -35,10 +36,10 @@ class TORC_CORE_PUBLIC TorcBuffer
   public:
     virtual ~TorcBuffer();
 
-    static TorcBuffer* Create      (const QString &URI);
-    static int         Read        (void* Object, quint8* Buffer, qint32 BufferSize);
-    static int         Write       (void* Object, quint8* Buffer, qint32 BufferSize);
-    static qint64      Seek        (void* Object, qint64  Offset, int Whence);
+    static TorcBuffer* Create             (const QString &URI);
+    static int         Read               (void* Object, quint8* Buffer, qint32 BufferSize);
+    static int         Write              (void* Object, quint8* Buffer, qint32 BufferSize);
+    static qint64      Seek               (void* Object, qint64  Offset, int Whence);
 
     virtual int        (*GetReadFunction  (void))(void*, quint8*, qint32);
     virtual int        (*GetWriteFunction (void))(void*, quint8*, qint32);
@@ -47,6 +48,7 @@ class TORC_CORE_PUBLIC TorcBuffer
     virtual bool       Open               (void);
     virtual void       Close              (void);
     virtual bool       HandleAction       (int Action);
+    virtual void*      RequiredAVFormat   (void);
     virtual int        Read               (quint8 *Buffer, qint32 BufferSize) = 0;
     virtual int        Peek               (quint8 *Buffer, qint32 BufferSize) = 0;
     virtual int        Write              (quint8 *Buffer, qint32 BufferSize) = 0;
@@ -59,7 +61,7 @@ class TORC_CORE_PUBLIC TorcBuffer
     virtual bool       Pause              (void);
     virtual bool       Unpause            (void);
     virtual bool       TogglePause        (void);
-
+    virtual QString    GetFilteredUri     (void);
     QString            GetURI             (void);
     bool               GetPaused          (void);
     void               SetBitrate         (int Bitrate, int Factor);

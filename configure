@@ -1867,8 +1867,8 @@ echo "Torc:"
 echo
 echo "Forcing shared libraries (and disabling static)"
 echo
-disable avdevice
-disable indevs
+enable gpl
+enable libcdio
 disable outdevs
 disable static
 disable doc
@@ -3602,7 +3602,7 @@ check_deps $CONFIG_LIST       \
 ! enabled_any memalign posix_memalign aligned_malloc &&
     enabled_any $need_memalign && enable memalign_hack
 
-disable $INDEV_LIST
+#disable $INDEV_LIST
 
 echo "install prefix            $prefix"
 echo "source path               $source_path"

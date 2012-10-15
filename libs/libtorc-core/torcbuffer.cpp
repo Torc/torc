@@ -60,6 +60,11 @@ TorcBuffer* TorcBuffer::Create(const QString &URI)
     return buffer;
 }
 
+void* TorcBuffer::RequiredAVFormat(void)
+{
+    return NULL;
+}
+
 int TorcBuffer::Read(void *Object, quint8 *Buffer, qint32 BufferSize)
 {
     TorcBuffer* buffer = (TorcBuffer*)Object;
@@ -162,6 +167,11 @@ void TorcBuffer::SetBitrate(int Bitrate, int Factor)
 
     LOG(VB_GENERAL, LOG_INFO, QString("New bitrate: %1 kbit/s (factor %2)")
         .arg(m_bitrate / 1000).arg(m_bitrateFactor));
+}
+
+QString TorcBuffer::GetFilteredUri(void)
+{
+    return m_uri;
 }
 
 QString TorcBuffer::GetURI(void)

@@ -19,6 +19,7 @@ LIBS += -L../libtorc-core -ltorc-core-$$LIBVERSION
 LIBS += -L../libtorc-av/libavformat -ltorc-avformat
 LIBS += -L../libtorc-av/libavcodec -ltorc-avcodec
 LIBS += -L../libtorc-av/libavutil -ltorc-avutil
+LIBS += -L../libtorc-av/libavdevice -ltorc-avdevice
 
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 
@@ -42,6 +43,11 @@ HEADERS += audioplayer.h            audiodecoder.h
 HEADERS += audiointerface.h         torcavutils.h
 SOURCES += audioplayer.cpp          audiodecoder.cpp
 SOURCES += audiointerface.cpp       torcavutils.cpp
+
+contains(CONFIG_LIBCDIO_INDEV, yes) {
+    HEADERS += torccdbuffer.h
+    SOURCES += torccdbuffer.cpp
+}
 
 contains(CONFIG_LIBPULSE, yes) {
     HEADERS += audiopulsehandler.h

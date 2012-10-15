@@ -39,6 +39,7 @@
 
 extern "C" {
 #include "libavformat/avformat.h"
+#include "libavdevice/avdevice.h"
 #include "libavutil/pixdesc.h"
 }
 
@@ -520,6 +521,7 @@ void AudioDecoder::InitialiseLibav(void)
     {
         QMutexLocker locker(gAVCodecLock);
         av_register_all();
+        avdevice_register_all();
     }
 
     LOG(VB_GENERAL, LOG_INFO, "Libav initialised");
@@ -1217,22 +1219,39 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
         return false;
     }
 
-    // probe (only necessary for some files)
-    int probesize = PROBE_BUFFER_SIZE;
-    if (!m_priv->m_buffer->IsSequential() && m_priv->m_buffer->BytesAvailable() < probesize)
-        probesize = m_priv->m_buffer->BytesAvailable();
-    probesize += AVPROBE_PADDING_SIZE;
+    AVInputFormat *format = NULL;
+    bool needbuffer = true;
 
-    QByteArray *probebuffer = new QByteArray(probesize, 0);
-    AVProbeData probe;
-    probe.filename = m_uri.toLocal8Bit().constData();
-    probe.buf_size = m_priv->m_buffer->Peek((quint8*)probebuffer->data(), probesize);
-    probe.buf      = (unsigned char*)probebuffer->data();
-    AVInputFormat *format = av_probe_input_format(&probe, 0);
-    delete probebuffer;
+    if (m_priv->m_buffer->RequiredAVFormat())
+    {
+        AVInputFormat *required = (AVInputFormat*)m_priv->m_buffer->RequiredAVFormat();
+        if (required)
+        {
+            format = required;
+            needbuffer = false;
+            LOG(VB_GENERAL, LOG_INFO, QString("Demuxer required by buffer '%1'").arg(format->name));
+        }
+    }
 
-    if (format)
-        format->flags &= ~AVFMT_NOFILE;
+    if (!format)
+    {
+        // probe (only necessary for some files)
+        int probesize = PROBE_BUFFER_SIZE;
+        if (!m_priv->m_buffer->IsSequential() && m_priv->m_buffer->BytesAvailable() < probesize)
+            probesize = m_priv->m_buffer->BytesAvailable();
+        probesize += AVPROBE_PADDING_SIZE;
+
+        QByteArray *probebuffer = new QByteArray(probesize, 0);
+        AVProbeData probe;
+        probe.filename = m_uri.toLocal8Bit().constData();
+        probe.buf_size = m_priv->m_buffer->Peek((quint8*)probebuffer->data(), probesize);
+        probe.buf      = (unsigned char*)probebuffer->data();
+        format = av_probe_input_format(&probe, 0);
+        delete probebuffer;
+
+        if (format)
+            format->flags &= ~AVFMT_NOFILE;
+    }
 
     // Allocate AVFormatContext
     m_priv->m_avFormatContext = avformat_alloc_context();
@@ -1249,40 +1268,44 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
     m_priv->m_avFormatContext->interrupt_callback.opaque = (void*)&m_interruptDecoder;
     m_priv->m_avFormatContext->interrupt_callback.callback = AudioDecoder::DecoderInterrupt;
 
-    // Create libav buffer
-    if (m_priv->m_libavBuffer)
-        av_free(m_priv->m_libavBuffer);
-
-    m_priv->m_libavBufferSize = m_priv->m_buffer->BestBufferSize();
-    if (!m_priv->m_buffer->IsSequential() && m_priv->m_buffer->BytesAvailable() < m_priv->m_libavBufferSize)
-        m_priv->m_libavBufferSize = m_priv->m_buffer->BytesAvailable();
-    m_priv->m_libavBuffer = (unsigned char*)av_mallocz(m_priv->m_libavBufferSize + FF_INPUT_BUFFER_PADDING_SIZE);
-
-    if (!m_priv->m_libavBuffer)
+    if (needbuffer)
     {
-        CloseDemuxer(Thread);
-        *state = TorcDecoder::Errored;
-        return false;
+        // Create libav buffer
+        if (m_priv->m_libavBuffer)
+            av_free(m_priv->m_libavBuffer);
+
+        m_priv->m_libavBufferSize = m_priv->m_buffer->BestBufferSize();
+        if (!m_priv->m_buffer->IsSequential() && m_priv->m_buffer->BytesAvailable() < m_priv->m_libavBufferSize)
+            m_priv->m_libavBufferSize = m_priv->m_buffer->BytesAvailable();
+        m_priv->m_libavBuffer = (unsigned char*)av_mallocz(m_priv->m_libavBufferSize + FF_INPUT_BUFFER_PADDING_SIZE);
+
+        if (!m_priv->m_libavBuffer)
+        {
+            CloseDemuxer(Thread);
+            *state = TorcDecoder::Errored;
+            return false;
+        }
+
+        LOG(VB_GENERAL, LOG_INFO, QString("Input buffer size: %1 bytes").arg(m_priv->m_libavBufferSize));
+
+        // Create libav byte context
+        m_priv->m_avFormatContext->pb = avio_alloc_context(m_priv->m_libavBuffer,
+                                                           m_priv->m_libavBufferSize,
+                                                           0, m_priv->m_buffer,
+                                                           m_priv->m_buffer->GetReadFunction(),
+                                                           m_priv->m_buffer->GetWriteFunction(),
+                                                           m_priv->m_buffer->GetSeekFunction());
+
+        m_priv->m_avFormatContext->pb->seekable = !m_priv->m_buffer->IsSequential();
     }
-
-    LOG(VB_GENERAL, LOG_INFO, QString("Input buffer size: %1 bytes").arg(m_priv->m_libavBufferSize));
-
-    // Create libav byte context
-    m_priv->m_avFormatContext->pb = avio_alloc_context(m_priv->m_libavBuffer,
-                                                       m_priv->m_libavBufferSize,
-                                                       0, m_priv->m_buffer,
-                                                       m_priv->m_buffer->GetReadFunction(),
-                                                       m_priv->m_buffer->GetWriteFunction(),
-                                                       m_priv->m_buffer->GetSeekFunction());
-
-    m_priv->m_avFormatContext->pb->seekable = !m_priv->m_buffer->IsSequential();
 
     // Open
     int err = 0;
-    if ((err = avformat_open_input(&m_priv->m_avFormatContext, m_uri.toLocal8Bit().constData(), format, NULL)) < 0)
+    QString uri = m_priv->m_buffer->GetFilteredUri();
+    if ((err = avformat_open_input(&m_priv->m_avFormatContext, uri.toLocal8Bit().constData(), format, NULL)) < 0)
     {
-        LOG(VB_GENERAL, LOG_ERR, QString("Failed to open AVFormatContext - error '%1'")
-            .arg(AVErrorToString(err)));
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to open AVFormatContext - error '%1' (%2)")
+            .arg(AVErrorToString(err)).arg(uri));
         CloseDemuxer(Thread);
         *state = TorcDecoder::Errored;
         return false;
@@ -2007,7 +2030,7 @@ void AudioDecoder::DebugPrograms(void)
         return;
 
     // General
-    LOG(VB_GENERAL, LOG_INFO, QString("Demuxer '%1' for '%2'").arg(m_priv->m_avFormatContext->iformat->long_name).arg(m_uri));
+    LOG(VB_GENERAL, LOG_INFO, QString("Demuxer '%1' for '%2'").arg(m_priv->m_avFormatContext->iformat->name).arg(m_uri));
     LOG(VB_GENERAL, LOG_INFO, QString("Duration: %1 Bitrate: %2 kbit/s Start: %3")
         .arg(AVTimeToString(m_priv->m_avFormatContext->duration))
         .arg(m_priv->m_avFormatContext->bit_rate / 1000)
