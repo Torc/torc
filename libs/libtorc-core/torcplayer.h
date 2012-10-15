@@ -14,15 +14,13 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 {
     Q_OBJECT
 
-    // TODO remove this
-    friend class AudioWrapper;
-
   public:
     enum PlayerFlags
     {
         NoFlags      = (0 << 0),
         AudioMuted   = (1 << 0),
-        AudioDummy   = (1 << 1)
+        AudioDummy   = (1 << 1),
+        UserFacing   = (1 << 2)
     };
 
     typedef enum PlayerState
@@ -61,6 +59,9 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
     bool            TogglePause        (void);
 
     virtual void*   GetAudio           (void) = 0;
+    void            SendUserMessage    (const QString &Message);
+    int             GetPlayerFlags     (void);
+    int             GetDecoderFlags    (void);
 
   signals:
     void            StateChanged       (TorcPlayer::PlayerState NewState);
@@ -71,15 +72,10 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 
   protected:
     void            SetState           (PlayerState NewState);
-
     void            StartTimer         (int &Timer, int Timeout);
     void            KillTimer          (int &Timer);
     void            DestroyNextDecoder (void);
     void            DestroyOldDecoder  (void);
-    void            SendUserMessage    (const QString &Message);
-    int             GetPlayerFlags     (void);
-    int             GetDecoderFlags    (void);
-
     bool            event              (QEvent* Event);
 
   protected:

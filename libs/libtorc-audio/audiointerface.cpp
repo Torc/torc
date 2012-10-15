@@ -53,7 +53,7 @@ bool AudioInterface::event(QEvent *Event)
 
 bool AudioInterface::InitialisePlayer(void)
 {
-    m_player = TorcPlayer::Create(this, TorcPlayer::NoFlags, TorcDecoder::DecodeAudio);
+    m_player = TorcPlayer::Create(this, TorcPlayer::UserFacing, TorcDecoder::DecodeAudio);
 
     if (m_player)
     {

@@ -44,8 +44,6 @@ UIMedia::UIMedia(UIWidget *Root, UIWidget *Parent, const QString &Name, int Flag
         m_parent->IncreaseFocusableChildCount();
 
     gLocalContext->AddObserver(this);
-
-    SetURI("/Users/mark_kendall/test2.m4a");
 }
 
 UIMedia::~UIMedia()
@@ -113,7 +111,7 @@ bool UIMedia::Finalise(void)
 
 bool UIMedia::InitialisePlayer(void)
 {
-    m_player = TorcPlayer::Create(this, TorcPlayer::NoFlags, TorcDecoder::DecodeVideo | TorcDecoder::DecodeAudio);
+    m_player = TorcPlayer::Create(this, TorcPlayer::UserFacing, TorcDecoder::DecodeVideo | TorcDecoder::DecodeAudio);
 
     if (m_player)
     {

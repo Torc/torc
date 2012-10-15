@@ -521,6 +521,7 @@ void AudioDecoder::InitialiseLibav(void)
     {
         QMutexLocker locker(gAVCodecLock);
         av_register_all();
+        avformat_network_init();
         avdevice_register_all();
     }
 
@@ -2031,10 +2032,9 @@ void AudioDecoder::DebugPrograms(void)
 
     // General
     LOG(VB_GENERAL, LOG_INFO, QString("Demuxer '%1' for '%2'").arg(m_priv->m_avFormatContext->iformat->name).arg(m_uri));
-    LOG(VB_GENERAL, LOG_INFO, QString("Duration: %1 Bitrate: %2 kbit/s Start: %3")
+    LOG(VB_GENERAL, LOG_INFO, QString("Duration: %1 Bitrate: %2 kbit/s")
         .arg(AVTimeToString(m_priv->m_avFormatContext->duration))
-        .arg(m_priv->m_avFormatContext->bit_rate / 1000)
-        .arg(AVTimeToString(m_priv->m_avFormatContext->start_time)));
+        .arg(m_priv->m_avFormatContext->bit_rate / 1000));
 
     // Chapters
     if (m_chapters.size() > 1)
