@@ -31,6 +31,7 @@ HEADERS += torcstorage.h      torcusb.h
 HEADERS += torcedid.h         torcbuffer.h
 HEADERS += torcfilebuffer.h   torclanguage.h
 HEADERS += torcplayer.h       torcdecoder.cpp
+HEADERS += torcnetwork.h
 
 SOURCES += torcloggingimp.cpp torcplist.cpp
 SOURCES += torcthread.cpp     torclocalcontext.cpp
@@ -45,6 +46,7 @@ SOURCES += torcstorage.cpp    torcusb.cpp
 SOURCES += torcedid.cpp       torcbuffer.cpp
 SOURCES += torcfilebuffer.cpp torclanguage.cpp
 SOURCES += torcplayer.cpp     torcdecoder.cpp
+SOURCES += torcnetwork.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files  = torclogging.h     torclocalcontext.h
@@ -56,7 +58,7 @@ inc.files += torcevent.h       torcobservable.h
 inc.files += torclocaldefs.h   torcpower.h
 inc.files += torcusb.h         torcedid.h
 inc.files += torcbuffer.h      torcplayer.h
-inc.files += torcdecoder.h
+inc.files += torcdecoder.h     torcnetwork.h
 
 unix:contains(CONFIG_LIBUDEV, yes) {
     HEADERS += torcusbprivunix.h
