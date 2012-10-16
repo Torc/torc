@@ -29,7 +29,8 @@ class TORC_CORE_PUBLIC Torc
         Server      = (1 << 2),
         Power       = (1 << 3),
         Storage     = (1 << 4),
-        USB         = (1 << 5)
+        USB         = (1 << 5),
+        Network     = (1 << 6)
     };
 
     typedef enum MessageTypes
@@ -136,6 +137,11 @@ class TORC_CORE_PUBLIC Torc
         // jumps
         ShowSearch = 5000,
         HideSearch,
+        // network
+        DisableNetwork,
+        EnableNetwork,
+        NetworkAvailable,
+        NetworkUnavailable,
         // end of predefined
         MaxTorc = 60000,
         // plugins etc
