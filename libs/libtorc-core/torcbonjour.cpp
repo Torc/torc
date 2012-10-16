@@ -35,6 +35,7 @@
 #include "torcevent.h"
 #include "torclocalcontext.h"
 #include "torcadminthread.h"
+#include "torcnetwork.h"
 #include "torcbonjour.h"
 
 TorcBonjour* gBonjour = NULL;
@@ -204,6 +205,12 @@ class TorcBonjourPriv
         m_discoveredLock(new QMutex(QMutex::Recursive))
     {
         setenv("AVAHI_COMPAT_NOWARN", "1", 1);
+
+        if (!TorcNetwork::IsAvailable())
+        {
+            LOG(VB_GENERAL, LOG_INFO, "Network not available - suspending bonjour");
+            m_suspended = true;
+        }
     }
 
     ~TorcBonjourPriv()
@@ -238,6 +245,11 @@ class TorcBonjourPriv
         m_discoveredLock = NULL;
     }
 
+    bool IsSuspended(void)
+    {
+        return m_suspended;
+    }
+
     void Suspend(void)
     {
         if (m_suspended)
@@ -245,6 +257,8 @@ class TorcBonjourPriv
             LOG(VB_GENERAL, LOG_INFO, "Bonjour already suspended");
             return;
         }
+
+        LOG(VB_GENERAL, LOG_INFO, "Suspending bonjour activities");
 
         m_suspended = true;
 
@@ -275,6 +289,8 @@ class TorcBonjourPriv
             return;
         }
 
+        LOG(VB_GENERAL, LOG_INFO, "Resuming bonjour activities");
+
         {
             QMutexLocker locker(m_serviceLock);
 
@@ -300,8 +316,18 @@ class TorcBonjourPriv
     {
         if (m_suspended)
         {
-            LOG(VB_GENERAL, LOG_ERR, "Trying to register Bonjour service while resumed");
-            return 0;
+            QMutexLocker locker(m_serviceLock);
+
+            TorcBonjourService service(TorcBonjourService::Service, NULL, Name, Type);
+            service.m_txt  = Txt;
+            service.m_port = Port;
+            quint32 reference = Reference;
+            while (!reference || m_services.contains(reference))
+                reference++;
+            m_services.insert(reference, service);
+
+            LOG(VB_GENERAL, LOG_ERR, "Bonjour service registration deferred until Bonjour resumed");
+            return reference;
         }
 
         quint16 qport = qToBigEndian(Port);
@@ -339,10 +365,20 @@ class TorcBonjourPriv
 
     quint32 Browse(const QByteArray &Type, quint32 Reference = 0)
     {
+        static QByteArray dummy("browser");
+
         if (m_suspended)
         {
-            LOG(VB_GENERAL, LOG_ERR, "Trying to browse Bonjour service while resumed");
-            return 0;
+            QMutexLocker locker(m_serviceLock);
+
+            TorcBonjourService service(TorcBonjourService::Browse, NULL, dummy, Type);
+            quint32 reference = Reference;
+            while (!reference || m_services.contains(reference))
+                reference++;
+            m_services.insert(reference, service);
+
+            LOG(VB_GENERAL, LOG_ERR, "Bonjour browse request deferred until Bonjour resumed");
+            return reference;
         }
 
         DNSServiceRef dnssref = NULL;
@@ -361,7 +397,6 @@ class TorcBonjourPriv
             quint32 reference = Reference;
             while (!reference || m_services.contains(reference))
                 reference++;
-            static QByteArray dummy("browser");
             TorcBonjourService service(TorcBonjourService::Browse, dnssref, dummy, Type);
             m_services.insert(reference, service);
             m_services[reference].SetFileDescriptor(DNSServiceRefSockFD(dnssref), m_parent);
@@ -727,7 +762,7 @@ void TorcBonjour::TearDown(void)
 TorcBonjour::TorcBonjour()
   : QObject(NULL), m_priv(new TorcBonjourPriv(this))
 {
-    // listen for power events
+    // listen for power and network events
     gLocalContext->AddObserver(this);
 }
 
@@ -788,15 +823,23 @@ bool TorcBonjour::event(QEvent *Event)
                 event == Torc::Restarting ||
                 event == Torc::Hibernating)
             {
-                LOG(VB_GENERAL, LOG_INFO, "Suspending bonjour acivities");
-                m_priv->Suspend();
-                return true;
+                if (!m_priv->IsSuspended())
+                    m_priv->Suspend();
             }
             else if (event == Torc::WokeUp)
             {
-                LOG(VB_GENERAL, LOG_INFO, "Restarting bonjour acivities");
-                m_priv->Resume();
-                return true;
+                if (TorcNetwork::IsAvailable() && m_priv->IsSuspended())
+                    m_priv->Resume();
+            }
+            else if (event == Torc::NetworkAvailable)
+            {
+                if (m_priv->IsSuspended())
+                    m_priv->Resume();
+            }
+            else if (event == Torc::NetworkUnavailable)
+            {
+                if (!m_priv->IsSuspended())
+                    m_priv->Suspend();
             }
         }
     }
