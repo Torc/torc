@@ -81,7 +81,7 @@ QString ConfigurationTypeToString(QNetworkConfiguration::Type Type)
 }
 
 TorcNetwork::TorcNetwork()
-  : QNetworkAccessManager(this),
+  : QNetworkAccessManager(),
     m_online(false),
     m_allow(false),
     m_manager(new QNetworkConfigurationManager(this))
