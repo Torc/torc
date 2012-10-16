@@ -85,18 +85,19 @@ void TorcAdminThread::run(void)
  * \code
  * static class MyBackgroundActivity : public TorcAdminObject
  * {
+ *   public:
  *     MyBackgroundActivity()
- *       : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY)
+ *       : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY),
  *         MyWorldDominationObject(NULL)
  *     {
  *     }
  *
- *     void Create(void);
+ *     void Create(void)
  *     {
  *         MyWorldDominationObject = new Dominator();
        }
  *
- *     void Destroy
+ *     void Destroy(void)
  *     {
  *         delete MyWorldDominationObject;
  *     }
