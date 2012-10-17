@@ -294,6 +294,7 @@ Torc external library support:
   --disable-libudev        disable udev via libudev [autodetect]
   --disable-qtdbus         disable DBus via QtDbus [autodetect]
   --disable-x11base        disable default X11 support [autodetect]
+  --disable-libcrypto      disable use of the OpenSSL cryptographic library
 
 Torc paths:
   --libcec-path            location of directory containing
@@ -1088,6 +1089,7 @@ CONFIG_LIST="
     x11grab
     zlib
     libcec
+    libcrypto
     libdns_sd
     libudev
     qtdbus
@@ -1877,6 +1879,7 @@ enable x11base
 
 # Torc configurable options
 enable libcec
+enable libcrypto
 enable libdns_sd
 enable libudev
 enable qtdbus
@@ -3765,6 +3768,9 @@ int main(void) {
 EOF
 fi
 
+# libcrypto for RAOP
+enabled libcrypto && check_lib openssl/rsa.h RSA_new -lcrypto || disable libcrypto
+
 # Bonjour support for service discovery and registration
 if test $target_os != darwin ; then
     enabled libdns_sd && check_lib dns_sd.h DNSServiceRegister -ldns_sd || disable libdns_sd
@@ -3826,6 +3832,7 @@ echo "Torc:"
 echo "C++ compiler                 $(which $cxx)"
 echo "qmake                        $(which $qmake) [$($qmake -query QT_VERSION)]"
 echo "libcec enabled               ${libcec-no} [$libcec_path]"
+echo "libcrypto enabled            ${libcrypto-no}"
 echo "libdns_sd (Bonjour) enabled  ${libdns_sd-no}"
 echo "libudev enabled              ${libudev-no}"
 echo "QtDbus enabled               ${qtdbus-no}"
