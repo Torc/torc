@@ -1090,7 +1090,6 @@ CONFIG_LIST="
     libcec
     libdns_sd
     libudev
-    qmake
     qtdbus
     x11base
 "
@@ -1373,6 +1372,7 @@ CMDLINE_SET="
     nm
     optflags
     pkg_config
+    qmake
     random_seed
     samples
     sysinclude
