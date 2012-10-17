@@ -835,6 +835,7 @@ bool TorcCECDevice::event(QEvent *Event)
                 case Torc::Suspending:
                 case Torc::ShuttingDown:
                 case Torc::Hibernating:
+                case Torc::Restarting:
                     if (m_priv)
                         m_priv->Close(false, true);
                     break;
