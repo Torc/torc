@@ -99,8 +99,15 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
     }
 #endif
 
+    // try and set meaningful defaults for unconfigured systems
     Settings.FixPassThrough();
 
+#if CONFIG_ALSA_OUTDEV
+    if (Settings.m_mainDevice.isEmpty())
+        Settings.m_mainDevice = QString("ALSA:default");
+#endif
+
+    // start looking for concrete subclasses
     if (device.startsWith("PulseAudio:"))
     {
 #if CONFIG_LIBPULSE_DISABLED_DELIBERATELY
