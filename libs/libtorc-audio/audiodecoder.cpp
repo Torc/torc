@@ -479,6 +479,7 @@ class AudioDecoderPriv
         m_libavBuffer(NULL),
         m_libavBufferSize(0),
         m_avFormatContext(NULL),
+        m_createdAVFormatContext(false),
         m_pauseResult(0),
         m_demuxerThread(new TorcDemuxerThread(Parent))
     {
@@ -493,6 +494,7 @@ class AudioDecoderPriv
     unsigned char      *m_libavBuffer;
     int                 m_libavBufferSize;
     AVFormatContext    *m_avFormatContext;
+    bool                m_createdAVFormatContext;
     int                 m_pauseResult;
     TorcDemuxerThread  *m_demuxerThread;
 };
@@ -1223,45 +1225,61 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
     AVInputFormat *format = NULL;
     bool needbuffer = true;
 
-    if (m_priv->m_buffer->RequiredAVFormat())
+    if (m_priv->m_buffer->RequiredAVContext())
     {
-        AVInputFormat *required = (AVInputFormat*)m_priv->m_buffer->RequiredAVFormat();
+        AVFormatContext *required = (AVFormatContext*)m_priv->m_buffer->RequiredAVContext();
         if (required)
         {
-            format = required;
-            needbuffer = false;
-            LOG(VB_GENERAL, LOG_INFO, QString("Demuxer required by buffer '%1'").arg(format->name));
+            m_priv->m_avFormatContext = required;
+            m_priv->m_createdAVFormatContext = false;
+            LOG(VB_GENERAL, LOG_INFO, "Buffer has already allocated decoder context");
         }
     }
 
-    if (!format)
-    {
-        // probe (only necessary for some files)
-        int probesize = PROBE_BUFFER_SIZE;
-        if (!m_priv->m_buffer->IsSequential() && m_priv->m_buffer->BytesAvailable() < probesize)
-            probesize = m_priv->m_buffer->BytesAvailable();
-        probesize += AVPROBE_PADDING_SIZE;
-
-        QByteArray *probebuffer = new QByteArray(probesize, 0);
-        AVProbeData probe;
-        probe.filename = m_uri.toLocal8Bit().constData();
-        probe.buf_size = m_priv->m_buffer->Peek((quint8*)probebuffer->data(), probesize);
-        probe.buf      = (unsigned char*)probebuffer->data();
-        format = av_probe_input_format(&probe, 0);
-        delete probebuffer;
-
-        if (format)
-            format->flags &= ~AVFMT_NOFILE;
-    }
-
-    // Allocate AVFormatContext
-    m_priv->m_avFormatContext = avformat_alloc_context();
     if (!m_priv->m_avFormatContext)
     {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to allocate format context.");
-        CloseDemuxer(Thread);
-        *state = TorcDecoder::Errored;
-        return false;
+        if (m_priv->m_buffer->RequiredAVFormat())
+        {
+            AVInputFormat *required = (AVInputFormat*)m_priv->m_buffer->RequiredAVFormat();
+            if (required)
+            {
+                format = required;
+                needbuffer = false;
+                LOG(VB_GENERAL, LOG_INFO, QString("Demuxer required by buffer '%1'").arg(format->name));
+            }
+        }
+
+        m_priv->m_createdAVFormatContext = true;
+
+        if (!format)
+        {
+            // probe (only necessary for some files)
+            int probesize = PROBE_BUFFER_SIZE;
+            if (!m_priv->m_buffer->IsSequential() && m_priv->m_buffer->BytesAvailable() < probesize)
+                probesize = m_priv->m_buffer->BytesAvailable();
+            probesize += AVPROBE_PADDING_SIZE;
+
+            QByteArray *probebuffer = new QByteArray(probesize, 0);
+            AVProbeData probe;
+            probe.filename = m_uri.toLocal8Bit().constData();
+            probe.buf_size = m_priv->m_buffer->Peek((quint8*)probebuffer->data(), probesize);
+            probe.buf      = (unsigned char*)probebuffer->data();
+            format = av_probe_input_format(&probe, 0);
+            delete probebuffer;
+
+            if (format)
+                format->flags &= ~AVFMT_NOFILE;
+        }
+
+        // Allocate AVFormatContext
+        m_priv->m_avFormatContext = avformat_alloc_context();
+        if (!m_priv->m_avFormatContext)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Failed to allocate format context.");
+            CloseDemuxer(Thread);
+            *state = TorcDecoder::Errored;
+            return false;
+        }
     }
 
     // abort callback
@@ -1301,25 +1319,28 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
     }
 
     // Open
-    int err = 0;
-    QString uri = m_priv->m_buffer->GetFilteredUri();
-    if ((err = avformat_open_input(&m_priv->m_avFormatContext, uri.toLocal8Bit().constData(), format, NULL)) < 0)
+    if (m_priv->m_createdAVFormatContext)
     {
-        LOG(VB_GENERAL, LOG_ERR, QString("Failed to open AVFormatContext - error '%1' (%2)")
-            .arg(AVErrorToString(err)).arg(uri));
-        CloseDemuxer(Thread);
-        *state = TorcDecoder::Errored;
-        return false;
-    }
+        int err = 0;
+        QString uri = m_priv->m_buffer->GetFilteredUri();
+        if ((err = avformat_open_input(&m_priv->m_avFormatContext, uri.toLocal8Bit().constData(), format, NULL)) < 0)
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Failed to open AVFormatContext - error '%1' (%2)")
+                .arg(AVErrorToString(err)).arg(uri));
+            CloseDemuxer(Thread);
+            *state = TorcDecoder::Errored;
+            return false;
+        }
 
-    // Scan for streams
-    if ((err = avformat_find_stream_info(m_priv->m_avFormatContext, NULL)) < 0)
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("Failed to find streams - error '%1'")
-            .arg(AVErrorToString(err)));
-        CloseDemuxer(Thread);
-        *state = TorcDecoder::Errored;
-        return false;
+        // Scan for streams
+        if ((err = avformat_find_stream_info(m_priv->m_avFormatContext, NULL)) < 0)
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Failed to find streams - error '%1'")
+                .arg(AVErrorToString(err)));
+            CloseDemuxer(Thread);
+            *state = TorcDecoder::Errored;
+            return false;
+        }
     }
 
     // Scan programs
@@ -1481,11 +1502,9 @@ void AudioDecoder::CloseDemuxer(TorcDemuxerThread *Thread)
     ResetPrograms();
 
     // Delete AVFormatContext (and byte context)
-    if (m_priv->m_avFormatContext)
-    {
+    if (m_priv->m_avFormatContext && m_priv->m_createdAVFormatContext)
         avformat_close_input(&m_priv->m_avFormatContext);
-        m_priv->m_avFormatContext = NULL;
-    }
+    m_priv->m_avFormatContext = NULL;
 
     // NB this should have been deleted in avformat_close_input
     m_priv->m_libavBuffer = NULL;
