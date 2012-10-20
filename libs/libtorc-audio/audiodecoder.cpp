@@ -1621,6 +1621,9 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
 
         if (Thread->m_audioThread->m_queue->Size() > MAX_QUEUE_SIZE_AUDIO)
         {
+            Thread->m_videoThread->m_queue->m_wait->wakeAll();
+            Thread->m_audioThread->m_queue->m_wait->wakeAll();
+            Thread->m_subtitleThread->m_queue->m_wait->wakeAll();
             usleep(50000);
             continue;
         }
