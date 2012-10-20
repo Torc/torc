@@ -45,8 +45,9 @@ SOURCES += audioplayer.cpp          audiodecoder.cpp
 SOURCES += audiointerface.cpp       torcavutils.cpp
 
 contains(CONFIG_LIBCDIO_INDEV, yes) {
-    HEADERS += torccdbuffer.h
-    SOURCES += torccdbuffer.cpp
+    DEPENDPATH += ./cdaudio
+    HEADERS    += torccdbuffer.h
+    SOURCES    += torccdbuffer.cpp
 }
 
 contains(CONFIG_LIBPULSE, yes) {
