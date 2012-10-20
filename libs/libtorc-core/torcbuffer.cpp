@@ -60,6 +60,11 @@ TorcBuffer* TorcBuffer::Create(const QString &URI)
     return buffer;
 }
 
+void* TorcBuffer::RequiredAVContext(void)
+{
+    return NULL;
+}
+
 void* TorcBuffer::RequiredAVFormat(void)
 {
     return NULL;

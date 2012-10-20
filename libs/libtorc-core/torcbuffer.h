@@ -48,6 +48,7 @@ class TORC_CORE_PUBLIC TorcBuffer
     virtual bool       Open               (void);
     virtual void       Close              (void);
     virtual bool       HandleAction       (int Action);
+    virtual void*      RequiredAVContext  (void);
     virtual void*      RequiredAVFormat   (void);
     virtual int        Read               (quint8 *Buffer, qint32 BufferSize) = 0;
     virtual int        Peek               (quint8 *Buffer, qint32 BufferSize) = 0;
