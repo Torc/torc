@@ -346,10 +346,6 @@ void TorcPlayer::KillTimer(int &Timer)
 
 void TorcPlayer::Refresh(void)
 {
-    // I need fixing
-    if (m_state == Stopped || m_state == Errored)
-        return;
-
     // destroy last decoder once it has stopped
     if (m_oldDecoder && m_oldDecoder->State() == TorcDecoder::Stopped)
         DestroyOldDecoder();
@@ -380,12 +376,17 @@ void TorcPlayer::Refresh(void)
             m_switching   = false;
             KillTimer(m_nextDecoderStartTimer);
 
+            SetState(Paused);
             if (m_nextDecoderPlay)
                 Play();
 
             m_nextDecoderPlay = false;
         }
     }
+
+    // I need fixing
+    if ((m_state == Stopped || m_state == Errored) && m_nextState == None)
+        return;
 
     // check for fatal errors
     if (m_decoder)
@@ -410,10 +411,7 @@ void TorcPlayer::Refresh(void)
 
     // check for playback completion
     if (m_decoder->State() == TorcDecoder::Stopped)
-    {
         SetState(Stopped);
-        return;
-    }
 
     // update state
     if (m_nextState != None)
@@ -603,6 +601,7 @@ bool TorcPlayerInterface::HandleEvent(QEvent *Event)
     if (!torcevent)
         return false;
 
+    QVariantMap data = torcevent->Data();
     int event = torcevent->Event();
     switch (event)
     {
@@ -627,6 +626,13 @@ bool TorcPlayerInterface::HandleEvent(QEvent *Event)
         case Torc::ShuttingDown:
         case Torc::Restarting:
             HandlePlayerAction(Torc::Stop);
+            break;
+        case Torc::PlayMedia:
+            if (data.contains("uri"))
+            {
+                SetURI(data.value("uri").toString());
+                PlayMedia(false);
+            }
             break;
         default: break;
     }
