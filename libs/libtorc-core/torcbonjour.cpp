@@ -205,12 +205,6 @@ class TorcBonjourPriv
         m_discoveredLock(new QMutex(QMutex::Recursive))
     {
         setenv("AVAHI_COMPAT_NOWARN", "1", 1);
-
-        if (!TorcNetwork::IsAvailable())
-        {
-            LOG(VB_GENERAL, LOG_INFO, "Network not available - suspending bonjour");
-            m_suspended = true;
-        }
     }
 
     ~TorcBonjourPriv()
@@ -330,13 +324,12 @@ class TorcBonjourPriv
             return reference;
         }
 
-        quint16 qport = qToBigEndian(Port);
         DNSServiceRef dnssref = NULL;
         DNSServiceErrorType result =
             DNSServiceRegister(&dnssref, 0,
                                0, (const char*)Name.data(),
                                (const char*)Type.data(),
-                               NULL, 0, qport, Txt.size(), (void*)Txt.data(),
+                               NULL, 0, htons(Port), Txt.size(), (void*)Txt.data(),
                                BonjourRegisterCallback, this);
 
         if (kDNSServiceErr_NoError != result)
@@ -613,7 +606,7 @@ class TorcBonjourPriv
             {
                 if ((*it).m_dnssRef == Reference)
                 {
-                    int port = qToBigEndian(Port);
+                    uint16_t port = ntohs(Port);
                     (*it).m_host = HostTarget;
                     (*it).m_port = port;
                     LOG(VB_NETWORK, LOG_INFO, QString("%1 (%2) resolved to %3:%4")
@@ -807,44 +800,6 @@ void TorcBonjour::hostLookup(QHostInfo HostInfo)
 {
     if (m_priv)
         m_priv->HostLookup(HostInfo);
-}
-
-bool TorcBonjour::event(QEvent *Event)
-{
-    if (Event->type() == TorcEvent::TorcEventType && m_priv)
-    {
-        TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
-        if (torcevent)
-        {
-            int event = torcevent->Event();
-
-            if (event == Torc::Suspending ||
-                event == Torc::ShuttingDown ||
-                event == Torc::Restarting ||
-                event == Torc::Hibernating)
-            {
-                if (!m_priv->IsSuspended())
-                    m_priv->Suspend();
-            }
-            else if (event == Torc::WokeUp)
-            {
-                if (TorcNetwork::IsAvailable() && m_priv->IsSuspended())
-                    m_priv->Resume();
-            }
-            else if (event == Torc::NetworkAvailable)
-            {
-                if (m_priv->IsSuspended())
-                    m_priv->Resume();
-            }
-            else if (event == Torc::NetworkUnavailable)
-            {
-                if (!m_priv->IsSuspended())
-                    m_priv->Suspend();
-            }
-        }
-    }
-
-    return false;
 }
 
 static class TorcBrowserObject : public TorcAdminObject

@@ -31,8 +31,6 @@ class TORC_CORE_PUBLIC TorcBonjour : public QObject
     TorcBonjour();
    ~TorcBonjour();
 
-    bool    event           (QEvent *Event);
-
   private:
     TorcBonjourPriv *m_priv;
 };
