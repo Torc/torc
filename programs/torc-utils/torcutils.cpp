@@ -20,7 +20,7 @@ int TorcUtils::Probe(const UtilsCommandLineParser *Cmdline)
         return GENERIC_EXIT_INVALID_CMDLINE;
 
     TorcDecoder* decoder = TorcDecoder::Create(TorcDecoder::DecodeNone, uri, NULL);
-    if (decoder->Open())
+    if (decoder && decoder->Open())
     {
         while (!(decoder->State() == TorcDecoder::Stopped ||
                  decoder->State() == TorcDecoder::Paused ||
