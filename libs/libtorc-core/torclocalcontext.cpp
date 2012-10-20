@@ -261,6 +261,12 @@ void TorcLocalContext::SendMessage(Torc::MessageType Type,
     if (Body.isEmpty())
         return;
 
+    if (!gLocalContext->m_priv->m_UIObject)
+    {
+        LOG(VB_GENERAL, LOG_WARNING, "No UI object to send message to");
+        return;
+    }
+
     int timeout = -1;
     switch (Timeout)
     {
@@ -284,8 +290,8 @@ void TorcLocalContext::SendMessage(Torc::MessageType Type,
     data.insert("uuid", Uuid);
     data.insert("header", Header);
     data.insert("body", Body);
-    TorcEvent event(Torc::Message, data);
-    gLocalContext->Notify(event);
+    TorcEvent *event = new TorcEvent(Torc::Message, data);
+    QCoreApplication::postEvent(gLocalContext->m_priv->m_UIObject, event);
 }
 
 TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine, int ApplicationFlags)
@@ -399,7 +405,10 @@ void TorcLocalContext::SetSetting(const QString &Name, const int &Value)
 void TorcLocalContext::SetUIObject(QObject *UI)
 {
     if (m_priv->m_UIObject && UI)
-        LOG(VB_GENERAL, LOG_WARNING, "Trying to register a second global UI");
+    {
+        LOG(VB_GENERAL, LOG_WARNING, "Trying to register a second global UI - ignoring");
+        return;
+    }
 
     m_priv->m_UIObject = UI;
 }
