@@ -129,6 +129,7 @@ class TORC_CORE_PUBLIC Torc
         JumpBackwardLarge,
         JumpBackwardTrack,
         JumpToStart,
+        PlayMedia,
         // storage
         DiskInserted = 4000,
         DiskRemoved,
