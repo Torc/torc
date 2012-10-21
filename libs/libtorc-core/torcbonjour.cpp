@@ -19,6 +19,7 @@
 
 // Std
 #include <stdlib.h>
+#include <arpa/inet.h>
 
 // DNS Service Discovery
 #include <dns_sd.h>
