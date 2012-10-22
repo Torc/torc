@@ -33,14 +33,14 @@ bool TorcNetwork::IsAvailable(void)
 {
     QMutexLocker locker(gNetworkLock);
 
-    return gNetwork ? gNetwork->IsOnline() && gNetwork->IsAllowed() : false;
+    return gNetwork ? gNetwork->IsOnline() && gNetwork->IsAllowedPriv() : false;
 }
 
 bool TorcNetwork::IsAllowed(void)
 {
     QMutexLocker locker(gNetworkLock);
 
-    return gNetwork ? gNetwork->IsAllowed() : false;
+    return gNetwork ? gNetwork->IsAllowedPriv() : false;
 }
 
 void TorcNetwork::Allow(bool Allow)
