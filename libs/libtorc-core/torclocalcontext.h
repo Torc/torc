@@ -139,8 +139,10 @@ class TORC_CORE_PUBLIC Torc
         ShowSearch = 5000,
         HideSearch,
         // network
-        DisableNetwork,
         EnableNetwork,
+        DisableNetwork,
+        NetworkEnabled,
+        NetworkDisabled,
         NetworkAvailable,
         NetworkUnavailable,
         // end of predefined
