@@ -21,7 +21,8 @@
 */
 
 // Qt
-#include <QCoreApplication>
+#include <QApplication>
+#include <QKeyEvent>
 
 // Torc
 #include "torclocalcontext.h"
@@ -646,12 +647,14 @@ class TorcCECDevicePriv
         if (0 == action)
             return 1;
 
-        QVariantMap data;
-        data.insert("key", action);
-        data.insert("source", CEC_KEYPRESS_CONTEXT);
-        TorcEvent event(Key.duration > 0 ? Torc::KeyRelease : Torc::KeyPress, data);
+        QKeyEvent *keyevent = new QKeyEvent(
+                            Key.duration > 0 ? QEvent::KeyRelease : QEvent::KeyPress,
+                            action, TORC_KEYEVENT_MODIFIERS,
+                            CEC_KEYPRESS_CONTEXT);
 
-        gLocalContext->Notify(event);
+        if (gLocalContext->GetUIObject())
+            QApplication::postEvent(gLocalContext->GetUIObject(), keyevent);
+
         return 1;
     }
 
