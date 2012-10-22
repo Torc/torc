@@ -42,8 +42,7 @@ QMutex* TorcEDID::gTorcEDIDLock = new QMutex(QMutex::Recursive);
  * a graphics server to be running. Hence implementations may submit a provisional
  * EDID which will only be used if a further update is not provided when the
  * the GUI is created. This revised EDID may provide more accurate data on systems
- * with multiple connected displays. (EDID data can still be of use to a command
- * line application that outputs audio of an HDMI link).
+ * with multiple connected displays.
 */
 
 TorcEDID::TorcEDID()

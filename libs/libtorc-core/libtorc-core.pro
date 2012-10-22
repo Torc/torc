@@ -13,7 +13,7 @@ QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 QT += sql network
 QT -= gui
 
-DEPENDPATH  += ./platforms ./peripherals
+DEPENDPATH  += ./platforms
 INCLUDEPATH += $$DEPENDPATH
 
 HEADERS += torccoreexport.h   torclogging.h
@@ -70,12 +70,6 @@ unix:contains(CONFIG_QTDBUS, yes) {
     QT += dbus
     HEADERS += torcpowerunixdbus.h   torcstorageunixdbus.h
     SOURCES += torcpowerunixdbus.cpp torcstorageunixdbus.cpp
-}
-
-contains(CONFIG_LIBCEC, yes) {
-    HEADERS += torccecdevice.h
-    SOURCES += torccecdevice.cpp
-    LIBS += -lcec
 }
 
 macx {

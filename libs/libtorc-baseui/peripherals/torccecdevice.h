@@ -5,7 +5,7 @@
 #include <QObject>
 
 // Torc
-#include "torccoreexport.h"
+#include "torcbaseuiexport.h"
 
 #define CEC_KEYPRESS_CONTEXT QString("libCEC")
 
@@ -58,7 +58,7 @@ class TorcCECDevice : public QObject
     int                m_retryTimer;
 };
 
-extern TORC_CORE_PUBLIC TorcCECDevice *gCECDevice;
-extern TORC_CORE_PUBLIC QMutex        *gCECDeviceLock;
+extern TORC_BASEUI_PUBLIC TorcCECDevice *gCECDevice;
+extern TORC_BASEUI_PUBLIC QMutex        *gCECDeviceLock;
 
 #endif // TORCCECDEVICE_H

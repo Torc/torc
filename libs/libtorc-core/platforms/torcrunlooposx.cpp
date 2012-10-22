@@ -92,9 +92,6 @@ static class TorcRunLoopOSX : public TorcThread, public TorcAdminObject
 
         gAdminRunLoop = CFRunLoopGetCurrent();
 
-        // try getting provisional edid
-        TorcEDID::RegisterEDID(GetOSXEDID(), true /*provisional*/);
-
         // run the loop
         while (!m_stop)
         {

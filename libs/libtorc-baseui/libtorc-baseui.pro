@@ -74,6 +74,12 @@ else: {
     error(No valid display class. Aborting)
 }
 
+contains(CONFIG_LIBCEC, yes) {
+    HEADERS += torccecdevice.h
+    SOURCES += torccecdevice.cpp
+    LIBS += -lcec
+}
+
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files += uiimage.h        uifont.h
 inc.files += uieffect.h       uiwindow.h
