@@ -36,6 +36,21 @@ bool TorcNetwork::IsAvailable(void)
     return gNetwork ? gNetwork->IsOnline() && gNetwork->IsAllowed() : false;
 }
 
+bool TorcNetwork::IsAllowed(void)
+{
+    QMutexLocker locker(gNetworkLock);
+
+    return gNetwork ? gNetwork->IsAllowed() : false;
+}
+
+void TorcNetwork::Allow(bool Allow)
+{
+    QMutexLocker locker(gNetworkLock);
+
+    if (gNetwork)
+        gNetwork->SetAllowed(Allow);
+}
+
 QString TorcNetwork::GetMACAddress(void)
 {
     QMutexLocker locker(gNetworkLock);
@@ -83,7 +98,7 @@ QString ConfigurationTypeToString(QNetworkConfiguration::Type Type)
 TorcNetwork::TorcNetwork()
   : QNetworkAccessManager(),
     m_online(false),
-    m_allow(false),
+    m_allow(true),
     m_manager(new QNetworkConfigurationManager(this))
 {
     LOG(VB_GENERAL, LOG_INFO, "Opening network access manager");
@@ -101,6 +116,7 @@ TorcNetwork::TorcNetwork()
 
     setConfiguration(m_manager->defaultConfiguration());
 
+    // N.B. networkAccessible is true by default
     m_allow = gLocalContext->GetSetting(TORC_CORE + "NetworkEnabled", true) &&
               gLocalContext->GetFlag(Torc::Network);
     SetAllowed(m_allow);
@@ -126,9 +142,9 @@ bool TorcNetwork::IsOnline(void)
     return m_online;
 }
 
-bool TorcNetwork::IsAllowed(void)
+bool TorcNetwork::IsAllowedPriv(void)
 {
-    return networkAccessible() == Accessible;
+    return m_allow;
 }
 
 void TorcNetwork::SetAllowed(bool Allow)
@@ -136,12 +152,17 @@ void TorcNetwork::SetAllowed(bool Allow)
     if (Allow && !gLocalContext->GetFlag(Torc::Network))
         Allow = false;
 
-    if (networkAccessible() == Allow)
+    if (m_allow == Allow)
         return;
 
-    CloseConnections();
-    setNetworkAccessible(Allow ? Accessible : NotAccessible);
-    LOG(VB_GENERAL, LOG_INFO, QString("Network access %1").arg(Allow ? "allowed" : "not allowed"));
+    m_allow = Allow;
+
+    if (!m_allow)
+        CloseConnections();
+
+    gLocalContext->NotifyEvent(m_allow ? Torc::NetworkEnabled : Torc::NetworkDisabled);
+    setNetworkAccessible(m_allow ? Accessible : NotAccessible);
+    LOG(VB_GENERAL, LOG_INFO, QString("Network access %1").arg(m_allow ? "allowed" : "not allowed"));
 }
 
 void TorcNetwork::ConfigurationAdded(const QNetworkConfiguration &Config)
@@ -259,6 +280,8 @@ class TorcNetworkObject : TorcAdminObject
 
     void Create(void)
     {
+        // always create the network object to at least monitor network state.
+        // if access is disallowed, it will be made inaccessible.
         TorcNetwork::Setup(true);
     }
 

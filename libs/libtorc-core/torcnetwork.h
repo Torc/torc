@@ -18,7 +18,9 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
 
   public:
     static bool IsAvailable         (void);
+    static bool IsAllowed           (void);
     static QString GetMACAddress    (void);
+    static void Allow               (bool Allow);
 
   protected:
     static void Setup               (bool Create);
@@ -36,7 +38,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
   protected:
     TorcNetwork();
     bool    IsOnline                (void);
-    bool    IsAllowed               (void);
+    bool    IsAllowedPriv           (void);
     void    SetAllowed              (bool Allow);
     bool    event                   (QEvent *Event);
     void    CloseConnections        (void);
