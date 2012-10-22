@@ -746,6 +746,13 @@ TorcBonjour* TorcBonjour::Instance(void)
     return gBonjour;
 }
 
+void TorcBonjour::Suspend(bool Suspend)
+{
+    QMutexLocker locker(gBonjourLock);
+    if (gBonjour)
+        gBonjour->SuspendPriv(Suspend);
+}
+
 void TorcBonjour::TearDown(void)
 {
     QMutexLocker locker(gBonjourLock);
@@ -756,7 +763,7 @@ void TorcBonjour::TearDown(void)
 TorcBonjour::TorcBonjour()
   : QObject(NULL), m_priv(new TorcBonjourPriv(this))
 {
-    // listen for power and network events
+    // listen for network enabled/disabled events
     gLocalContext->AddObserver(this);
 }
 
@@ -803,6 +810,42 @@ void TorcBonjour::hostLookup(QHostInfo HostInfo)
         m_priv->HostLookup(HostInfo);
 }
 
+bool TorcBonjour::event(QEvent *Event)
+{
+    if (Event->type() == TorcEvent::TorcEventType && m_priv)
+    {
+        TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
+        if (torcevent)
+        {
+            int event = torcevent->Event();
+
+            if (event == Torc::NetworkDisabled)
+            {
+                if (!m_priv->IsSuspended())
+                    m_priv->Suspend();
+            }
+            else if (event == Torc::NetworkEnabled)
+            {
+                if (m_priv->IsSuspended())
+                    m_priv->Resume();
+            }
+        }
+    }
+
+    return false;
+}
+
+void TorcBonjour::SuspendPriv(bool Suspend)
+{
+    if (m_priv)
+    {
+        if (Suspend && !m_priv->IsSuspended())
+            m_priv->Suspend();
+        else if (!Suspend && m_priv->IsSuspended())
+            m_priv->Resume();
+    }
+}
+
 static class TorcBrowserObject : public TorcAdminObject
 {
   public:
@@ -814,6 +857,15 @@ static class TorcBrowserObject : public TorcAdminObject
 
     void Create(void)
     {
+        // always create the global instance
+        TorcBonjour::Instance();
+
+        // but immediately suspend if network access is disallowed
+        if (TorcNetwork::IsAllowed())
+            TorcBonjour::Suspend(true);
+
+        // start browsing early for other Torc applications
+        // Torc::Client implies it is a consumer of media - may need revisiting
         if (gLocalContext && gLocalContext->GetFlag(Torc::Client) &&
             gLocalContext->GetSetting(TORC_CORE + "BrowseForTorc", true))
         {
