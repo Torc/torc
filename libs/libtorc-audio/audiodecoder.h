@@ -65,9 +65,9 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
     bool             OpenDemuxer        (TorcDemuxerThread  *Thread);
     void             CloseDemuxer       (TorcDemuxerThread  *Thread);
     void             DemuxPackets       (TorcDemuxerThread  *Thread);
-    void             DecodeVideoFrames  (TorcVideoThread    *Thread);
     void             DecodeAudioFrames  (TorcAudioThread    *Thread);
-    void             DecodeSubtitles    (TorcSubtitleThread *Thread);
+    virtual void     DecodeVideoFrames  (TorcVideoThread    *Thread);
+    virtual void     DecodeSubtitles    (TorcSubtitleThread *Thread);
 
   private:
     void             TearDown           (void);
