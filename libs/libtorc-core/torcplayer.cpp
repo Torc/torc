@@ -271,6 +271,8 @@ qreal TorcPlayer::GetSpeed(void)
 
 bool TorcPlayer::Play(void)
 {
+    m_nextDecoderPlay = false;
+
     if (m_state == Errored)
         return false;
 
@@ -362,7 +364,7 @@ void TorcPlayer::Refresh(void)
         }
         else if (state > TorcDecoder::Opening && !m_oldDecoder)
         {
-            m_oldDecoder  = m_decoder;
+            m_oldDecoder = m_decoder;
             if (m_oldDecoder)
             {
                 StartTimer(m_oldDecoderStopTimer, DECODER_STOP_TIMEOUT);
@@ -377,10 +379,8 @@ void TorcPlayer::Refresh(void)
             KillTimer(m_nextDecoderStartTimer);
 
             SetState(Paused);
-            if (m_nextDecoderPlay)
+            if (m_nextDecoderPlay && !m_oldDecoder)
                 Play();
-
-            m_nextDecoderPlay = false;
         }
     }
 
@@ -425,6 +425,12 @@ void TorcPlayer::Refresh(void)
             }
             else if (m_nextState == Playing)
             {
+                if (m_oldDecoder)
+                {
+                    LOG(VB_GENERAL, LOG_WARNING, "Trying to start decoder before old decoder stopped");
+                    return;
+                }
+
                 SetState(Starting);
                 StartTimer(m_playTimer, DECODER_PAUSE_TIMEOUT);
             }
@@ -485,6 +491,9 @@ void TorcPlayer::DestroyOldDecoder(void)
     delete m_oldDecoder;
     m_oldDecoder = NULL;
     KillTimer(m_oldDecoderStopTimer);
+
+    if (m_decoder && m_nextDecoderPlay)
+        Play();
 }
 
 void TorcPlayer::SendUserMessage(const QString &Message)
