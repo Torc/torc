@@ -29,6 +29,7 @@
 #include <QSqlDatabase>
 #include <QThreadPool>
 #include <QMutex>
+#include <QUUid>
 #include <QDir>
 #include <QMetaEnum>
 
@@ -253,19 +254,12 @@ void TorcLocalContext::NotifyEvent(int Event)
 #define MESSAGE_TIMEOUT_SHORT   1000
 #define MESSAGE_TIMEOUT_LONG    10000
 
-void TorcLocalContext::SendMessage(Torc::MessageType Type,
-                                   Torc::MessageDestination Destination,
-                                   Torc::MessageTimeout Timeout, QString Uuid,
+void TorcLocalContext::SendMessage(int Type, int Destination,
+                                   int Timeout, QString Uuid,
                                    const QString &Header, const QString &Body)
 {
     if (Body.isEmpty())
         return;
-
-    if (!gLocalContext->m_priv->m_UIObject)
-    {
-        LOG(VB_GENERAL, LOG_WARNING, "No UI object to send message to");
-        return;
-    }
 
     int timeout = -1;
     switch (Timeout)
@@ -283,6 +277,12 @@ void TorcLocalContext::SendMessage(Torc::MessageType Type,
             break;
     }
 
+    if (Uuid.isEmpty())
+    {
+        QUuid dummy = QUuid::createUuid();
+        Uuid = dummy.toString();
+    }
+
     QVariantMap data;
     data.insert("type", Type);
     data.insert("destination", Destination);
@@ -290,8 +290,8 @@ void TorcLocalContext::SendMessage(Torc::MessageType Type,
     data.insert("uuid", Uuid);
     data.insert("header", Header);
     data.insert("body", Body);
-    TorcEvent *event = new TorcEvent(Torc::Message, data);
-    QCoreApplication::postEvent(gLocalContext->m_priv->m_UIObject, event);
+    TorcEvent event(Torc::Message, data);
+    gLocalContext->Notify(event);
 }
 
 TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine, int ApplicationFlags)

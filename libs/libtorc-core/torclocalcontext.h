@@ -19,6 +19,9 @@ class TORC_CORE_PUBLIC Torc
 {
     Q_GADGET
     Q_ENUMS(Actions)
+    Q_ENUMS(MessageTypes)
+    Q_ENUMS(MessageDestinations)
+    Q_ENUMS(MessageTimeouts)
 
   public:
     enum ApplicationFlags
@@ -33,29 +36,29 @@ class TORC_CORE_PUBLIC Torc
         Network     = (1 << 6)
     };
 
-    typedef enum MessageTypes
+    enum MessageTypes
     {
         GenericError,
         CriticalError,
         GenericWarning,
         ExternalMessage,
         InternalMessage
-    } MessageType;
+    };
 
-    typedef enum MessageDestinations
+    enum MessageDestinations
     {
-        Internal  = (0 << 0),
-        Local     = (1 << 0),
-        Broadcast = (1 << 1)
-    } MessageDestination;
+        Internal  = 0x01,
+        Local     = 0x02,
+        Broadcast = 0x04
+    };
 
-    typedef enum MessageTimeouts
+    enum MessageTimeouts
     {
         DefaultTimeout,
         ShortTimeout,
         LongTimeout,
         Acknowledge
-    } MessageTimeout;
+    };
 
     enum Actions
     {
@@ -165,11 +168,11 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
   public:
     static qint16 Create      (TorcCommandLineParser* CommandLine, int ApplicationFlags);
     static void   TearDown    (void);
-    static void   NotifyEvent (int Event);
-    static void   SendMessage (Torc::MessageType Type, Torc::MessageDestination Destination,
-                               Torc::MessageTimeout Timeout, QString Uuid,
-                               const QString &Header, const QString &Body);
 
+    Q_INVOKABLE static void  NotifyEvent   (int Event);
+    Q_INVOKABLE static void  SendMessage   (int Type, int Destination,
+                                            int Timeout, QString Uuid,
+                                            const QString &Header, const QString &Body);
     Q_INVOKABLE   QString    GetSetting    (const QString &Name, const QString &DefaultValue);
     Q_INVOKABLE   bool       GetSetting    (const QString &Name, const bool    &DefaultValue);
     Q_INVOKABLE   int        GetSetting    (const QString &Name, const int     &DefaultValue);
@@ -177,6 +180,7 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     Q_INVOKABLE   void       SetSetting    (const QString &Name, const bool    &Value);
     Q_INVOKABLE   void       SetSetting    (const QString &Name, const int     &Value);
     Q_INVOKABLE   QObject*   GetUIObject   (void);
+
     QLocale::Language        GetLanguage   (void);
     void          SetUIObject              (QObject* UI);
     void          CloseDatabaseConnections (void);
