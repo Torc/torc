@@ -861,7 +861,7 @@ static class TorcBrowserObject : public TorcAdminObject
         TorcBonjour::Instance();
 
         // but immediately suspend if network access is disallowed
-        if (TorcNetwork::IsAllowed())
+        if (!TorcNetwork::IsAllowed())
             TorcBonjour::Suspend(true);
 
         // start browsing early for other Torc applications
