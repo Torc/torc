@@ -139,7 +139,7 @@ void UIMedia::CreateCopy(UIWidget *Parent)
 {
     UIMedia* media = new UIMedia(m_rootParent, Parent,
                                  GetDerivedWidgetName(Parent->objectName()),
-                                 WidgetFlagNone);
+                                 WidgetFlagFocusable);
     media->CopyFrom(this);
 }
 
