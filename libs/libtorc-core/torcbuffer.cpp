@@ -41,15 +41,20 @@ TorcBuffer::~TorcBuffer()
 {
 }
 
-TorcBuffer* TorcBuffer::Create(const QString &URI)
+TorcBuffer* TorcBuffer::Create(const QString &URI, bool Media)
 {
     TorcBuffer* buffer = NULL;
     QUrl url(URI);
 
+    int score = 0;
     TorcBufferFactory* factory = TorcBufferFactory::GetTorcBufferFactory();
     for ( ; factory; factory = factory->NextTorcBufferFactory())
+        (void)factory->Score(URI, url, score, Media);
+
+    factory = TorcBufferFactory::GetTorcBufferFactory();
+    for ( ; factory; factory = factory->NextTorcBufferFactory())
     {
-        buffer = factory->Create(URI, url);
+        buffer = factory->Create(URI, url, score, Media);
         if (buffer)
             break;
     }
@@ -131,6 +136,11 @@ bool TorcBuffer::HandleAction(int Action)
     return false;
 }
 
+QByteArray TorcBuffer::ReadAll(void)
+{
+    return QByteArray();
+}
+
 bool TorcBuffer::Pause(void)
 {
     if (m_paused)
@@ -175,6 +185,11 @@ void TorcBuffer::SetBitrate(int Bitrate, int Factor)
 }
 
 QString TorcBuffer::GetFilteredUri(void)
+{
+    return m_uri;
+}
+
+QString TorcBuffer::GetFilteredPath(void)
 {
     return m_uri;
 }

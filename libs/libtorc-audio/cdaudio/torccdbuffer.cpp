@@ -91,9 +91,15 @@ int TorcCDBuffer::BestBufferSize(void)
 
 static class TorcCDBufferFactory : public TorcBufferFactory
 {
-    TorcBuffer* Create(const QString &URI, const QUrl &URL)
+    void Score(const QString &URI, const QUrl &URL, int &Score, const bool &Media)
     {
-        if (URI.startsWith("cd:", Qt::CaseInsensitive))
+        if (Media && URI.startsWith("cd:", Qt::CaseInsensitive) && Score <= 20)
+            Score = 20;
+    }
+
+    TorcBuffer* Create(const QString &URI, const QUrl &URL, const int &Score, const bool &Media)
+    {
+        if (Media && URI.startsWith("cd:", Qt::CaseInsensitive) && Score <= 20)
         {
             TorcCDBuffer* result = new TorcCDBuffer(URI);
             if (result->Open())

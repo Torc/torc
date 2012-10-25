@@ -1214,7 +1214,7 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
         Thread->m_subtitleThread->start();
 
     // Create Torc buffer
-    m_priv->m_buffer = TorcBuffer::Create(m_uri);
+    m_priv->m_buffer = TorcBuffer::Create(m_uri, true);
     if (!m_priv->m_buffer)
     {
         CloseDemuxer(Thread);

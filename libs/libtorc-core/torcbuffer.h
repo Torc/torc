@@ -35,8 +35,7 @@ class TORC_CORE_PUBLIC TorcBuffer
 
   public:
     virtual ~TorcBuffer();
-
-    static TorcBuffer* Create             (const QString &URI);
+    static TorcBuffer* Create             (const QString &URI, bool Media = false);
     static int         Read               (void* Object, quint8* Buffer, qint32 BufferSize);
     static int         Write              (void* Object, quint8* Buffer, qint32 BufferSize);
     static int64_t     Seek               (void* Object, int64_t  Offset, int Whence);
@@ -59,10 +58,12 @@ class TORC_CORE_PUBLIC TorcBuffer
     virtual bool       IsSequential       (void) = 0;
     virtual qint64     BytesAvailable     (void) = 0;
     virtual int        BestBufferSize     (void) = 0;
+    virtual QByteArray ReadAll            (void);
     virtual bool       Pause              (void);
     virtual bool       Unpause            (void);
     virtual bool       TogglePause        (void);
     virtual QString    GetFilteredUri     (void);
+    virtual QString    GetFilteredPath    (void);
     QString            GetURI             (void);
     bool               GetPaused          (void);
     void               SetBitrate         (int Bitrate, int Factor);
@@ -85,8 +86,14 @@ class TORC_CORE_PUBLIC TorcBufferFactory
     virtual ~TorcBufferFactory();
     static TorcBufferFactory* GetTorcBufferFactory  (void);
     TorcBufferFactory*        NextTorcBufferFactory (void) const;
+    virtual void              Score                 (const QString &URI,
+                                                     const QUrl    &URL,
+                                                     int           &Score,
+                                                     const bool    &Media) = 0;
     virtual TorcBuffer*       Create                (const QString &URI,
-                                                     const QUrl    &URL) = 0;
+                                                     const QUrl    &URL,
+                                                     const int     &Score,
+                                                     const bool    &Media) = 0;
 
   protected:
     static TorcBufferFactory* gTorcBufferFactory;

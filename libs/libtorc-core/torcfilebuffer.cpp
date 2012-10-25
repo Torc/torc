@@ -20,6 +20,10 @@
 * USA.
 */
 
+//Qt
+#include <QDir>
+#include <QFileInfo>
+
 // Torc
 #include "torclogging.h"
 #include "torcfilebuffer.h"
@@ -32,6 +36,8 @@ TorcFileBuffer::TorcFileBuffer(const QString &URI)
   : TorcBuffer(URI),
     m_file(NULL)
 {
+    QFileInfo info(m_uri);
+    m_path = info.dir().path();
 }
 
 TorcFileBuffer::~TorcFileBuffer()
@@ -174,6 +180,19 @@ int64_t TorcFileBuffer::Seek(int64_t Offset, int Whence)
     return -1;
 }
 
+QString TorcFileBuffer::GetFilteredPath(void)
+{
+    return m_path;
+}
+
+QByteArray TorcFileBuffer::ReadAll(void)
+{
+    if (m_file)
+        return m_file->readAll();
+
+    return TorcBuffer::ReadAll();
+}
+
 qint64 TorcFileBuffer::GetSize(void)
 {
     if (m_file)
@@ -209,9 +228,15 @@ int TorcFileBuffer::BestBufferSize(void)
 
 static class TorcFileBufferFactory : public TorcBufferFactory
 {
-    TorcBuffer* Create(const QString &URI, const QUrl &URL)
+    void Score(const QString &URI, const QUrl &URL, int &Score, const bool &Media)
     {
-        if (URL.isRelative() && URL.port() < 0)
+        if (URL.isRelative() && URL.port() < 0 && Score <= 10)
+            Score = 10;
+    }
+
+    TorcBuffer* Create(const QString &URI, const QUrl &URL, const int &Score, const bool &Media)
+    {
+        if (URL.isRelative() && URL.port() < 0 && Score <= 10)
         {
             TorcFileBuffer* result = new TorcFileBuffer(URI);
             if (result->Open())
