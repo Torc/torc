@@ -1,6 +1,31 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <torctheme>
     <window name="topmenu" from="basewindow">
+        <messenger name="topmenu_messages" position="100,100,600,880">
+            <group name="topmenu_messages_group" position="0,0,600,880">
+                <layout type="vertical" alignment="top"/>
+            </group>
+            <widget name="topmenu_messages_template" position="0,0,600,100" template="true">
+                <shape name="topmenu_messages_template_bg" position="0,0,600,100">
+                    <path>
+                        <pen color="880000FF" width="3" penstyle="SolidLine"/>
+                        <brush color="66666699" brushstyle="SolidPattern"/>
+                        <addroundedrect rect="2,2,594,94" xradius="11" yradius="11"/>
+                    </path>
+                </shape>
+                <effect alpha="0.0" centre="middle"/>
+                <animation name="topmenu_messages_template_Activated">
+                    <element property="alpha" endvalue="1.0"/>
+                </animation>
+                <animation name="topmenu_messages_template_Deactivated">
+                    <element duration="100" property="alpha" endvalue="0.0"/>
+                    <element duration="500" property="verticalzoom" endvalue="0.0" easingcurve="outquad"/>
+                </animation>
+                <text name="topmenu_messages_template_header" position="0,0,600,100">
+                    <font name="main" alignment="left"/>
+                </text>
+            </widget>
+        </messenger>
         <group name="topmenu_menu" position="0,700,1920,100">
             <layout type="horizontal" selectrange="100,0,1720,100"/>
             <scroll speed="1000" easingcurve="outquad"/>
