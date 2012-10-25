@@ -98,7 +98,7 @@ QString ConfigurationTypeToString(QNetworkConfiguration::Type Type)
 TorcNetwork::TorcNetwork()
   : QNetworkAccessManager(),
     m_online(false),
-    m_allow(true),
+    m_allow(false),
     m_manager(new QNetworkConfigurationManager(this))
 {
     LOG(VB_GENERAL, LOG_INFO, "Opening network access manager");
@@ -117,9 +117,9 @@ TorcNetwork::TorcNetwork()
     setConfiguration(m_manager->defaultConfiguration());
 
     // N.B. networkAccessible is true by default
-    m_allow = gLocalContext->GetSetting(TORC_CORE + "NetworkEnabled", true) &&
-              gLocalContext->GetFlag(Torc::Network);
-    SetAllowed(m_allow);
+    bool allowed = gLocalContext->GetSetting(TORC_CORE + "NetworkEnabled", true) &&
+                   gLocalContext->GetFlag(Torc::Network);
+    SetAllowed(allowed);
 
     UpdateConfiguration(true);
 
@@ -253,12 +253,16 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
     {
         LOG(VB_GENERAL, LOG_INFO, "Network up");
         gLocalContext->NotifyEvent(Torc::NetworkAvailable);
+        gLocalContext->SendMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout,
+                                   "", tr("Network"), tr("Network available"));
     }
     else if (wasonline && !m_online)
     {
         LOG(VB_GENERAL, LOG_INFO, "Network down");
         CloseConnections();
         gLocalContext->NotifyEvent(Torc::NetworkUnavailable);
+        gLocalContext->SendMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout,
+                                   "", tr("Network"), tr("Network unavailable"));
     }
 }
 
