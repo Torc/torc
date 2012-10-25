@@ -61,7 +61,7 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
 
   protected:
     explicit         AudioDecoder       (const QString &URI, TorcPlayer *Parent, int Flags);
-    void             SetupAudio         (void);
+    void             SetupAudio         (TorcAudioThread    *Thread);
     bool             OpenDemuxer        (TorcDemuxerThread  *Thread);
     void             CloseDemuxer       (TorcDemuxerThread  *Thread);
     void             DemuxPackets       (TorcDemuxerThread  *Thread);

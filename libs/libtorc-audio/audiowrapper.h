@@ -7,10 +7,13 @@
 
 class AudioWrapper
 {
+    friend class AudioDecoder;
+
   public:
     AudioWrapper(TorcPlayer *Parent);
     ~AudioWrapper();
 
+  protected:
     void         Reset             (void);
     bool         Initialise        (void);
     void         SetAudioOutput    (AudioOutput *Output);
@@ -87,7 +90,6 @@ class AudioWrapper
     bool         m_noAudioIn;
     bool         m_noAudioOut;
     bool         m_controlsVolume;
-    QMutex      *m_lock;
 };
 
 #endif // AUDIOWRAPPER_H

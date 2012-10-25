@@ -28,8 +28,7 @@ AudioWrapper::AudioWrapper(TorcPlayer *Parent)
     m_stretchFactor(1.0f),
     m_noAudioIn(false),
     m_noAudioOut(false),
-    m_controlsVolume(true),
-    m_lock(new QMutex(QMutex::Recursive))
+    m_controlsVolume(true)
 {
     m_mainDevice        = gLocalContext->GetSetting(TORC_CORE + "AudioOutputDevice", QString(""));
     m_passthroughDevice = gLocalContext->GetSetting(TORC_CORE + "AudioPassthroughDevice", QString(""));
@@ -46,16 +45,12 @@ AudioWrapper::~AudioWrapper()
 
 void AudioWrapper::Reset(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (m_audioOutput)
         m_audioOutput->Reset();
 }
 
 void AudioWrapper::DeleteOutput(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (m_audioOutput)
     {
         delete m_audioOutput;
@@ -67,8 +62,6 @@ void AudioWrapper::DeleteOutput(void)
 
 bool AudioWrapper::Initialise(void)
 {
-    QMutexLocker locker(m_lock);
-
     bool audiomuted  = m_parent->GetPlayerFlags() & TorcPlayer::AudioMuted;
     bool audioneeded = m_parent->GetDecoderFlags() & TorcDecoder::DecodeAudio;
     //bool dummy = PlayerFlags  & TorcPlayer::AudioDummy;
@@ -146,8 +139,6 @@ bool AudioWrapper::Initialise(void)
 
 void AudioWrapper::SetAudioOutput(AudioOutput *Output)
 {
-    QMutexLocker locker(m_lock);
-
     DeleteOutput();
     m_audioOutput = Output;
 }
@@ -167,8 +158,6 @@ void AudioWrapper::SetAudioParams(AudioFormat Format, int OriginalChannels,
 
 void AudioWrapper::SetEffectiveDsp(int Rate)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput || !m_noAudioOut)
         return;
 
@@ -203,8 +192,6 @@ bool AudioWrapper::ControlsVolume(void) const
 
 bool AudioWrapper::Pause(bool Pause)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput || m_noAudioOut)
         return false;
 
@@ -214,8 +201,6 @@ bool AudioWrapper::Pause(bool Pause)
 
 bool AudioWrapper::IsPaused(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput || m_noAudioOut)
         return false;
 
@@ -224,8 +209,6 @@ bool AudioWrapper::IsPaused(void)
 
 void AudioWrapper::PauseAudioUntilBuffered(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput || m_noAudioOut)
         return;
 
@@ -254,8 +237,6 @@ int AudioWrapper::GetSampleRate(void) const
 
 uint AudioWrapper::GetVolume(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput || m_noAudioOut)
         return 0;
 
@@ -264,8 +245,6 @@ uint AudioWrapper::GetVolume(void)
 
 uint AudioWrapper::AdjustVolume(int Change)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput || m_noAudioOut)
         return GetVolume();
 
@@ -276,8 +255,6 @@ uint AudioWrapper::AdjustVolume(int Change)
 
 uint AudioWrapper::SetVolume(int Volume)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput || m_noAudioOut)
         return GetVolume();
 
@@ -292,8 +269,6 @@ float AudioWrapper::GetStretchFactor(void) const
 
 void AudioWrapper::SetStretchFactor(float Factor)
 {
-    QMutexLocker locker(m_lock);
-
     m_stretchFactor = Factor;
     if (!m_audioOutput)
         return;
@@ -303,8 +278,6 @@ void AudioWrapper::SetStretchFactor(float Factor)
 
 bool AudioWrapper::IsUpmixing(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput)
         return false;
 
@@ -313,8 +286,6 @@ bool AudioWrapper::IsUpmixing(void)
 
 bool AudioWrapper::EnableUpmix(bool Enable, bool Toggle)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput)
         return false;
 
@@ -325,8 +296,6 @@ bool AudioWrapper::EnableUpmix(bool Enable, bool Toggle)
 
 bool AudioWrapper::CanUpmix(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput)
         return false;
 
@@ -335,8 +304,6 @@ bool AudioWrapper::CanUpmix(void)
 
 bool AudioWrapper::CanDownmix(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput)
         return false;
 
@@ -372,8 +339,6 @@ bool AudioWrapper::ShouldPassthrough(int Samplerate, int Channels, int Codec,
 
 bool AudioWrapper::CanPassthrough(int Samplerate, int Channels, int Codec, int Profile)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput)
         return false;
 
@@ -406,8 +371,6 @@ bool AudioWrapper::DecoderWillDownmix(int Codec)
 
 bool AudioWrapper::CanAC3(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (m_audioOutput)
         return m_audioOutput->GetOutputSettingsUsers(true)->CanFeature(FEATURE_AC3);
 
@@ -416,8 +379,6 @@ bool AudioWrapper::CanAC3(void)
 
 bool AudioWrapper::CanEAC3(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (m_audioOutput)
         return m_audioOutput->GetOutputSettingsUsers(true)->CanFeature(FEATURE_EAC3);
 
@@ -426,8 +387,6 @@ bool AudioWrapper::CanEAC3(void)
 
 bool AudioWrapper::CanDTS(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (m_audioOutput)
         return m_audioOutput->GetOutputSettingsUsers(true)->CanFeature(FEATURE_DTS);
 
@@ -436,8 +395,6 @@ bool AudioWrapper::CanDTS(void)
 
 bool AudioWrapper::CanDTSHD(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (m_audioOutput)
         return m_audioOutput->GetOutputSettingsUsers(true)->CanFeature(FEATURE_DTSHD);
 
@@ -446,8 +403,6 @@ bool AudioWrapper::CanDTSHD(void)
 
 bool AudioWrapper::CanTrueHD(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (m_audioOutput)
         return m_audioOutput->GetOutputSettingsUsers(true)->CanFeature(FEATURE_TRUEHD);
 
@@ -456,8 +411,6 @@ bool AudioWrapper::CanTrueHD(void)
 
 uint AudioWrapper::GetMaxChannels(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput)
         return 2;
 
@@ -466,8 +419,6 @@ uint AudioWrapper::GetMaxChannels(void)
 
 int AudioWrapper::GetMaxHDRate(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput)
         return 0;
 
@@ -476,8 +427,6 @@ int AudioWrapper::GetMaxHDRate(void)
 
 qint64 AudioWrapper::GetAudioTime(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput || m_noAudioOut)
         return 0LL;
 
@@ -491,8 +440,6 @@ bool AudioWrapper::IsMuted(void)
 
 MuteState AudioWrapper::GetMuteState(void)
 {
-    QMutexLocker lockre(m_lock);
-
     if (!m_audioOutput || m_noAudioOut)
         return kMuteAll;
 
@@ -501,8 +448,6 @@ MuteState AudioWrapper::GetMuteState(void)
 
 MuteState AudioWrapper::SetMuteState(MuteState State)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput || m_noAudioOut)
         return kMuteAll;
 
@@ -511,8 +456,6 @@ MuteState AudioWrapper::SetMuteState(MuteState State)
 
 MuteState AudioWrapper::IncrMuteState(void)
 {
-    QMutexLocker locker(m_lock);
-
     if (!m_audioOutput || m_noAudioOut)
         return kMuteAll;
 

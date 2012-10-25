@@ -715,7 +715,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
     if (!queue)
         return;
 
-    SetupAudio();
+    SetupAudio(Thread);
     uint8_t* audiosamples = (uint8_t *)av_mallocz(AVCODEC_MAX_AUDIO_FRAME_SIZE * sizeof(int32_t));
     *state = TorcDecoder::Running;
     bool yield = true;
@@ -841,7 +841,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                     LOG(VB_GENERAL, LOG_WARNING, "Need to reselect audio track...");
                     // FIXME
                     if (SelectStream(StreamTypeAudio))
-                        SetupAudio();
+                        SetupAudio(Thread);
                 }
 
                 datasize = 0;
@@ -899,7 +899,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                         // try and let the buffer drain to avoid interruption
                         m_audio->Drain();
 
-                        SetupAudio();
+                        SetupAudio(Thread);
                         datasize = 0;
                     }
                 }
@@ -934,6 +934,8 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
     }
 
     *state = TorcDecoder::Stopped;
+    if (m_audio)
+        m_audio->SetAudioOutput(NULL);
     av_free(audiosamples);
     queue->Flush();
 }
@@ -1121,9 +1123,9 @@ bool AudioDecoder::SelectStreams(void)
     return false;
 }
 
-void AudioDecoder::SetupAudio(void)
+void AudioDecoder::SetupAudio(TorcAudioThread *Thread)
 {
-    if (!m_priv->m_avFormatContext || !m_audio)
+    if (!m_priv->m_avFormatContext || !m_audio || !Thread)
         return;
 
     int index = m_currentStreams[StreamTypeAudio];
