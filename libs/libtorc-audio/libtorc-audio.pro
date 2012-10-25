@@ -20,6 +20,7 @@ LIBS += -L../libtorc-av/libavformat -ltorc-avformat
 LIBS += -L../libtorc-av/libavcodec -ltorc-avcodec
 LIBS += -L../libtorc-av/libavutil -ltorc-avutil
 LIBS += -L../libtorc-av/libavdevice -ltorc-avdevice
+LIBS += -L../libtorc-av/libavresample -ltorc-avresample
 
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 

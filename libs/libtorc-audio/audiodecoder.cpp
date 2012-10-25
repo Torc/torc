@@ -41,6 +41,8 @@ extern "C" {
 #include "libavformat/avformat.h"
 #include "libavdevice/avdevice.h"
 #include "libavutil/pixdesc.h"
+#include "libavutil/opt.h"
+#include "libavresample/avresample.h"
 }
 
 #define PROBE_BUFFER_SIZE (512 * 1024)
@@ -469,8 +471,6 @@ class TorcDemuxerThread : public TorcDecoderThread
     TorcSubtitleThread *m_subtitleThread;
 };
 
-static int DecodeAudioPacket(AVCodecContext *context, quint8 *Buffer, int &DataSize, AVPacket *Packet);
-
 class AudioDecoderPriv
 {
   public:
@@ -481,22 +481,35 @@ class AudioDecoderPriv
         m_avFormatContext(NULL),
         m_createdAVFormatContext(false),
         m_pauseResult(0),
-        m_demuxerThread(new TorcDemuxerThread(Parent))
+        m_demuxerThread(new TorcDemuxerThread(Parent)),
+        m_audioResampleContext(NULL),
+        m_audioResampleChannelLayout(0),
+        m_audioResampleFormat(AV_SAMPLE_FMT_NONE),
+        m_audioResampleSampleRate(0)
     {
     }
 
     ~AudioDecoderPriv()
     {
+        if (m_audioResampleContext)
+            avresample_free(&m_audioResampleContext);
         delete m_demuxerThread;
     }
 
-    TorcBuffer         *m_buffer;
-    unsigned char      *m_libavBuffer;
-    int                 m_libavBufferSize;
-    AVFormatContext    *m_avFormatContext;
-    bool                m_createdAVFormatContext;
-    int                 m_pauseResult;
-    TorcDemuxerThread  *m_demuxerThread;
+    int DecodeAudioPacket  (AVCodecContext* Context, quint8 *Buffer, int &DataSize, AVPacket *Packet);
+
+    TorcBuffer             *m_buffer;
+    unsigned char          *m_libavBuffer;
+    int                     m_libavBufferSize;
+    AVFormatContext        *m_avFormatContext;
+    bool                    m_createdAVFormatContext;
+    int                     m_pauseResult;
+    TorcDemuxerThread      *m_demuxerThread;
+
+    AVAudioResampleContext *m_audioResampleContext;
+    uint64_t                m_audioResampleChannelLayout;
+    AVSampleFormat          m_audioResampleFormat;
+    int                     m_audioResampleSampleRate;
 };
 
 void AudioDecoder::InitialiseLibav(void)
@@ -817,7 +830,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                             context->channels = m_audio->GetMaxChannels();
                     }
 
-                    used = DecodeAudioPacket(context, audiosamples, datasize, &temp);
+                    used = m_priv->DecodeAudioPacket(context, audiosamples, datasize, &temp);
                     decodedsize = datasize;
                     decoded = true;
                     reselectaudiotrack |= context->channels;
@@ -839,7 +852,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                     {
                         if (m_audio->NeedDecodingBeforePassthrough())
                         {
-                            used = DecodeAudioPacket(context, audiosamples, datasize, &temp);
+                            used = m_priv->DecodeAudioPacket(context, audiosamples, datasize, &temp);
                             decodedsize = datasize;
                         }
                         else
@@ -867,7 +880,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                             context->request_channels = 0;
                         }
 
-                        used = DecodeAudioPacket(context, audiosamples, datasize, &temp);
+                        used = m_priv->DecodeAudioPacket(context, audiosamples, datasize, &temp);
                         decodedsize = datasize;
                     }
 
@@ -925,7 +938,8 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
     queue->Flush();
 }
 
-int DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer, int &DataSize, AVPacket *Packet)
+int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
+                                        int &DataSize, AVPacket *Packet)
 {
     AVFrame frame;
     int gotframe = 0;
@@ -941,16 +955,50 @@ int DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer, int &DataSize, AV
     int planesize;
     int planar = av_sample_fmt_is_planar(Context->sample_fmt);
     DataSize   = av_samples_get_buffer_size(&planesize, Context->channels, frame.nb_samples, Context->sample_fmt, 1);
-    memcpy(Buffer, frame.extended_data[0], planesize);
 
     if (planar && Context->channels > 1)
     {
-        uint8_t *buffer = Buffer + planesize;
-        for (int i = 1; i < Context->channels; i++)
+        if (!m_audioResampleContext)
+            m_audioResampleContext = avresample_alloc_context();
+
+        if (!m_audioResampleContext)
         {
-            memcpy(buffer, frame.extended_data[i], planesize);
-            buffer += planesize;
+            LOG(VB_GENERAL, LOG_ERR, "Failed to create audio resample context");
+            DataSize = 0;
+            return -1;
         }
+
+        if (m_audioResampleChannelLayout != Context->channel_layout ||
+            m_audioResampleFormat        != Context->sample_fmt     ||
+            m_audioResampleSampleRate    != Context->sample_rate)
+        {
+            m_audioResampleChannelLayout = Context->channel_layout;
+            m_audioResampleFormat        = Context->sample_fmt;
+            m_audioResampleSampleRate    = Context->sample_rate;
+            avresample_close(m_audioResampleContext);
+            av_opt_set_int(m_audioResampleContext, "in_channel_layout",  m_audioResampleChannelLayout, 0);
+            av_opt_set_int(m_audioResampleContext, "in_sample_fmt",      m_audioResampleFormat, 0);
+            av_opt_set_int(m_audioResampleContext, "in_sample_rate",     m_audioResampleSampleRate, 0);
+            av_opt_set_int(m_audioResampleContext, "out_channel_layout", m_audioResampleChannelLayout, 0);
+            av_opt_set_int(m_audioResampleContext, "out_sample_fmt",     av_get_packed_sample_fmt(m_audioResampleFormat), 0);
+            av_opt_set_int(m_audioResampleContext, "out_sample_rate",    m_audioResampleSampleRate, 0);
+
+            if (avresample_open(m_audioResampleContext) < 0)
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Failed to open audio resample context");
+                DataSize = 0;
+                return -1;
+            }
+        }
+
+        int samples = avresample_convert(m_audioResampleContext, (void **)&Buffer,
+                                         planesize, frame.nb_samples,
+                                         (void **)frame.extended_data,
+                                         frame.linesize[0], frame.nb_samples);
+    }
+    else
+    {
+        memcpy(Buffer, frame.extended_data[0], planesize);
     }
 
     return result;
@@ -1106,10 +1154,22 @@ void AudioDecoder::SetupAudio(void)
 
     switch (context->sample_fmt)
     {
-        case AV_SAMPLE_FMT_U8:  format = FORMAT_U8;   break;
-        case AV_SAMPLE_FMT_S16: format = FORMAT_S16;  break;
-        case AV_SAMPLE_FMT_FLT: format = FORMAT_FLT;  break;
-        case AV_SAMPLE_FMT_DBL: format = FORMAT_NONE; break;
+        case AV_SAMPLE_FMT_U8:
+        case AV_SAMPLE_FMT_U8P:
+            format = FORMAT_U8;
+            break;
+        case AV_SAMPLE_FMT_S16:
+        case AV_SAMPLE_FMT_S16P:
+            format = FORMAT_S16;
+            break;
+        case AV_SAMPLE_FMT_FLT:
+        case AV_SAMPLE_FMT_FLTP:
+            format = FORMAT_FLT;
+            break;
+        case AV_SAMPLE_FMT_DBL:
+        case AV_SAMPLE_FMT_DBLP:
+            format = FORMAT_NONE;
+            break;
         case AV_SAMPLE_FMT_S32:
             switch (context->bits_per_raw_sample)
             {
@@ -1119,6 +1179,16 @@ void AudioDecoder::SetupAudio(void)
                 default: format = FORMAT_NONE;
             }
             break;
+        case AV_SAMPLE_FMT_S32P:
+            switch (context->bits_per_raw_sample)
+            {
+                case  0: format = FORMAT_S32; break;
+                case 24: format = FORMAT_S24; break;
+                case 32: format = FORMAT_S32; break;
+                default: format = FORMAT_NONE;
+            }
+            break;
+
         default:
             break;
     }
