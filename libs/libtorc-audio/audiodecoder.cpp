@@ -1273,16 +1273,6 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
 
     *state = TorcDecoder::Opening;
 
-    // Start the consumer threads
-    if (!Thread->m_audioThread->IsRunning())
-        Thread->m_audioThread->start();
-
-    if (!Thread->m_videoThread->IsRunning())
-        Thread->m_videoThread->start();
-
-    if (!Thread->m_subtitleThread->IsRunning())
-        Thread->m_subtitleThread->start();
-
     // Create Torc buffer
     m_priv->m_buffer = TorcBuffer::Create(m_uri, true);
     if (!m_priv->m_buffer)
@@ -1623,9 +1613,19 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
 
         if (*state == TorcDecoder::Starting)
         {
-            if (Thread->m_audioThread->IsPaused() ||
-                Thread->m_videoThread->IsPaused() ||
-                Thread->m_subtitleThread->IsPaused())
+            // Start the consumer threads
+            if (!Thread->m_audioThread->IsRunning())
+                Thread->m_audioThread->start();
+
+            if (!Thread->m_videoThread->IsRunning())
+                Thread->m_videoThread->start();
+
+            if (!Thread->m_subtitleThread->IsRunning())
+                Thread->m_subtitleThread->start();
+
+            if (Thread->m_audioThread->IsPaused()    || !Thread->m_audioThread->IsRunning() ||
+                Thread->m_videoThread->IsPaused()    || !Thread->m_videoThread->IsRunning() ||
+                Thread->m_subtitleThread->IsPaused() || !Thread->m_subtitleThread->IsRunning())
             {
                 usleep(10000);
                 continue;
