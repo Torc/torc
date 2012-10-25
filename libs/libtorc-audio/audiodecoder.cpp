@@ -304,7 +304,8 @@ class TorcDecoderThread : public TorcThread
         m_queue(Queue ? new TorcPacketQueue() : NULL),
         m_threadRunning(false),
         m_state(TorcDecoder::None),
-        m_requestedState(TorcDecoder::None)
+        m_requestedState(TorcDecoder::None),
+        m_internalBufferEmpty(true)
     {
     }
 
@@ -378,6 +379,7 @@ class TorcDecoderThread : public TorcThread
     bool                       m_threadRunning;
     TorcDecoder::DecoderState  m_state;
     TorcDecoder::DecoderState  m_requestedState;
+    bool                       m_internalBufferEmpty;
 };
 
 class TorcVideoThread : public TorcDecoderThread
@@ -753,7 +755,9 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
         }
 
         // wait for the audio device
-        if (m_audio && (m_audio->GetFillStatus() > (int)m_audioOut->m_bestFillSize))
+        int fill = m_audio ? m_audio->GetFillStatus() : 0;
+        Thread->m_internalBufferEmpty = fill < 2;
+        if (fill > (int)m_audioOut->m_bestFillSize)
         {
             queue->m_lock->unlock();
             usleep(m_audioOut->m_bufferTime * 500);
@@ -1743,13 +1747,13 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
                  Thread->m_videoThread->m_queue->Length() +
                  Thread->m_subtitleThread->m_queue->Length()) == 0)
             {
-                // let the media play out
-                bool loop = false;
-                if (m_audio && m_audio->GetFillStatus() > 1)
-                    loop = true;
-
-                if (loop)
+                if (!Thread->m_audioThread->m_internalBufferEmpty ||
+                    !Thread->m_videoThread->m_internalBufferEmpty ||
+                    !Thread->m_subtitleThread->m_internalBufferEmpty)
                 {
+                    Thread->m_videoThread->m_queue->m_wait->wakeAll();
+                    Thread->m_audioThread->m_queue->m_wait->wakeAll();
+                    Thread->m_subtitleThread->m_queue->m_wait->wakeAll();
                     usleep(50000);
                     continue;
                 }
