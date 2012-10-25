@@ -152,7 +152,7 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
 
         // register Torc:: ('Torc')
         QScriptValue torc = m_engine->newQMetaObject(&Torc::staticMetaObject);
-        m_engine->globalObject().setProperty("Torc", torc);
+        m_engine->globalObject().setProperty("Torc", torc); 
 
         // register the log function ('Log')
         QScriptValue log = m_engine->newFunction(ScriptDebug);
@@ -1067,7 +1067,8 @@ QString UIWidget::GetDerivedWidgetName(const QString &NewParentName)
     if (objectName().startsWith(m_parent->objectName()))
         return NewParentName + objectName().mid(m_parent->objectName().size());
 
-    LOG(VB_GENERAL, LOG_ERR, "Unable to determine derived object name.");
+    LOG(VB_GENERAL, LOG_ERR, QString("Unable to determine derived object name (%1)")
+        .arg(objectName()));
     return "Error";
 }
 
@@ -1411,10 +1412,16 @@ bool UIWidget::IsDecoration(void)
 bool UIWidget::Connect(const QString &Sender, const QString &Signal,
                        const QString &Receiver, const QString &Slot)
 {
-    QObject* sender = Sender.isEmpty() ? this : FindWidget(Sender);
+    UIWidget* sender = Sender.isEmpty() ? this : FindWidget(Sender);
     if (!sender)
     {
         LOG(VB_GENERAL, LOG_ERR, "Failed to find sender.");
+        return false;
+    }
+
+    if (sender->IsTemplate())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Trying to send signal from template.");
         return false;
     }
 
@@ -1430,12 +1437,19 @@ bool UIWidget::Connect(const QString &Sender, const QString &Signal,
     // FIXME - move to QMetaMethod in Qt 4.8
     signal = "2" + signal;
 
-    QObject* receiver = Receiver.isEmpty() ? this : FindWidget(Receiver);
+    UIWidget* receiver = Receiver.isEmpty() ? this : FindWidget(Receiver);
     if (!receiver)
     {
         LOG(VB_GENERAL, LOG_ERR, "Failed to find receiver.");
         return false;
     }
+
+    if (sender->IsTemplate())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Trying to send signal to template.");
+        return false;
+    }
+
 
     QByteArray slot = Slot.trimmed().toLatin1() + "()";
 
