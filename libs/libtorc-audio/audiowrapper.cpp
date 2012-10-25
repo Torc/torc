@@ -467,7 +467,6 @@ void AudioWrapper::SetAudioOffset(int Offset)
     m_audioOffset = Offset;
 }
 
-// NB not locked
 void AudioWrapper::AddAudioData(char *Buffer, int Length, qint64 Timecode, int Frames)
 {
     if (!m_audioOutput || m_noAudioOut)
@@ -485,7 +484,6 @@ void AudioWrapper::AddAudioData(char *Buffer, int Length, qint64 Timecode, int F
         LOG(VB_GENERAL, LOG_ERR, "Audio buffer overflow - data lost");
 }
 
-// NB not locked
 bool AudioWrapper::NeedDecodingBeforePassthrough(void)
 {
     if (!m_audioOutput)
@@ -494,7 +492,6 @@ bool AudioWrapper::NeedDecodingBeforePassthrough(void)
     return m_audioOutput->NeedDecodingBeforePassthrough();
 }
 
-// NB not locked
 qint64 AudioWrapper::LengthLastData(void)
 {
     if (!m_audioOutput)
@@ -503,7 +500,6 @@ qint64 AudioWrapper::LengthLastData(void)
     return m_audioOutput->LengthLastData();
 }
 
-// NB not locked
 int AudioWrapper::GetFillStatus(void)
 {
     if (!m_audioOutput || m_noAudioOut)
@@ -512,7 +508,6 @@ int AudioWrapper::GetFillStatus(void)
     return m_audioOutput->GetFillStatus();
 }
 
-// NB not locked
 void AudioWrapper::Drain(void)
 {
     if (m_audioOutput && !m_noAudioOut)
