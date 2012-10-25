@@ -38,6 +38,7 @@ HEADERS += uitext.h           uishape.h
 HEADERS += uiimagewidget.h    uigroup.h
 HEADERS += uibutton.h         uiactions.h
 HEADERS += uishaperenderer.h  uimedia.h
+HEADERS += uimessenger.h
 
 SOURCES += uiimage.cpp        uiimagetracker.cpp
 SOURCES += uifont.cpp         uitextrenderer.cpp
@@ -55,6 +56,7 @@ SOURCES += uianimation.cpp    uitext.cpp
 SOURCES += uishape.cpp        uiimagewidget.cpp
 SOURCES += uigroup.cpp        uibutton.cpp
 SOURCES += uiactions.cpp      uishaperenderer.cpp
+SOURCES += uimessenger.cpp
 
 greaterThan(QT_MAJOR_VERSION, 4) {
     SOURCES += uidisplay-qt5.cpp
