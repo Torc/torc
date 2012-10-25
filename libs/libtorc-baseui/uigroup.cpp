@@ -542,7 +542,8 @@ void UIGroup::CopyFrom(UIWidget *Other)
     m_spacingY    = group->m_spacingY;
     m_selectionRange = group->m_selectionRange;
     m_speed = group->m_speed;
-    SetAnimationCurve((int)group->m_easingCurve->type());
+    if (group->m_easingCurve)
+        SetAnimationCurve((int)group->m_easingCurve->type());
 
     grouptype   = group->grouptype;
     alignment   = group->alignment;
