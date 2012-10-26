@@ -29,7 +29,7 @@
 #include <QSqlDatabase>
 #include <QThreadPool>
 #include <QMutex>
-#include <QUUid>
+#include <QUuid>
 #include <QDir>
 #include <QMetaEnum>
 
