@@ -1003,6 +1003,9 @@ int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
                                          planesize, frame.nb_samples,
                                          (void **)frame.extended_data,
                                          frame.linesize[0], frame.nb_samples);
+
+        if (samples != frame.nb_samples)
+            LOG(VB_GENERAL, LOG_WARNING, "Unexpected number of frames returned by avresample_convert");
     }
     else
     {
