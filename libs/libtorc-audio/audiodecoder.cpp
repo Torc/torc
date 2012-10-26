@@ -778,6 +778,8 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                 if (context)
                     avcodec_flush_buffers(context);
                 m_audioPts = AV_NOPTS_VALUE;
+                if (m_audio)
+                    m_audio->Reset();
                 yield = false;
                 packet = NULL;
             }
@@ -2066,8 +2068,8 @@ bool AudioDecoder::SelectStream(TorcStreamTypes Type)
 
     // pick one
     QLocale::Language language = gLocalContext->GetLanguage();
-    int index    = 0;
-    int score    = 0;
+    int index = 0;
+    int score = 0;
 
     QList<TorcStreamData*>::iterator it = m_programs[m_currentProgram]->m_streams[Type].begin();
     for ( ; it != m_programs[m_currentProgram]->m_streams[Type].end(); ++it)
