@@ -32,7 +32,7 @@ AudioOutputSettings* AudioOutputOSS::GetOutputSettings(bool /*digital*/)
 {
     AudioOutputSettings *settings = new AudioOutputSettings();
 
-    QByteArray device = m_mainDevice.toAscii();
+    QByteArray device = m_mainDevice.toLatin1();
     m_audioFd = open(device.constData(), O_WRONLY | O_NONBLOCK);
 
     if (m_audioFd < 0)
@@ -104,7 +104,7 @@ bool AudioOutputOSS::OpenDevice()
 
     while (timer.Elapsed() < 2000 && m_audioFd == -1)
     {
-        QByteArray device = m_mainDevice.toAscii();
+        QByteArray device = m_mainDevice.toLatin1();
         m_audioFd = open(device.constData(), O_WRONLY);
         if (m_audioFd < 0 && errno != EAGAIN && errno != EINTR)
         {
@@ -265,7 +265,7 @@ void AudioOutputOSS::VolumeInit()
     if (device.toLower() == "software")
         return;
 
-    QByteArray dev = device.toAscii();
+    QByteArray dev = device.toLatin1();
     m_mixerFd = open(dev.constData(), O_RDONLY);
 
     QString controlLabel = gLocalContext->GetSetting("MixerControl", QString("PCM"));

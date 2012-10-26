@@ -188,18 +188,18 @@ class TorcCECDevicePriv
 
         for (uint8_t i = 0; i < devicecount; i++)
         {
-            QString comm = QString::fromAscii(devices[i].comm);
+            QString comm = QString::fromLatin1(devices[i].comm);
             bool match = find ? (comm == m_defaultDevice) : (i == 0);
             devicenum = match ? i : devicenum;
             LOG(VB_GENERAL, LOG_INFO,
                 QString("Device %1: path '%2' com port '%3' %4").arg(i + 1)
-                .arg(QString::fromAscii(devices[i].path)).arg(comm)
+                .arg(QString::fromLatin1(devices[i].path)).arg(comm)
                 .arg(match ? "SELECTED" : ""));
         }
 
         // open adapter
-        QString path = QString::fromAscii(devices[devicenum].path);
-        QString comm = QString::fromAscii(devices[devicenum].comm);
+        QString path = QString::fromLatin1(devices[devicenum].path);
+        QString comm = QString::fromLatin1(devices[devicenum].comm);
         LOG(VB_GENERAL, LOG_INFO, QString("Trying to open device %1 (%2)").arg(path).arg(comm));
 
         m_adapter->InitVideoStandalone();

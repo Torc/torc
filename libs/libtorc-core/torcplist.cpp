@@ -414,7 +414,7 @@ QVariant TorcPList::ParseBinaryString(quint8 *Data)
     if (!count)
         return result;
 
-    result = QString::fromAscii((const char*)Data, count);
+    result = QString::fromLatin1((const char*)Data, count);
     LOG(VB_GENERAL, LOG_DEBUG, QString("ASCII String: %1").arg(result));
     return QVariant(result);
 }

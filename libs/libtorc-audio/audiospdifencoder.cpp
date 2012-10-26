@@ -41,7 +41,7 @@ AudioSPDIFEncoder::AudioSPDIFEncoder(QString Muxer, int CodecId)
 {
     AudioDecoder::InitialiseLibav();
 
-    QByteArray dev_ba = Muxer.toAscii();
+    QByteArray dev_ba = Muxer.toLatin1();
     AVOutputFormat *fmt = av_guess_format(dev_ba.constData(), NULL, NULL);
     if (!fmt)
     {

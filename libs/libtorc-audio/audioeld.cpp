@@ -295,7 +295,7 @@ void AudioELD::Parse(void)
         return;
     }
 
-    m_monitorName = QString::fromAscii((char*)buffer + ELD_FIXED_SIZE, namelength + 1).simplified();
+    m_monitorName = QString::fromLatin1((char*)buffer + ELD_FIXED_SIZE, namelength + 1).simplified();
 
     for (int i = 0; i < m_numSADs; i++)
     {

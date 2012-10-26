@@ -111,7 +111,7 @@ int AudioOutputALSA::TryOpenDevice(int Mode, int TryAC3)
 
     if (TryAC3)
     {
-        device = m_passthroughDevice.toAscii();
+        device = m_passthroughDevice.toLatin1();
         LOG(VB_AUDIO, LOG_INFO, QString("OpenDevice %1 for passthrough").arg(m_passthroughDevice));
         error = snd_pcm_open(&m_pcmHandle, device.constData(), SND_PCM_STREAM_PLAYBACK, Mode);
 
@@ -131,7 +131,7 @@ int AudioOutputALSA::TryOpenDevice(int Mode, int TryAC3)
     {
         // passthrough open failed, retry default device
         LOG(VB_AUDIO, LOG_INFO, QString("OpenDevice %1").arg(m_mainDevice));
-        device = m_mainDevice.toAscii();
+        device = m_mainDevice.toLatin1();
         error = snd_pcm_open(&m_pcmHandle, device.constData(),
                            SND_PCM_STREAM_PLAYBACK, Mode);
         m_lastdevice = m_mainDevice;
@@ -259,7 +259,7 @@ QByteArray AudioOutputALSA::GetELD(int Card, int Device, int Subdevice)
     snd_ctl_elem_id_set_device(id, Device);
 
     if ((err = snd_hctl_open(&hctl,
-                             QString("hw:%1").arg(Card).toAscii().constData(),
+                             QString("hw:%1").arg(Card).toLatin1().constData(),
                              0)) < 0)
     {
         LOG(VB_AUDIO, LOG_INFO, QString("Control %1 open error: %2")
@@ -912,7 +912,7 @@ bool AudioOutputALSA::OpenMixer(void)
         return false;
     }
 
-    QByteArray dev_ba = m_mixer.device.toAscii();
+    QByteArray dev_ba = m_mixer.device.toLatin1();
     struct snd_mixer_selem_regopt regopts =
         {1, SND_MIXER_SABSTRACT_NONE, dev_ba.constData(), NULL, NULL};
 

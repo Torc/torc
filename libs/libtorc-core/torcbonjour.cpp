@@ -907,7 +907,7 @@ static class TorcAnnounceObject : public TorcAdminObject
         {
             QByteArray dummy;
             int port = 7547; // NB
-            QByteArray name(QCoreApplication::applicationName().toAscii());
+            QByteArray name(QCoreApplication::applicationName().toLatin1());
             name.append(" on ");
             name.append(QHostInfo::localHostName());
             QByteArray torcservice("_torc._tcp.");
