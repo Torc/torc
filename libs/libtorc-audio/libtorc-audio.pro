@@ -78,6 +78,16 @@ contains(CONFIG_OSS_OUTDEV, yes) {
     SOURCES += audiooutputoss.cpp
 }
 
+contains(CONFIG_LIBCRYPTO, yes) {
+    contains(CONFIG_LIBDNS_SD, yes) {
+        DEPENDPATH += ./raop
+        HEADERS += torcraopdevice.h    torcraopbuffer.h   torcraopconnection.h
+        SOURCES += torcraopdevice.cpp  torcraopbuffer.cpp torcraopconnection.cpp
+        LIBS    += -lcrypto
+        QT      += network
+    }
+}
+
 #soundtouch
 HEADERS += AAFilter.h       cpu_detect.h FIRFilter.h
 HEADERS += RateTransposer.h TDStretch.h  STTypes.h
