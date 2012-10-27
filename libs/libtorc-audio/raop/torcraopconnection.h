@@ -38,7 +38,7 @@ class TorcRAOPConnection : public QObject
     void           Close        (void);
     void           ParseHeader  (const QByteArray &Line, bool First);
     void           ProcessText  (void);
-    void           SendResend   (uint64_t Timestamp, uint16_t Start, uint16_t End);
+    void           SendResend   (quint64 Timestamp, quint16 Start, quint16 End);
     void           timerEvent   (QTimerEvent *Event);
 
   private:

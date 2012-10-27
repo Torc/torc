@@ -34,6 +34,7 @@
 
 #include <openssl/pem.h>
 #include <openssl/aes.h>
+#include <arpa/inet.h>
 
 #define MAXPACKETSIZE       2048
 #define DEFAULTSAMPLERATE   44100
@@ -612,7 +613,7 @@ void TorcRAOPConnection::ProcessText(void)
     m_priv->m_textStream->flush();
 }
 
-void TorcRAOPConnection::SendResend(uint64_t Timestamp, uint16_t Start, uint16_t End)
+void TorcRAOPConnection::SendResend(quint64 Timestamp, quint16 Start, quint16 End)
 {
     if (!m_priv->m_clientControlSocket)
         return;
