@@ -171,7 +171,28 @@ bool TorcRAOPBuffer::Open(void)
             m_kModifier = data[i].second.toInt();
     }
 #else
-// bedtime
+    QString query = m_url.query();
+    QStringList queries = query.split('&');
+    foreach (QString pair, queries)
+    {
+        int index = pair.indexOf('=');
+        QString key = pair.left(index);
+        QString val = pair.mid(index + 1);
+        LOG(VB_GENERAL, LOG_INFO, QString("key %1 val %2").arg(key).arg(val));
+
+        if (key == "channels")
+            m_channels = val.toInt();
+        else if (key == "framesize")
+            m_frameSize = val.toInt();
+        else if (key == "samplesize")
+            m_sampleSize = val.toInt();
+        else if (key == "historymult")
+            m_historyMult = val.toInt();
+        else if (key == "initialhistory")
+            m_initialHistory = val.toInt();
+        else if (key == "kmodifier")
+            m_kModifier = val.toInt();
+    }
 #endif
 
     if (!(m_channels > 0 && m_frameSize > 0 && m_sampleSize > 0 &&
@@ -243,7 +264,7 @@ int TorcRAOPBuffer::Read(quint8 *Buffer, qint32 BufferSize)
     int tries = 0;
 
     // need to give TorcRAOPConnection to recover from missed packets
-    while (data == NULL && tries++ < 40 && !ff_check_interrupt(&m_avFormatContext->interrupt_callback))
+    while (data == NULL && tries++ < 40 && !m_avFormatContext->interrupt_callback.callback(m_avFormatContext->interrupt_callback.opaque))
     {
         if ((data = TorcRAOPDevice::Read(m_streamId)))
             continue;

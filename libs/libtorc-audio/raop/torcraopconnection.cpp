@@ -300,7 +300,7 @@ QByteArray* TorcRAOPConnection::Read(void)
 
     if (m_priv->m_validTimestamp && m_priv->m_validTimestamp <= it.key())
     {
-        LOG(VB_GENERAL, LOG_INFO, QString("Waiting on resend packet..."));
+        LOG(VB_GENERAL, LOG_INFO, IDENT + QString("Waiting on resend packet..."));
         return NULL;
     }
 
