@@ -146,6 +146,7 @@ bool TorcRAOPBuffer::Open(void)
         return false;
     }
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
     QList<QPair<QString, QString> > data = m_url.queryItems();
     if (data.size() != 6)
     {
@@ -169,6 +170,9 @@ bool TorcRAOPBuffer::Open(void)
         if (data[i].first == "kmodifier")
             m_kModifier = data[i].second.toInt();
     }
+#else
+// bedtime
+#endif
 
     if (!(m_channels > 0 && m_frameSize > 0 && m_sampleSize > 0 &&
           m_historyMult > -1 && m_initialHistory > -1 && m_kModifier > -1))
