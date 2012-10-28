@@ -178,7 +178,6 @@ bool TorcRAOPBuffer::Open(void)
         int index = pair.indexOf('=');
         QString key = pair.left(index);
         QString val = pair.mid(index + 1);
-        LOG(VB_GENERAL, LOG_INFO, QString("key %1 val %2").arg(key).arg(val));
 
         if (key == "channels")
             m_channels = val.toInt();
@@ -204,7 +203,7 @@ bool TorcRAOPBuffer::Open(void)
     }
 
     if (m_stream->codec->extradata)
-        LOG(VB_GENERAL, LOG_WARNING, "New stream already has extradata");
+        av_free(m_stream->codec->extradata);
 
     unsigned char *extradata = new unsigned char[36];
     memset(extradata, 0, 36);
