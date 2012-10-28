@@ -583,9 +583,58 @@ void TorcRAOPConnection::ProcessText(void)
     }
     else if (option == "GET_PARAMETER")
     {
+        LOG(VB_GENERAL, LOG_DEBUG, IDENT + "GET_PARAMETER not handled");
     }
     else if (option == "SET_PARAMETER")
     {
+        QString parameter = m_priv->m_textHeaders.value("Content-Type");
+
+        if (parameter == "image/jpeg")
+        {
+            LOG(VB_GENERAL, LOG_INFO, IDENT + "Received image");
+        }
+        else if (parameter == "application/x-dmap-tagged")
+        {
+            LOG(VB_GENERAL, LOG_INFO, IDENT + "Received dmap data");
+        }
+        else if (parameter == "text/parameters")
+        {
+            int index   = m_priv->m_textContent.indexOf(":");
+            QString key = m_priv->m_textContent.left(index);
+            QString val = m_priv->m_textContent.mid(index + 1).trimmed();
+
+            if (key == "volume")
+            {
+                float volume = (val.toFloat() + 30.0f) * 100.0f / 30.0f;
+                if (volume < 0.01f)
+                    volume = 0.0f;
+
+                LOG(VB_GENERAL, LOG_INFO, IDENT + QString("Set volume request - %1").arg(volume));
+            }
+            else if (key == "progress")
+            {
+                uint64_t start   = 0;
+                uint64_t current = 0;
+                uint64_t end     = 0;
+
+                QStringList items = val.split("/");
+                if (items.size() == 3)
+                {
+                    start   = items[0].toUInt();
+                    current = items[1].toUInt();
+                    end     = items[2].toUInt();
+                }
+
+                qreal length  = ((double)(end - start)) / (qreal)m_priv->m_sampleRate;
+                qreal pos     = ((double)(current - start)) / (qreal)m_priv->m_sampleRate;
+
+                LOG(VB_GENERAL, LOG_INFO, IDENT + QString("Progress: %1 of %2").arg(pos).arg(length));
+            }
+            else
+            {
+                LOG(VB_GENERAL, LOG_INFO, IDENT + QString("Uknown text parameter %1=%2").arg(key).arg(val));
+            }
+        }
     }
     else if (option == "RECORD")
     {
