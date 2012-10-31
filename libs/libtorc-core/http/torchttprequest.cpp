@@ -93,7 +93,7 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
             QList<QPair<QString, QString> > pairs = url.queryItems();
             for (int i = 0; i < pairs.size(); ++i)
-                m_headers->insert(pairs[i].first, pairs[i].second);
+                m_queries.insert(pairs[i].first, pairs[i].second);
 #else
             QStringList pairs = url.query().split('&');
             foreach (QString pair, pairs)
@@ -101,7 +101,7 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
                 int index = pair.indexOf('=');
                 QString key = pair.left(index);
                 QString val = pair.mid(index + 1);
-                m_headers->insert(key, val);
+                m_queries.insert(key, val);
             }
 #endif
         }
@@ -118,6 +118,8 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
         m_keepAlive = true;
     else if (connection == "close")
         m_keepAlive = false;
+
+    LOG(VB_GENERAL, LOG_DEBUG, QString("HTTP request: path '%1' method '%2'").arg(m_path).arg(m_method));
 }
 
 TorcHTTPRequest::~TorcHTTPRequest()
@@ -156,6 +158,16 @@ HTTPType TorcHTTPRequest::GetHTTPType(void)
 QString TorcHTTPRequest::GetPath(void)
 {
     return m_path;
+}
+
+QString TorcHTTPRequest::GetMethod(void)
+{
+    return m_method;
+}
+
+QMap<QString,QString> TorcHTTPRequest::Queries(void)
+{
+    return m_queries;
 }
 
 QPair<QByteArray*,QByteArray*> TorcHTTPRequest::Respond(void)

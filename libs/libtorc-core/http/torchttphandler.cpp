@@ -41,6 +41,8 @@
 TorcHTTPHandler::TorcHTTPHandler(const QString &Signature)
   : m_signature(Signature)
 {
+    if (!m_signature.endsWith("/"))
+        m_signature += "/";
 }
 
 TorcHTTPHandler::~TorcHTTPHandler()

@@ -70,6 +70,8 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     void                   SetResponseContent       (QByteArray *Content);
     HTTPType               GetHTTPType              (void);
     QString                GetPath                  (void);
+    QString                GetMethod                (void);
+    QMap<QString,QString>  Queries                  (void);
     QPair<QByteArray*,QByteArray*> Respond          (void);
 
   protected:
@@ -82,6 +84,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     HTTPProtocol           m_protocol;
     bool                   m_keepAlive;
     QMap<QString,QString> *m_headers;
+    QMap<QString,QString>  m_queries;
     QByteArray            *m_content;
 
     HTTPResponseType       m_responseType;

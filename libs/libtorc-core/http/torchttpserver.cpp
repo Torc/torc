@@ -149,7 +149,7 @@ TorcHTTPServer::TorcHTTPServer()
     }
 
     // add the default top level handler
-    m_defaultHandler = new TorcHTMLHandler("/");
+    m_defaultHandler = new TorcHTMLHandler("");
     AddHandler(m_defaultHandler);
 }
 
@@ -159,10 +159,6 @@ TorcHTTPServer::~TorcHTTPServer()
     delete m_defaultHandler;
 
     Close();
-
-    QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.begin();
-    for ( ; it != m_handlers.end(); ++it)
-        delete (*it);
 
     delete m_newHandlersLock;
     delete m_oldHandlersLock;
@@ -224,7 +220,7 @@ void TorcHTTPServer::NewRequest(void)
             {
                 QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.find(request->GetPath());
                 if (it != m_handlers.end())
-                    (*it)->ProcessRequest(this, request, connection);
+                    (*it)->ProcessHTTPRequest(this, request, connection);
                 connection->Complete(request);
             }
         }
@@ -315,9 +311,14 @@ void TorcHTTPServer::UpdateHandlers(void)
     {
         QString signature = handler->Signature();
         if (m_handlers.contains(signature))
+        {
             LOG(VB_GENERAL, LOG_WARNING, QString("Handler '%1' already registered - ignoring").arg(signature));
+        }
         else if (!signature.isEmpty())
+        {
+            LOG(VB_GENERAL, LOG_DEBUG, QString("Added handler for %1").arg(signature));
             m_handlers.insert(signature, handler);
+        }
     }
 }
 

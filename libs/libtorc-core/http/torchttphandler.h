@@ -17,10 +17,10 @@ class TORC_CORE_PUBLIC TorcHTTPHandler
     TorcHTTPHandler(const QString &Signature);
     virtual ~TorcHTTPHandler();
 
-    QString        Signature      (void);
-    virtual void   ProcessRequest (TorcHTTPServer* Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection) = 0;
+    QString        Signature          (void);
+    virtual void   ProcessHTTPRequest (TorcHTTPServer* Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection) = 0;
 
-  private:
+  protected:
     QString        m_signature;
 };
 

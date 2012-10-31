@@ -43,7 +43,7 @@ TorcHTMLHandler::TorcHTMLHandler(const QString &Path)
 {
 }
 
-void TorcHTMLHandler::ProcessRequest(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
+void TorcHTMLHandler::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
 {
     if (Request && Connection)
     {
