@@ -155,6 +155,7 @@ class TORC_CORE_PUBLIC Torc
     };
 
     static QString ActionToString(enum Actions Action);
+    static int     StringToAction(const QString &Action);
 };
 
 class TorcLocalContextPriv;

@@ -218,7 +218,15 @@ QString Torc::ActionToString(Actions Action)
     const QMetaObject &mo = Torc::staticMetaObject;
     int enum_index        = mo.indexOfEnumerator("Actions");
     QMetaEnum metaEnum    = mo.enumerator(enum_index);
-    return  metaEnum.valueToKey(Action);
+    return metaEnum.valueToKey(Action);
+}
+
+int Torc::StringToAction(const QString &Action)
+{
+    const QMetaObject &mo = Torc::staticMetaObject;
+    int enum_index        = mo.indexOfEnumerator("Actions");
+    QMetaEnum metaEnum    = mo.enumerator(enum_index);
+    return metaEnum.keyToValue(Action.toLatin1());
 }
 
 qint16 TorcLocalContext::Create(TorcCommandLineParser* CommandLine, int ApplicationFlags)
