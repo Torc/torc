@@ -43,7 +43,7 @@
 */
 
 TorcHTTPConnection::TorcHTTPConnection(TorcHTTPServer *Parent, QTcpSocket *Socket)
-  : QObject(Parent),
+  : QObject(),
     m_server(Parent),
     m_socket(Socket)
 {
