@@ -37,6 +37,7 @@
 #include "torclocalcontext.h"
 #include "torcadminthread.h"
 #include "torcnetwork.h"
+#include "torchttpserver.h"
 #include "torcbonjour.h"
 
 TorcBonjour* gBonjour = NULL;
@@ -906,7 +907,7 @@ static class TorcAnnounceObject : public TorcAdminObject
             gLocalContext->GetSetting(TORC_CORE + "AdvertiseService", true))
         {
             QByteArray dummy;
-            int port = 7547; // NB
+            int port = TorcHTTPServer::GetPort();
             QByteArray name(QCoreApplication::applicationName().toLatin1());
             name.append(" on ");
             name.append(QHostInfo::localHostName());

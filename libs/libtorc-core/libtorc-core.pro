@@ -13,7 +13,7 @@ QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 QT += sql network
 QT -= gui
 
-DEPENDPATH  += ./platforms
+DEPENDPATH  += ./platforms ./http
 INCLUDEPATH += $$DEPENDPATH
 
 HEADERS += torccoreexport.h   torclogging.h
@@ -30,8 +30,10 @@ HEADERS += torcadminthread.h  torcstoragedevice.h
 HEADERS += torcstorage.h      torcusb.h
 HEADERS += torcedid.h         torcbuffer.h
 HEADERS += torcfilebuffer.h   torclanguage.h
-HEADERS += torcplayer.h       torcdecoder.cpp
-HEADERS += torcnetwork.h
+HEADERS += torcplayer.h       torcdecoder.h
+HEADERS += torcnetwork.h      torchttprequest.h
+HEADERS += torchttpserver.h   torchtmlhandler.h
+HEADERS += torchttphandler.h  torchttpconnection.h
 
 SOURCES += torcloggingimp.cpp torcplist.cpp
 SOURCES += torcthread.cpp     torclocalcontext.cpp
@@ -46,7 +48,9 @@ SOURCES += torcstorage.cpp    torcusb.cpp
 SOURCES += torcedid.cpp       torcbuffer.cpp
 SOURCES += torcfilebuffer.cpp torclanguage.cpp
 SOURCES += torcplayer.cpp     torcdecoder.cpp
-SOURCES += torcnetwork.cpp
+SOURCES += torcnetwork.cpp    torchttprequest.cpp
+SOURCES += torchttpserver.cpp torchtmlhandler.cpp
+SOURCES += torchttphandler.cpp torchttpconnection.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files  = torclogging.h     torclocalcontext.h
@@ -59,6 +63,7 @@ inc.files += torclocaldefs.h   torcpower.h
 inc.files += torcusb.h         torcedid.h
 inc.files += torcbuffer.h      torcplayer.h
 inc.files += torcdecoder.h     torcnetwork.h
+inc.files += torcwebserver.h   torchtmlhandler.h
 
 unix:contains(CONFIG_LIBUDEV, yes) {
     HEADERS += torcusbprivunix.h
