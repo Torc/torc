@@ -27,8 +27,10 @@
  */
 
 // Qt
+#include <QtEndian>
 #include <QDateTime>
 #include <QTextStream>
+#include <QTextCodec>
 #include <QBuffer>
 
 // Torc
@@ -62,9 +64,10 @@ enum
     BPLIST_UID     = 0x70,
     BPLIST_ARRAY   = 0xA0,
     BPLIST_SET     = 0xC0,
-    BPLIST_DICT    = 0xD0,
+    BPLIST_DICT    = 0xD0
 };
 
+// NB Do not call this twice on the same data
 static void convert_float(quint8 *p, quint8 s)
 {
 #if HAVE_BIGENDIAN && !defined (__VFP_FP__)
@@ -80,25 +83,14 @@ static void convert_float(quint8 *p, quint8 s)
 #endif
 }
 
-static quint8* convert_int(quint8 *p, quint8 s)
-{
-#if HAVE_BIGENDIAN
-    return p;
-#else
-    for (quint8 i = 0; i < (s / 2); i++)
-    {
-        quint8 t = p[i];
-        quint8 j = ((s - 1) + 0) - i;
-        p[i] = p[j];
-        p[j] = t;
-    }
-#endif
-    return p;
-}
-
 TorcPList::TorcPList(const QByteArray &Data)
-  : m_data(NULL), m_offsetTable(NULL), m_rootObj(0),
-    m_numObjs(0), m_offsetSize(0), m_parmSize(0)
+  : m_data(NULL),
+    m_offsetTable(NULL),
+    m_rootObj(0),
+    m_numObjs(0),
+    m_offsetSize(0),
+    m_parmSize(0),
+    m_codec(QTextCodec::codecForName("UTF-16BE"))
 {
     ParseBinaryPList(Data);
 }
@@ -126,7 +118,7 @@ QString TorcPList::ToString(void)
     buf.open(QBuffer::WriteOnly);
     if (!ToXML(&buf))
         return QString("");
-    return QString(res.data());
+    return QString::fromUtf8(res.data());
 }
 
 bool TorcPList::ToXML(QIODevice *Device)
@@ -242,15 +234,14 @@ void TorcPList::ParseBinaryPList(const QByteArray &Data)
     quint8* trailer = m_data + size - TRAILER_SIZE;
     m_offsetSize   = *(trailer + TRAILER_OFFSIZE_INDEX);
     m_parmSize = *(trailer + TRAILER_PARMSIZE_INDEX);
-    m_numObjs  = *((quint64*)convert_int(trailer + TRAILER_NUMOBJ_INDEX, 8));
-    m_rootObj  = *((quint64*)convert_int(trailer + TRAILER_ROOTOBJ_INDEX, 8));
-    quint64 offset_tindex = *((quint64*)convert_int(trailer + TRAILER_OFFTAB_INDEX, 8));
+    m_numObjs  = qToBigEndian(*((quint64*)(trailer + TRAILER_NUMOBJ_INDEX)));
+    m_rootObj  = qToBigEndian(*((quint64*)(trailer + TRAILER_ROOTOBJ_INDEX)));
+    quint64 offset_tindex = qToBigEndian(*((quint64*)(trailer + TRAILER_OFFTAB_INDEX)));
     m_offsetTable = m_data + offset_tindex;
 
     LOG(VB_GENERAL, LOG_DEBUG,
-        QString("numObjs: %1 parmSize: %2 offsetSize: %3 rootObj: %4"
-                "offset_tindex: %5").arg(m_numObjs).arg(m_parmSize)
-                .arg(m_offsetSize).arg(m_rootObj).arg(offset_tindex));
+        QString("numObjs: %1 parmSize: %2 offsetSize: %3 rootObj: %4 offsetindex: %5")
+            .arg(m_numObjs).arg(m_parmSize).arg(m_offsetSize).arg(m_rootObj).arg(offset_tindex));
 
     // something wrong?
     if (!m_numObjs || !m_parmSize || !m_offsetSize)
@@ -305,9 +296,9 @@ QVariant TorcPList::ParseBinaryNode(quint64 Num)
 quint64 TorcPList::GetBinaryUInt(quint8 *Data, quint64 Size)
 {
     if (Size == 1) return (quint64)(*(Data));
-    if (Size == 2) return (quint64)(*((quint16*)convert_int(Data, 2)));
-    if (Size == 4) return (quint64)(*((quint32*)convert_int(Data, 4)));
-    if (Size == 8) return (quint64)(*((quint64*)convert_int(Data, 8)));
+    if (Size == 2) return (quint64)(qToBigEndian(*((quint16*)Data)));
+    if (Size == 4) return (quint64)(qToBigEndian(*((quint32*)Data)));
+    if (Size == 8) return (quint64)(qToBigEndian(*((quint64*)Data)));
 
     if (Size == 3)
     {
@@ -328,8 +319,7 @@ quint8* TorcPList::GetBinaryObject(quint64 Num)
 
     quint8* p = m_offsetTable + (Num * m_offsetSize);
     quint64 offset = GetBinaryUInt(p, m_offsetSize);
-    LOG(VB_GENERAL, LOG_DEBUG,
-        QString("GetBinaryObject Num %1, offsize %2 offset %3")
+    LOG(VB_GENERAL, LOG_DEBUG, QString("GetBinaryObject Num %1, offsize %2 offset %3")
         .arg(Num).arg(m_offsetSize).arg(offset));
 
     return m_data + offset;
@@ -357,11 +347,12 @@ QVariantMap TorcPList::ParseBinaryDict(quint8 *Data)
         QVariant val = ParseBinaryNode(valobj);
         if (!key.canConvert<QString>())
         {
-            LOG(VB_GENERAL, LOG_ERR, "Invalid dictionary key type.");
+            LOG(VB_GENERAL, LOG_ERR, QString("Invalid dictionary key type '%1' (key %2)")
+                .arg(key.type()).arg(keyobj));
             return result;
         }
 
-        result.insert(key.toString(), val);
+        result.insertMulti(key.toString(), val);
     }
 
     return result;
@@ -487,17 +478,7 @@ QVariant TorcPList::ParseBinaryUnicode(quint8 *Data)
     if (!count)
         return result;
 
-    // source is big endian (and no BOM?)
-    QByteArray tmp;
-    for (quint64 i = 0; i < count; i++, Data += 2)
-    {
-        quint16 twobyte = (quint16)(*((quint16*)convert_int(Data, 2)));
-        tmp.append((quint8)(twobyte & 0xff));
-        tmp.append((quint8)((twobyte >> 8) & 0xff));
-    }
-    result = QString::fromUtf16((const quint16*)tmp.data(), count);
-    LOG(VB_GENERAL, LOG_DEBUG, QString("Unicode: %1").arg(result));
-    return QVariant(result);
+    return QVariant(m_codec->toUnicode((char*)Data, count << 1));
 }
 
 quint64 TorcPList::GetBinaryCount(quint8 **Data)

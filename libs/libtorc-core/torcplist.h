@@ -44,6 +44,7 @@ class TORC_CORE_PUBLIC TorcPList
     quint64         m_numObjs;
     quint8          m_offsetSize;
     quint8          m_parmSize;
+    QTextCodec     *m_codec;
 };
 
 #endif // TORCPLIST_H
