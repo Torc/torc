@@ -97,7 +97,7 @@ TorcPList::TorcPList(const QByteArray &Data)
 
 QVariant TorcPList::GetValue(const QString &Key)
 {
-    if (m_result.type() != QVariant::Map)
+    if ((int)m_result.type() != QMetaType::QVariantMap)
         return QVariant();
 
     QVariantMap map = m_result.toMap();
@@ -142,31 +142,31 @@ bool TorcPList::ToXML(const QVariant &Data, QXmlStreamWriter &XML)
 {
     switch (Data.type())
     {
-        case QVariant::Map:
+        case QMetaType::QVariantMap:
             DictToXML(Data, XML);
             break;
-        case QVariant::List:
+        case QMetaType::QVariantList:
             ArrayToXML(Data, XML);
             break;
-        case QVariant::Double:
+        case QMetaType::Double:
             XML.writeTextElement("real",
                                  QString("%1").arg(Data.toDouble(), 0, 'f', 6));
             break;
-        case QVariant::ByteArray:
+        case QMetaType::QByteArray:
             XML.writeTextElement("data",
                                  Data.toByteArray().toBase64().data());
             break;
-        case QVariant::ULongLong:
+        case QMetaType::ULongLong:
             XML.writeTextElement("integer",
                                  QString("%1").arg(Data.toULongLong()));
             break;
-        case QVariant::String:
+        case QMetaType::QString:
             XML.writeTextElement("string", Data.toString());
             break;
-        case QVariant::DateTime:
+        case QMetaType::QDateTime:
             XML.writeTextElement("date", Data.toDateTime().toString(Qt::ISODate));
             break;
-        case QVariant::Bool:
+        case QMetaType::Bool:
             {
                 bool val = Data.toBool();
                 XML.writeEmptyElement(val ? "true" : "false");
