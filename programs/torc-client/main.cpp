@@ -20,7 +20,7 @@ using namespace std;
 int main(int argc, char **argv)
 {
     new QApplication(argc, argv);
-    QCoreApplication::setApplicationName("torc-client");
+    QCoreApplication::setApplicationName(QObject::tr("torc-client"));
     QThread::currentThread()->setObjectName(TORC_MAIN_THREAD);
 
     {

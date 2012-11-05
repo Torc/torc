@@ -12,7 +12,7 @@
 int main(int argc, char **argv)
 {
     new QCoreApplication(argc, argv);
-    QCoreApplication::setApplicationName("torc-audioclient");
+    QCoreApplication::setApplicationName(QObject::tr("torc-audioclient"));
     QThread::currentThread()->setObjectName(TORC_MAIN_THREAD);
 
     {
