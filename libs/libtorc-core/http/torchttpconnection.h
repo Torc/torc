@@ -30,6 +30,7 @@ class TORC_CORE_PUBLIC TorcHTTPConnection : public QObject
     bool                     HasRequests    (void);
     TorcHTTPRequest*         GetRequest     (void);
     void                     Complete       (TorcHTTPRequest* Request);
+    QTcpSocket*              Socket         (void);
 
   protected slots:
     void                     ReadInternal   (void);

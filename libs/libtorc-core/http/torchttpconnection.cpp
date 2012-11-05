@@ -89,6 +89,11 @@ void TorcHTTPConnection::Reset(void)
     m_content = new QByteArray();
 }
 
+QTcpSocket* TorcHTTPConnection::Socket(void)
+{
+    return m_socket;
+}
+
 void TorcHTTPConnection::ReadFromClient(void)
 {
     qint64 position = m_buffer.pos();
