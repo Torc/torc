@@ -232,7 +232,7 @@ bool UIAnimation::ParseAnimation(QDomElement *Element, QAbstractAnimation *Paren
             return true;
         }
 
-        QVariant::Type propertytype = m_parent->metaObject()->property(index).type();
+        int propertytype = m_parent->metaObject()->property(index).type();
 
         bool ok = false;
         QPropertyAnimation *animation = NULL;
@@ -243,47 +243,47 @@ bool UIAnimation::ParseAnimation(QDomElement *Element, QAbstractAnimation *Paren
 
         switch (propertytype)
         {
-            case QVariant::Double:
+            case QMetaType::Double:
             {
                 endvalue = end.toFloat(&ok);
                 if (!ok)
                     endvalue = QVariant();
                 break;
             }
-            case QVariant::RectF:
+            case QMetaType::QRectF:
             {
                 QRectF rect = m_parent->GetRect(end);
                 if (rect.isValid())
                     endvalue = rect;
                 break;
             }
-            case QVariant::PointF:
+            case QMetaType::QPointF:
             {
                 endvalue = m_parent->GetPointF(end);
                 break;
             }
-            case QVariant::SizeF:
+            case QMetaType::QSizeF:
             {
                 QSizeF size = m_parent->GetSizeF(end);
                 if (size.isValid())
                     endvalue = size;
                 break;
             }
-            case QVariant::Int:
+            case QMetaType::Int:
             {
                 endvalue = end.toInt(&ok);
                 if (!ok)
                     endvalue = QVariant();
                 break;
             }
-            case QVariant::UInt:
+            case QMetaType::UInt:
             {
                 endvalue = end.toUInt(&ok);
                 if (!ok)
                     endvalue = QVariant();
                 break;
             }
-            case QVariant::ULongLong:
+            case QMetaType::ULongLong:
             {
                 endvalue = end.toULongLong(&ok);
                 if (!ok)
@@ -291,9 +291,11 @@ bool UIAnimation::ParseAnimation(QDomElement *Element, QAbstractAnimation *Paren
                 break;
             }
             default:
+            {
                 endvalue = end.toFloat(&ok);
                 if (!ok)
                     endvalue = QVariant();
+            }
         }
 
         if (endvalue.isValid())
