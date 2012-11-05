@@ -38,8 +38,9 @@
  * \sa TorcHTTPConnection
 */
 
-TorcHTTPHandler::TorcHTTPHandler(const QString &Signature)
-  : m_signature(Signature)
+TorcHTTPHandler::TorcHTTPHandler(const QString &Signature, const QString &Name)
+  : m_signature(Signature),
+    m_name(Name)
 {
     if (!m_signature.endsWith("/"))
         m_signature += "/";
@@ -52,4 +53,9 @@ TorcHTTPHandler::~TorcHTTPHandler()
 QString TorcHTTPHandler::Signature(void)
 {
     return m_signature;
+}
+
+QString TorcHTTPHandler::Name(void)
+{
+    return m_name;
 }
