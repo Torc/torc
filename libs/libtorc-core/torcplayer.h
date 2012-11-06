@@ -47,21 +47,23 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
     void            Reset              (void);
     bool            HandleEvent        (QEvent *Event);
     bool            HandleAction       (int Action);
-    virtual bool    PlayMedia          (const QString &URI, bool Paused);
     bool            IsSwitching        (void);
     PlayerState     GetState           (void);
     PlayerState     GetNextState       (void);
+
+    virtual void*   GetAudio           (void) = 0;
+    void            SendUserMessage    (const QString &Message);
+    int             GetPlayerFlags     (void);
+    int             GetDecoderFlags    (void);
+
+  public slots:
+    virtual bool    PlayMedia          (const QString &URI, bool Paused);
     qreal           GetSpeed           (void);
     bool            Play               (void);
     bool            Stop               (void);
     bool            Pause              (void);
     bool            Unpause            (void);
     bool            TogglePause        (void);
-
-    virtual void*   GetAudio           (void) = 0;
-    void            SendUserMessage    (const QString &Message);
-    int             GetPlayerFlags     (void);
-    int             GetDecoderFlags    (void);
 
   signals:
     void            StateChanged       (TorcPlayer::PlayerState NewState);

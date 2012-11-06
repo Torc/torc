@@ -23,6 +23,7 @@
 // Qt
 #include <QCoreApplication>
 #include <QTimerEvent>
+#include <QThread>
 #include <QObject>
 
 // Torc
@@ -200,6 +201,17 @@ bool TorcPlayer::HandleAction(int Action)
 
 bool TorcPlayer::PlayMedia(const QString &URI, bool Paused)
 {
+    if (thread() != QThread::currentThread())
+    {
+        // turn this into an asynchronous call
+        QVariantMap data;
+        data.insert("uri", URI);
+        data.insert("paused", Paused);
+        TorcEvent *event = new TorcEvent(Torc::PlayMedia, data);
+        QCoreApplication::postEvent(parent(), event);
+        return true;
+    }
+
     if (URI == m_uri)
         return false;
 
@@ -271,10 +283,10 @@ qreal TorcPlayer::GetSpeed(void)
 
 bool TorcPlayer::Play(void)
 {
-    m_nextDecoderPlay = false;
-
     if (m_state == Errored)
         return false;
+
+    m_nextDecoderPlay = false;
 
     m_nextState = Playing;
     return true;
@@ -639,8 +651,9 @@ bool TorcPlayerInterface::HandleEvent(QEvent *Event)
         case Torc::PlayMedia:
             if (data.contains("uri"))
             {
+                bool paused = data.value("paused", false).toBool();
                 SetURI(data.value("uri").toString());
-                PlayMedia(false);
+                PlayMedia(paused);
             }
             break;
         default: break;
