@@ -2,6 +2,7 @@
 #define TORCSTORAGEDEVICE_H
 
 // Qt
+#include <QVariant>
 #include <QString>
 
 // Torc
@@ -40,6 +41,7 @@ class TORC_CORE_PUBLIC TorcStorageDevice
                       const QString &SystemName, const QString &Description);
     virtual ~TorcStorageDevice();
 
+    QVariantMap ToMap          (void);
     StorageType GetType        (void);
     int         GetProperties  (void);
     QString     GetName        (void);

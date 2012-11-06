@@ -65,6 +65,22 @@ QString TorcStorageDevice::TypeToString(StorageType Type)
     return QString("Unknown");
 }
 
+QVariantMap TorcStorageDevice::ToMap(void)
+{
+    QVariantMap result;
+    result.insert("name",        m_name);
+    result.insert("systemname",  m_systemName);
+    result.insert("description", m_description);
+    result.insert("optical",     IsOpticalDisk());
+    result.insert("type",        TypeToString(m_type));
+    result.insert("busy",        (bool)(m_properties & Busy));
+    result.insert("mounted",     (bool)(m_properties & Mounted));
+    result.insert("writeable",   (bool)(m_properties & Writeable));
+    result.insert("ejectable",   (bool)(m_properties & Ejectable));
+    result.insert("removable",   (bool)(m_properties & Removable));
+    return result;
+}
+
 TorcStorageDevice::StorageType TorcStorageDevice::GetType(void)
 {
     return m_type;
