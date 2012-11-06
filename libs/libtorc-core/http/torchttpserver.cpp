@@ -343,10 +343,16 @@ void TorcHTTPServer::UserServicesHelp(TorcHTTPRequest *Request, TorcHTTPConnecti
     QTextStream stream(result);
 
     QMap<QString,QString> services;
+    QList<QString> names;
     QMap<QString,TorcHTTPHandler*>::const_iterator it = m_handlers.begin();
     for ( ; it != m_handlers.end(); ++it)
+    {
         if (it.key().startsWith(m_servicesDirectory))
+        {
             services.insert(it.key(), it.key() + "help");
+            names.append(it.value()->Name());
+        }
+    }
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
     stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName();
@@ -360,8 +366,9 @@ void TorcHTTPServer::UserServicesHelp(TorcHTTPRequest *Request, TorcHTTPConnecti
     {
         stream << "<h3>" << tr("Available services") << "</h3>";
         QMap<QString,QString>::iterator it = services.begin();
-        for ( ; it != services.end(); ++it)
-            stream << "<a href='" << it.value() << "'>" << it.key() << "</a><br>";
+        QList<QString>::iterator name = names.begin();
+        for ( ; it != services.end(); ++it, ++name)
+            stream << (*name) << " <a href='" << it.value() << "'>" << it.key() << "</a><br>";
     }
 
     stream << "</body></html>";
