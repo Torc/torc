@@ -67,8 +67,18 @@ void TorcHTTPServer::RegisterHandler(TorcHTTPHandler *Handler)
 {
     QMutexLocker locker(gWebServerLock);
 
+    static QList<TorcHTTPHandler*> handlerqueue;
+
     if (gWebServer)
+    {
+        while (!handlerqueue.isEmpty())
+            gWebServer->AddHandler(handlerqueue.takeFirst());
         gWebServer->AddHandler(Handler);
+    }
+    else
+    {
+        handlerqueue.append(Handler);
+    }
 }
 
 void TorcHTTPServer::DeregisterHandler(TorcHTTPHandler *Handler)
@@ -162,7 +172,6 @@ TorcHTTPServer::TorcHTTPServer()
 
 TorcHTTPServer::~TorcHTTPServer()
 {
-    RemoveHandler(m_defaultHandler);
     delete m_defaultHandler;
 
     Close();
@@ -244,7 +253,7 @@ void TorcHTTPServer::NewRequest(void)
 
 bool TorcHTTPServer::event(QEvent *Event)
 {
-    return false;
+    return QTcpServer::event(Event);
 }
 
 void TorcHTTPServer::ClientConnected(void)
@@ -276,8 +285,9 @@ void TorcHTTPServer::AddHandler(TorcHTTPHandler *Handler)
     {
         QMutexLocker locker(m_newHandlersLock);
         m_newHandlers.append(Handler);
-        emit HandlersChanged();
     }
+
+    emit HandlersChanged();
 }
 
 void TorcHTTPServer::RemoveHandler(TorcHTTPHandler *Handler)
@@ -288,8 +298,9 @@ void TorcHTTPServer::RemoveHandler(TorcHTTPHandler *Handler)
     {
         QMutexLocker locker(m_oldHandlersLock);
         m_oldHandlers.append(Handler);
-        emit HandlersChanged();
     }
+
+    emit HandlersChanged();
 }
 
 void TorcHTTPServer::UpdateHandlers(void)
@@ -309,6 +320,20 @@ void TorcHTTPServer::UpdateHandlers(void)
         m_oldHandlers.clear();
     }
 
+    foreach (TorcHTTPHandler *handler, newhandlers)
+    {
+        QString signature = handler->Signature();
+        if (m_handlers.contains(signature))
+        {
+            LOG(VB_GENERAL, LOG_WARNING, QString("Handler '%1' already registered - ignoring").arg(signature));
+        }
+        else if (!signature.isEmpty())
+        {
+            LOG(VB_GENERAL, LOG_DEBUG, QString("Added handler '%1' for %2").arg(handler->Name()).arg(signature));
+            m_handlers.insert(signature, handler);
+        }
+    }
+
     foreach (TorcHTTPHandler *handler, oldhandlers)
     {
         QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.begin();
@@ -319,20 +344,6 @@ void TorcHTTPServer::UpdateHandlers(void)
                 m_handlers.erase(it);
                 break;
             }
-        }
-    }
-
-    foreach (TorcHTTPHandler *handler, newhandlers)
-    {
-        QString signature = handler->Signature();
-        if (m_handlers.contains(signature))
-        {
-            LOG(VB_GENERAL, LOG_WARNING, QString("Handler '%1' already registered - ignoring").arg(signature));
-        }
-        else if (!signature.isEmpty())
-        {
-            LOG(VB_GENERAL, LOG_DEBUG, QString("Added handler for %1").arg(signature));
-            m_handlers.insert(signature, handler);
         }
     }
 }
