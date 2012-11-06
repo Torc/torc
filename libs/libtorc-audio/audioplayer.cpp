@@ -20,6 +20,10 @@
 * USA.
 */
 
+// Qt
+#include <QCoreApplication>
+#include <QThread>
+
 // Torc
 #include "torclocalcontext.h"
 #include "torclogging.h"
@@ -29,6 +33,7 @@
 
 AudioPlayer::AudioPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : TorcPlayer(Parent, PlaybackFlags, DecodeFlags),
+    TorcHTTPService(this, "/player", tr("Player"), AudioPlayer::staticMetaObject),
     m_audioWrapper(new AudioWrapper(this))
 {
     setObjectName("Player");
@@ -49,13 +54,23 @@ void AudioPlayer::Teardown(void)
 
 bool AudioPlayer::PlayMedia(const QString &URI, bool Paused)
 {
-    if (TorcPlayer::PlayMedia(URI, Paused) && !m_refreshTimer)
+    if (thread() != QThread::currentThread())
     {
-        StartTimer(m_refreshTimer, 1000 / 50);
+        // turn this into an asynchronous call
+        QVariantMap data;
+        data.insert("uri", URI);
+        data.insert("paused", Paused);
+        TorcEvent *event = new TorcEvent(Torc::PlayMedia, data);
+        QCoreApplication::postEvent(parent(), event);
         return true;
     }
 
-    return false;
+    bool result = TorcPlayer::PlayMedia(URI, Paused);
+
+    if (!m_refreshTimer)
+        StartTimer(m_refreshTimer, 1000 / 50);
+
+    return result;
 }
 
 void* AudioPlayer::GetAudio(void)

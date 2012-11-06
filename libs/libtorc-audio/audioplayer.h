@@ -6,10 +6,11 @@
 
 // Torc
 #include "torcplayer.h"
+#include "http/torchttpservice.h"
 
 class AudioWrapper;
 
-class AudioPlayer : public TorcPlayer
+class AudioPlayer : public TorcPlayer, public TorcHTTPService
 {
     Q_OBJECT
 
