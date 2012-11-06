@@ -153,7 +153,7 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
             QString name(method.signature());
 #else
-            QString name(method.methodSignature);
+            QString name(method.methodSignature());
 #endif
             name = name.section('(', 0, 0);
 
