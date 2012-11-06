@@ -7,6 +7,7 @@
 
 // Torc
 #include "torccoreexport.h"
+#include "http/torchttpservice.h"
 
 #define TORC_AC_POWER         -1
 #define TORC_LOWBATTERY_LEVEL 10
@@ -41,9 +42,12 @@ class TorcPowerPriv : public QObject
     int          m_batteryLevel;
 };
 
-class TORC_CORE_PUBLIC TorcPower : public QObject
+class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
 {
     Q_OBJECT
+
+    friend class TorcPowerOSX;
+    friend class TorcPowerUnixDBus;
 
   public:
     static QMutex *gPowerLock;
@@ -65,6 +69,7 @@ class TORC_CORE_PUBLIC TorcPower : public QObject
     bool Hibernate       (void);
     bool Restart         (void);
 
+  protected:
     void ShuttingDown    (void);
     void Suspending      (void);
     void Hibernating     (void);
