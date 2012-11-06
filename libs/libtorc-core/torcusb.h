@@ -2,12 +2,14 @@
 #define TORCUSB_H
 
 // Qt
+#include <QVariant>
 #include <QObject>
 #include <QMutex>
 #include <QStringList>
 
 // Torc
 #include "torccoreexport.h"
+#include "http/torchttpservice.h"
 
 class TorcUSBPriv;
 
@@ -35,6 +37,7 @@ class TorcUSBDevice
     TorcUSBDevice();
     TorcUSBDevice(const QString &Path, int VendorID, int ProductID, Classes Class);
 
+    QVariantMap    ToMap         (void);
     static QString ClassToString (Classes Class);
     static bool    IgnoreClass   (Classes Class);
 
@@ -77,7 +80,7 @@ class TORC_CORE_PUBLIC TorcUSBDeviceHandler
     TorcUSBDeviceHandler *m_nextUSBDeviceHandler;
 };
 
-class TorcUSB : public QObject
+class TorcUSB : public QObject, public TorcHTTPService
 {
     Q_OBJECT
 
@@ -85,12 +88,16 @@ class TorcUSB : public QObject
     TorcUSB();
     virtual ~TorcUSB();
 
-    void DeviceAdded   (const TorcUSBDevice &Device);
-    void DeviceRemoved (const TorcUSBDevice &Device);
+  public slots:
+    QVariantMap  GetDevices     (void);
+
+  public:
+    void         DeviceAdded    (const TorcUSBDevice &Device);
+    void         DeviceRemoved  (const TorcUSBDevice &Device);
 
   private:
     TorcUSBPriv *m_priv;
-    QStringList  m_managedDevices;
+    QMap<QString,TorcUSBDevice> m_managedDevices;
     QMutex      *m_managedDevicesLock;
 };
 

@@ -50,6 +50,18 @@ TorcUSBDevice::TorcUSBDevice(const QString &Path, int Vendor, int Product, TorcU
 {
 }
 
+QVariantMap TorcUSBDevice::ToMap(void)
+{
+    QVariantMap result;
+    result.insert("path",      m_path);
+    result.insert("vendor",    m_vendor);
+    result.insert("vendorid",  m_vendorID);
+    result.insert("product",   m_product);
+    result.insert("productid", m_productID);
+    result.insert("class",     ClassToString(m_class));
+    return result;
+}
+
 QString TorcUSBDevice::ClassToString(Classes Class)
 {
     switch (Class)
@@ -150,6 +162,7 @@ TorcUSBDeviceHandler* TorcUSBDeviceHandler::GetNextHandler(void)
 
 TorcUSB::TorcUSB()
   : QObject(NULL),
+    TorcHTTPService(this, "/usb", tr("USB"), TorcUSB::staticMetaObject),
     m_priv(NULL),
     m_managedDevicesLock(new QMutex())
 {
@@ -170,18 +183,24 @@ TorcUSB::~TorcUSB()
     {
         QMutexLocker locker(m_managedDevicesLock);
 
-        foreach (QString path, m_managedDevices)
-        {
-            TorcUSBDevice device;
-            device.m_path = path;
-            TorcUSBDeviceHandler::DeviceHandled(device, false /*removed*/);
-        }
-
+        QMap<QString,TorcUSBDevice>::const_iterator it = m_managedDevices.begin();
+        for ( ; it != m_managedDevices.end(); ++it)
+            TorcUSBDeviceHandler::DeviceHandled(it.value(), false /*removed*/);
         m_managedDevices.clear();
     }
 
     // delete lock
     delete m_managedDevicesLock;
+}
+
+QVariantMap TorcUSB::GetDevices(void)
+{
+    QMutexLocker locker(m_managedDevicesLock);
+    QVariantMap result;
+    QMap<QString,TorcUSBDevice>::iterator it = m_managedDevices.begin();
+    for ( ; it != m_managedDevices.end(); ++it)
+        result.insert(it.key(), it.value().ToMap());
+    return result;
 }
 
 void TorcUSB::DeviceAdded(const TorcUSBDevice &Device)
@@ -197,7 +216,7 @@ void TorcUSB::DeviceAdded(const TorcUSBDevice &Device)
     if (TorcUSBDeviceHandler::DeviceHandled(Device, true /*added*/))
     {
         QMutexLocker locker(m_managedDevicesLock);
-        m_managedDevices.append(Device.m_path);
+        m_managedDevices.insert(Device.m_path, Device);
     }
 }
 
@@ -209,7 +228,8 @@ void TorcUSB::DeviceRemoved(const TorcUSBDevice &Device)
     if (TorcUSBDeviceHandler::DeviceHandled(Device, false /*removed*/))
     {
         QMutexLocker locker(m_managedDevicesLock);
-        (void)m_managedDevices.removeAll(Device.m_path);
+        while (m_managedDevices.contains(Device.m_path))
+            (void)m_managedDevices.remove(Device.m_path);
     }
 
 }
