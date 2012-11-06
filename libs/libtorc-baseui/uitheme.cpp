@@ -130,6 +130,20 @@ UITheme::ThemeState UITheme::GetState(void)
     return m_state;
 }
 
+QVariantMap UITheme::ToMap(void)
+{
+    QVariantMap result;
+    result.insert("name",         m_name);
+    result.insert("description",  m_description);
+    result.insert("width",        m_size.width());
+    result.insert("height",       m_size.height());
+    result.insert("aspectratio",  m_aspectRatio);
+    result.insert("versionmajor", m_versionMajor);
+    result.insert("versionminor", m_versionMinor);
+    result.insert("directory",    m_directory);
+    return result;
+}
+
 QString UITheme::GetDirectory(void)
 {
     return m_directory;

@@ -40,6 +40,7 @@ class TORC_BASEUI_PUBLIC UITheme : public UIWidget
     void            SetState       (ThemeState State);
     ThemeState      GetState       (void);
     QString         GetDirectory   (void);
+    QVariantMap     ToMap          (void);
 
   protected:
     UITheme(QSize WindowSize = QSize(800,600));
