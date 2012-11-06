@@ -31,6 +31,11 @@
 #include "version.h"
 #include "torclogging.h"
 #include "torchttpserver.h"
+#include "torcserialiser.h"
+#include "torcjsonserialiser.h"
+#include "torcxmlserialiser.h"
+#include "torcplistserialiser.h"
+#include "torcbinaryplistserialiser.h"
 #include "torchttprequest.h"
 
 /*! \class TorcHTTPRequest
@@ -84,8 +89,8 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
         int index = m_path.lastIndexOf("/");
         if (index > -1)
         {
-            m_method = m_path.mid(index + 1);
-            m_path   = m_path.left(index + 1);
+            m_method = m_path.mid(index + 1).trimmed();
+            m_path   = m_path.left(index + 1).trimmed();
         }
 
         if (url.hasQuery())
@@ -252,10 +257,41 @@ QString TorcHTTPRequest::ResponseTypeToString(HTTPResponseType Response)
 {
     switch (Response)
     {
-        case HTTPResponseXML:  return QString("text/xml; charset=\"UTF-8\"");
-        case HTTPResponseHTML: return QString("text/html; charset=\"UTF-8\"");
+        case HTTPResponseXML:              return QString("text/xml; charset=\"UTF-8\"");
+        case HTTPResponseHTML:             return QString("text/html; charset=\"UTF-8\"");
+        case HTTPResponseJSON:             return QString("application/json");
+        case HTTPResponseJSONJavascript:   return QString("text/javascript");
+        case HTTPResponsePList:            return QString("application/plist");
+        case HTTPResponseBinaryPList:      return QString("application/x-plist");
+        case HTTPResponsePListApple:       return QString("text/x-apple-plist+xml");
+        case HTTPResponseBinaryPListApple: return QString("application/x-apple-binary-plist");
         default: break;
     }
 
     return QString("text/plain");
+}
+
+TorcSerialiser* TorcHTTPRequest::GetSerialiser(void)
+{
+    QString accept = m_headers->value("Accept");
+
+    if (accept.contains("application/json", Qt::CaseInsensitive))
+        return new TorcJSONSerialiser();
+
+    if (accept.contains("text/javascript", Qt::CaseInsensitive))
+        return new TorcJSONSerialiser(true /*javascript*/);
+
+    if (accept.contains("text/x-apple-plist+xml", Qt::CaseInsensitive))
+        return new TorcPListSerialiser();
+
+    if (accept.contains("application/plist", Qt::CaseInsensitive))
+        return new TorcPListSerialiser();
+
+    if (accept.contains("application/x-plist", Qt::CaseInsensitive))
+        return new TorcBinaryPListSerialiser();
+
+    if (accept.contains("application/x-apple-binary-plist", Qt::CaseInsensitive))
+        return new TorcBinaryPListSerialiser();
+
+    return new TorcXMLSerialiser();
 }

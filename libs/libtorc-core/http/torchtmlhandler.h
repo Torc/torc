@@ -12,7 +12,7 @@ class TorcHTTPConnection;
 class TORC_CORE_PUBLIC TorcHTMLHandler : public TorcHTTPHandler
 {
   public:
-    TorcHTMLHandler(const QString &Path);
+    TorcHTMLHandler(const QString &Path, const QString &Name);
     virtual void ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
 };
 

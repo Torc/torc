@@ -48,6 +48,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     void           Close              (void);
     void           AddHandler         (TorcHTTPHandler *Handler);
     void           RemoveHandler      (TorcHTTPHandler *Handler);
+    void           UserServicesHelp   (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
 
   protected:
     static TorcHTTPServer*            gWebServer;
@@ -56,6 +57,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
 
   private:
     TorcHTMLHandler                  *m_defaultHandler;
+    QString                           m_servicesDirectory;
     int                               m_port;
     QMap<QTcpSocket*,TorcHTTPConnection*> m_connections;
     QMap<QString,TorcHTTPHandler*>    m_handlers;

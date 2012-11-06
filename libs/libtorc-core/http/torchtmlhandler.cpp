@@ -21,11 +21,13 @@
 */
 
 // Qt
+#include <QCoreApplication>
 #include <QObject>
 
 // Torc
 #include "torchttpserver.h"
 #include "torchttprequest.h"
+#include "torchttpservice.h"
 #include "torchtmlhandler.h"
 
 /*! \class TorcHTMLHandler
@@ -38,20 +40,25 @@
  * \sa TorcHTTPConnection
 */
 
-TorcHTMLHandler::TorcHTMLHandler(const QString &Path)
-  : TorcHTTPHandler(Path)
+TorcHTMLHandler::TorcHTMLHandler(const QString &Path, const QString &Name)
+  : TorcHTTPHandler(Path, Name)
 {
 }
 
 void TorcHTMLHandler::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
 {
-    if (Request && Connection)
-    {
-        QString content = QString("<html><body><h1>%1</h1></body></html>").arg(QObject::tr("Torc is running!"));
-        QByteArray *data = new QByteArray();
-        data->append(content.toUtf8());
-        Request->SetResponseContent(data);
-        Request->SetResponseType(HTTPResponseHTML);
-        Request->SetStatus(HTTP_OK);
-    }
+    if (!Request || !Connection)
+        return;
+
+    QByteArray *result = new QByteArray(1024, 0);
+    QTextStream stream(result);
+
+    stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
+    stream << "<body><h1>" << QCoreApplication::applicationName() << "</h1>";
+    stream << "<p><a href='" << SERVICES_DIRECTORY << "/'>Services</a>";
+    stream << "</body></html>";
+
+    Request->SetResponseContent(result);
+    Request->SetResponseType(HTTPResponseHTML);
+    Request->SetStatus(HTTP_OK);
 }

@@ -9,6 +9,8 @@
 // Torc
 #include "torccoreexport.h"
 
+class TorcSerialiser;
+
 typedef enum
 {
     HTTPRequest,
@@ -29,6 +31,12 @@ typedef enum
     HTTPResponseDefault,
     HTTPResponseHTML,
     HTTPResponseXML,
+    HTTPResponseJSON,
+    HTTPResponseJSONJavascript,
+    HTTPResponsePList,
+    HTTPResponseBinaryPList,
+    HTTPResponsePListApple,
+    HTTPResponseBinaryPListApple,
     HTTPResponseFile
 } HTTPResponseType;
 
@@ -73,6 +81,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     QString                GetMethod                (void);
     QMap<QString,QString>  Queries                  (void);
     QPair<QByteArray*,QByteArray*> Respond          (void);
+    TorcSerialiser*        GetSerialiser            (void);
 
   protected:
     QString                m_fullUrl;

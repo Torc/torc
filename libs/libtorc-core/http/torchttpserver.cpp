@@ -23,6 +23,7 @@
 // Qt
 #include <QUrl>
 #include <QTcpSocket>
+#include <QCoreApplication>
 
 // Torc
 #include "torclocalcontext.h"
@@ -32,6 +33,7 @@
 #include "torchttprequest.h"
 #include "torchtmlhandler.h"
 #include "torchttphandler.h"
+#include "torchttpservice.h"
 #include "torchttpserver.h"
 
 #ifndef Q_OS_WIN
@@ -54,6 +56,7 @@
  * \sa TorcHTTPConnection
  *
  * \todo Entirely single threaded
+ * \todo Move UserServicesHelp elsewhere
 */
 
 TorcHTTPServer* TorcHTTPServer::gWebServer = NULL;
@@ -127,10 +130,14 @@ void TorcHTTPServer::Destroy(void)
 TorcHTTPServer::TorcHTTPServer()
   : QTcpServer(),
     m_defaultHandler(NULL),
+    m_servicesDirectory(SERVICES_DIRECTORY),
     m_port(0),
     m_newHandlersLock(new QMutex(QMutex::Recursive)),
     m_oldHandlersLock(new QMutex(QMutex::Recursive))
 {
+    if (!m_servicesDirectory.endsWith("/"))
+        m_servicesDirectory += "/";
+
     m_port = gLocalContext->GetSetting(TORC_CORE + "WebServerPort", 4840);
     connect(this, SIGNAL(newConnection()), this, SLOT(ClientConnected()));
     connect(this, SIGNAL(HandlersChanged()), this, SLOT(UpdateHandlers()));
@@ -149,7 +156,7 @@ TorcHTTPServer::TorcHTTPServer()
     }
 
     // add the default top level handler
-    m_defaultHandler = new TorcHTMLHandler("");
+    m_defaultHandler = new TorcHTMLHandler("", QCoreApplication::applicationName());
     AddHandler(m_defaultHandler);
 }
 
@@ -218,9 +225,17 @@ void TorcHTTPServer::NewRequest(void)
             }
             else
             {
-                QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.find(request->GetPath());
-                if (it != m_handlers.end())
-                    (*it)->ProcessHTTPRequest(this, request, connection);
+                if (request->GetPath() == m_servicesDirectory)
+                {
+                    // top level services help...
+                    UserServicesHelp(request, connection);
+                }
+                else
+                {
+                    QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.find(request->GetPath());
+                    if (it != m_handlers.end())
+                        (*it)->ProcessHTTPRequest(this, request, connection);
+                }
                 connection->Complete(request);
             }
         }
@@ -320,6 +335,40 @@ void TorcHTTPServer::UpdateHandlers(void)
             m_handlers.insert(signature, handler);
         }
     }
+}
+
+void TorcHTTPServer::UserServicesHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
+{
+    QByteArray *result = new QByteArray(1024, 0);
+    QTextStream stream(result);
+
+    QMap<QString,QString> services;
+    QMap<QString,TorcHTTPHandler*>::const_iterator it = m_handlers.begin();
+    for ( ; it != m_handlers.end(); ++it)
+        if (it.key().startsWith(m_servicesDirectory))
+            services.insert(it.key(), it.key() + "help");
+
+    stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
+    stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName() << "</a> Services</a></h1>";
+
+
+    if (services.isEmpty())
+    {
+        stream << "<h3>No services are registered.</h3>";
+    }
+    else
+    {
+        stream << "<h3>Available services</h3>";
+        QMap<QString,QString>::iterator it = services.begin();
+        for ( ; it != services.end(); ++it)
+            stream << "<a href='" << it.value() << "'>" << it.key() << "</a><br>";
+    }
+
+    stream << "</body></html>";
+    stream.flush();
+    Request->SetStatus(HTTP_OK);
+    Request->SetResponseType(HTTPResponseHTML);
+    Request->SetResponseContent(result);
 }
 
 class TorcHTTPServerObject : public TorcAdminObject
