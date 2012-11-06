@@ -26,6 +26,8 @@
 #include "torcplist.h"
 #include "torcbinaryplistserialiser.h"
 
+#include <stdint.h>
+
 #define START_OBJECT { m_objectOffsets.append(m_content->size()); }
 
 /*! \class TorcBinaryPListSerialiser
