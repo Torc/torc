@@ -28,6 +28,7 @@
 #include "torclocalcontext.h"
 #include "torclogging.h"
 #include "torcadminthread.h"
+#include "torchttpserver.h"
 #include "torcstoragedevice.h"
 #include "torcstorage.h"
 
@@ -94,6 +95,7 @@ bool TorcStorage::DiskIsMounted(const QString &Disk)
 
 TorcStorage::TorcStorage()
   : QObject(),
+    TorcHTTPService(this, "/storage", tr("Storage"), TorcStorage::staticMetaObject),
     m_disksLock(new QMutex(QMutex::Recursive)),
     m_priv(NULL)
 {
@@ -114,6 +116,18 @@ TorcStorage::~TorcStorage()
     // delete the lock
     delete m_disksLock;
     m_disksLock = NULL;
+}
+
+QVariantMap TorcStorage::GetDisks(void)
+{
+    QMutexLocker locker(m_disksLock);
+
+    QVariantMap result;
+    QMap<QString,TorcStorageDevice>::iterator it = m_disks.begin();
+    for ( ; it != m_disks.end(); ++it)
+        result.insert(it.key(), it.value().ToMap());
+
+    return result;
 }
 
 void TorcStorage::AddDisk(TorcStorageDevice &Disk)

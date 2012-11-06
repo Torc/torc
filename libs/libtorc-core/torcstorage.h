@@ -2,11 +2,13 @@
 #define TORCSTORAGE_H
 
 // Qt
+#include <QVariant>
 #include <QObject>
 #include <QMap>
 
 // Torc
 #include "torccoreexport.h"
+#include "torchttpservice.h"
 
 class QMutex;
 class TorcStorageDevice;
@@ -27,7 +29,7 @@ class TorcStoragePriv : public QObject
     virtual bool ReallyEject (const QString &Disk) = 0;
 };
 
-class TORC_CORE_PUBLIC TorcStorage : public QObject
+class TORC_CORE_PUBLIC TorcStorage : public QObject, public TorcHTTPService
 {
     Q_OBJECT
 
@@ -36,16 +38,18 @@ class TORC_CORE_PUBLIC TorcStorage : public QObject
     static void Destroy       (void);
     static bool DiskIsMounted (const QString &Disk);
 
-  public:
-    void AddDisk       (TorcStorageDevice &Disk);
-    void RemoveDisk    (TorcStorageDevice &Disk);
-    void ChangeDisk    (TorcStorageDevice &Disk);
-    void DiskMounted   (TorcStorageDevice &Disk);
-    void DiskUnmounted (TorcStorageDevice &Disk);
+  public slots:
+    QVariantMap GetDisks (void);
+    bool        Mount         (const QString &Disk);
+    bool        Unmount       (const QString &Disk);
+    bool        Eject         (const QString &Disk);
 
-    bool Mount         (const QString     &Disk);
-    bool Unmount       (const QString     &Disk);
-    bool Eject         (const QString     &Disk);
+  public:
+    void        AddDisk       (TorcStorageDevice &Disk);
+    void        RemoveDisk    (TorcStorageDevice &Disk);
+    void        ChangeDisk    (TorcStorageDevice &Disk);
+    void        DiskMounted   (TorcStorageDevice &Disk);
+    void        DiskUnmounted (TorcStorageDevice &Disk);
 
   protected:
     TorcStorage();
