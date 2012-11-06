@@ -111,7 +111,8 @@ bool UIMedia::Finalise(void)
 
 bool UIMedia::InitialisePlayer(void)
 {
-    m_player = TorcPlayer::Create(this, TorcPlayer::UserFacing, TorcDecoder::DecodeVideo | TorcDecoder::DecodeAudio);
+    if (!m_player)
+        m_player = TorcPlayer::Create(this, TorcPlayer::UserFacing, TorcDecoder::DecodeVideo | TorcDecoder::DecodeAudio);
 
     if (m_player)
     {
