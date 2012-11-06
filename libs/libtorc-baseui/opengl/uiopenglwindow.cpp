@@ -72,6 +72,10 @@ UIOpenGLWindow* UIOpenGLWindow::Create(void)
     return new UIOpenGLWindow(format, kGLOpenGL2ES);
 }
 
+#define BLACKLIST QString("MainLoop,close,hide,lower,raise,repaint,setDisabled,setEnabled,setFocus,"\
+                          "setHidden,setShown,setStyleSheet,setVisible,setWindowModified,setWindowTitle,"\
+                          "show,showFullScreen,showMaximized,showMinimized,showNormal,update,updateGL,updateOverlayGL")
+
 UIOpenGLWindow::UIOpenGLWindow(const QGLFormat &Format, GLType Type)
   : QGLWidget(Format, NULL, NULL, Qt::Window | Qt::MSWindowsOwnDC),
     UIDisplay(this),
@@ -81,6 +85,7 @@ UIOpenGLWindow::UIOpenGLWindow(const QGLFormat &Format, GLType Type)
     UIOpenGLFence(),
     UIOpenGLFramebuffers(),
     UIPerformance(),
+    TorcHTTPService(this, "/gui", tr("GUI"), UIOpenGLWindow::staticMetaObject, BLACKLIST),
     m_timer(NULL),
     m_openGLType(Type),
     m_blend(false),
@@ -196,6 +201,32 @@ void UIOpenGLWindow::MainLoop(void)
     }
 
     swapBuffers();
+}
+
+QVariantMap UIOpenGLWindow::GetDisplayDetails(void)
+{
+    QVariantMap result;
+    QSize mm = GetPhysicalSize();
+    QSize pixels = GetSize();
+
+    result.insert("refreshrate", GetRefreshRate());
+    result.insert("widthmm", mm.width());
+    result.insert("heightmm", mm.height());
+    result.insert("aspectratio", (float)mm.width() / (float)mm.height());
+    result.insert("widthpixels", pixels.width());
+    result.insert("heightpixels", pixels.height());
+    result.insert("renderer", m_openGLType == kGLOpenGL2 ? "OpenGL2.0" : kGLOpenGL2ES ? "OpenGLES2.0" : "Unknown");
+    return result;
+}
+
+QVariantMap UIOpenGLWindow::GetThemeDetails(void)
+{
+    QMutexLocker locker(m_newThemeLock);
+
+    if (m_theme)
+        return m_theme->ToMap();
+
+    return QVariantMap();
 }
 
 void UIOpenGLWindow::InitialiseWindow(void)

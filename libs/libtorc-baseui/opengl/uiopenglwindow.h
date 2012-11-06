@@ -2,10 +2,12 @@
 #define UIOPENGLWINDOW_H
 
 // Qt
+#include <QVariantMap>
 #include <QHash>
 #include <QList>
 
 // Torc
+#include "http/torchttpservice.h"
 #include "../torcbaseuiexport.h"
 #include "uiopengldefs.h"
 #include "../uiwindow.h"
@@ -34,7 +36,8 @@ class TORC_BASEUI_PUBLIC UIOpenGLWindow
     public UIOpenGLFence,
     public UIOpenGLFramebuffers,
     public UIPerformance,
-    public UIActions
+    public UIActions,
+    public TorcHTTPService
 {
     Q_OBJECT
 
@@ -70,7 +73,10 @@ class TORC_BASEUI_PUBLIC UIOpenGLWindow
 
   public slots:
     // UIWindow
-    void MainLoop(void);
+    void        MainLoop          (void);
+
+    QVariantMap GetDisplayDetails (void);
+    QVariantMap GetThemeDetails   (void);
 
   protected:
     // UIOpenGLWindow
