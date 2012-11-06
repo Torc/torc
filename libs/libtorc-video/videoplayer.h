@@ -7,9 +7,10 @@
 // Torc
 #include "audiowrapper.h"
 #include "torcvideoexport.h"
+#include "http/torchttpservice.h"
 #include "torcplayer.h"
 
-class VideoPlayer : public TorcPlayer
+class VideoPlayer : public TorcPlayer, public TorcHTTPService
 {
     Q_OBJECT
 

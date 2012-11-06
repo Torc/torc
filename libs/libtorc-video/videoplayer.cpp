@@ -27,6 +27,7 @@
 
 VideoPlayer::VideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : TorcPlayer(Parent, PlaybackFlags, DecodeFlags),
+    TorcHTTPService(this, "/player", tr("Player"), VideoPlayer::staticMetaObject),
     m_audioWrapper(new AudioWrapper(this))
 {
     setObjectName("Player");
