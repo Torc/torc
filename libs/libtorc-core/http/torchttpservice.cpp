@@ -258,7 +258,7 @@ void TorcHTTPService::UserHelp(TorcHTTPServer *Server, TorcHTTPRequest *Request,
         {
             usage += "?";
             for (int i = 1; i < example.value()->m_types.size(); ++i)
-                usage += QString("%1=Value%2").arg(example.value()->m_names[i].data()).arg(i);
+                usage += QString("%1%2=Value%3").arg(i == 1 ? "" : "&").arg(example.value()->m_names[i].data()).arg(i);
         }
         stream << "<p><h3>" << QObject::tr("Example usage:") << "</h3><p>" << usage;
     }
