@@ -22,6 +22,7 @@
 
 // Qt
 #include <QCoreApplication>
+#include <QObject>
 #include <QMetaType>
 #include <QMetaMethod>
 #include <QTime>
@@ -212,15 +213,15 @@ void TorcHTTPService::UserHelp(TorcHTTPServer *Server, TorcHTTPRequest *Request,
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
     stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName() << "</a> ";
-    stream << "<a href='" << SERVICES_DIRECTORY << "/'>Services</a> " << m_name << "</h1>";
+    stream << "<a href='" << SERVICES_DIRECTORY << "/'>" << QObject::tr("Services") << "</a> " << m_name << "</h1>";
 
     if (m_methods.isEmpty())
     {
-        stream << "<h3>This service has no publicly available methods</h3>";
+        stream << "<h3>" << QObject::tr("This service has no publicly available methods") << "</h3>";
     }
     else
     {
-        stream << "<h3>Method list for " << m_signature << "</h3>";
+        stream << "<h3>" << QObject::tr("Method list for ") << m_signature << "</h3>";
 
         int count   = 0;
 
@@ -259,7 +260,7 @@ void TorcHTTPService::UserHelp(TorcHTTPServer *Server, TorcHTTPRequest *Request,
             for (int i = 1; i < example.value()->m_types.size(); ++i)
                 usage += QString("%1=Value%2").arg(example.value()->m_names[i].data()).arg(i);
         }
-        stream << "<p><h3>Example usage:</h3><p>" << usage;
+        stream << "<p><h3>" << QObject::tr("Example usage:") << "</h3><p>" << usage;
     }
 
     stream << "</body></html>";

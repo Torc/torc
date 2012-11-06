@@ -349,16 +349,16 @@ void TorcHTTPServer::UserServicesHelp(TorcHTTPRequest *Request, TorcHTTPConnecti
             services.insert(it.key(), it.key() + "help");
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
-    stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName() << "</a> Services</a></h1>";
-
+    stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName();
+    stream << "<a> " << tr("Services") << "</a></h1>";
 
     if (services.isEmpty())
     {
-        stream << "<h3>No services are registered.</h3>";
+        stream << "<h3>" << tr("No services are registered") << "</h3>";
     }
     else
     {
-        stream << "<h3>Available services</h3>";
+        stream << "<h3>" << tr("Available services") << "</h3>";
         QMap<QString,QString>::iterator it = services.begin();
         for ( ; it != services.end(); ++it)
             stream << "<a href='" << it.value() << "'>" << it.key() << "</a><br>";
