@@ -45,7 +45,14 @@ class MethodParameters
     {
         // the return type/value is first
         int returntype = QMetaType::type(Method.typeName());
-        m_parameters.append(returntype > 0 ? QMetaType::construct(returntype) : NULL);
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+        void* param = returntype > 0 ? QMetaType::construct(returntype) : NULL;
+#else
+        void* param = returntype > 0 ? QMetaType::create(returntype) : NULL;
+#endif
+
+        m_parameters.append(param);
         m_types.append(returntype > 0 ? returntype : 0);
         m_names.append("");
 
@@ -56,8 +63,12 @@ class MethodParameters
         for (int i = 0; i < names.size(); ++i)
         {
             int type    = QMetaType::type(types[i]);
-            void* param = type != 0 ? QMetaType::construct(type) : NULL;
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+            void* param = type != 0 ? QMetaType::construct(type) : NULL;
+#else
+            void* param = type != 0 ? QMetaType::create(type) : NULL;
+#endif
             m_names.append(names[i]);
             m_parameters.append(param);
             m_types.append(type);
