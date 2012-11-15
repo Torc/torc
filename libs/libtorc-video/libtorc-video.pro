@@ -15,13 +15,20 @@ INCLUDEPATH += $$DEPENDPATH
 
 LIBS += -L../libtorc-core -ltorc-core-$$LIBVERSION
 LIBS += -L../libtorc-audio -ltorc-audio-$$LIBVERSION
+LIBS += -L../libtorc-av/libavformat -ltorc-avformat
+LIBS += -L../libtorc-av/libavcodec -ltorc-avcodec
+LIBS += -L../libtorc-av/libavutil -ltorc-avutil
 
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 
 HEADERS += torcvideoexport.h
 HEADERS += videoplayer.h    videodecoder.h
+HEADERS += videoframe.h     videobuffers.h
+HEADERS += videocolourspace.h
 
 SOURCES += videoplayer.cpp  videodecoder.cpp
+SOURCES += videoframe.cpp   videobuffers.cpp
+SOURCES += videocolourspace.cpp
 
 contains(CONFIG_VDPAU, yes) {
 }
@@ -36,7 +43,7 @@ contains(CONFIG_VDA, yes) {
 }
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
-inc.files += videointerface.h
+inc.files += videointerface.h   videobuffer.h
 
 inc2.path  = $${PREFIX}/include/$${PROJECTNAME}/lib$${THIS_LIB}
 inc2.files = $${inc.files}
