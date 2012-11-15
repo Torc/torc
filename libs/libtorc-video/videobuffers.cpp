@@ -104,7 +104,7 @@ void VideoBuffers::FormatChanged(PixelFormat Format, int Width, int Height, int 
     QMutexLocker locker(m_lock);
 
     bool referenceschanged = ReferenceFrames != m_referenceFrames && ReferenceFrames >= MIN_BUFFERS_FOR_DECODE;
-    bool formatchanged     = Format != m_currentFormat || Width != m_currentWidth | Height != m_currentHeight;
+    bool formatchanged     = Format != m_currentFormat || Width != m_currentWidth || Height != m_currentHeight;
 
     // nothing to do
     if (!formatchanged && !referenceschanged)
