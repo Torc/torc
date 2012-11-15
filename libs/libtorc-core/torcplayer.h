@@ -43,7 +43,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 
     virtual ~TorcPlayer();
 
-    void            Refresh            (void);
+    virtual void    Refresh            (void);
     void            Reset              (void);
     bool            HandleEvent        (QEvent *Event);
     bool            HandleAction       (int Action);
