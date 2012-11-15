@@ -23,6 +23,7 @@
 // Torc
 #include "torclogging.h"
 #include "torcdecoder.h"
+#include "videoframe.h"
 #include "videoplayer.h"
 
 VideoPlayer::VideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
@@ -46,9 +47,30 @@ void VideoPlayer::Teardown(void)
     TorcPlayer::Teardown();
 }
 
+void VideoPlayer::Refresh(void)
+{
+    VideoFrame *frame = m_buffers.GetFrameForDisplaying();
+    if (frame)
+    {
+        //LOG(VB_GENERAL, LOG_INFO, QString("AV %1").arg(m_audioWrapper->GetAudioTime() - frame->m_pts));
+        m_buffers.ReleaseFrameFromDisplaying(frame, false);
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Skip");
+    }
+
+    TorcPlayer::Refresh();
+}
+
 void* VideoPlayer::GetAudio(void)
 {
     return m_audioWrapper;
+}
+
+VideoBuffers* VideoPlayer::Buffers(void)
+{
+    return &m_buffers;
 }
 
 class VideoPlayerFactory : public PlayerFactory
