@@ -22,6 +22,10 @@ class TorcVideoThread;
 class TorcAudioThread;
 class TorcSubtitleThread;
 
+extern "C" {
+#include "libavformat/avformat.h"
+}
+
 typedef enum TorcStreamTypes
 {
     StreamTypeUnknown = -1,
@@ -66,8 +70,13 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
     void             CloseDemuxer       (TorcDemuxerThread  *Thread);
     void             DemuxPackets       (TorcDemuxerThread  *Thread);
     void             DecodeAudioFrames  (TorcAudioThread    *Thread);
-    virtual void     DecodeVideoFrames  (TorcVideoThread    *Thread);
-    virtual void     DecodeSubtitles    (TorcSubtitleThread *Thread);
+    void             DecodeVideoFrames  (TorcVideoThread    *Thread);
+    void             DecodeSubtitles    (TorcSubtitleThread *Thread);
+
+    virtual bool     VideoBufferStatus  (int &Unused, int &Inuse, int &Held);
+    virtual void     ProcessVideoPacket (AVStream* Stream, AVPacket *Packet);
+    virtual void     SetupVideoDecoder  (AVStream* Stream);
+    virtual void     FlushVideoBuffers  (void);
 
   private:
     void             TearDown           (void);
@@ -91,12 +100,9 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
   protected:
     TorcPlayer                          *m_parent;
 
-    qint64                               m_audioPts;
     AudioWrapper                        *m_audio;
     AudioDescription                    *m_audioIn;
     AudioDescription                    *m_audioOut;
-
-    qint64                               m_videoPts;
 
     int                                  m_interruptDecoder;
     QString                              m_uri;
