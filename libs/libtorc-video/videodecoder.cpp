@@ -28,10 +28,9 @@
 #include "videoframe.h"
 #include "videodecoder.h"
 
-#if defined(CONFIG_VDA)
+#if CONFIG_VDA
 #define VDA_CV_FORMAT  kCVPixelFormatType_422YpCbCr8
 #define VDA_PIX_FORMAT PIX_FMT_UYVY422
-
 #include "CoreVideo/CVPixelBuffer.h"
 extern "C" {
 #include "libavcodec/vda.h"
@@ -136,7 +135,7 @@ void VideoDecoder::ReleaseAVBuffer(AVCodecContext *Context, AVFrame *Frame)
     if (Frame->type != FF_BUFFER_TYPE_USER)
         LOG(VB_GENERAL, LOG_ERR, "Unexpected buffer type");
 
-#if defined(CONFIG_VDA)
+#if CONFIG_VDA
     if (Frame->format == PIX_FMT_VDA_VLD && Context->hwaccel_context)
     {
         CVPixelBufferRef buffer = (CVPixelBufferRef)Frame->data[3];
@@ -191,7 +190,7 @@ PixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const PixelF
         format = *(formats++);
         LOG(VB_GENERAL, LOG_INFO, QString("Testing pixel format: %1").arg(av_get_pix_fmt_name(format)));
 
-#if defined(CONFIG_VDA)
+#if CONFIG_VDA
         if (format == PIX_FMT_VDA_VLD && Context->codec_id == AV_CODEC_ID_H264 && 0)
         {
             struct vda_context *context = new vda_context;
@@ -294,7 +293,7 @@ void VideoDecoder::ProcessVideoPacket(AVStream *Stream, AVPacket *Packet)
         return;
     }
 
-#if defined(CONFIG_VDA)
+#if CONFIG_VDA
     if (avframe.format == PIX_FMT_VDA_VLD && frame->m_pixelFormat == PIX_FMT_VDA_VLD)
     {
         CVPixelBufferRef buffer = (CVPixelBufferRef)avframe.data[3];
@@ -390,7 +389,7 @@ void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)
     sws_freeContext(m_conversionContext);
     m_conversionContext = NULL;
 
-#if defined(CONFIG_VDA)
+#if CONFIG_VDA
     if (Stream->codec->hwaccel_context && Stream->codec->pix_fmt == PIX_FMT_VDA_VLD)
     {
         vda_context *context = (vda_context*)Stream->codec->hwaccel_context;
