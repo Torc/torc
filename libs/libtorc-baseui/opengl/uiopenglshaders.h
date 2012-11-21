@@ -30,12 +30,13 @@ class UIOpenGLShaders
     UIOpenGLShaders();
     virtual ~UIOpenGLShaders();
 
-  protected:
-    bool InitialiseShaders         (const QString &Extensions, GLType Type, bool UseRects);
     uint CreateShaderObject        (const QByteArray &Vertex, const QByteArray &Fragment);
     void DeleteShaderObject        (uint  Object);
     void EnableShaderObject        (uint  Object);
     void SetShaderParams           (uint  Object, GLfloat* Values, const char* Uniform);
+
+  protected:
+    bool InitialiseShaders         (const QString &Extensions, GLType Type, bool UseRects);
     void CreateDefaultShaders      (void);
     void DeleteDefaultShaders      (void);
     uint CreateShader              (int Type, const QByteArray &Source);

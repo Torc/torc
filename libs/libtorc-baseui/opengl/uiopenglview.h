@@ -26,10 +26,11 @@ class UIOpenGLView
     UIOpenGLView();
     virtual ~UIOpenGLView();
 
-  protected:
-    bool  InitialiseView     (const QRect &Rect);
     void  SetViewPort        (const QRect &Rect, Projection Type = Parallel);
     QRect GetViewPort        (void);
+
+protected:
+    bool  InitialiseView     (const QRect &Rect);
     void  SetProjection      (Projection Type);
     bool  PushTransformation (const UIEffect *Effect, const QRectF *Dest);
     void  PopTransformation  (void);

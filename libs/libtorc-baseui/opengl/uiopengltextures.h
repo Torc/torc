@@ -5,13 +5,14 @@
 #include <QHash>
 
 // Torc
+#include "torcbaseuiexport.h"
 #include "uiopengldefs.h"
 #include "uiopenglbufferobjects.h"
 
 #define TEX_OFFSET 12
 #define TORC_UYVY  0x8A1F
 
-class GLTexture
+class TORC_BASEUI_PUBLIC GLTexture
 {
   public:
     GLTexture(GLuint Value);
@@ -41,8 +42,6 @@ class UIOpenGLTextures : public UIOpenGLBufferObjects
     UIOpenGLTextures();
     virtual ~UIOpenGLTextures();
 
-  protected:
-    bool  InitialiseTextures    (const QString &Extensions, GLType Type);
     void* GetTextureBuffer      (GLTexture *Texture);
     void  UpdateTexture         (GLTexture *Texture, const void *Buffer);
     GLTexture* CreateTexture    (QSize ActualSize,
@@ -62,6 +61,9 @@ class UIOpenGLTextures : public UIOpenGLBufferObjects
     void  UpdateTextureVertices (GLTexture *Texture, const QSizeF *Source, const QRectF *Dest);
     bool  ClearTexture          (GLTexture *Texture);
     uint  GetBufferSize         (QSize Size, uint Format, uint Type);
+
+  protected:
+    bool  InitialiseTextures    (const QString &Extensions, GLType Type);
     void  DeleteTextures        (void);
 
   protected:

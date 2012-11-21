@@ -17,12 +17,13 @@ class UIOpenGLFramebuffers : public UIOpenGLView, public UIOpenGLTextures
     UIOpenGLFramebuffers();
     virtual ~UIOpenGLFramebuffers();
 
-  protected:
-    bool InitialiseFramebuffers       (const QString &Extensions, GLType Type);
     void BindFramebuffer              (uint FrameBuffer);
     void ClearFramebuffer             (void);
     bool CreateFrameBuffer            (uint &FrameBuffer, uint Texture);
     void DeleteFrameBuffer            (uint FrameBuffer);
+
+  protected:
+    bool InitialiseFramebuffers       (const QString &Extensions, GLType Type);
     void DeleteFrameBuffers           (void);
 
   protected:
