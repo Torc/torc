@@ -37,7 +37,8 @@ extern "C" {
  * \todo Convert more initialisation code to use libav functions.
 */
 
-VideoFrame::VideoFrame()
+VideoFrame::VideoFrame(PixelFormat PreferredDisplayFormat)
+  : m_preferredDisplayFormat(PreferredDisplayFormat)
 {
     Reset();
 }
@@ -56,8 +57,10 @@ void VideoFrame::Reset(void)
     m_adjustedHeight  = 0;
     m_bitsPerPixel    = 0;
     m_numPlanes       = 0;
+    m_bufferSize      = 0;
     m_pixelFormat     = PIX_FMT_NONE;
-    m_colorSpace      = AVCOL_SPC_BT709;
+    m_secondaryPixelFormat = PIX_FMT_NONE;
+    m_colourSpace     = AVCOL_SPC_BT709;
     m_buffer          = NULL;
     m_topFieldFirst   = false;
     m_interlaced      = false;
@@ -89,14 +92,19 @@ bool VideoFrame::Initialise(PixelFormat Format, int Width, int Height)
     LOG(VB_GENERAL, LOG_INFO, QString("Initialise frame: '%1' %2x%3")
         .arg(av_get_pix_fmt_name(Format)).arg(Width).arg(Height));
 
+    PixelFormat cpuformat = Format;
+    if (Format == PIX_FMT_VDA_VLD)
+        m_secondaryPixelFormat = cpuformat = m_preferredDisplayFormat;
+
     m_rawWidth        = Width;
     m_rawHeight       = Height;
     m_adjustedWidth   = (Width  + 15) & ~0xf;
     m_adjustedHeight  = (Height + 15) & ~0xf;
     m_pixelFormat     = Format;
-    m_bitsPerPixel    = av_get_bits_per_pixel(&av_pix_fmt_descriptors[Format]);
-    m_numPlanes       = PlaneCount(Format);
-    m_buffer          = (unsigned char*)av_malloc((m_adjustedWidth * m_adjustedHeight * m_bitsPerPixel) >> 3);
+    m_bitsPerPixel    = av_get_bits_per_pixel(&av_pix_fmt_descriptors[cpuformat]);
+    m_numPlanes       = PlaneCount(cpuformat);
+    m_bufferSize      = (m_adjustedWidth * m_adjustedHeight * m_bitsPerPixel) >> 3;
+    m_buffer          = (unsigned char*)av_malloc(m_bufferSize);
 
     // FIXME this will fail for HW frames
     return m_buffer && (m_pixelFormat != PIX_FMT_NONE) && m_adjustedWidth &&
@@ -153,6 +161,8 @@ int VideoFrame::PlaneCount(PixelFormat Format)
 
 bool VideoFrame::SetOffsets(void)
 {
+    PixelFormat format = m_secondaryPixelFormat != PIX_FMT_NONE ? m_secondaryPixelFormat : m_pixelFormat;
+
     int halfpitch = m_adjustedWidth >> 1;
     int fullplane = m_adjustedWidth * m_adjustedHeight;
 
@@ -176,25 +186,25 @@ bool VideoFrame::SetOffsets(void)
     if (m_numPlanes != 3)
         return false;
 
-    if (m_pixelFormat == PIX_FMT_YUV420P)
+    if (format == PIX_FMT_YUV420P)
     {
         m_offsets[1] = fullplane;
-        m_offsets[2] = m_offsets[3] = m_offsets[1] + fullplane >> 2;
-        m_pitches[1] = m_pitches[2] = m_pitches[3] = halfpitch;
+        m_offsets[2] = m_offsets[3] = m_offsets[1] + (fullplane >> 2);
+        m_pitches[3] = m_pitches[2] = m_pitches[1] = halfpitch;
     }
-    else if (m_pixelFormat == PIX_FMT_YUV411P)
+    else if (format == PIX_FMT_YUV411P)
     {
         m_offsets[1] = fullplane;
-        m_offsets[2] = m_offsets[3] = m_offsets[1] + fullplane >> 2;
+        m_offsets[2] = m_offsets[3] = m_offsets[1] + (fullplane >> 2);
         m_pitches[1] = m_pitches[2] = m_pitches[3] = halfpitch >> 1;
     }
-    else if (m_pixelFormat == PIX_FMT_YUV422P)
+    else if (format == PIX_FMT_YUV422P)
     {
         m_offsets[1] = fullplane;
-        m_offsets[2] = m_offsets[3] = m_offsets[1] + fullplane >> 1;
+        m_offsets[2] = m_offsets[3] = m_offsets[1] + (fullplane >> 1);
         m_pitches[1] = m_pitches[2] = m_pitches[3] = halfpitch;
     }
-    else if (m_pixelFormat == PIX_FMT_YUV444P)
+    else if (format == PIX_FMT_YUV444P)
     {
         m_offsets[1] = fullplane;
         m_offsets[2] = m_offsets[3] = m_offsets[1] + fullplane;

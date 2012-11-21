@@ -17,8 +17,8 @@ class VideoFrame
     static int     PlaneCount    (PixelFormat Format);
 
   public:
-    explicit VideoFrame();
-    ~VideoFrame();
+    explicit VideoFrame          (PixelFormat PreferredDisplayFormat);
+    ~VideoFrame                  ();
 
     void           Reset         (void);
     bool           Initialise    (PixelFormat Format, int Width, int Height);
@@ -38,9 +38,12 @@ class VideoFrame
     int            m_adjustedHeight;
     int            m_bitsPerPixel;
     int            m_numPlanes;
+    int            m_bufferSize;
     PixelFormat    m_pixelFormat;
+    PixelFormat    m_secondaryPixelFormat;
+    PixelFormat    m_preferredDisplayFormat;
 
-    AVColorSpace   m_colorSpace;
+    AVColorSpace   m_colourSpace;
     bool           m_topFieldFirst;
     bool           m_interlaced;
     double         m_aspectRatio;
