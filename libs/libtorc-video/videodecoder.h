@@ -4,6 +4,14 @@
 // Torc
 #include "audiodecoder.h"
 
+extern "C" {
+#include "libavutil/pixfmt.h"
+#include "libavutil/pixdesc.h"
+#include "libavformat/avformat.h"
+#include "libavcodec/avcodec.h"
+#include "libswscale/swscale.h"
+}
+
 class VideoPlayer;
 
 class VideoDecoder : public AudioDecoder
@@ -12,6 +20,9 @@ class VideoDecoder : public AudioDecoder
 
   public:
     ~VideoDecoder();
+    PixelFormat  AgreePixelFormat    (AVCodecContext *Context, const PixelFormat *Formats);
+    int          GetAVBuffer         (AVCodecContext *Context, AVFrame* Frame);
+    void         ReleaseAVBuffer     (AVCodecContext *Context, AVFrame* Frame);
 
   protected:
     explicit VideoDecoder (const QString &URI, TorcPlayer *Parent, int Flags);
@@ -19,7 +30,10 @@ class VideoDecoder : public AudioDecoder
     bool         VideoBufferStatus   (int &Unused, int &Inuse, int &Held);
     void         ProcessVideoPacket  (AVStream *Stream, AVPacket *Packet);
     void         SetupVideoDecoder   (AVStream *Stream);
+    void         CleanupVideoDecoder (AVStream *Stream);
     void         FlushVideoBuffers   (void);
+
+    void         SetFormat           (PixelFormat Format, int Width, int Height, int References, bool UpdateParent);
 
   private:
     VideoPlayer *m_videoParent;
@@ -27,6 +41,7 @@ class VideoDecoder : public AudioDecoder
     int          m_currentVideoWidth;
     int          m_currentVideoHeight;
     int          m_currentReferenceCount;
+    SwsContext  *m_conversionContext;
 };
 
 #endif // VIDEODECODER_H
