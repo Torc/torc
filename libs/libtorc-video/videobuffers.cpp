@@ -67,7 +67,8 @@ VideoBuffers::VideoBuffers()
     m_lock(new QMutex(QMutex::Recursive)),
     m_currentFormat(PIX_FMT_NONE),
     m_currentWidth(0),
-    m_currentHeight(0)
+    m_currentHeight(0),
+    m_preferredDisplayFormat(PIX_FMT_YUV420P)
 {
 }
 
@@ -183,6 +184,11 @@ void VideoBuffers::SetFormat(PixelFormat Format, int Width, int Height)
     m_currentHeight = Height;
 }
 
+void VideoBuffers::SetDisplayFormat(PixelFormat Format)
+{
+    m_preferredDisplayFormat = Format;
+}
+
 void VideoBuffers::Reset(bool DeleteFrames)
 {
     QMutexLocker locker(m_lock);
@@ -236,7 +242,7 @@ VideoFrame* VideoBuffers::GetFrameForDecoding(void)
         // create new frame if still below limit
         if (m_frameCount < (m_referenceFrames + m_displayFrames))
         {
-            frame = new VideoFrame();
+            frame = new VideoFrame(m_preferredDisplayFormat);
             frame->Initialise(m_currentFormat, m_currentWidth, m_currentHeight);
             m_frameCount++;
             m_decoding.append(frame);
@@ -312,7 +318,7 @@ void VideoBuffers::ReleaseFrameFromDecoded(VideoFrame *Frame)
     }
 }
 
-VideoFrame* VideoBuffers::GetFrameForDisplaying(int WaitUSecs /*=0*/)
+VideoFrame* VideoBuffers::GetFrameForDisplaying(int WaitUSecs /*= 0*/)
 {
     VideoFrame *frame = NULL;
 

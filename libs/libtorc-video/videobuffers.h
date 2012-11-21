@@ -21,6 +21,7 @@ class VideoBuffers
     void               FormatChanged              (PixelFormat Format, int Width, int Height, int ReferenceFrames = 2);
     void               Reset                      (bool DeleteFrames);
     bool               GetBufferStatus            (int &Unused, int &Inuse, int &Held);
+    void               SetDisplayFormat           (PixelFormat Format);
 
     VideoFrame*        GetFrameForDecoding        (void);
     void               ReleaseFrameFromDecoding   (VideoFrame *Frame);
@@ -51,6 +52,8 @@ class VideoBuffers
     PixelFormat        m_currentFormat;
     int                m_currentWidth;
     int                m_currentHeight;
+
+    PixelFormat        m_preferredDisplayFormat;
 };
 
 #endif // VIDEOBUFFERS_H
