@@ -760,6 +760,11 @@ void AudioDecoder::SetupVideoDecoder(AVStream *Stream)
     (void)Stream;
 }
 
+void AudioDecoder::CleanupVideoDecoder(AVStream *Stream)
+{
+    (void)Stream;
+}
+
 void AudioDecoder::FlushVideoBuffers(void)
 {
 }
@@ -1901,7 +1906,11 @@ void AudioDecoder::CloseDecoders(void)
     {
         m_priv->m_avFormatContext->streams[i]->discard = AVDISCARD_ALL;
         if (m_priv->m_avFormatContext->streams[i]->codec)
+        {
+            if (m_priv->m_avFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+                CleanupVideoDecoder(m_priv->m_avFormatContext->streams[i]);
             avcodec_close(m_priv->m_avFormatContext->streams[i]->codec);
+        }
     }
 }
 
