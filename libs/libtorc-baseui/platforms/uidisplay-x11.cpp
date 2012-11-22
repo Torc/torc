@@ -12,9 +12,7 @@ extern "C" {
 }
 
 UIDisplay::UIDisplay(QWidget *Widget)
-  : UIDisplayBase(Widget),
-    m_physicalSize(-1, -1),
-    m_refreshRate(-1.0)
+  : UIDisplayBase(Widget)
 {
 }
 
@@ -24,26 +22,20 @@ UIDisplay::~UIDisplay()
 
 bool UIDisplay::InitialiseDisplay(void)
 {
-    m_pixelSize    = GetGeometry();
-    m_physicalSize = GetPhysicalSize();
-    m_refreshRate  = GetRefreshRate();
-    m_screen       = GetScreen();
-    m_screenCount  = GetScreenCount();
+    m_pixelSize    = GetGeometryPriv();
+    m_physicalSize = GetPhysicalSizePriv();
+    m_refreshRate  = GetRefreshRatePriv();
+    m_screen       = GetScreenPriv();
+    m_screenCount  = GetScreenCountPriv();
 
-    LOG(VB_GENERAL, LOG_INFO, QString("Using screen %1 of %2")
-        .arg(m_screen + 1).arg(m_screenCount));
-    LOG(VB_GENERAL, LOG_INFO, QString("Refresh rate: %1Hz").arg(m_refreshRate));
-    LOG(VB_GENERAL, LOG_INFO, QString("Screen size : %1mm x %2mm")
-        .arg(m_physicalSize.width()).arg(m_physicalSize.height()));
-    LOG(VB_GENERAL, LOG_INFO, QString("Screen size : %1px x %2px")
-        .arg(m_pixelSize.width()).arg(m_pixelSize.height()));
+    Sanitise();
 
     return true;
 }
 
-qreal UIDisplay::GetRefreshRate(void)
+double UIDisplay::GetRefreshRatePriv(void)
 {
-    qreal rate = -1;
+    double rate = -1;
 
     XF86VidModeModeLine mode_line;
     int dot_clock;
@@ -93,7 +85,7 @@ qreal UIDisplay::GetRefreshRate(void)
     return rate;
 }
 
-QSize UIDisplay::GetPhysicalSize(void)
+QSize UIDisplay::GetPhysicalSizePriv(void)
 {
     int displayWidthMM  = 400;
     int displayHeightMM = 225;

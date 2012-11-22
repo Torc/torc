@@ -32,13 +32,11 @@ class UIDisplay : public UIDisplayBase
     UIDisplay(QWidget *Widget);
     virtual ~UIDisplay();
 
-    bool  InitialiseDisplay (void);
-    qreal GetRefreshRate    (void);
-    QSize GetPhysicalSize   (void);
+    bool     InitialiseDisplay   (void);
 
   protected:
-    QSize m_physicalSize;
-    qreal m_refreshRate;
+    double   GetRefreshRatePriv  (void);
+    QSize    GetPhysicalSizePriv (void);
 };
 
 #endif // UIDISPLAY_H
