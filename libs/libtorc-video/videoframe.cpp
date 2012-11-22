@@ -50,28 +50,29 @@ VideoFrame::~VideoFrame()
 
 void VideoFrame::Reset(void)
 {
-    m_discard         = false;
-    m_rawWidth        = 0;
-    m_rawHeight       = 0;
-    m_adjustedWidth   = 0;
-    m_adjustedHeight  = 0;
-    m_bitsPerPixel    = 0;
-    m_numPlanes       = 0;
-    m_bufferSize      = 0;
-    m_pixelFormat     = PIX_FMT_NONE;
+    m_discard              = false;
+    m_rawWidth             = 0;
+    m_rawHeight            = 0;
+    m_adjustedWidth        = 0;
+    m_adjustedHeight       = 0;
+    m_bitsPerPixel         = 0;
+    m_numPlanes            = 0;
+    m_bufferSize           = 0;
+    m_pixelFormat          = PIX_FMT_NONE;
     m_secondaryPixelFormat = PIX_FMT_NONE;
-    m_colourSpace     = AVCOL_SPC_BT709;
-    m_buffer          = NULL;
-    m_topFieldFirst   = false;
-    m_interlaced      = false;
-    m_aspectRatio     = 0.0;
-    m_repeatPict      = false;
-    m_frameNumber     = 0;
-    m_pts             = AV_NOPTS_VALUE;
-    m_dts             = AV_NOPTS_VALUE;
-    m_pitches[0]      = m_pitches[1] = m_pitches[2] = m_pitches[4] = 0;
-    m_offsets[0]      = m_offsets[1] = m_offsets[2] = m_offsets[4] = 0;
-    m_priv[0]         = m_priv[1] = m_priv[2] = m_priv[3] = NULL;
+    m_colourSpace          = AVCOL_SPC_BT709;
+    m_buffer               = NULL;
+    m_topFieldFirst        = false;
+    m_interlaced           = false;
+    m_frameAspectRatio     = 0.0;
+    m_pixelAspectRatio     = 0.0;
+    m_repeatPict           = false;
+    m_frameNumber          = 0;
+    m_pts                  = AV_NOPTS_VALUE;
+    m_dts                  = AV_NOPTS_VALUE;
+    m_pitches[0]           = m_pitches[1] = m_pitches[2] = m_pitches[4] = 0;
+    m_offsets[0]           = m_offsets[1] = m_offsets[2] = m_offsets[4] = 0;
+    m_priv[0]              = m_priv[1] = m_priv[2] = m_priv[3] = NULL;
     if (m_buffer)
         av_free(m_buffer);
     m_buffer = NULL;

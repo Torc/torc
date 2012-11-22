@@ -39,7 +39,7 @@ extern "C" {
 
 static PixelFormat GetFormatDefault(AVCodecContext *Context, const PixelFormat *Formats);
 
-static inline double GetAspectRatio(AVStream *Stream, AVFrame &Frame)
+static inline double GetFrameAspectRatio(AVStream *Stream, AVFrame &Frame)
 {
     qreal result = 0.0f;
 
@@ -63,6 +63,18 @@ static inline double GetAspectRatio(AVStream *Stream, AVFrame &Frame)
 
     return result;
 }
+
+static inline double GetPixelAspectRatio(AVStream *Stream, AVFrame &Frame)
+{
+    if (Frame.sample_aspect_ratio.num)
+        return av_q2d(Frame.sample_aspect_ratio);
+
+    if (Stream && Stream->codec && Stream->codec->sample_aspect_ratio.num)
+        return av_q2d(Stream->codec->sample_aspect_ratio);
+
+    return 1.0f;
+}
+
 
 static int GetBuffer(struct AVCodecContext *Context, AVFrame *Frame)
 {
@@ -335,14 +347,15 @@ void VideoDecoder::ProcessVideoPacket(AVStream *Stream, AVPacket *Packet)
     }
 #endif
 
-    frame->m_colourSpace   = Stream->codec->colorspace;
-    frame->m_topFieldFirst = avframe.top_field_first;
-    frame->m_interlaced    = avframe.interlaced_frame;
-    frame->m_aspectRatio   = GetAspectRatio(Stream, avframe);
-    frame->m_repeatPict    = avframe.repeat_pict;
-    frame->m_frameNumber   = avframe.display_picture_number;
-    frame->m_pts           = av_q2d(Stream->time_base) * 1000 * (avframe.pkt_pts - Stream->start_time);
-    frame->m_dts           = av_q2d(Stream->time_base) * 1000 * (avframe.pkt_dts - Stream->start_time);
+    frame->m_colourSpace      = Stream->codec->colorspace;
+    frame->m_topFieldFirst    = avframe.top_field_first;
+    frame->m_interlaced       = avframe.interlaced_frame;
+    frame->m_frameAspectRatio = GetFrameAspectRatio(Stream, avframe);
+    frame->m_pixelAspectRatio = GetPixelAspectRatio(Stream, avframe);
+    frame->m_repeatPict       = avframe.repeat_pict;
+    frame->m_frameNumber      = avframe.display_picture_number;
+    frame->m_pts              = av_q2d(Stream->time_base) * 1000 * (avframe.pkt_pts - Stream->start_time);
+    frame->m_dts              = av_q2d(Stream->time_base) * 1000 * (avframe.pkt_dts - Stream->start_time);
 
     m_videoParent->Buffers()->ReleaseFrameFromDecoding(frame);
 }

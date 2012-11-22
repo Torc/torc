@@ -46,7 +46,8 @@ class VideoFrame
     AVColorSpace   m_colourSpace;
     bool           m_topFieldFirst;
     bool           m_interlaced;
-    double         m_aspectRatio;
+    double         m_frameAspectRatio;
+    double         m_pixelAspectRatio;
     bool           m_repeatPict;
     qint64         m_frameNumber;
     qint64         m_pts;
