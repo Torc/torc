@@ -39,7 +39,8 @@ GLTexture::GLTexture()
     m_filter(GL_LINEAR),
     m_wrap(GL_CLAMP_TO_EDGE),
     m_size(0,0),
-    m_actualSize(0,0)
+    m_actualSize(0,0),
+    m_fullVertices(false)
 {
     memset(&m_vertexData, 0, sizeof(GLfloat) * 16);
 }
@@ -58,7 +59,8 @@ GLTexture::GLTexture(GLuint Value)
     m_filter(GL_LINEAR),
     m_wrap(GL_CLAMP_TO_EDGE),
     m_size(0,0),
-    m_actualSize(0,0)
+    m_actualSize(0,0),
+    m_fullVertices(false)
 {
     memset(&m_vertexData, 0, sizeof(GLfloat) * 16);
 }
@@ -198,11 +200,12 @@ void UIOpenGLTextures::UpdateTextureVertices(GLTexture    *Texture,
     data[4 + TEX_OFFSET] = data[6 + TEX_OFFSET];
     data[5 + TEX_OFFSET] = data[1 + TEX_OFFSET];
 
-    data[3]  = data[0]  = 0.0;
-    data[7]  = data[1]  = 0.0;
+    bool full = Texture->m_fullVertices;
+    data[3]  = data[0]  = full ? Dest->left() : 0.0;
+    data[7]  = data[1]  = full ? Dest->top()  : 0.0;
     data[11] = data[8]  = data[5] = data[2] = -1.0000000001;
-    data[6]  = data[9]  = Dest->width();
-    data[4]  = data[10] = Dest->height();
+    data[6]  = data[9]  = full ? Dest->left() + Dest->width() : Dest->width();
+    data[4]  = data[10] = full ? Dest->top() + Dest->height() : Dest->height();
 
     Texture->m_vboUpdated = true;
 }

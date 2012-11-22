@@ -33,6 +33,7 @@ class TORC_BASEUI_PUBLIC GLTexture
     GLuint  m_wrap;
     QSize   m_size;
     QSize   m_actualSize;
+    bool    m_fullVertices;
     GLfloat m_vertexData[20];
 };
 
