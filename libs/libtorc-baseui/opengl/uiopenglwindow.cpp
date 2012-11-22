@@ -401,8 +401,52 @@ void UIOpenGLWindow::DrawImage(UIEffect *Effect,
         DrawTexture(texture, Dest, Image->GetSizeF(), PositionChanged);
 }
 
+void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size, uint Shader)
+{
+    SetShaderParams(Shader, &m_currentProjection->m[0][0], "u_projection");
+    SetShaderParams(Shader, &m_transforms[m_currentTransformIndex].m[0][0], "u_transform");
+
+    glBindTexture(Texture->m_type, Texture->m_val);
+
+    m_glBindBuffer(GL_ARRAY_BUFFER, Texture->m_vbo);
+
+    if (!Texture->m_vboUpdated)
+    {
+        UpdateTextureVertices(Texture, Size, Dest);
+        if (m_mapBuffers)
+        {
+            m_glBufferData(GL_ARRAY_BUFFER, kVertexSize, NULL, GL_DYNAMIC_DRAW);
+            void* buf = m_glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+            if (buf)
+                memcpy(buf, Texture->m_vertexData, kVertexSize);
+            m_glUnmapBuffer(GL_ARRAY_BUFFER);
+        }
+        else
+        {
+            m_glBufferData(GL_ARRAY_BUFFER, kVertexSize, Texture->m_vertexData, GL_DYNAMIC_DRAW);
+        }
+    }
+
+    m_glEnableVertexAttribArray(VERTEX_INDEX);
+    m_glEnableVertexAttribArray(TEXTURE_INDEX);
+
+    m_glVertexAttribPointer(VERTEX_INDEX, VERTEX_SIZE, GL_FLOAT, GL_FALSE,
+                            VERTEX_SIZE * sizeof(GLfloat),
+                            (const void *) kVertexOffset);
+    m_glVertexAttrib4f(COLOR_INDEX, 1.0, 1.0, 1.0, m_transforms[m_currentTransformIndex].alpha);
+    m_glVertexAttribPointer(TEXTURE_INDEX, TEXTURE_SIZE, GL_FLOAT, GL_FALSE,
+                            TEXTURE_SIZE * sizeof(GLfloat),
+                            (const void *) kTextureOffset);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    m_glDisableVertexAttribArray(TEXTURE_INDEX);
+    m_glDisableVertexAttribArray(VERTEX_INDEX);
+    m_glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
 void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size,
-                                 bool &PositionChanged)
+                                 bool &PositionChanged, bool Blend)
 {
     uint ShaderObject = m_shaders[kShaderDefault];
 
@@ -411,7 +455,7 @@ void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size,
     EnableShaderObject(ShaderObject);
     SetShaderParams(ShaderObject, &m_currentProjection->m[0][0], "u_projection");
     SetShaderParams(ShaderObject, &m_transforms[m_currentTransformIndex].m[0][0], "u_transform");
-    SetBlend(true);
+    SetBlend(Blend);
 
     glBindTexture(Texture->m_type, Texture->m_val);
 

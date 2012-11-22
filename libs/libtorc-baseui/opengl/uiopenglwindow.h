@@ -46,30 +46,34 @@ class TORC_BASEUI_PUBLIC UIOpenGLWindow
     static UIOpenGLWindow* Create(void);
     virtual ~UIOpenGLWindow();
 
-    static QGLFunctionPointer GetProcAddress(const QString &Proc);
+    static QGLFunctionPointer GetProcAddress (const QString &Proc);
 
     // UIWindow
-    QSize GetSize       (void);
+    QSize       GetSize           (void);
 
-    void DrawImage (UIEffect *Effect,
-                    QRectF   *Dest,
-                    bool     &PositionChanged,
-                    UIImage  *Image);
-    UIImage* DrawText (UIEffect *Effect,
-                    QRectF   *Dest,
-                    bool     &PositionChanged,
-                    const QString &Text,
-                    UIFont   *Font,
-                    int       Flags,
-                    int       Blur,
-                    UIImage  *Fallback = NULL);
-    void DrawShape (UIEffect *Effect,
-                    QRectF *Dest, bool &PositionChanged,
-                    UIShapePath *Path);
-    bool PushEffect (const UIEffect *Effect, const QRectF *Dest);
-    void PopEffect  (void);
-    void PushClip   (const QRect &Rect);
-    void PopClip    (void);
+    void        DrawImage         (UIEffect *Effect,
+                                   QRectF   *Dest,
+                                   bool     &PositionChanged,
+                                   UIImage  *Image);
+    UIImage*    DrawText          (UIEffect *Effect,
+                                   QRectF   *Dest,
+                                   bool     &PositionChanged,
+                                   const QString &Text,
+                                   UIFont   *Font,
+                                   int       Flags,
+                                   int       Blur,
+                                   UIImage  *Fallback = NULL);
+    void        DrawShape         (UIEffect *Effect,
+                                   QRectF *Dest, bool &PositionChanged,
+                                   UIShapePath *Path);
+    bool        PushEffect        (const UIEffect *Effect, const QRectF *Dest);
+    void        PopEffect         (void);
+    void        PushClip          (const QRect &Rect);
+    void        PopClip           (void);
+
+    void        SetBlend          (bool Enable);
+    void        DrawTexture       (GLTexture *Texture, QRectF *Dest, QSizeF *Size, uint Shader);
+    void        DrawTexture       (GLTexture *Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged, bool Blend = true);
 
   public slots:
     // UIWindow
@@ -96,10 +100,7 @@ class TORC_BASEUI_PUBLIC UIOpenGLWindow
     GLTexture *AllocateTexture    (UIImage *Image);
     void       ReleaseTexture     (UIImage *Image);
     void       ReleaseAllTextures (void);
-    void       SetBlend           (bool Enable);
     void       SetBackground      (quint8 Red, quint8 Green, quint8 Blue, quint8 Alpha);
-    void       DrawTexture        (GLTexture *Texture, QRectF *Dest, QSizeF *Size,
-                                   bool &PositionChanged);
 
   private:
     UITimer                      *m_timer;
