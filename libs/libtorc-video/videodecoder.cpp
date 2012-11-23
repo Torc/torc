@@ -75,6 +75,57 @@ static inline double GetPixelAspectRatio(AVStream *Stream, AVFrame &Frame)
     return 1.0f;
 }
 
+static inline double GetFrameRate(AVFormatContext *Context, AVStream *Stream)
+{
+    if (!Stream)
+        return 30000.0f / 1001.0f;
+
+    double rate      = 0.0f;
+    double average   = 0.0f;
+    double codec     = 0.0f;
+    double container = 0.0f;
+    double estimated = 0.0f;
+
+    // default for matroska
+    if (Stream->avg_frame_rate.den && Stream->avg_frame_rate.num)
+        average = av_q2d(Stream->avg_frame_rate);
+
+    if (Stream->codec)
+    {
+        if (Stream->codec->time_base.den && Stream->codec->time_base.num)
+            codec = 1.0f / av_q2d(Stream->codec->time_base) / Stream->codec->ticks_per_frame;
+
+        if (codec > 121.0f && (Stream->codec->time_base.den > 10000) && (Stream->codec->time_base.num == 1))
+        {
+            Stream->codec->time_base.num = 1001;
+            if (av_q2d(Stream->codec->time_base) > 0)
+                codec = 1.0f / av_q2d(Stream->codec->time_base);
+        }
+    }
+
+    if (Stream->time_base.den && Stream->time_base.num)
+        container = 1.0f / av_q2d(Stream->time_base);
+
+    if (Stream->r_frame_rate.den && Stream->r_frame_rate.num)
+        estimated = av_q2d(Stream->r_frame_rate);
+
+    if ((QString(Context->iformat->name).contains("matroska") || QString(Context->iformat->name).contains("mov")) && average < 121.0f && average > 3.0f)
+        rate = average;
+    else if (QString(Context->iformat->name).contains("avi") && container < 121.0f && container > 3.0f)
+        rate = container;
+    else if (codec < 121.0f && codec > 3.0f)
+        rate = codec;
+    else if (container < 121.0f && container > 3.0f)
+        rate = container;
+    else if (estimated < 121.0f && estimated > 3.0f)
+        rate = estimated;
+    else if (average < 121.0f && average > 3.0f)
+        rate = average;
+    else
+        rate = 30000.0f / 1001.0f;
+
+    return rate;
+}
 
 static int GetBuffer(struct AVCodecContext *Context, AVFrame *Frame)
 {
@@ -262,9 +313,9 @@ bool VideoDecoder::VideoBufferStatus(int &Unused, int &Inuse, int &Held)
     return m_videoParent->Buffers()->GetBufferStatus(Unused, Inuse, Held);
 }
 
-void VideoDecoder::ProcessVideoPacket(AVStream *Stream, AVPacket *Packet)
+void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream, AVPacket *Packet)
 {
-    if (!Packet || !Stream || (Stream && !Stream->codec))
+    if (!Context || !Packet || !Stream || (Stream && !Stream->codec))
         return;
 
     // sanity check for format changes
@@ -362,6 +413,7 @@ void VideoDecoder::ProcessVideoPacket(AVStream *Stream, AVPacket *Packet)
     frame->m_pts              = av_q2d(Stream->time_base) * 1000 * (avframe.pkt_pts - Stream->start_time);
     frame->m_dts              = av_q2d(Stream->time_base) * 1000 * (avframe.pkt_dts - Stream->start_time);
     frame->m_corrupt          = !m_keyframeSeen;
+    frame->m_frameRate        = GetFrameRate(Context, Stream);
 
     m_videoParent->Buffers()->ReleaseFrameFromDecoding(frame);
 }

@@ -28,7 +28,7 @@ class VideoDecoder : public AudioDecoder
     explicit VideoDecoder (const QString &URI, TorcPlayer *Parent, int Flags);
 
     bool         VideoBufferStatus   (int &Unused, int &Inuse, int &Held);
-    void         ProcessVideoPacket  (AVStream *Stream, AVPacket *Packet);
+    void         ProcessVideoPacket  (AVFormatContext *Context, AVStream *Stream, AVPacket *Packet);
     void         SetupVideoDecoder   (AVStream *Stream);
     void         CleanupVideoDecoder (AVStream *Stream);
     void         FlushVideoBuffers   (void);

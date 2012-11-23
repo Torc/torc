@@ -74,7 +74,7 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
     void             DecodeSubtitles    (TorcSubtitleThread *Thread);
 
     virtual bool     VideoBufferStatus  (int &Unused, int &Inuse, int &Held);
-    virtual void     ProcessVideoPacket (AVStream* Stream, AVPacket *Packet);
+    virtual void     ProcessVideoPacket (AVFormatContext *Context, AVStream* Stream, AVPacket *Packet);
     virtual void     SetupVideoDecoder  (AVStream* Stream);
     virtual void     CleanupVideoDecoder(AVStream* Stream);
     virtual void     FlushVideoBuffers  (void);

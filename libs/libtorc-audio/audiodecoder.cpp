@@ -222,27 +222,30 @@ class TorcPacketQueue
 
     ~TorcPacketQueue()
     {
-        Flush(false);
+        Flush(false, false);
 
         delete m_lock;
         delete m_wait;
     }
 
-    void Flush(bool InsertFlush = true)
+    void Flush(bool FlushQueue, bool FlushCodec)
     {
         m_lock->lock();
 
-        while (!m_queue.isEmpty())
+        if (FlushQueue)
         {
-            AVPacket* packet = Pop();
-            if (packet != &gFlushCodec)
+            while (!m_queue.isEmpty())
             {
-                av_free_packet(packet);
-                delete packet;
+                AVPacket* packet = Pop();
+                if (packet != &gFlushCodec)
+                {
+                    av_free_packet(packet);
+                    delete packet;
+                }
             }
         }
 
-        if (InsertFlush)
+        if (FlushCodec)
         {
             m_queue.append(&gFlushCodec);
             m_size += (sizeof(&gFlushCodec) + gFlushCodec.size);
@@ -251,7 +254,7 @@ class TorcPacketQueue
 
         m_lock->unlock();
 
-        if (InsertFlush)
+        if (FlushCodec)
             m_wait->wakeAll();
     }
 
@@ -731,14 +734,14 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
         if (packet)
         {
             yield = false;
-            ProcessVideoPacket(stream, packet);
+            ProcessVideoPacket(m_priv->m_avFormatContext, stream, packet);
             av_free_packet(packet);
             delete packet;
         }
     }
 
     *state = TorcDecoder::Stopped;
-    queue->Flush();
+    queue->Flush(true, false);
 }
 
 bool AudioDecoder::VideoBufferStatus(int &Unused, int &Inuse, int &Held)
@@ -749,7 +752,7 @@ bool AudioDecoder::VideoBufferStatus(int &Unused, int &Inuse, int &Held)
     return true;
 }
 
-void AudioDecoder::ProcessVideoPacket(AVStream *Stream, AVPacket *Packet)
+void AudioDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream, AVPacket *Packet)
 {
     (void)Stream;
     (void)Packet;
@@ -1006,7 +1009,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
     if (m_audio)
         m_audio->SetAudioOutput(NULL);
     av_free(audiosamples);
-    queue->Flush();
+    queue->Flush(true, false);
 }
 
 int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
@@ -1137,7 +1140,7 @@ void AudioDecoder::DecodeSubtitles(TorcSubtitleThread *Thread)
     }
 
     *state = TorcDecoder::Stopped;
-    queue->Flush();
+    queue->Flush(true, false);
 }
 
 void AudioDecoder::SetFlag(TorcDecoder::DecoderFlags Flag)
@@ -1755,9 +1758,9 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
             else
             {
                 // NB this only flushes the currently selected streams
-                Thread->m_videoThread->m_queue->Flush();
-                Thread->m_audioThread->m_queue->Flush();
-                Thread->m_subtitleThread->m_queue->Flush();
+                Thread->m_videoThread->m_queue->Flush(true, true);
+                Thread->m_audioThread->m_queue->Flush(true, true);
+                Thread->m_subtitleThread->m_queue->Flush(true, true);
             }
 
             m_seek = false;
@@ -1803,6 +1806,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
                     packet->size = 0;
                     packet->stream_index = videoindex;
                     Thread->m_videoThread->m_queue->Push(packet);
+                    Thread->m_videoThread->m_queue->Flush(false, true);
                 }
 
                 if (audioindex > -1)
