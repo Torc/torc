@@ -59,7 +59,11 @@ double UIDisplay::GetRefreshRatePriv(void)
     {
         CFNumberRef number = (CFNumberRef)CFDictionaryGetValue(ref, kCGDisplayRefreshRate);
         if (number)
+        {
             CFNumberGetValue(number, kCFNumberSInt32Type, &rate);
+            if (qFuzzyCompare((double)1.0f, rate + 1.0f))
+                m_variableRefreshRate = true;
+        }
         else
             LOG(VB_GENERAL, LOG_WARNING, "Failed to get current display rate");
     }

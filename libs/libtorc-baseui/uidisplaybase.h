@@ -31,6 +31,7 @@ class UIDisplayBase
     int      m_screenCount;
     QSize    m_physicalSize;
     double   m_refreshRate;
+    bool     m_variableRefreshRate;
     double   m_aspectRatio;
     double   m_pixelAspectRatio;
     QWidget *m_widget;

@@ -57,6 +57,7 @@ UIDisplayBase::UIDisplayBase(QWidget *Widget)
     m_screenCount(1),
     m_physicalSize(-1, -1),
     m_refreshRate(-1.0),
+    m_variableRefreshRate(false),
     m_aspectRatio(1.0f),
     m_pixelAspectRatio(1.0f),
     m_widget(Widget)
@@ -127,7 +128,7 @@ void UIDisplayBase::Sanitise(void)
 
     LOG(VB_GENERAL, LOG_INFO, QString("Using screen %1 of %2")
         .arg(m_screen + 1).arg(m_screenCount));
-    LOG(VB_GENERAL, LOG_INFO, QString("Refresh rate: %1Hz").arg(m_refreshRate));
+    LOG(VB_GENERAL, LOG_INFO, QString("Refresh rate: %1Hz (variable: %2)").arg(m_refreshRate).arg(m_variableRefreshRate));
     LOG(VB_GENERAL, LOG_INFO, QString("Screen size : %1mm x %2mm (aspect %3)")
         .arg(m_physicalSize.width()).arg(m_physicalSize.height()).arg(m_aspectRatio));
     LOG(VB_GENERAL, LOG_INFO, QString("Screen size : %1px x %2px")
