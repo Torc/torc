@@ -47,13 +47,19 @@ void VideoUIPlayer::Teardown(void)
 void VideoUIPlayer::Refresh(void)
 {
     VideoFrame *frame = m_buffers.GetFrameForDisplaying();
-    if (frame)
-    {
-        if (m_render)
-            m_render->RenderFrame(frame);
 
-        m_buffers.ReleaseFrameFromDisplaying(frame, false);
+    if (m_render)
+    {
+        if (m_state == Paused  || m_state == Starting ||
+            m_state == Playing || m_state == Searching ||
+            m_state == Pausing || m_state == Stopping)
+        {
+            m_render->RenderFrame(frame);
+        }
     }
+
+    if (frame)
+        m_buffers.ReleaseFrameFromDisplaying(frame, false);
 
     TorcPlayer::Refresh();
 }

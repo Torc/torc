@@ -29,6 +29,7 @@ class VideoRendererOpenGL : public VideoRenderer
   protected:
     UIOpenGLWindow    *m_window;
     PixelFormat        m_outputFormat;
+    bool               m_validVideoFrame;
     GLTexture         *m_rawVideoTexture;
     GLTexture         *m_rgbVideoTexture;
     uint               m_rgbVideoBuffer;
