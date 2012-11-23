@@ -100,7 +100,7 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
 
     bool updatevertices = false;
 
-    if (Frame)
+    if (Frame && !Frame->m_corrupt)
     {
         // check for a size change
         if (m_rawVideoTexture)

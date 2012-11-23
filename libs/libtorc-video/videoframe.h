@@ -52,6 +52,7 @@ class VideoFrame
     qint64         m_frameNumber;
     qint64         m_pts;
     qint64         m_dts;
+    bool           m_corrupt;
 };
 
 #endif // VIDEOFRAME_H

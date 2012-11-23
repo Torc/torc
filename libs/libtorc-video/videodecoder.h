@@ -36,6 +36,7 @@ class VideoDecoder : public AudioDecoder
     void         SetFormat           (PixelFormat Format, int Width, int Height, int References, bool UpdateParent);
 
   private:
+    bool         m_keyframeSeen;
     VideoPlayer *m_videoParent;
     PixelFormat  m_currentPixelFormat;
     int          m_currentVideoWidth;

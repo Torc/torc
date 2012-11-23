@@ -70,6 +70,7 @@ void VideoFrame::Reset(void)
     m_frameNumber          = 0;
     m_pts                  = AV_NOPTS_VALUE;
     m_dts                  = AV_NOPTS_VALUE;
+    m_corrupt              = false;
     m_pitches[0]           = m_pitches[1] = m_pitches[2] = m_pitches[4] = 0;
     m_offsets[0]           = m_offsets[1] = m_offsets[2] = m_offsets[4] = 0;
     m_priv[0]              = m_priv[1] = m_priv[2] = m_priv[3] = NULL;

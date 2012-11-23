@@ -236,6 +236,7 @@ PixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const PixelF
 
 VideoDecoder::VideoDecoder(const QString &URI, TorcPlayer *Parent, int Flags)
   : AudioDecoder(URI, Parent, Flags),
+    m_keyframeSeen(false),
     m_videoParent(NULL),
     m_currentPixelFormat(PIX_FMT_NONE),
     m_currentVideoWidth(0),
@@ -297,6 +298,10 @@ void VideoDecoder::ProcessVideoPacket(AVStream *Stream, AVPacket *Packet)
     if (!gotframe)
         return;
 
+    // mark frames that may be corrupt
+    if (!m_keyframeSeen && avframe.key_frame)
+        m_keyframeSeen = true;
+
     VideoFrame *frame = avframe.opaque ? (VideoFrame*)avframe.opaque : m_videoParent->Buffers()->GetFrameForDecoding();
 
     if (!frame)
@@ -356,6 +361,7 @@ void VideoDecoder::ProcessVideoPacket(AVStream *Stream, AVPacket *Packet)
     frame->m_frameNumber      = avframe.display_picture_number;
     frame->m_pts              = av_q2d(Stream->time_base) * 1000 * (avframe.pkt_pts - Stream->start_time);
     frame->m_dts              = av_q2d(Stream->time_base) * 1000 * (avframe.pkt_dts - Stream->start_time);
+    frame->m_corrupt          = !m_keyframeSeen;
 
     m_videoParent->Buffers()->ReleaseFrameFromDecoding(frame);
 }
@@ -419,6 +425,7 @@ void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)
 void VideoDecoder::FlushVideoBuffers(void)
 {
     m_videoParent->Buffers()->Reset(false);
+    m_keyframeSeen = false;
 }
 
 void VideoDecoder::SetFormat(PixelFormat Format, int Width, int Height, int References, bool UpdateParent)
