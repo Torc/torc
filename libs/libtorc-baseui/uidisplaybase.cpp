@@ -32,7 +32,7 @@
 
 static inline double FixRate(double Rate)
 {
-    static const double defaultrate = 120.0;
+    static const double defaultrate = 60.0;
     if (VALID_RATE(Rate))
         return Rate;
     return defaultrate;
