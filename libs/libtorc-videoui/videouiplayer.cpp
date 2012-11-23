@@ -1,4 +1,4 @@
-/* Class VideoPlayer
+/* Class VideoUIPlayer
 *
 * This file is part of the Torc project.
 *
@@ -21,62 +21,51 @@
 */
 
 // Torc
-#include "torclogging.h"
 #include "torcdecoder.h"
 #include "videoframe.h"
-#include "videoplayer.h"
+#include "videorenderer.h"
+#include "videouiplayer.h"
 
-VideoPlayer::VideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
-  : TorcPlayer(Parent, PlaybackFlags, DecodeFlags),
-    m_audioWrapper(new AudioWrapper(this))
+VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
+  : VideoPlayer(Parent, PlaybackFlags, DecodeFlags),
+    TorcHTTPService(this, "/player", tr("Player"), VideoPlayer::staticMetaObject)
 {
-    setObjectName("Player");
-
-    m_buffers.SetDisplayFormat(PIX_FMT_YUV420P);
+    m_render = VideoRenderer::Create();
+    m_buffers.SetDisplayFormat(m_render ? m_render->PreferredPixelFormat() : PIX_FMT_YUV420P);
 }
 
-VideoPlayer::~VideoPlayer()
+VideoUIPlayer::~VideoUIPlayer()
 {
     Teardown();
-
-    delete m_audioWrapper;
-    m_audioWrapper = NULL;
 }
 
-void VideoPlayer::Teardown(void)
+void VideoUIPlayer::Teardown(void)
 {
-    TorcPlayer::Teardown();
+    VideoPlayer::Teardown();
 }
 
-void VideoPlayer::Refresh(void)
+void VideoUIPlayer::Refresh(void)
 {
     VideoFrame *frame = m_buffers.GetFrameForDisplaying();
     if (frame)
     {
-        //LOG(VB_GENERAL, LOG_INFO, QString("AV %1").arg(m_audioWrapper->GetAudioTime() - frame->m_pts));
+        if (m_render)
+            m_render->RenderFrame(frame);
+
         m_buffers.ReleaseFrameFromDisplaying(frame, false);
     }
 
     TorcPlayer::Refresh();
 }
 
-void* VideoPlayer::GetAudio(void)
-{
-    return m_audioWrapper;
-}
-
-VideoBuffers* VideoPlayer::Buffers(void)
-{
-    return &m_buffers;
-}
-
-class VideoPlayerFactory : public PlayerFactory
+class VideoUIPlayerFactory : public PlayerFactory
 {
     TorcPlayer* Create(QObject *Parent, int PlaybackFlags, int DecoderFlags)
     {
-        if ((DecoderFlags & TorcDecoder::DecodeVideo) && !(PlaybackFlags & TorcPlayer::UserFacing))
-            return new VideoPlayer(Parent, PlaybackFlags, DecoderFlags);
+        if ((DecoderFlags & TorcDecoder::DecodeVideo) && (PlaybackFlags & TorcPlayer::UserFacing))
+            return new VideoUIPlayer(Parent, PlaybackFlags, DecoderFlags);
 
         return NULL;
     }
-} VideoPlayerFactory;
+} VideoUIPlayerFactory;
+

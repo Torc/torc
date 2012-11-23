@@ -18,32 +18,26 @@ LIBS += -L../libtorc-audio -ltorc-audio-$$LIBVERSION
 LIBS += -L../libtorc-av/libavformat -ltorc-avformat
 LIBS += -L../libtorc-av/libavcodec -ltorc-avcodec
 LIBS += -L../libtorc-av/libavutil -ltorc-avutil
+LIBS += -L../libtorc-av/libswscale -ltorc-swscale
 
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 
 HEADERS += torcvideoexport.h
 HEADERS += videoplayer.h    videodecoder.h
 HEADERS += videoframe.h     videobuffers.h
-HEADERS += videocolourspace.h
 
 SOURCES += videoplayer.cpp  videodecoder.cpp
 SOURCES += videoframe.cpp   videobuffers.cpp
-SOURCES += videocolourspace.cpp
-
-contains(CONFIG_VDPAU, yes) {
-}
-
-contains(CONFIG_VAAPI, yes) {
-}
-
-contains(CONFIG_DXVA2, yes) {
-}
 
 contains(CONFIG_VDA, yes) {
+    QMAKE_CXXFLAGS += -F/System/Library/Frameworks/CoreVideo.framework/Frameworks
+    QMAKE_CXXFLAGS += -F/System/Library/Frameworks/CoreFoundation.framework/Frameworks
+    LIBS           += -framework CoreVideo -framework CoreFoundation
 }
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
-inc.files += videointerface.h   videobuffer.h
+inc.files += videoplayer.h    videodecoder.h
+inc.files += videoframe.h     videobuffers.h
 
 inc2.path  = $${PREFIX}/include/$${PROJECTNAME}/lib$${THIS_LIB}
 inc2.files = $${inc.files}
