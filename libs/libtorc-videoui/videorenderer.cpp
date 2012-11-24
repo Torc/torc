@@ -32,10 +32,12 @@
  *
  * \sa VideoRendererOpenGL
  *
+ * \todo Handle frame rate doubling for interlaced material
  * \todo Extend positioning for zoom etc
 */
 
 VideoRenderer::VideoRenderer(UIWindow *Window)
+  : m_window(Window)
 {
     m_display = dynamic_cast<UIDisplay*>(Window);
 
@@ -45,6 +47,24 @@ VideoRenderer::VideoRenderer(UIWindow *Window)
 
 VideoRenderer::~VideoRenderer()
 {
+}
+
+void VideoRenderer::PlaybackFinished(void)
+{
+    if (m_display)
+        m_window->SetRefreshRate(m_display->GetDefaultRefreshRate());
+}
+
+void VideoRenderer::UpdateRefreshRate(VideoFrame* Frame)
+{
+    if (!m_display)
+        return;
+
+    if (qFuzzyCompare(m_display->GetRefreshRate() + 1.0f, Frame->m_frameRate + 1.0f))
+        return;
+
+    if (m_display->CanHandleVideoRate(Frame->m_frameRate))
+        m_window->SetRefreshRate(Frame->m_frameRate);
 }
 
 bool VideoRenderer::UpdatePosition(VideoFrame* Frame)

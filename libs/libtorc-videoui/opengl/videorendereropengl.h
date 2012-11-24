@@ -27,7 +27,7 @@ class VideoRendererOpenGL : public VideoRenderer
     void               ResetOutput          (void);
 
   protected:
-    UIOpenGLWindow    *m_window;
+    UIOpenGLWindow    *m_openglWindow;
     PixelFormat        m_outputFormat;
     bool               m_validVideoFrame;
     GLTexture         *m_rawVideoTexture;

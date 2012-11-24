@@ -16,16 +16,19 @@ class VideoRenderer
     static VideoRenderer*  Create(void);
 
   public:
-    explicit VideoRenderer(UIWindow *Window);
-    virtual ~VideoRenderer();
+    explicit VideoRenderer (UIWindow *Window);
+    virtual ~VideoRenderer ();
 
     virtual void           RenderFrame          (VideoFrame* Frame) = 0;
     virtual PixelFormat    PreferredPixelFormat (void) = 0;
+    void                   PlaybackFinished     (void);
 
   protected:
+    void                   UpdateRefreshRate    (VideoFrame* Frame);
     bool                   UpdatePosition       (VideoFrame* Frame);
 
   protected:
+    UIWindow               *m_window;
     UIDisplay              *m_display;
     QRectF                  m_presentationRect;
 };

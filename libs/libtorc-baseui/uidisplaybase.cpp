@@ -57,6 +57,7 @@ UIDisplayBase::UIDisplayBase(QWidget *Widget)
     m_screenCount(1),
     m_physicalSize(-1, -1),
     m_refreshRate(-1.0),
+    m_originalRefreshRate(-1.0),
     m_variableRefreshRate(false),
     m_aspectRatio(1.0f),
     m_pixelAspectRatio(1.0f),
@@ -66,6 +67,14 @@ UIDisplayBase::UIDisplayBase(QWidget *Widget)
 
 UIDisplayBase::~UIDisplayBase()
 {
+}
+
+bool UIDisplayBase::CanHandleVideoRate(double Rate)
+{
+    if (m_variableRefreshRate)
+        return true;
+
+    return false;
 }
 
 int UIDisplayBase::GetScreen(void)
@@ -86,6 +95,11 @@ QSize UIDisplayBase::GetGeometry(void)
 double UIDisplayBase::GetRefreshRate(void)
 {
     return m_refreshRate;
+}
+
+double UIDisplayBase::GetDefaultRefreshRate(void)
+{
+    return m_originalRefreshRate;
 }
 
 QSize UIDisplayBase::GetPhysicalSize(void)
@@ -133,4 +147,7 @@ void UIDisplayBase::Sanitise(void)
         .arg(m_physicalSize.width()).arg(m_physicalSize.height()).arg(m_aspectRatio));
     LOG(VB_GENERAL, LOG_INFO, QString("Screen size : %1px x %2px")
         .arg(m_pixelSize.width()).arg(m_pixelSize.height()));
+
+    if (m_originalRefreshRate < 0.0f)
+        m_originalRefreshRate = m_refreshRate;
 }

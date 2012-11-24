@@ -116,8 +116,7 @@ UIOpenGLWindow::UIOpenGLWindow(const QGLFormat &Format, GLType Type)
 
     setCursor(Qt::BlankCursor);
 
-    SetFrameCount(5000.0 / m_refreshRate);
-    m_timer = new UITimer(1000000.0 / m_refreshRate);
+    SetRefreshRate(m_refreshRate);
     m_mainTimer = startTimer(0);
 }
 
@@ -367,6 +366,22 @@ bool UIOpenGLWindow::event(QEvent *Event)
 QSize UIOpenGLWindow::GetSize(void)
 {
     return m_pixelSize; // NB Screen size
+}
+
+void UIOpenGLWindow::SetRefreshRate(double Rate)
+{
+    if (m_timer && qFuzzyCompare(Rate + 1.0f, m_refreshRate + 1.0f))
+        return;
+
+    m_refreshRate = Rate;
+    LOG(VB_GENERAL, LOG_INFO, QString("Setting display rate to %1").arg(m_refreshRate));
+
+    SetFrameCount(5000.0 / m_refreshRate);
+
+    if (m_timer)
+        m_timer->SetInterval(1000000.0f / m_refreshRate);
+    else
+        m_timer = new UITimer(1000000.0f / m_refreshRate);
 }
 
 void UIOpenGLWindow::DrawImage(UIEffect *Effect,

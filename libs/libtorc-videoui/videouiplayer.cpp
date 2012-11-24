@@ -32,6 +32,9 @@ VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags
 {
     m_render = VideoRenderer::Create();
     m_buffers.SetDisplayFormat(m_render ? m_render->PreferredPixelFormat() : PIX_FMT_YUV420P);
+
+    // we need to listen for certain state changes (e.g. stopped)
+    connect(this, SIGNAL(StateChanged(TorcPlayer::PlayerState)), this, SLOT(PlayerStateChanged(TorcPlayer::PlayerState)));
 }
 
 VideoUIPlayer::~VideoUIPlayer()
@@ -62,6 +65,14 @@ void VideoUIPlayer::Refresh(void)
         m_buffers.ReleaseFrameFromDisplaying(frame, false);
 
     TorcPlayer::Refresh();
+}
+
+void VideoUIPlayer::PlayerStateChanged(PlayerState NewState)
+{
+    if (NewState == Stopped)
+    {
+        m_render->PlaybackFinished();
+    }
 }
 
 class VideoUIPlayerFactory : public PlayerFactory

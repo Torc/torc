@@ -11,10 +11,13 @@ class UIDisplayBase
     UIDisplayBase(QWidget *Widget);
     virtual ~UIDisplayBase();
 
+    bool     CanHandleVideoRate     (double Rate);
+
     int      GetScreen              (void);
     int      GetScreenCount         (void);
     QSize    GetGeometry            (void);
     double   GetRefreshRate         (void);
+    double   GetDefaultRefreshRate  (void);
     QSize    GetPhysicalSize        (void);
     double   GetDisplayAspectRatio  (void);
     double   GetPixelAspectRatio    (void);
@@ -31,6 +34,7 @@ class UIDisplayBase
     int      m_screenCount;
     QSize    m_physicalSize;
     double   m_refreshRate;
+    double   m_originalRefreshRate;
     bool     m_variableRefreshRate;
     double   m_aspectRatio;
     double   m_pixelAspectRatio;

@@ -54,7 +54,7 @@ static const char YUV2RGBFragmentShader[] =
 
 VideoRendererOpenGL::VideoRendererOpenGL(UIOpenGLWindow *Window)
   : VideoRenderer(Window),
-    m_window(Window),
+    m_openglWindow(Window),
     m_outputFormat(PIX_FMT_UYVY422),
     m_validVideoFrame(false),
     m_rawVideoTexture(NULL),
@@ -76,18 +76,18 @@ VideoRendererOpenGL::~VideoRendererOpenGL()
 void VideoRendererOpenGL::ResetOutput(void)
 {
     if (m_rawVideoTexture)
-        m_window->DeleteTexture(m_rawVideoTexture->m_val);
+        m_openglWindow->DeleteTexture(m_rawVideoTexture->m_val);
     m_rawVideoTexture = NULL;
 
     if (m_rgbVideoBuffer)
-        m_window->DeleteFrameBuffer(m_rgbVideoBuffer);
+        m_openglWindow->DeleteFrameBuffer(m_rgbVideoBuffer);
     m_rgbVideoBuffer = 0;
 
     if (m_rgbVideoTexture)
-        m_window->DeleteTexture(m_rgbVideoTexture->m_val);
+        m_openglWindow->DeleteTexture(m_rgbVideoTexture->m_val);
     m_rgbVideoTexture = NULL;
 
-    m_window->DeleteShaderObject(m_videoShader);
+    m_openglWindow->DeleteShaderObject(m_videoShader);
     m_videoShader = 0;
 
     m_validVideoFrame = false;
@@ -95,7 +95,7 @@ void VideoRendererOpenGL::ResetOutput(void)
 
 void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
 {
-    if (!m_window)
+    if (!m_openglWindow)
         return;
 
     bool updatevertices = false;
@@ -118,7 +118,7 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
         if (!m_rawVideoTexture)
         {
             QSize size(Frame->m_rawWidth / 2, Frame->m_rawHeight);
-            m_rawVideoTexture = m_window->CreateTexture(size, true, 0, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA, GL_NEAREST);
+            m_rawVideoTexture = m_openglWindow->CreateTexture(size, true, 0, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA, GL_NEAREST);
 
             if (!m_rawVideoTexture)
             {
@@ -139,7 +139,7 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
             QByteArray vertex(YUV2RGBVertexShader);
             QByteArray fragment(YUV2RGBFragmentShader);
             CustomiseShader(fragment);
-            m_videoShader = m_window->CreateShaderObject(vertex, fragment);
+            m_videoShader = m_openglWindow->CreateShaderObject(vertex, fragment);
 
             if (!m_videoShader)
                 return;
@@ -151,7 +151,7 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
         if (!m_rgbVideoTexture)
         {
             QSize size(Frame->m_rawWidth, Frame->m_rawHeight);
-            m_rgbVideoTexture = m_window->CreateTexture(size, false, 0, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA);
+            m_rgbVideoTexture = m_openglWindow->CreateTexture(size, false, 0, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA);
 
             if (!m_rgbVideoTexture)
             {
@@ -164,7 +164,7 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
 
         if (!m_rgbVideoBuffer && m_rgbVideoTexture)
         {
-            if (!m_window->CreateFrameBuffer(m_rgbVideoBuffer, m_rgbVideoTexture->m_val))
+            if (!m_openglWindow->CreateFrameBuffer(m_rgbVideoBuffer, m_rgbVideoTexture->m_val))
             {
                 LOG(VB_GENERAL, LOG_ERR, "Failed to create RGB video frame buffer");
                 return;
@@ -172,7 +172,7 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
         }
 
         // update the textures
-        void* buffer = m_window->GetTextureBuffer(m_rawVideoTexture);
+        void* buffer = m_openglWindow->GetTextureBuffer(m_rawVideoTexture);
 
         PixelFormat informat  = Frame->m_secondaryPixelFormat != PIX_FMT_NONE ? Frame->m_secondaryPixelFormat : Frame->m_pixelFormat;
 
@@ -202,26 +202,27 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
             memcpy(buffer, Frame->m_buffer, Frame->m_bufferSize);
         }
 
-        m_window->UpdateTexture(m_rawVideoTexture, buffer);
+        m_openglWindow->UpdateTexture(m_rawVideoTexture, buffer);
         m_validVideoFrame = true;
 
         // colour space conversion
-        QRect viewport = m_window->GetViewPort();
+        QRect viewport = m_openglWindow->GetViewPort();
         QRect view(QPoint(0, 0), m_rgbVideoTexture->m_actualSize);
         QRectF destination(QPointF(0.0, m_rgbVideoTexture->m_actualSize.height()),
                            QPointF(m_rgbVideoTexture->m_actualSize.width(), 0.0));
         QSizeF size(m_rawVideoTexture->m_actualSize);
 
-        m_window->SetBlend(false);
-        m_window->BindFramebuffer(m_rgbVideoBuffer);
-        m_window->SetViewPort(view);
+        m_openglWindow->SetBlend(false);
+        m_openglWindow->BindFramebuffer(m_rgbVideoBuffer);
+        m_openglWindow->SetViewPort(view);
         m_colourSpace->SetColourSpace(Frame->m_colourSpace);
         if (m_colourSpace->HasChanged())
-            m_window->SetShaderParams(m_videoShader, m_colourSpace->Data(), "COLOUR_UNIFORM");
-        m_window->DrawTexture(m_rawVideoTexture, &destination, &size, m_videoShader);
-        m_window->SetViewPort(viewport);
+            m_openglWindow->SetShaderParams(m_videoShader, m_colourSpace->Data(), "COLOUR_UNIFORM");
+        m_openglWindow->DrawTexture(m_rawVideoTexture, &destination, &size, m_videoShader);
+        m_openglWindow->SetViewPort(viewport);
 
         // update the display setup
+        UpdateRefreshRate(Frame);
         updatevertices = UpdatePosition(Frame);
     }
 
@@ -229,7 +230,7 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
     {
         // and finally draw
         QSizeF size = m_rgbVideoTexture->m_actualSize;
-        m_window->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, updatevertices, false);
+        m_openglWindow->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, updatevertices, false);
     }
 }
 
@@ -242,7 +243,7 @@ void VideoRendererOpenGL::CustomiseShader(QByteArray &Source)
 {
     float selectcolumn = 1.0f;
 
-    if (m_rawVideoTexture && !m_window->IsRectTexture(m_rawVideoTexture->m_type && m_rawVideoTexture->m_size.width() > 0))
+    if (m_rawVideoTexture && !m_openglWindow->IsRectTexture(m_rawVideoTexture->m_type && m_rawVideoTexture->m_size.width() > 0))
         selectcolumn /= ((float)m_rawVideoTexture->m_size.width());
 
     Source.replace("SELECT_COLUMN", QByteArray::number(1.0f / selectcolumn, 'f', 8));
