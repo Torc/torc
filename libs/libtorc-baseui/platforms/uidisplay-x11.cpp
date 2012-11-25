@@ -33,6 +33,10 @@ bool UIDisplay::InitialiseDisplay(void)
     return true;
 }
 
+void UIDisplay::SwitchToMode(int Index)
+{
+}
+
 double UIDisplay::GetRefreshRatePriv(void)
 {
     double rate = -1;

@@ -52,7 +52,7 @@ VideoRenderer::~VideoRenderer()
 void VideoRenderer::PlaybackFinished(void)
 {
     if (m_display)
-        m_window->SetRefreshRate(m_display->GetDefaultRefreshRate());
+        m_window->SetRefreshRate(m_display->GetDefaultRefreshRate(), m_display->GetDefaultMode());
 }
 
 void VideoRenderer::UpdateRefreshRate(VideoFrame* Frame)
@@ -60,11 +60,10 @@ void VideoRenderer::UpdateRefreshRate(VideoFrame* Frame)
     if (!m_display)
         return;
 
-    if (qFuzzyCompare(m_display->GetRefreshRate() + 1.0f, Frame->m_frameRate + 1.0f))
-        return;
-
-    if (m_display->CanHandleVideoRate(Frame->m_frameRate))
-        m_window->SetRefreshRate(Frame->m_frameRate);
+    // CanHandleVideoRate will cache the result of repeated calls
+    int modeindex = -1;
+    if (m_display->CanHandleVideoRate(Frame->m_frameRate, modeindex))
+        m_window->SetRefreshRate(Frame->m_frameRate, modeindex);
 }
 
 bool VideoRenderer::UpdatePosition(VideoFrame* Frame)

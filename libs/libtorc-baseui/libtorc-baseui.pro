@@ -89,7 +89,7 @@ inc.files += uiwidget.h       uitheme.h
 inc.files += uitext.h         uimedia.h
 inc.files += uishape.h        uiimagewidget.h
 inc.files += uigroup.h        uibutton.h
-inc.files += uidisplay.h
+inc.files += uidisplay.h      uidisplaybase.h
 
 inc2.path  = $${PREFIX}/include/$${PROJECTNAME}/lib$${THIS_LIB}
 inc2.files = $${inc.files}

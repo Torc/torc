@@ -28,6 +28,10 @@ bool UIDisplay::InitialiseDisplay(void)
     return true;
 }
 
+void UIDisplay::SwitchToMode(int Index)
+{
+}
+
 double UIDisplay::GetRefreshRatePriv(void)
 {
     HDC hdc = GetDC(m_widget->winId());

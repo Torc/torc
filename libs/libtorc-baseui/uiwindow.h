@@ -18,7 +18,7 @@ class TORC_BASEUI_PUBLIC UIWindow
     virtual ~UIWindow();
 
     virtual QSize    GetSize    (void) = 0;
-    virtual void     SetRefreshRate (double Rate) = 0;
+    virtual void     SetRefreshRate (double Rate, int ModeIndex = -1) = 0;
 
     virtual void     DrawImage  (UIEffect *Effect,
                                  QRectF   *Dest,

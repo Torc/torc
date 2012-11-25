@@ -50,7 +50,7 @@ class TORC_BASEUI_PUBLIC UIOpenGLWindow
 
     // UIWindow
     QSize       GetSize           (void);
-    void        SetRefreshRate    (double Rate);
+    void        SetRefreshRate    (double Rate, int ModeIndex = -1);
 
     void        DrawImage         (UIEffect *Effect,
                                    QRectF   *Dest,

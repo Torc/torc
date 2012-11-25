@@ -368,14 +368,16 @@ QSize UIOpenGLWindow::GetSize(void)
     return m_pixelSize; // NB Screen size
 }
 
-void UIOpenGLWindow::SetRefreshRate(double Rate)
+void UIOpenGLWindow::SetRefreshRate(double Rate, int ModeIndex)
 {
     if (m_timer && qFuzzyCompare(Rate + 1.0f, m_refreshRate + 1.0f))
         return;
 
     m_refreshRate = Rate;
-    LOG(VB_GENERAL, LOG_INFO, QString("Setting display rate to %1").arg(m_refreshRate));
+    if (ModeIndex > -1)
+        SwitchToMode(ModeIndex); // NB this will also update m_refreshRate
 
+    LOG(VB_GENERAL, LOG_INFO, QString("Setting display rate to %1").arg(m_refreshRate));
     SetFrameCount(5000.0 / m_refreshRate);
 
     if (m_timer)

@@ -28,6 +28,8 @@
 #include "torclogging.h"
 #include "uidisplaybase.h"
 
+#include <math.h>
+
 #define VALID_RATE(rate) (rate > 20.0 && rate < 200.0)
 
 static inline double FixRate(double Rate)
@@ -51,6 +53,26 @@ static inline double FixRatio(double Ratio)
     return Ratio;
 }
 
+UIDisplayMode::UIDisplayMode()
+  : m_width(0),
+    m_height(0),
+    m_depth(0),
+    m_rate(0.0f),
+    m_interlaced(false),
+    m_index(-1)
+{
+}
+
+UIDisplayMode::UIDisplayMode(int Width, int Height, int Depth, double Rate, bool Interlaced, int Index)
+  : m_width(Width),
+    m_height(Height),
+    m_depth(Depth),
+    m_rate(Rate),
+    m_interlaced(Interlaced),
+    m_index(Index)
+{
+}
+
 UIDisplayBase::UIDisplayBase(QWidget *Widget)
   : m_pixelSize(-1, -1),
     m_screen(0),
@@ -58,10 +80,12 @@ UIDisplayBase::UIDisplayBase(QWidget *Widget)
     m_physicalSize(-1, -1),
     m_refreshRate(-1.0),
     m_originalRefreshRate(-1.0),
+    m_originalModeIndex(-1),
     m_variableRefreshRate(false),
     m_aspectRatio(1.0f),
     m_pixelAspectRatio(1.0f),
-    m_widget(Widget)
+    m_widget(Widget),
+    m_lastRateChecked(-1.0f)
 {
 }
 
@@ -69,12 +93,89 @@ UIDisplayBase::~UIDisplayBase()
 {
 }
 
-bool UIDisplayBase::CanHandleVideoRate(double Rate)
+bool UIDisplayBase::CanHandleVideoRate(double Rate, int &ModeIndex)
 {
+    // can handle anything
     if (m_variableRefreshRate)
         return true;
 
-    return false;
+    // avoid repeated checks
+    if (qFuzzyCompare(Rate + 1.0f, m_lastRateChecked + 1.0f))
+        return false;
+
+    m_lastRateChecked = Rate;
+
+    // TODO try and find a better rate when the current rate is below the video frame rate
+
+    // Pick the most suitable rate from those available
+    // 1. higher is better
+    // 2. exact multiple is better
+    // 3. progressive is better than interlaced (we can't guarantee tv interlacing will work)
+    // 4. something in the range 50-60Hz is optimal for UI
+
+    LOG(VB_GENERAL, LOG_INFO, QString("Trying to find best match for frame rate %1").arg(Rate));
+
+    int best  = 0;
+    int index = -1;
+    QList<int> scores;
+    for (int i = 0; i < m_modes.size(); ++i)
+    {
+        int    score = 0;
+        double rate  = m_modes[i].m_rate;
+
+        // optimum range
+        if (rate > 49.0f && rate < 61.0f)
+            score += 5;
+
+        // less desirable
+        if (m_modes[i].m_interlaced)
+            score -= 3;
+
+        // exact match
+        if (qFuzzyCompare(Rate + 1.0f, rate + 1.0f))
+        {
+            score += 15;
+        }
+        // multiple
+        else if (qFuzzyCompare((double)1.0f, fmod(rate, Rate) + 1.0f))
+        {
+            score += 15;
+        }
+        // try to account for 29.97/30.00 and 23.97/24.00 differences
+        else if (abs(rate - Rate) < 0.05f)
+        {
+            score += 10;
+        }
+        else if (fmod(rate, Rate) < 0.01f)
+        {
+            score += 10;
+        }
+
+        // avoid dropping frames
+        if (rate < (Rate - 0.05f))
+            score -= 10;
+
+        if (score > best)
+        {
+            best = score;
+            index = i;
+        }
+
+        LOG(VB_GENERAL, LOG_DEBUG, QString("Rate: %1Hz%2 score %3")
+            .arg(m_modes[i].m_rate).arg(m_modes[i].m_interlaced ? QString(" Interlaced") : "").arg(score));
+    }
+
+    if (best < 1)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Failed to find suitable rate");
+        return false;
+    }
+
+    LOG(VB_GENERAL, LOG_INFO, QString("Best mode %1Hz%2")
+        .arg(m_modes[index].m_rate).arg(m_modes[index].m_interlaced ? QString(" Interlaced") : ""));
+
+    ModeIndex = index;
+    return true;
 }
 
 int UIDisplayBase::GetScreen(void)
@@ -100,6 +201,11 @@ double UIDisplayBase::GetRefreshRate(void)
 double UIDisplayBase::GetDefaultRefreshRate(void)
 {
     return m_originalRefreshRate;
+}
+
+int UIDisplayBase::GetDefaultMode(void)
+{
+    return m_originalModeIndex;
 }
 
 QSize UIDisplayBase::GetPhysicalSize(void)
@@ -132,8 +238,26 @@ QSize UIDisplayBase::GetGeometryPriv(void)
     return QApplication::desktop()->screenGeometry(GetScreen()).size();
 }
 
+bool SortMode(const UIDisplayMode &First, const UIDisplayMode &Second)
+{
+    if (qFuzzyCompare(First.m_rate + 1.0f, Second.m_rate + 1.0f))
+    {
+        if (First.m_interlaced && !Second.m_interlaced)
+            return false;
+
+        if (First.m_depth < Second.m_depth)
+            return false;
+
+        return true;
+    }
+
+    return First.m_rate > Second.m_rate;
+}
+
 void UIDisplayBase::Sanitise(void)
 {
+    qSort(m_modes.begin(), m_modes.end(), SortMode);
+
     m_refreshRate      = FixRate(m_refreshRate);
     m_aspectRatio      = FixRatio((double)m_physicalSize.width() / (double)m_physicalSize.height());
     m_pixelAspectRatio = FixRatio(((double)m_physicalSize.height() / (double)m_pixelSize.height()) /
@@ -142,11 +266,22 @@ void UIDisplayBase::Sanitise(void)
 
     LOG(VB_GENERAL, LOG_INFO, QString("Using screen %1 of %2")
         .arg(m_screen + 1).arg(m_screenCount));
-    LOG(VB_GENERAL, LOG_INFO, QString("Refresh rate: %1Hz (variable: %2)").arg(m_refreshRate).arg(m_variableRefreshRate));
     LOG(VB_GENERAL, LOG_INFO, QString("Screen size : %1mm x %2mm (aspect %3)")
         .arg(m_physicalSize.width()).arg(m_physicalSize.height()).arg(m_aspectRatio));
     LOG(VB_GENERAL, LOG_INFO, QString("Screen size : %1px x %2px")
         .arg(m_pixelSize.width()).arg(m_pixelSize.height()));
+    LOG(VB_GENERAL, LOG_INFO, QString("Refresh rate: %1Hz").arg(m_refreshRate));
+
+    if (m_variableRefreshRate)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Available rate: Any");
+    }
+    else
+    {
+        QList<UIDisplayMode>::iterator it = m_modes.begin();
+        for ( ; it != m_modes.end(); ++it)
+            LOG(VB_GENERAL, LOG_INFO, QString("Available rate: %1Hz%2").arg((*it).m_rate).arg((*it).m_interlaced ? QString(" Interlaced") : ""));
+    }
 
     if (m_originalRefreshRate < 0.0f)
         m_originalRefreshRate = m_refreshRate;

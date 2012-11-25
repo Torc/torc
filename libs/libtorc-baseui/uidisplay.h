@@ -33,6 +33,7 @@ class UIDisplay : public UIDisplayBase
     virtual ~UIDisplay();
 
     bool     InitialiseDisplay   (void);
+    void     SwitchToMode        (int Index);
 
   protected:
     double   GetRefreshRatePriv  (void);
