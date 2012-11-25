@@ -2,6 +2,7 @@
 #import <Cocoa/Cocoa.h>
 
 // Torc
+#include "torclogging.h"
 #include "torccocoa.h"
 
 void* CreateOSXCocoaPool(void);
@@ -84,7 +85,11 @@ QByteArray GetOSXEDID(CGDirectDisplayID Display)
     const char* buf = (const char*)[(NSData*)edid bytes];
 
     if (!buf)
+    {
+        LOG(VB_GENERAL, LOG_WARNING, "Failed to retrieve EDID for display - "
+                                     "try rebooting if this is a hotplugged display");
         return result;
+    }
 
     int length = [(NSData*)edid length];
     result = QByteArray(buf, length);
