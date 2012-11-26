@@ -129,17 +129,18 @@ double UIDisplay::GetRefreshRatePriv(void)
                          !(flags & kDisplayModeSafetyFlags) ||
                           depth < 32 || moderate < 10.0f || moderate > 121.0f;
 
-            LOG(VB_GUI, LOG_DEBUG, QString("Mode %1x%2@%3Hz %4bpp%5%6%7")
+            LOG(VB_GUI, LOG_INFO, QString("Mode %1x%2@%3Hz %4bpp%5%6%7")
                 .arg(modewidth).arg(modeheight).arg(moderate).arg(depth)
                 .arg(interlaced ? QString(" Interlaced") : "")
                 .arg(ignore ? QString(" Ignoring") : "")
                 .arg(mode == current ? QString(" CURRENT"): ""));
 
             if (!ignore)
-                m_modes.insert(moderate, UIDisplayMode(modewidth, modeheight, depth, moderate, interlaced, i));
-
-            if (mode == current)
-                m_originalModeIndex = m_modes.size() - 1;
+            {
+                m_modes.append(UIDisplayMode(modewidth, modeheight, depth, moderate, interlaced, i));
+                if (mode == current)
+                    m_originalModeIndex = m_modes.size() - 1;
+            }
         }
     }
 
