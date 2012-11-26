@@ -90,6 +90,8 @@ void VideoRendererOpenGL::ResetOutput(void)
     m_openglWindow->DeleteShaderObject(m_videoShader);
     m_videoShader = 0;
 
+    m_colourSpace->SetChanged();
+
     m_validVideoFrame = false;
 }
 

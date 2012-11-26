@@ -398,8 +398,13 @@ void VideoBuffers::CheckDecodedFrames(void)
         VideoFrame* frame = recovered.takeFirst();
         m_reference.removeOne(frame);
         if (frame->Discard())
+        {
             delete frame;
+            m_frameCount--;
+        }
         else
+        {
             m_unused.append(frame);
+        }
     }
 }

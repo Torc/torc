@@ -31,6 +31,7 @@ class VideoColourSpace
     explicit VideoColourSpace(AVColorSpace ColourSpace);
     ~VideoColourSpace();
 
+    void           SetChanged           (void);
     bool           HasChanged           (void);
     float*         Data                 (void);
 

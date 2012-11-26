@@ -148,6 +148,11 @@ VideoColourSpace::~VideoColourSpace()
 {
 }
 
+void VideoColourSpace::SetChanged(void)
+{
+    m_changed = true;
+}
+
 bool VideoColourSpace::HasChanged(void)
 {
     return m_changed;
