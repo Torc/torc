@@ -249,7 +249,7 @@ VideoFrame* VideoBuffers::GetFrameForDecoding(void)
             return frame;
         }
 
-        // return unsued frame if available
+        // return unused frame if available
         if (!m_unused.isEmpty())
         {
             frame = m_unused.takeFirst();
