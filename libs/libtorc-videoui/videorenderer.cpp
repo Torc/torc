@@ -57,7 +57,7 @@ void VideoRenderer::PlaybackFinished(void)
 
 void VideoRenderer::UpdateRefreshRate(VideoFrame* Frame)
 {
-    if (!m_display)
+    if (!m_display || !Frame)
         return;
 
     // CanHandleVideoRate will cache the result of repeated calls
@@ -68,6 +68,9 @@ void VideoRenderer::UpdateRefreshRate(VideoFrame* Frame)
 
 bool VideoRenderer::UpdatePosition(VideoFrame* Frame)
 {
+    if (!m_display || !Frame)
+        return false;
+
     qreal avframePAR   = Frame->m_pixelAspectRatio;
     qreal displayPAR   = m_display->GetPixelAspectRatio();
     QSize displaysize  = m_display->GetGeometry();
