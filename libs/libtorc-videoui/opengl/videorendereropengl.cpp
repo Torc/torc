@@ -108,7 +108,7 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
             if ((m_rawVideoTexture->m_actualSize.width() != (Frame->m_rawWidth / 2)) || (m_rawVideoTexture->m_actualSize.height() != Frame->m_rawHeight))
             {
                 LOG(VB_GENERAL, LOG_INFO, QString("Video frame size changed from %1x%2 to %3x%4")
-                    .arg(m_rawVideoTexture->m_actualSize.width()).arg(m_rawVideoTexture->m_actualSize.height())
+                    .arg(m_rawVideoTexture->m_actualSize.width() * 2).arg(m_rawVideoTexture->m_actualSize.height())
                     .arg(Frame->m_rawWidth).arg(Frame->m_rawHeight));
                 ResetOutput();
             }
