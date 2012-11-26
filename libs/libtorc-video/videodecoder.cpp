@@ -431,7 +431,7 @@ void VideoDecoder::SetupVideoDecoder(AVStream *Stream)
     context->thread_type           = FF_THREAD_SLICE;
     context->draw_horiz_band       = NULL;
     context->slice_flags           = 0;
-    context->err_recognition       = AV_EF_CRCCHECK | AV_EF_BITSTREAM;
+    context->err_recognition       = 0;
     context->workaround_bugs       = FF_BUG_AUTODETECT;
     context->error_concealment     = FF_EC_GUESS_MVS | FF_EC_DEBLOCK;
     context->idct_algo             = FF_IDCT_AUTO;
