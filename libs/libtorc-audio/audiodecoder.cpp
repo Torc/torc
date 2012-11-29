@@ -711,14 +711,14 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
 
         if (queue->Length())
         {
+            yield = false;
             packet = queue->Pop();
 
             if (packet == &gFlushCodec)
             {
                 if (context)
                     avcodec_flush_buffers(context);
-                FlushVideoBuffers();
-                yield = false;
+                FlushVideoBuffers(false);
                 packet = NULL;
             }
             else if (!stream || !context || index != packet->stream_index)
@@ -733,7 +733,6 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
 
         if (packet)
         {
-            yield = false;
             ProcessVideoPacket(m_priv->m_avFormatContext, stream, packet);
             av_free_packet(packet);
             delete packet;
@@ -741,6 +740,7 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
     }
 
     *state = TorcDecoder::Stopped;
+    FlushVideoBuffers(true);
     queue->Flush(true, false);
 }
 
@@ -768,8 +768,9 @@ void AudioDecoder::CleanupVideoDecoder(AVStream *Stream)
     (void)Stream;
 }
 
-void AudioDecoder::FlushVideoBuffers(void)
+void AudioDecoder::FlushVideoBuffers(bool Stopped)
 {
+    (void)Stopped;
 }
 
 void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)

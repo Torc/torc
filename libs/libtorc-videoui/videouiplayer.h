@@ -19,9 +19,7 @@ class VideoUIPlayer : public VideoPlayer, public TorcHTTPService
     virtual ~VideoUIPlayer();
 
     void            Refresh    (void);
-
-  public slots:
-    void            PlayerStateChanged (TorcPlayer::PlayerState NewState);
+    void            Reset      (void);
 
   protected:
     virtual void    Teardown   (void);

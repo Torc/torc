@@ -24,6 +24,7 @@ class VideoRenderer
     void                   PlaybackFinished     (void);
 
   protected:
+    virtual void           ResetOutput          (void) = 0;
     void                   UpdateRefreshRate    (VideoFrame* Frame);
     bool                   UpdatePosition       (VideoFrame* Frame);
 

@@ -60,6 +60,11 @@ void VideoPlayer::Refresh(void)
     TorcPlayer::Refresh();
 }
 
+void VideoPlayer::Reset(void)
+{
+    m_buffers.Reset(true);
+}
+
 void* VideoPlayer::GetAudio(void)
 {
     return m_audioWrapper;

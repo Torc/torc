@@ -51,6 +51,8 @@ VideoRenderer::~VideoRenderer()
 
 void VideoRenderer::PlaybackFinished(void)
 {
+    ResetOutput();
+
     if (m_display)
         m_window->SetRefreshRate(m_display->GetDefaultRefreshRate(), m_display->GetDefaultMode());
 }

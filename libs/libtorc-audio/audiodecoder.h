@@ -77,7 +77,7 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
     virtual void     ProcessVideoPacket (AVFormatContext *Context, AVStream* Stream, AVPacket *Packet);
     virtual void     SetupVideoDecoder  (AVStream* Stream);
     virtual void     CleanupVideoDecoder(AVStream* Stream);
-    virtual void     FlushVideoBuffers  (void);
+    virtual void     FlushVideoBuffers  (bool Stopped);
 
   private:
     void             TearDown           (void);

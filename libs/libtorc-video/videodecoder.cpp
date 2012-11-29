@@ -423,7 +423,7 @@ void VideoDecoder::SetupVideoDecoder(AVStream *Stream)
     if (!Stream || (Stream && !Stream->codec))
         return;
 
-    int threads = 1;
+    int threads = 4;
 
     AVCodecContext *context        = Stream->codec;
     context->thread_count          = threads;
@@ -474,9 +474,12 @@ void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)
 #endif
 }
 
-void VideoDecoder::FlushVideoBuffers(void)
+void VideoDecoder::FlushVideoBuffers(bool Stopped)
 {
-    m_videoParent->Buffers()->Reset(false);
+    if (Stopped)
+        m_videoParent->Reset();
+    else
+        m_videoParent->Buffers()->Reset(false);
     m_keyframeSeen = false;
 }
 

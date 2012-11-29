@@ -19,6 +19,7 @@ class VideoPlayer : public TorcPlayer
     virtual ~VideoPlayer();
 
     virtual void    Refresh            (void);
+    virtual void    Reset              (void);
     void*           GetAudio           (void);
     VideoBuffers*   Buffers            (void);
 
