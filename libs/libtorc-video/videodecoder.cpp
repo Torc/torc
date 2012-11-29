@@ -423,7 +423,7 @@ void VideoDecoder::SetupVideoDecoder(AVStream *Stream)
     if (!Stream || (Stream && !Stream->codec))
         return;
 
-    int threads = 4;
+    int threads = 1;
 
     AVCodecContext *context        = Stream->codec;
     context->thread_count          = threads;
