@@ -161,8 +161,9 @@ bool UIDisplayBase::CanHandleVideoRate(double Rate, int &ModeIndex)
             index = i;
         }
 
-        LOG(VB_GENERAL, LOG_DEBUG, QString("Rate: %1Hz%2 score %3")
-            .arg(m_modes[i].m_rate).arg(m_modes[i].m_interlaced ? QString(" Interlaced") : "").arg(score));
+        LOG(VB_GUI, LOG_INFO, QString("Rate: %1Hz%2 Score %3 Index %4")
+            .arg(m_modes[i].m_rate).arg(m_modes[i].m_interlaced ? QString(" Interlaced") : "")
+            .arg(score).arg(m_modes[i].m_index));
     }
 
     if (best < 1)
@@ -171,8 +172,9 @@ bool UIDisplayBase::CanHandleVideoRate(double Rate, int &ModeIndex)
         return false;
     }
 
-    LOG(VB_GENERAL, LOG_INFO, QString("Best mode %1Hz%2")
-        .arg(m_modes[index].m_rate).arg(m_modes[index].m_interlaced ? QString(" Interlaced") : ""));
+    LOG(VB_GENERAL, LOG_INFO, QString("Best mode %1Hz%2 (Index %3)")
+        .arg(m_modes[index].m_rate).arg(m_modes[index].m_interlaced ? QString(" Interlaced") : "")
+        .arg(m_modes[index].m_index));
 
     ModeIndex = index;
     return true;
@@ -238,26 +240,8 @@ QSize UIDisplayBase::GetGeometryPriv(void)
     return QApplication::desktop()->screenGeometry(GetScreen()).size();
 }
 
-bool SortMode(const UIDisplayMode &First, const UIDisplayMode &Second)
-{
-    if (qFuzzyCompare(First.m_rate + 1.0f, Second.m_rate + 1.0f))
-    {
-        if (First.m_interlaced && !Second.m_interlaced)
-            return false;
-
-        if (First.m_depth < Second.m_depth)
-            return false;
-
-        return true;
-    }
-
-    return First.m_rate > Second.m_rate;
-}
-
 void UIDisplayBase::Sanitise(void)
 {
-    qSort(m_modes.begin(), m_modes.end(), SortMode);
-
     m_refreshRate      = FixRate(m_refreshRate);
     m_aspectRatio      = FixRatio((double)m_physicalSize.width() / (double)m_physicalSize.height());
     m_pixelAspectRatio = FixRatio(((double)m_physicalSize.height() / (double)m_pixelSize.height()) /
