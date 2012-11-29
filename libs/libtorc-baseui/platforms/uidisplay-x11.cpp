@@ -17,8 +17,9 @@ extern "C" {
 typedef XID RROutput;
 typedef XID RRCrtc;
 typedef XID RRMode;
-
-typedef unsigned long XRRModeFlags;
+typedef unsigned long  XRRModeFlags;
+typedef unsigned short Rotation;
+typedef unsigned short	SizeID;
 
 typedef struct _XRRModeInfo
 {
@@ -50,10 +51,17 @@ typedef struct _XRRScreenResources
     XRRModeInfo *modes;
 } XRRScreenResources;
 
-typedef bool                (*XRandrQueryExtension)     (Display*, int*, int*);
-typedef Status              (*XRandrQueryVersion)       (Display*, int*, int*);
-typedef XRRScreenResources* (*XRandrGetScreenResources) (Display*, Window);
+typedef struct _XRRScreenConfiguration XRRScreenConfiguration;
 
+typedef bool                    (*XRandrQueryExtension)             (Display*, int*, int*);
+typedef Status                  (*XRandrQueryVersion)               (Display*, int*, int*);
+typedef XRRScreenResources*     (*XRandrGetScreenResources)         (Display*, Window);
+typedef void                    (*XRandrFreeScreenResources)        (XRRScreenResources*);
+typedef XRRScreenConfiguration* (*XRandrGetScreenInfo)              (Display*, Window);
+typedef void                    (*XRandrFreeScreenConfigInfo)       (XRRScreenConfiguration*);
+typedef SizeID                  (*XRandrConfigCurrentConfiguration) (XRRScreenConfiguration*, Rotation*);
+typedef Status                  (*XRandrSetScreenConfigAndRate)     (Display*, XRRScreenConfiguration*,
+                                                                     Drawable, int, Rotation, short, Time);
 static class UIXRandr
 {
   public:
@@ -61,18 +69,30 @@ static class UIXRandr
       : m_valid(false),
         m_queryExtension(NULL),
         m_queryVersion(NULL),
-        m_getScreenResources(NULL)
+        m_getScreenResources(NULL),
+        m_freeScreenResources(NULL),
+        m_getScreenInfo(NULL),
+        m_freeScreenConfigInfo(NULL),
+        m_configCurrentConfiguration(NULL),
+        m_setScreenConfigAndRate(NULL)
     {
     }
 
     void Init(void)
     {
-        m_valid              = false;
-        m_queryExtension     = (XRandrQueryExtension)     QLibrary::resolve("Xrandr", "XRRQueryExtension");
-        m_queryVersion       = (XRandrQueryVersion)       QLibrary::resolve("Xrandr", "XRRQueryVersion");
-        m_getScreenResources = (XRandrGetScreenResources) QLibrary::resolve("Xrandr", "XRRGetScreenResources");
+        m_valid                      = false;
+        m_queryExtension             = (XRandrQueryExtension)             QLibrary::resolve("Xrandr", "XRRQueryExtension");
+        m_queryVersion               = (XRandrQueryVersion)               QLibrary::resolve("Xrandr", "XRRQueryVersion");
+        m_getScreenResources         = (XRandrGetScreenResources)         QLibrary::resolve("Xrandr", "XRRGetScreenResources");
+        m_freeScreenResources        = (XRandrFreeScreenResources)        QLibrary::resolve("Xrandr", "XRRFreeScreenResources");
+        m_getScreenInfo              = (XRandrGetScreenInfo)              QLibrary::resolve("Xrandr", "XRRGetScreenInfo");
+        m_freeScreenConfigInfo       = (XRandrFreeScreenConfigInfo)       QLibrary::resolve("Xrandr", "XRRFreeScreenConfigInfo");
+        m_configCurrentConfiguration = (XRandrConfigCurrentConfiguration) QLibrary::resolve("Xrandr", "XRRConfigCurrentConfiguration");
+        m_setScreenConfigAndRate     = (XRandrSetScreenConfigAndRate)     QLibrary::resolve("Xrandr", "XRRSetScreenConfigAndRate");
 
-        if (m_queryExtension && m_queryVersion && m_getScreenResources)
+        if (m_queryExtension && m_queryVersion && m_getScreenResources &&
+            m_freeScreenResources && m_getScreenInfo && m_freeScreenConfigInfo &&
+            m_configCurrentConfiguration && m_setScreenConfigAndRate)
         {
             int event = 0;
             int error = 0;
@@ -93,10 +113,15 @@ static class UIXRandr
         }
     }
 
-    bool                     m_valid;
-    XRandrQueryExtension     m_queryExtension;
-    XRandrQueryVersion       m_queryVersion;
-    XRandrGetScreenResources m_getScreenResources;
+    bool                             m_valid;
+    XRandrQueryExtension             m_queryExtension;
+    XRandrQueryVersion               m_queryVersion;
+    XRandrGetScreenResources         m_getScreenResources;
+    XRandrFreeScreenResources        m_freeScreenResources;
+    XRandrGetScreenInfo              m_getScreenInfo;
+    XRandrFreeScreenConfigInfo       m_freeScreenConfigInfo;
+    XRandrConfigCurrentConfiguration m_configCurrentConfiguration;
+    XRandrSetScreenConfigAndRate     m_setScreenConfigAndRate;
 
 } UIXRandr;
 
@@ -125,6 +150,48 @@ bool UIDisplay::InitialiseDisplay(void)
 
 void UIDisplay::SwitchToMode(int Index)
 {
+    if (Index < 0 || Index >= m_modes.size())
+        return;
+
+    int index = m_modes[Index].m_index;
+    if (index < 0)
+        return;
+
+    // TODO use display when needed
+    Display* display = XOpenDisplay(NULL);
+
+    if (UIXRandr.m_valid && display)
+    {
+        int screen  = DefaultScreen(display);
+        XRRScreenConfiguration *config = UIXRandr.m_getScreenInfo(display, RootWindow(display, screen));
+
+        if (config)
+        {
+            Rotation rotation;
+            SizeID original = UIXRandr.m_configCurrentConfiguration(config, &rotation);
+            XRRScreenResources *resources = UIXRandr.m_getScreenResources(display, RootWindow(display, screen));
+
+            if (resources && (index < resources->nmode))
+            {
+                XRRModeInfo mode = resources->modes[index];
+                double moderate = mode.hTotal * mode.vTotal;
+                if (moderate > 0.0f && mode.dotClock > 0)
+                    moderate = (double)mode.dotClock / moderate;
+                short intrate = (short)(moderate + 0.5f);
+
+                LOG(VB_GENERAL, LOG_INFO, QString("Trying %1Hz (%2Hz Index %3)").arg(moderate).arg(intrate).arg(index));
+                if (!UIXRandr.m_setScreenConfigAndRate(display, config, RootWindow(display, screen), original, rotation, intrate, CurrentTime))
+                    LOG(VB_GENERAL, LOG_ERR, "Failed to set video mode");
+
+                UIXRandr.m_freeScreenResources(resources);
+                XSync(display, false);
+            }
+
+            UIXRandr.m_freeScreenConfigInfo(config);
+        }
+    }
+
+    XCloseDisplay(display);
 }
 
 double UIDisplay::GetRefreshRatePriv(void)
@@ -144,7 +211,7 @@ double UIDisplay::GetRefreshRatePriv(void)
         return rate;
     }
 
-    int screen  = DefaultScreen(display);
+    int screen = DefaultScreen(display);
 
     if (XF86VidModeGetModeLine(display, screen, &dot_clock, &mode_line))
     {
@@ -186,22 +253,24 @@ double UIDisplay::GetRefreshRatePriv(void)
                         moderate *= 2.0f;
                 }
 
-                bool ignore = moderate < 10.0f || moderate > 121.0f ||
-                              mode.width  != (uint)m_pixelSize.width() ||
-                              mode.height != (uint)m_pixelSize.height();
+                bool sizematch = mode.width == (uint)m_pixelSize.width() || mode.height == (uint)m_pixelSize.height();
+                bool ignore    = moderate < 10.0f || moderate > 121.0f || !sizematch;
+                bool current   = sizematch && qFuzzyCompare(moderate + 1.0f, rate + 1.0f);
 
-                LOG(VB_GUI, LOG_INFO, QString("Mode %1: %2x%3@%4%5%6")
+                LOG(VB_GUI, LOG_INFO, QString("Mode %1: %2x%3@%4%5%6%7")
                     .arg(mode.name).arg(mode.width).arg(mode.height).arg(moderate)
                     .arg(mode.modeFlags & V_INTERLACE ? QString(" Interlaced") : "")
-                    .arg(ignore ? QString(" Ignoring") : ""));
+                    .arg(ignore ? QString(" Ignoring") : "")
+                    .arg(current ? QString(" Current") : ""));
 
                 if (!ignore)
-                {
                     m_modes.append(UIDisplayMode(mode.width, mode.height, 32, moderate, mode.modeFlags & V_INTERLACE, i));
-                    if (qFuzzyCompare(moderate + 1.0f, rate + 1.0f))
-                        m_originalModeIndex = i;
-                }
+
+                if (current)
+                    m_originalModeIndex = m_modes.size() - 1;
             }
+
+            UIXRandr.m_freeScreenResources(resources);
         }
         else
         {
