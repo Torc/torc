@@ -29,6 +29,7 @@ class VideoPlayer : public TorcPlayer
   protected:
     AudioWrapper   *m_audioWrapper;
     VideoBuffers    m_buffers;
+    bool            m_reset;
 };
 
 #endif // TORCVIDEOINTERFACE_H

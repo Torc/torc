@@ -21,6 +21,7 @@
 */
 
 // Torc
+#include "torcthread.h"
 #include "torcdecoder.h"
 #include "videoframe.h"
 #include "videorenderer.h"
@@ -46,6 +47,12 @@ void VideoUIPlayer::Teardown(void)
 
 void VideoUIPlayer::Refresh(void)
 {
+    if (m_reset)
+    {
+        Reset();
+        m_reset = false;
+    }
+
     VideoFrame *frame = m_buffers.GetFrameForDisplaying();
 
     if (m_render)
@@ -66,9 +73,16 @@ void VideoUIPlayer::Refresh(void)
 
 void VideoUIPlayer::Reset(void)
 {
-    if (m_render)
-        m_render->PlaybackFinished();
-    VideoPlayer::Reset();
+    if (TorcThread::IsMainThread())
+    {
+        if (m_render)
+            m_render->PlaybackFinished();
+        VideoPlayer::Reset();
+    }
+    else
+    {
+        m_reset = true;
+    }
 }
 
 class VideoUIPlayerFactory : public PlayerFactory

@@ -28,7 +28,8 @@
 
 VideoPlayer::VideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : TorcPlayer(Parent, PlaybackFlags, DecodeFlags),
-    m_audioWrapper(new AudioWrapper(this))
+    m_audioWrapper(new AudioWrapper(this)),
+    m_reset(false)
 {
     setObjectName("Player");
 
