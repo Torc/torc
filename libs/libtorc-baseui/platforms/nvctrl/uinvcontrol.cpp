@@ -173,7 +173,7 @@ QByteArray UINVControl::GetNVEDID(Display *XDisplay, int Screen)
     unsigned char* data = NULL;
     int datalength = 0;
 
-    ok = XNVCTRLQueryBinaryData(XDisplay, Screen, 0, NV_CTRL_BINARY_DATA_EDID, &data, &datalength);
+    ok = XNVCTRLQueryBinaryData(XDisplay, Screen, displays, NV_CTRL_BINARY_DATA_EDID, &data, &datalength);
 
     if (ok != True)
     {
