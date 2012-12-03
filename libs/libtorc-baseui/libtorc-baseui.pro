@@ -62,8 +62,11 @@ greaterThan(QT_MAJOR_VERSION, 4) {
     SOURCES += uidisplay-qt5.cpp
 }
 else:contains(CONFIG_X11BASE, yes) {
-    SOURCES += uidisplay-x11.cpp
-    LIBS += -lXxf86vm
+    DEPENDPATH += ./platforms/nvctrl
+    HEADERS    += NVCtrl.h NVCtrlLib.h nv_control.h uinvcontrol.h
+    SOURCES    += NVCtrl.c uinvcontrol.cpp
+    SOURCES    += uidisplay-x11.cpp
+    LIBS       += -lXxf86vm
 }
 else:macx {
     LIBS    += -framework Cocoa

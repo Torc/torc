@@ -3,9 +3,11 @@
 
 // Torc
 #include "torclogging.h"
+#include "torcedid.h"
 #include "uidisplay.h"
 
 // X11
+#include "nvctrl/uinvcontrol.h"
 extern "C" {
 #include <X11/Xlib.h>
 #include <X11/extensions/xf86vmode.h>
@@ -137,6 +139,21 @@ UIDisplay::~UIDisplay()
 
 bool UIDisplay::InitialiseDisplay(void)
 {
+    // TODO use display when needed
+    const char *displaystring = NULL;
+    Display* display = XOpenDisplay(displaystring);
+
+    if (display)
+    {
+        int screen  = DefaultScreen(display);
+        if (UINVControl::NVControlAvailable())
+        {
+            QByteArray edid = UINVControl::GetNVEDID(display, screen);
+            TorcEDID::RegisterEDID(edid, false);
+        }
+        XCloseDisplay(display);
+    }
+
     m_pixelSize    = GetGeometryPriv();
     m_physicalSize = GetPhysicalSizePriv();
     m_refreshRate  = GetRefreshRatePriv();
