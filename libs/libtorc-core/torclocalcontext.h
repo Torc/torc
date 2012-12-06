@@ -123,6 +123,7 @@ class TORC_CORE_PUBLIC Torc
         VolumeDown,
         Mute,
         Unmute,
+        ToggleMute,
         SetVolume,
         JumpForwardSmall,
         JumpForwardBig,
@@ -142,12 +143,16 @@ class TORC_CORE_PUBLIC Torc
         ShowSearch = 5000,
         HideSearch,
         // network
-        EnableNetwork,
+        EnableNetwork = 6000,
         DisableNetwork,
         NetworkEnabled,
         NetworkDisabled,
         NetworkAvailable,
         NetworkUnavailable,
+        // appearance
+        EnableStudioLevels = 7000,
+        DisableStudioLevels,
+        ToggleStudioLevels,
         // end of predefined
         MaxTorc = 60000,
         // plugins etc
