@@ -90,6 +90,7 @@ int UIActions::GetActionFromKey(QEvent *Event)
     LOG(VB_GENERAL, LOG_DEBUG, QString("KeyPress %1 (%2)")
         .arg(key, 0, 16).arg(keyevent->text()));
 
+    // NB these are temporary
     switch (key)
     {
         case Qt::Key_Down:
@@ -117,6 +118,12 @@ int UIActions::GetActionFromKey(QEvent *Event)
             return Torc::JumpBackwardSmall;
         case Qt::Key_Period:
             return Torc::JumpForwardSmall;
+        case Qt::Key_T:
+            return Torc::DisableStudioLevels;
+        case Qt::Key_Y:
+            return Torc::EnableStudioLevels;
+        case Qt::Key_R:
+            return Torc::ToggleStudioLevels;
         default:
             break;
     }
