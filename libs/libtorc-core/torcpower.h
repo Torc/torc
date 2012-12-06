@@ -69,7 +69,6 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
     bool Hibernate       (void);
     bool Restart         (void);
 
-  protected:
     void ShuttingDown    (void);
     void Suspending      (void);
     void Hibernating     (void);

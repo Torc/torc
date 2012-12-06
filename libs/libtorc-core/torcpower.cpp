@@ -150,7 +150,7 @@ void TorcPower::TearDown(void)
 
 TorcPower::TorcPower()
   : QObject(),
-    TorcHTTPService(this, "/power", tr("Power"), TorcPower::staticMetaObject),
+    TorcHTTPService(this, "/power", tr("Power"), TorcPower::staticMetaObject, "ShuttingDown,Suspending,Hibernating,Restarting,WokeUp,LowBattery"),
     m_allowShutdown(false),
     m_allowSuspend(false),
     m_allowHibernate(false),
