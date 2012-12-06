@@ -25,6 +25,7 @@
 #include "uidisplay.h"
 #include "uiwindow.h"
 #include "videoframe.h"
+#include "videocolourspace.h"
 #include "videorenderer.h"
 
 /*! \class VideoRenderer
@@ -36,8 +37,9 @@
  * \todo Extend positioning for zoom etc
 */
 
-VideoRenderer::VideoRenderer(UIWindow *Window)
-  : m_window(Window)
+VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
+  : m_window(Window),
+    m_colourSpace(ColourSpace)
 {
     m_display = dynamic_cast<UIDisplay*>(Window);
 
@@ -106,14 +108,14 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame)
     return changed;
 }
 
-VideoRenderer* VideoRenderer::Create(void)
+VideoRenderer* VideoRenderer::Create(VideoColourSpace *ColourSpace)
 {
     VideoRenderer* render = NULL;
 
     RenderFactory* factory = RenderFactory::GetRenderFactory();
     for ( ; factory; factory = factory->NextFactory())
     {
-        render = factory->Create();
+        render = factory->Create(ColourSpace);
         if (render)
             break;
     }

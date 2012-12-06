@@ -40,6 +40,7 @@ class VideoColourSpace
     int            GetContrast          (void);
     int            GetSaturation        (void);
     int            GetHue               (void);
+    bool           GetStudioLevels      (void);
 
     void           ChangeBrightness     (bool Increase);
     void           ChangeContrast       (bool Increase);
@@ -51,6 +52,7 @@ class VideoColourSpace
     void           SetContrast          (int  Value);
     void           SetHue               (int  Value);
     void           SetSaturation        (int  Value);
+    void           SetStudioLevels      (bool Value);
 
   private:
     void           SetBrightnessPriv    (int Value, bool UpdateMatrix, bool UpdateSettings);
@@ -58,7 +60,7 @@ class VideoColourSpace
     void           SetHuePriv           (int Value, bool UpdateMatrix, bool UpdateSettings);
     void           SetSaturationPriv    (int Value, bool UpdateMatrix, bool UpdateSettings);
 
-    void           SetStudioLevels      (bool Studio, bool UpdateMatrix);
+    void           SetStudioLevelsPriv  (bool Studio, bool UpdateMatrix);
     void           SetMatrix            (void);
 
   private:

@@ -2,7 +2,6 @@
 #define VIDEORENDEREROPENGL_H
 
 // Torc
-#include "videocolourspace.h"
 #include "videorenderer.h"
 
 extern "C" {
@@ -10,13 +9,14 @@ extern "C" {
 #include "libswscale/swscale.h"
 }
 
+class VideoColourSpace;
 class UIOpenGLWindow;
 class GLTexture;
 
 class VideoRendererOpenGL : public VideoRenderer
 {
   public:
-    VideoRendererOpenGL(UIOpenGLWindow *Window);
+    VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGLWindow *Window);
     virtual ~VideoRendererOpenGL();
 
     void               RenderFrame          (VideoFrame *Frame);
@@ -34,7 +34,6 @@ class VideoRendererOpenGL : public VideoRenderer
     GLTexture         *m_rgbVideoTexture;
     uint               m_rgbVideoBuffer;
     uint               m_videoShader;
-    VideoColourSpace  *m_colourSpace;
     SwsContext        *m_conversionContext;
 };
 

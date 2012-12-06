@@ -10,6 +10,8 @@
 #include "videorenderer.h"
 #include "videoplayer.h"
 
+class VideoColourSpace;
+
 class VideoUIPlayer : public VideoPlayer, public TorcHTTPService
 {
     Q_OBJECT
@@ -18,14 +20,15 @@ class VideoUIPlayer : public VideoPlayer, public TorcHTTPService
     VideoUIPlayer(QObject* Parent, int PlaybackFlags, int DecodeFlags);
     virtual ~VideoUIPlayer();
 
-    void            Refresh    (void);
-    void            Reset      (void);
+    void               Refresh       (void);
+    void               Reset         (void);
 
   protected:
-    virtual void    Teardown   (void);
+    virtual void       Teardown      (void);
 
   protected:
-    VideoRenderer*  m_render;
+    VideoRenderer     *m_render;
+    VideoColourSpace  *m_colourSpace;
 };
 
 #endif // VIDEOUIPLAYER_H

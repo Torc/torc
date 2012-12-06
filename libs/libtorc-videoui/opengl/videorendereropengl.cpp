@@ -25,6 +25,7 @@
 #include "torclogging.h"
 #include "uiopengltextures.h"
 #include "uiopenglwindow.h"
+#include "videocolourspace.h"
 #include "videorendereropengl.h"
 
 static const char YUV2RGBVertexShader[] =
@@ -52,8 +53,8 @@ static const char YUV2RGBFragmentShader[] =
 "    gl_FragColor = vec4(yuva.arb, 1.0) * COLOUR_UNIFORM;\n"
 "}\n";
 
-VideoRendererOpenGL::VideoRendererOpenGL(UIOpenGLWindow *Window)
-  : VideoRenderer(Window),
+VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGLWindow *Window)
+  : VideoRenderer(ColourSpace, Window),
     m_openglWindow(Window),
     m_outputFormat(PIX_FMT_UYVY422),
     m_validVideoFrame(false),
@@ -61,7 +62,6 @@ VideoRendererOpenGL::VideoRendererOpenGL(UIOpenGLWindow *Window)
     m_rgbVideoTexture(NULL),
     m_rgbVideoBuffer(0),
     m_videoShader(0),
-    m_colourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED)),
     m_conversionContext(NULL)
 {
 }
@@ -69,7 +69,6 @@ VideoRendererOpenGL::VideoRendererOpenGL(UIOpenGLWindow *Window)
 VideoRendererOpenGL::~VideoRendererOpenGL()
 {
     ResetOutput();
-    delete m_colourSpace;
     sws_freeContext(m_conversionContext);
 }
 
@@ -218,6 +217,7 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
         m_openglWindow->BindFramebuffer(m_rgbVideoBuffer);
         m_openglWindow->SetViewPort(view);
         m_colourSpace->SetColourSpace(Frame->m_colourSpace);
+        m_colourSpace->SetStudioLevels(m_window->GetStudioLevels());
         if (m_colourSpace->HasChanged())
             m_openglWindow->SetShaderParams(m_videoShader, m_colourSpace->Data(), "COLOUR_UNIFORM");
         m_openglWindow->DrawTexture(m_rawVideoTexture, &destination, &size, m_videoShader);
@@ -232,7 +232,7 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
     {
         // and finally draw
         QSizeF size = m_rgbVideoTexture->m_actualSize;
-        m_openglWindow->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, updatevertices, false);
+        m_openglWindow->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, updatevertices, false, false);
     }
 }
 
@@ -253,11 +253,11 @@ void VideoRendererOpenGL::CustomiseShader(QByteArray &Source)
 
 class RenderOpenGLFactory : public RenderFactory
 {
-    VideoRenderer* Create(void)
+    VideoRenderer* Create(VideoColourSpace *ColourSpace)
     {
         UIOpenGLWindow* window = static_cast<UIOpenGLWindow*>(gLocalContext->GetUIObject());
         if (window)
-            return new VideoRendererOpenGL(window);
+            return new VideoRendererOpenGL(ColourSpace, window);
 
         return NULL;
     }

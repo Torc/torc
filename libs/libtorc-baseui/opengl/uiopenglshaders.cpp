@@ -50,24 +50,16 @@ static const char kDefaultFragmentShader[] =
 "    gl_FragColor = GLSL_TEXTURE(s_texture0, v_texcoord0) * v_color;\n"
 "}\n";
 
-static const char kSimpleVertexShader[] =
+static const char kDefaultStudioFragmentShader[] =
 "GLSL_DEFINES"
-"attribute vec3 a_position;\n"
-"attribute vec4 a_color;\n"
-"varying   vec4 v_color;\n"
-"uniform   mat4 u_projection;\n"
-"uniform   mat4 u_transform;\n"
-"void main() {\n"
-"    gl_Position = u_projection * u_transform * vec4(a_position, 1.0);\n"
-"    v_color     = a_color;\n"
-"}\n";
-
-static const char kSimpleFragmentShader[] =
-"GLSL_DEFINES"
+"uniform GLSL_SAMPLER s_texture0;\n"
 "varying vec4 v_color;\n"
+"varying vec2 v_texcoord0;\n"
 "void main(void)\n"
 "{\n"
-"    gl_FragColor = v_color;\n"
+"    vec4 range   = vec4( 219.0 / 255.0, 219.0 / 255.0, 219.0 / 255.0, 1.0);\n"
+"    vec4 offset  = vec4( 16.0  / 255.0, 16.0  / 255.0, 16.0  / 255.0, 0.0);\n"
+"    gl_FragColor = (GLSL_TEXTURE(s_texture0, v_texcoord0) * v_color * range) + offset;\n"
 "}\n";
 
 GLShaderObject::GLShaderObject(uint Vertex, uint Fragment)
@@ -298,10 +290,12 @@ void UIOpenGLShaders::CreateDefaultShaders(void)
     if (!m_valid)
         return;
 
-    m_shaders[kShaderSimple]     = CreateShaderObject(kSimpleVertexShader,
-                                                      kSimpleFragmentShader);
-    m_shaders[kShaderDefault]    = CreateShaderObject(kDefaultVertexShader,
-                                                      kDefaultFragmentShader);
+    DeleteDefaultShaders();
+
+    m_shaders[kShaderDefault] = CreateShaderObject(kDefaultVertexShader,
+                                                   kDefaultFragmentShader);
+    m_shaders[kShaderStudio]  = CreateShaderObject(kDefaultVertexShader,
+                                                   kDefaultStudioFragmentShader);
 }
 
 void UIOpenGLShaders::DeleteDefaultShaders(void)

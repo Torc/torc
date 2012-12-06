@@ -215,6 +215,7 @@ QVariantMap UIOpenGLWindow::GetDisplayDetails(void)
     result.insert("widthpixels", pixels.width());
     result.insert("heightpixels", pixels.height());
     result.insert("renderer", m_openGLType == kGLOpenGL2 ? "OpenGL2.0" : kGLOpenGL2ES ? "OpenGLES2.0" : "Unknown");
+    result.insert("studiolevels", m_studioLevels);
     return result;
 }
 
@@ -270,7 +271,6 @@ void UIOpenGLWindow::InitialiseWindow(void)
     InitialiseShaders(m_extensions, m_openGLType, IsRectTexture((uint)m_defaultTextureType));
     InitialiseFence(m_extensions);
     InitialiseFramebuffers(m_extensions, m_openGLType);
-    DeleteDefaultShaders();
     CreateDefaultShaders();
     Flush(true);
 
@@ -336,16 +336,24 @@ bool UIOpenGLWindow::event(QEvent *Event)
                 return true;
         }
 
-        if (action == Torc::Escape)
+        switch (action)
         {
-            close();
-            return true;
-        }
-
-        if (action == Torc::Suspend)
-        {
-            gPower->Suspend();
-            return true;
+            case Torc::Escape:
+                close();
+                return true;
+            case Torc::Suspend:
+                gPower->Suspend();
+                return true;
+            case Torc::DisableStudioLevels:
+                SetStudioLevels(false);
+                break;
+            case Torc::EnableStudioLevels:
+                SetStudioLevels(true);
+                break;
+            case Torc::ToggleStudioLevels:
+                SetStudioLevels(!m_studioLevels);
+                break;
+            default: break;
         }
     }
 
@@ -415,7 +423,7 @@ void UIOpenGLWindow::DrawImage(UIEffect *Effect,
 
     GLTexture *texture = AllocateTexture(Image);
     if (texture)
-        DrawTexture(texture, Dest, Image->GetSizeF(), PositionChanged);
+        DrawTexture(texture, Dest, Image->GetSizeF(), PositionChanged, true, true);
 }
 
 void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size, uint Shader)
@@ -463,9 +471,10 @@ void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size,
 }
 
 void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size,
-                                 bool &PositionChanged, bool Blend)
+                                 bool &PositionChanged, bool Blend, bool Studio)
 {
-    uint ShaderObject = m_shaders[kShaderDefault];
+    bool studio = m_studioLevels && Studio;
+    uint ShaderObject = m_shaders[studio ? kShaderStudio : kShaderDefault];
 
     BindFramebuffer(0);
 

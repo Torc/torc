@@ -140,8 +140,7 @@ VideoColourSpace::VideoColourSpace(AVColorSpace ColourSpace)
     SetBrightnessPriv(gLocalContext->GetSetting(TORC_GUI + "Brightness", 50), false, false);
     SetContrastPriv(gLocalContext->GetSetting(TORC_GUI + "Contrast", 50), false, false);
     SetSaturationPriv(gLocalContext->GetSetting(TORC_GUI + "Saturation", 50), false, false);
-    SetHuePriv(gLocalContext->GetSetting(TORC_GUI + "Hue", 0), false, false);
-    SetStudioLevels(gLocalContext->GetSetting(TORC_GUI + "StudioLevels", (bool)false), true);
+    SetHuePriv(gLocalContext->GetSetting(TORC_GUI + "Hue", 0), true, false);
 }
 
 VideoColourSpace::~VideoColourSpace()
@@ -187,6 +186,11 @@ int VideoColourSpace::GetSaturation(void)
 int VideoColourSpace::GetHue(void)
 {
     return (m_hue * 180.0f) / (-3.6f * M_PI);
+}
+
+bool VideoColourSpace::GetStudioLevels(void)
+{
+    return m_studioLevels;
 }
 
 void VideoColourSpace::ChangeBrightness(bool Increase)
@@ -235,6 +239,12 @@ void VideoColourSpace::SetSaturation(int Value)
 void VideoColourSpace::SetHue(int Value)
 {
     SetHuePriv(Value, true, true);
+}
+
+void VideoColourSpace::SetStudioLevels(bool Value)
+{
+    if (Value != m_studioLevels)
+        SetStudioLevelsPriv(Value, true);
 }
 
 void VideoColourSpace::SetBrightnessPriv(int Value, bool UpdateMatrix, bool UpdateSettings)
@@ -295,7 +305,7 @@ void VideoColourSpace::SetColourSpace(AVColorSpace ColourSpace)
     }
 }
 
-void VideoColourSpace::SetStudioLevels(bool Studio, bool UpdateMatrix)
+void VideoColourSpace::SetStudioLevelsPriv(bool Studio, bool UpdateMatrix)
 {
     m_studioLevels = Studio;
     if (UpdateMatrix)

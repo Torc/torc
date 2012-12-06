@@ -9,14 +9,15 @@
 
 class UIWindow;
 class UIDisplay;
+class VideoColourSpace;
 
 class VideoRenderer
 {
   public:
-    static VideoRenderer*  Create(void);
+    static VideoRenderer*  Create(VideoColourSpace *ColourSpace);
 
   public:
-    explicit VideoRenderer (UIWindow *Window);
+    explicit VideoRenderer (VideoColourSpace *ColourSpace, UIWindow *Window);
     virtual ~VideoRenderer ();
 
     virtual void           RenderFrame          (VideoFrame* Frame) = 0;
@@ -32,6 +33,7 @@ class VideoRenderer
     UIWindow               *m_window;
     UIDisplay              *m_display;
     QRectF                  m_presentationRect;
+    VideoColourSpace       *m_colourSpace;
 };
 
 class RenderFactory
@@ -41,7 +43,7 @@ class RenderFactory
     virtual ~RenderFactory();
     static RenderFactory*  GetRenderFactory     (void);
     RenderFactory*         NextFactory          (void) const;
-    virtual VideoRenderer* Create               (void) = 0;
+    virtual VideoRenderer* Create               (VideoColourSpace *ColourSpace) = 0;
 
   protected:
     static RenderFactory* gRenderFactory;

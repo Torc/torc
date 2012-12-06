@@ -25,19 +25,22 @@
 #include "torcdecoder.h"
 #include "videoframe.h"
 #include "videorenderer.h"
+#include "videocolourspace.h"
 #include "videouiplayer.h"
 
 VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : VideoPlayer(Parent, PlaybackFlags, DecodeFlags),
-    TorcHTTPService(this, "/player", tr("Player"), VideoPlayer::staticMetaObject)
+    TorcHTTPService(this, "/player", tr("Player"), VideoPlayer::staticMetaObject),
+    m_colourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED))
 {
-    m_render = VideoRenderer::Create();
+    m_render = VideoRenderer::Create(m_colourSpace);
     m_buffers.SetDisplayFormat(m_render ? m_render->PreferredPixelFormat() : PIX_FMT_YUV420P);
 }
 
 VideoUIPlayer::~VideoUIPlayer()
 {
     Teardown();
+    delete m_colourSpace;
 }
 
 void VideoUIPlayer::Teardown(void)
@@ -75,6 +78,7 @@ void VideoUIPlayer::Reset(void)
 {
     if (TorcThread::IsMainThread())
     {
+        m_colourSpace->SetChanged();
         if (m_render)
             m_render->PlaybackFinished();
         VideoPlayer::Reset();
