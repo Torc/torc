@@ -24,6 +24,7 @@
 #include <QMutex>
 
 // Torc
+#include "torclocalcontext.h"
 #include "torclogging.h"
 #include "uiopenglwindow.h"
 #include "uitheme.h"
@@ -38,6 +39,7 @@ UIWindow::UIWindow()
     m_newThemeLock(new QMutex()),
     m_mainTimer(0)
 {
+    m_studioLevels = gLocalContext->GetSetting(TORC_GUI + "StudioLevels", (bool)false);
 }
 
 UIWindow::~UIWindow()
@@ -84,6 +86,17 @@ void UIWindow::ThemeReady(UITheme *Theme)
     }
 
     m_haveNewTheme.ref();
+}
+
+bool UIWindow::GetStudioLevels(void)
+{
+    return m_studioLevels;
+}
+
+void UIWindow::SetStudioLevels(bool Value)
+{
+    m_studioLevels = Value;
+    gLocalContext->SetSetting(TORC_GUI + "StudioLevels", m_studioLevels);
 }
 
 void UIWindow::CheckForNewTheme(void)
