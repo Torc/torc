@@ -13,8 +13,9 @@ extern "C" {
 class UINVControl
 {
   public:
-    static bool       NVControlAvailable (void);
-    static QByteArray GetNVEDID          (Display *XDisplay, int Screen);
+    static bool       NVControlAvailable   (Display *XDisplay);
+    static QByteArray GetNVEDID            (Display *XDisplay, int Screen);
+    static void       InitialiseMetaModes  (Display *XDisplay, int Screen);
 };
 
 #endif // UINVCONTROL_H

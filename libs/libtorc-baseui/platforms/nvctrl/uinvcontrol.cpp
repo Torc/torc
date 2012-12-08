@@ -20,6 +20,9 @@
 * USA.
 */
 
+// Qt
+#include <QMap>
+
 // Torc
 #include "torclogging.h"
 #include "uinvcontrol.h"
@@ -30,6 +33,7 @@ extern "C" {
 }
 
 QMutex* gNVCtrlLock = new QMutex(QMutex::Recursive);
+QMap<int, double> gMetaModeMap;
 
 static QString DisplayDeviceName(int Mask)
 {
@@ -79,57 +83,49 @@ int ListDisplays(int Displays)
     return count;
 }
 
-bool UINVControl::NVControlAvailable(void)
+bool UINVControl::NVControlAvailable(Display *XDisplay)
 {
     QMutexLocker locker(gNVCtrlLock);
 
     static bool available = false;
     static bool checked   = false;
 
-    if (checked)
+    if (checked || !XDisplay)
         return available;
 
     checked = true;
 
-    const char* displayname = NULL;
-    Display* display = XOpenDisplay(displayname);
-    if (!display)
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("Failed to open display '%1'").arg(XDisplayName(displayname)));
-        return available;
-    }
-
     int event = 0;
     int error = 0;
-    Bool ok = XNVCTRLQueryExtension(display, &event, &error);
+    Bool ok = XNVCTRLQueryExtension(XDisplay, &event, &error);
 
     if (ok != True)
     {
-        LOG(VB_GENERAL, LOG_INFO, QString("NV-CONTROL X extension not available on display '%1'").arg(XDisplayName(displayname)));
+        LOG(VB_GENERAL, LOG_INFO, QString("NV-CONTROL X extension not available on display '%1'").arg(XDisplayName(NULL)));
         return available;
     }
 
     int major = 0;
     int minor = 0;
-    ok = XNVCTRLQueryVersion(display, &major, &minor);
+    ok = XNVCTRLQueryVersion(XDisplay, &major, &minor);
 
     if (ok != True)
     {
-        LOG(VB_GENERAL, LOG_INFO, QString("NV-CONTROL X extension not available on display '%1'").arg(XDisplayName(displayname)));
+        LOG(VB_GENERAL, LOG_INFO, QString("NV-CONTROL X extension not available on display '%1'").arg(XDisplayName(NULL)));
         return available;
     }
 
     available = true;
 
     LOG(VB_GENERAL, LOG_INFO, QString("NV-CONTROL X extension version %1.%2 available on display '%3'")
-        .arg(major).arg(minor).arg(XDisplayName(displayname)));
+        .arg(major).arg(minor).arg(XDisplayName(NULL)));
 
     return available;
 }
 
 QByteArray UINVControl::GetNVEDID(Display *XDisplay, int Screen)
 {
-    if (!NVControlAvailable() || !XDisplay)
+    if (!NVControlAvailable(XDisplay))
         return QByteArray();
 
     QMutexLocker locker(gNVCtrlLock);
@@ -141,6 +137,7 @@ QByteArray UINVControl::GetNVEDID(Display *XDisplay, int Screen)
             .arg(Screen).arg(XDisplayName(NULL)));
         return result;
     }
+
     int displays = 0;
     Bool ok = XNVCTRLQueryAttribute(XDisplay, Screen, 0, NV_CTRL_CONNECTED_DISPLAYS, &displays);
     if (ok != True)
@@ -185,4 +182,133 @@ QByteArray UINVControl::GetNVEDID(Display *XDisplay, int Screen)
     result = QByteArray((const char*)data, datalength);
     delete data;
     return result;
+}
+
+void UINVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
+{
+    if (!NVControlAvailable(XDisplay))
+        return;
+
+    QMutexLocker locker(gNVCtrlLock);
+
+    gMetaModeMap.clear();
+
+    if (!XNVCTRLIsNvScreen(XDisplay, Screen))
+    {
+        LOG(VB_GENERAL, LOG_ERR, QString("NV-CONTROL is not available on screen %1 of display '%2'")
+            .arg(Screen).arg(XDisplayName(NULL)));
+        return;
+    }
+
+    int displays = 0;
+    Bool ok = XNVCTRLQueryAttribute(XDisplay, Screen, 0, NV_CTRL_CONNECTED_DISPLAYS, &displays);
+    if (ok != True)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to retrieve display list");
+        return;
+    }
+
+    int displaycount = ListDisplays(displays);
+    if (displaycount != 1)
+    {
+        LOG(VB_GENERAL, LOG_WARNING, "There is more than one physical display attached to this screen. Ignoring metamodes");
+        return result;
+    }
+
+    // retrieve a list of refresh rates by mode name
+    QMap<QString,double> rates;
+
+    unsigned char* modelines = NULL;
+    int modelinelength = 0;
+    if (XNVCTRLQueryBinaryData(XDisplay, Screen, displays, NV_CTRL_BINARY_DATA_MODELINES, &modelines, &modelinelength))
+    {
+        QByteArray data((const char*)modelines, modelinelength);
+        QList<QByteArray> lines = data.split('\0');
+        foreach (QByteArray line, lines)
+        {
+            QString modeline = QString::fromLatin1(line.data()).simplified();
+
+            LOG(VB_GUI, LOG_DEBUG, QString("Modeline: %1").arg(modeline);
+
+            QStringList parts = modeline.split("::", QString::SkipEmptyParts);
+            if (parts.size() < 1)
+                continue;
+
+            modeline = parts.last();
+            parts = modeline.split(" ", QString::SkipEmptyParts);
+            if (parts.size() < 10)
+                continue;
+
+            QString name = parts[0].replace("\"", "");
+            double rate = parts[5].toInt() * parts[9].toInt();
+            double clock = parts[1].toDouble();
+            if (rate > 0.0 && clock > 0.0f)
+            {
+                rate = (clock * 1000000) / rate;
+                if (modeline.contains("interlace", Qt::CaseInsensitive))
+                    rate *= 2.0f;
+                if (rate > 20.0f && rate < 121.0f)
+                    rates.insert(name, rate);
+            }
+        }
+    }
+
+    if (rates.isEmpty())
+    {
+        LOG(VB_GENERAL, LOG_WARNING, "Failed to parse any valid modelines");
+        return;
+    }
+
+    // retrieve the list of metamodes
+    unsigned char* metamodes = NULL;
+    int metamodelength = 0;
+    if (XNVCTRLQueryBinaryData(XDisplay, Screen, 0, NV_CTRL_BINARY_DATA_METAMODES, &metamodes, &metamodelength))
+    {
+        QByteArray data((const char*)metamodes, metamodelength);
+        QList<QByteArray> lines = data.split('\0');
+        foreach (QByteArray line, lines)
+        {
+            QString metamode = QString::fromLatin1(line.data());
+
+            LOG(VB_GUI, LOG_DEBUG, QString("Metamode: %1").arg(metamode));
+
+            QStringList parts = metamode.split("::", QString::SkipEmptyParts);
+            if (parts.size() < 2)
+                continue;
+
+            QStringList ids = parts[0].split(",");
+            if (ids.size() < 1)
+                continue;
+
+            QStringList rates = ids[0].split("=");
+            if (rates.size() < 2)
+                continue;
+
+            if (rates[0].trimmed().toLower() != "id")
+                continue;
+
+            int rate = rates[1].toInt();
+            if (rate <= 0)
+                continue;
+
+            QStringList descriptions = parts[1].split(" ", QString::SkipEmptyParts);
+            if (descriptions.size() < 2)
+                continue;
+
+            QString name = descriptions[1].trimmed();
+
+            // match the name to a known real rate
+            if (rates.contains(name))
+                gMetaModeMap.insert(rate, rates.value(name));
+        }
+    }
+
+    LOG(VB_GENERAL, LOG_INFO, QString("Found %1 metamode rates").arg(gMetaModeMap.size()));
+
+    if (gLogLevel & LOG_DEBUG)
+    {
+        QMap<int,double>::iterator it = gMetaModeMap.begin();
+        for (int i = 1; ; it != gMetaModeMap.end(); ++it, ++i)
+            LOG(VB_GUI, LOG_DEBUG, QString("Metamode #%1: metarate %2 real rate %3").arg(i).arg(it.key()).arg(it.value()));
+    }
 }

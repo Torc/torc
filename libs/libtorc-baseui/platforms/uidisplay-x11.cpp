@@ -145,11 +145,11 @@ bool UIDisplay::InitialiseDisplay(void)
 
     if (display)
     {
-        int screen  = DefaultScreen(display);
-        if (UINVControl::NVControlAvailable())
+        if (UINVControl::NVControlAvailable(display))
         {
-            QByteArray edid = UINVControl::GetNVEDID(display, screen);
-            TorcEDID::RegisterEDID(edid, false);
+            int screen = DefaultScreen(display);
+            UINVControl::InitialiseMetaModes(display, screen);
+            TorcEDID::RegisterEDID(UINVControl::GetNVEDID(display, screen), false);
         }
         XCloseDisplay(display);
     }
