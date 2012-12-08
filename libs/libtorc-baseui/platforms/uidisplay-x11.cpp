@@ -217,7 +217,8 @@ void UIDisplay::SwitchToMode(int Index)
 
 double UIDisplay::GetRefreshRatePriv(void)
 {
-    double rate = -1;
+    double currentrate = -1;
+    bool currentinterlaced = false;
 
     XF86VidModeModeLine mode_line;
     int dot_clock;
@@ -229,20 +230,23 @@ double UIDisplay::GetRefreshRatePriv(void)
     if (!display)
     {
         LOG(VB_GENERAL, LOG_ERR, "Failed to open X display.");
-        return rate;
+        return currentrate;
     }
 
     int screen = DefaultScreen(display);
 
     if (XF86VidModeGetModeLine(display, screen, &dot_clock, &mode_line))
     {
-        rate = mode_line.htotal * mode_line.vtotal;
+        currentrate = mode_line.htotal * mode_line.vtotal;
 
-        if (rate > 0.0 && dot_clock > 0)
+        if (currentrate > 0.0 && dot_clock > 0)
         {
-            rate = (dot_clock * 1000.0) / rate;
-            if (((mode_line.flags & V_INTERLACE) != 0) && rate > 24.5 && rate < 30.5)
-                rate *= 2.0f;
+            currentrate = (dot_clock * 1000.0) / currentrate;
+            if (((mode_line.flags & V_INTERLACE) != 0) && currentrate > 24.5 && currentrate < 30.5)
+            {
+                currentrate *= 2.0f;
+                currentinterlaced = true;
+            }
         }
         else
         {
@@ -265,38 +269,42 @@ double UIDisplay::GetRefreshRatePriv(void)
         {
             for (int i = 0; i < resources->nmode; ++i)
             {
+                bool interlaced = false;
                 XRRModeInfo mode = resources->modes[i];
                 double moderate = mode.hTotal * mode.vTotal;
                 if (moderate > 0.0 && mode.dotClock > 0)
                 {
                     moderate = mode.dotClock / moderate;
                     if ((mode.modeFlags & V_INTERLACE) && moderate > 24.5 && moderate < 30.5)
+                    {
                         moderate *= 2.0f;
+                        interlaced = true;
+                    }
                 }
 
                 bool ignore     = false;
                 bool current    = false;
                 bool sizematch  = mode.width == (uint)m_pixelSize.width() || mode.height == (uint)m_pixelSize.height();
-                bool interlaced = false;
-                double realrate = UINVControl::GetRateForMode(display, (int)(moderate + 0.5f), interlaced);
+                bool realinterlaced = false;
+                double realrate = UINVControl::GetRateForMode(display, (int)(moderate + 0.5f), realinterlaced);
 
                 if (realrate > 10.0f && realrate < 121.0f)
                 {
                     ignore = !sizematch;
-                    current = qFuzzyCompare(realrate + 1.0f, rate + 1.0f);
+                    current = sizematch && qFuzzyCompare(realrate + 1.0f, currentrate + 1.0f) && (realinterlaced == interlaced);
                     LOG(VB_GUI, LOG_INFO, QString("nvidia Mode %1: %2x%3@%4%5%6%7")
                         .arg(mode.name).arg(mode.width).arg(mode.height).arg(moderate)
-                        .arg(interlaced ? QString(" Interlaced") : "")
+                        .arg(realinterlaced ? QString(" Interlaced") : "")
                         .arg(ignore ? QString(" Ignoring") : "")
                         .arg(current ? QString(" Current") : ""));
 
                     if (!ignore)
-                        m_modes.append(UIDisplayMode(mode.width, mode.height, 32, realrate, interlaced, i));
+                        m_modes.append(UIDisplayMode(mode.width, mode.height, 32, realrate, realinterlaced, i));
                 }
                 else
                 {
                     ignore  = moderate < 10.0f || moderate > 121.0f || !sizematch;
-                    current = sizematch && qFuzzyCompare(moderate + 1.0f, rate + 1.0f);
+                    current = sizematch && qFuzzyCompare(moderate + 1.0f, currentrate + 1.0f) && (realinterlaced == interlaced);
 
                     LOG(VB_GUI, LOG_INFO, QString("Mode %1: %2x%3@%4%5%6%7")
                         .arg(mode.name).arg(mode.width).arg(mode.height).arg(moderate)
@@ -322,7 +330,7 @@ double UIDisplay::GetRefreshRatePriv(void)
 
     XCloseDisplay(display);
 
-    return rate;
+    return currentrate;
 }
 
 QSize UIDisplay::GetPhysicalSizePriv(void)
