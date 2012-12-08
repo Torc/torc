@@ -22,6 +22,7 @@
 
 // Qt
 #include <QMap>
+#include <QStringList>
 
 // Torc
 #include "torclogging.h"
@@ -212,7 +213,7 @@ void UINVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
     if (displaycount != 1)
     {
         LOG(VB_GENERAL, LOG_WARNING, "There is more than one physical display attached to this screen. Ignoring metamodes");
-        return result;
+        return;
     }
 
     // retrieve a list of refresh rates by mode name
@@ -228,7 +229,7 @@ void UINVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
         {
             QString modeline = QString::fromLatin1(line.data()).simplified();
 
-            LOG(VB_GUI, LOG_DEBUG, QString("Modeline: %1").arg(modeline);
+            LOG(VB_GUI, LOG_DEBUG, QString("Modeline: %1").arg(modeline));
 
             QStringList parts = modeline.split("::", QString::SkipEmptyParts);
             if (parts.size() < 1)
@@ -280,14 +281,14 @@ void UINVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
             if (ids.size() < 1)
                 continue;
 
-            QStringList rates = ids[0].split("=");
-            if (rates.size() < 2)
+            QStringList rateid = ids[0].split("=");
+            if (rateid.size() < 2)
                 continue;
 
-            if (rates[0].trimmed().toLower() != "id")
+            if (rateid[0].trimmed().toLower() != "id")
                 continue;
 
-            int rate = rates[1].toInt();
+            int rate = rateid[1].toInt();
             if (rate <= 0)
                 continue;
 
@@ -308,7 +309,7 @@ void UINVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
     if (gLogLevel & LOG_DEBUG)
     {
         QMap<int,double>::iterator it = gMetaModeMap.begin();
-        for (int i = 1; ; it != gMetaModeMap.end(); ++it, ++i)
+        for (int i = 1; it != gMetaModeMap.end(); ++it, ++i)
             LOG(VB_GUI, LOG_DEBUG, QString("Metamode #%1: metarate %2 real rate %3").arg(i).arg(it.key()).arg(it.value()));
     }
 }
