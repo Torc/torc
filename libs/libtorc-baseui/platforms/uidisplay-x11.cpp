@@ -290,7 +290,8 @@ double UIDisplay::GetRefreshRatePriv(void)
                         .arg(ignore ? QString(" Ignoring") : "")
                         .arg(current ? QString(" Current") : ""));
 
-                    m_modes.append(UIDisplayMode(mode.width, mode.height, 32, realrate, interlaced, i));
+                    if (!ignore)
+                        m_modes.append(UIDisplayMode(mode.width, mode.height, 32, realrate, interlaced, i));
                 }
                 else
                 {
