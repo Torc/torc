@@ -195,6 +195,10 @@ void UIDisplay::SwitchToMode(int Index)
                 if (moderate > 0.0f && mode.dotClock > 0)
                     moderate = (double)mode.dotClock / moderate;
                 short intrate = (short)(moderate + 0.5f);
+                bool dummy;
+                double realrate = UINVControl::GetRateForMode(display, intrate, dummy);
+                if (realrate > 0.0f)
+                    moderate = realrate;
 
                 LOG(VB_GENERAL, LOG_INFO, QString("Trying %1Hz (%2Hz Index %3)").arg(moderate).arg(intrate).arg(index));
                 if (!UIXRandr.m_setScreenConfigAndRate(display, config, RootWindow(display, screen), original, rotation, intrate, CurrentTime))
@@ -270,18 +274,38 @@ double UIDisplay::GetRefreshRatePriv(void)
                         moderate *= 2.0f;
                 }
 
-                bool sizematch = mode.width == (uint)m_pixelSize.width() || mode.height == (uint)m_pixelSize.height();
-                bool ignore    = moderate < 10.0f || moderate > 121.0f || !sizematch;
-                bool current   = sizematch && qFuzzyCompare(moderate + 1.0f, rate + 1.0f);
+                bool ignore     = false;
+                bool current    = false;
+                bool sizematch  = mode.width == (uint)m_pixelSize.width() || mode.height == (uint)m_pixelSize.height();
+                bool interlaced = false;
+                double realrate = UINVControl::GetRateForMode(display, (int)(moderate + 0.5f), interlaced);
 
-                LOG(VB_GUI, LOG_INFO, QString("Mode %1: %2x%3@%4%5%6%7")
-                    .arg(mode.name).arg(mode.width).arg(mode.height).arg(moderate)
-                    .arg(mode.modeFlags & V_INTERLACE ? QString(" Interlaced") : "")
-                    .arg(ignore ? QString(" Ignoring") : "")
-                    .arg(current ? QString(" Current") : ""));
+                if (realrate > 10.0f && realrate < 121.0f)
+                {
+                    ignore = !sizematch;
+                    current = qFuzzyCompare(realrate + 1.0f, rate + 1.0f);
+                    LOG(VB_GUI, LOG_INFO, QString("nvidia Mode %1: %2x%3@%4%5%6%7")
+                        .arg(mode.name).arg(mode.width).arg(mode.height).arg(moderate)
+                        .arg(interlaced ? QString(" Interlaced") : "")
+                        .arg(ignore ? QString(" Ignoring") : "")
+                        .arg(current ? QString(" Current") : ""));
 
-                if (!ignore)
-                    m_modes.append(UIDisplayMode(mode.width, mode.height, 32, moderate, mode.modeFlags & V_INTERLACE, i));
+                    m_modes.append(UIDisplayMode(mode.width, mode.height, 32, realrate, interlaced, i));
+                }
+                else
+                {
+                    ignore  = moderate < 10.0f || moderate > 121.0f || !sizematch;
+                    current = sizematch && qFuzzyCompare(moderate + 1.0f, rate + 1.0f);
+
+                    LOG(VB_GUI, LOG_INFO, QString("Mode %1: %2x%3@%4%5%6%7")
+                        .arg(mode.name).arg(mode.width).arg(mode.height).arg(moderate)
+                        .arg(mode.modeFlags & V_INTERLACE ? QString(" Interlaced") : "")
+                        .arg(ignore ? QString(" Ignoring") : "")
+                        .arg(current ? QString(" Current") : ""));
+
+                    if (!ignore)
+                        m_modes.append(UIDisplayMode(mode.width, mode.height, 32, moderate, mode.modeFlags & V_INTERLACE, i));
+                }
 
                 if (current)
                     m_originalModeIndex = m_modes.size() - 1;

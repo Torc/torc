@@ -33,8 +33,25 @@ extern "C" {
 #include "NVCtrlLib.h"
 }
 
+class MetaRate
+{
+  public:
+    MetaRate()
+      : m_rate(0.0f), m_interlaced(false)
+    {
+    }
+
+    MetaRate(double Rate, bool Interlaced)
+      : m_rate(Rate), m_interlaced(Interlaced)
+    {
+    }
+
+    double m_rate;
+    bool   m_interlaced;
+};
+
 QMutex* gNVCtrlLock = new QMutex(QMutex::Recursive);
-QMap<int, double> gMetaModeMap;
+QMap<int, MetaRate> gMetaModeMap;
 
 static QString DisplayDeviceName(int Mask)
 {
@@ -218,6 +235,7 @@ void UINVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
 
     // retrieve a list of refresh rates by mode name
     QMap<QString,double> rates;
+    QStringList interlacedrates;
 
     unsigned char* modelines = NULL;
     int modelinelength = 0;
@@ -246,10 +264,18 @@ void UINVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
             if (rate > 0.0 && clock > 0.0f)
             {
                 rate = (clock * 1000000) / rate;
+                bool interlaced = false;
                 if (modeline.contains("interlace", Qt::CaseInsensitive))
+                {
                     rate *= 2.0f;
+                    interlaced = true;
+                }
                 if (rate > 20.0f && rate < 121.0f)
+                {
                     rates.insert(name, rate);
+                    if (interlaced)
+                        interlacedrates.append(name);
+                }
             }
         }
     }
@@ -300,7 +326,10 @@ void UINVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
 
             // match the name to a known real rate
             if (rates.contains(name))
-                gMetaModeMap.insert(rate, rates.value(name));
+            {
+                bool interlaced = interlacedrates.contains(name);
+                gMetaModeMap.insert(rate, MetaRate(rates.value(name), interlaced));
+            }
         }
     }
 
@@ -308,8 +337,27 @@ void UINVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
 
     if (gLogLevel & LOG_DEBUG)
     {
-        QMap<int,double>::iterator it = gMetaModeMap.begin();
+        QMap<int,MetaRate>::iterator it = gMetaModeMap.begin();
         for (int i = 1; it != gMetaModeMap.end(); ++it, ++i)
-            LOG(VB_GUI, LOG_DEBUG, QString("Metamode #%1: metarate %2 real rate %3").arg(i).arg(it.key()).arg(it.value()));
+        {
+            LOG(VB_GUI, LOG_DEBUG, QString("Metamode #%1: metarate %2 real rate %3%4")
+                .arg(i).arg(it.key()).arg(it.value().m_rate).arg(it.value().m_interlaced ? " Interlaced" : ""));
+        }
     }
+}
+
+double UINVControl::GetRateForMode(Display *XDisplay, int Mode, bool &Interlaced)
+{
+    if (!NVControlAvailable(XDisplay))
+        return -1.0f;
+
+    QMutexLocker locker(gNVCtrlLock);
+
+    if (gMetaModeMap.contains(Mode))
+    {
+        Interlaced  = gMetaModeMap.value(Mode).m_interlaced;
+        return gMetaModeMap.value(Mode).m_rate;
+    }
+
+    return -1.0f;
 }
