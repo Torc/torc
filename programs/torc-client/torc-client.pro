@@ -19,6 +19,7 @@ INCLUDEPATH += ../../libs/libtorc-tenfootui
 INCLUDEPATH += ../../libs/libtorc-audio
 INCLUDEPATH += ../../libs/libtorc-video
 INCLUDEPATH += ../../libs/libtorc-videoui
+INCLUDEPATH += ../../libs/libtorc-av
 LIBS += -L../../libs/libtorc-baseui -ltorc-baseui-$$LIBVERSION
 LIBS += -L../../libs/libtorc-tenfootui -ltorc-tenfootui-$$LIBVERSION
 LIBS += -L../../libs/libtorc-audio -ltorc-audio-$$LIBVERSION
