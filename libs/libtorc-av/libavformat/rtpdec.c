@@ -43,10 +43,22 @@
          'ffio_open_dyn_packet_buf')
 */
 
-static RTPDynamicProtocolHandler ff_realmedia_mp3_dynamic_handler = {
+static RTPDynamicProtocolHandler realmedia_mp3_dynamic_handler = {
     .enc_name           = "X-MP3-draft-00",
     .codec_type         = AVMEDIA_TYPE_AUDIO,
     .codec_id           = AV_CODEC_ID_MP3ADU,
+};
+
+static RTPDynamicProtocolHandler speex_dynamic_handler = {
+    .enc_name         = "speex",
+    .codec_type       = AVMEDIA_TYPE_AUDIO,
+    .codec_id         = AV_CODEC_ID_SPEEX,
+};
+
+static RTPDynamicProtocolHandler opus_dynamic_handler = {
+    .enc_name         = "opus",
+    .codec_type       = AVMEDIA_TYPE_AUDIO,
+    .codec_id         = AV_CODEC_ID_OPUS,
 };
 
 /* statistics functions */
@@ -77,7 +89,9 @@ void av_register_rtp_dynamic_payload_handlers(void)
     ff_register_dynamic_payload_handler(&ff_mp4a_latm_dynamic_handler);
     ff_register_dynamic_payload_handler(&ff_vp8_dynamic_handler);
     ff_register_dynamic_payload_handler(&ff_qcelp_dynamic_handler);
-    ff_register_dynamic_payload_handler(&ff_realmedia_mp3_dynamic_handler);
+    ff_register_dynamic_payload_handler(&realmedia_mp3_dynamic_handler);
+    ff_register_dynamic_payload_handler(&speex_dynamic_handler);
+    ff_register_dynamic_payload_handler(&opus_dynamic_handler);
 
     ff_register_dynamic_payload_handler(&ff_ms_rtp_asf_pfv_handler);
     ff_register_dynamic_payload_handler(&ff_ms_rtp_asf_pfa_handler);
@@ -771,7 +785,7 @@ int ff_parse_fmtp(AVStream *stream, PayloadContext *data, const char *p,
     int value_size = strlen(p) + 1;
 
     if (!(value = av_malloc(value_size))) {
-        av_log(stream, AV_LOG_ERROR, "Failed to allocate data for FMTP.");
+        av_log(NULL, AV_LOG_ERROR, "Failed to allocate data for FMTP.");
         return AVERROR(ENOMEM);
     }
 

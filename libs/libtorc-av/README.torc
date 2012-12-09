@@ -1,12 +1,12 @@
-libtorc-av is a clone of the libav master branch:-
+libtorc-av is a clone of libav version 9 beta 2:-
 
 git://git.libav.org/libav.git
 
-The current version is:
+The exact version is:
 
-aeeb782c2ab6be783f7658dfccf11fa89b33566c
+e788ec5d59c91eeadd5637023aefd065d6309322
 
-(http://git.libav.org/?p=libav.git;a=commit;h=aeeb782c2ab6be783f7658dfccf11fa89b33566c)
+(http://git.libav.org/?p=libav.git;a=tag;h=e788ec5d59c91eeadd5637023aefd065d6309322)
 
 The following files have been modified for Torc:
 

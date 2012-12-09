@@ -22,6 +22,8 @@
 
 #include "avcodec.h"
 #include "bytestream.h"
+
+#include "libavutil/imgutils.h"
 #include "libavutil/lzo.h" // for av_memcpy_backptr
 
 typedef struct DfaContext {
@@ -34,8 +36,12 @@ typedef struct DfaContext {
 static av_cold int dfa_decode_init(AVCodecContext *avctx)
 {
     DfaContext *s = avctx->priv_data;
+    int ret;
 
-    avctx->pix_fmt = PIX_FMT_PAL8;
+    avctx->pix_fmt = AV_PIX_FMT_PAL8;
+
+    if ((ret = av_image_check_size(avctx->width, avctx->height, 0, avctx)) < 0)
+        return ret;
 
     s->frame_buf = av_mallocz(avctx->width * avctx->height + AV_LZO_OUTPUT_PADDING);
     if (!s->frame_buf)
@@ -147,8 +153,7 @@ static int decode_dds1(GetByteContext *gb, uint8_t *frame, int width, int height
             bitbuf = bytestream2_get_le16u(gb);
             mask = 1;
         }
-        if (frame_end - frame < 2)
-            return AVERROR_INVALIDDATA;
+
         if (bitbuf & mask) {
             v = bytestream2_get_le16(gb);
             offset = (v & 0x1FFF) << 2;
@@ -162,9 +167,12 @@ static int decode_dds1(GetByteContext *gb, uint8_t *frame, int width, int height
                 frame += 2;
             }
         } else if (bitbuf & (mask << 1)) {
-            frame += bytestream2_get_le16(gb) * 2;
+            v = bytestream2_get_le16(gb)*2;
+            if (frame - frame_end < v)
+                return AVERROR_INVALIDDATA;
+            frame += v;
         } else {
-            if (frame_end - frame < width + 2)
+            if (frame_end - frame < width + 3)
                 return AVERROR_INVALIDDATA;
             frame[0] = frame[1] =
             frame[width] = frame[width + 1] =  bytestream2_get_byte(gb);

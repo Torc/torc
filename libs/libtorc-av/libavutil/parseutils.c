@@ -107,8 +107,7 @@ int av_parse_video_size(int *width_ptr, int *height_ptr, const char *str)
         }
     }
     if (i == n) {
-        p = str;
-        width = strtol(p, &p, 10);
+        width = strtol(str, &p, 10);
         if (*p)
             p++;
         height = strtol(p, &p, 10);
@@ -355,7 +354,7 @@ int av_parse_color(uint8_t *rgba_color, const char *color_string, int slen,
     }
 
     if (tail) {
-        unsigned long int alpha;
+        double alpha;
         const char *alpha_string = tail;
         if (!strncmp(alpha_string, "0x", 2)) {
             alpha = strtoul(alpha_string, &tail, 16);
@@ -363,7 +362,7 @@ int av_parse_color(uint8_t *rgba_color, const char *color_string, int slen,
             alpha = 255 * strtod(alpha_string, &tail);
         }
 
-        if (tail == alpha_string || *tail || alpha > 255) {
+        if (tail == alpha_string || *tail || alpha > 255 || alpha < 0) {
             av_log(log_ctx, AV_LOG_ERROR, "Invalid alpha value specifier '%s' in '%s'\n",
                    alpha_string, color_string);
             return AVERROR(EINVAL);
@@ -651,7 +650,7 @@ int main(void)
     printf("Testing av_parse_video_rate()\n");
     {
         int i;
-        const char *rates[] = {
+        static const char *const rates[] = {
             "-inf",
             "inf",
             "nan",
@@ -681,10 +680,10 @@ int main(void)
 
         for (i = 0; i < FF_ARRAY_ELEMS(rates); i++) {
             int ret;
-            AVRational q = (AVRational){0, 0};
-            ret = av_parse_video_rate(&q, rates[i]),
-            printf("'%s' -> %d/%d ret:%d\n",
-                   rates[i], q.num, q.den, ret);
+            AVRational q = { 0, 0 };
+            ret = av_parse_video_rate(&q, rates[i]);
+            printf("'%s' -> %d/%d %s\n",
+                   rates[i], q.num, q.den, ret ? "ERROR" : "OK");
         }
     }
 
@@ -692,9 +691,7 @@ int main(void)
     {
         int i;
         uint8_t rgba[4];
-        const char *color_names[] = {
-            "bikeshed",
-            "RaNdOm",
+        static const char *const color_names[] = {
             "foo",
             "red",
             "Red ",
@@ -735,7 +732,8 @@ int main(void)
 
         for (i = 0;  i < FF_ARRAY_ELEMS(color_names); i++) {
             if (av_parse_color(rgba, color_names[i], -1, NULL) >= 0)
-                printf("%s -> R(%d) G(%d) B(%d) A(%d)\n", color_names[i], rgba[0], rgba[1], rgba[2], rgba[3]);
+                printf("%s -> R(%d) G(%d) B(%d) A(%d)\n",
+                       color_names[i], rgba[0], rgba[1], rgba[2], rgba[3]);
         }
     }
 

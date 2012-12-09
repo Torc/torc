@@ -1066,9 +1066,9 @@ int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
             }
         }
 
-        int samples = avresample_convert(m_audioResampleContext, (void **)&Buffer,
+        int samples = avresample_convert(m_audioResampleContext, &Buffer,
                                          planesize, frame.nb_samples,
-                                         (void **)frame.extended_data,
+                                         frame.extended_data,
                                          frame.linesize[0], frame.nb_samples);
 
         if (samples != frame.nb_samples)

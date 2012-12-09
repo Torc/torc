@@ -329,12 +329,12 @@ static int query_formats(AVFilterContext *ctx)
     AVFilterFormats *formats = NULL;
 
     if        (frei0r->plugin_info.color_model == F0R_COLOR_MODEL_BGRA8888) {
-        ff_add_format(&formats, PIX_FMT_BGRA);
+        ff_add_format(&formats, AV_PIX_FMT_BGRA);
     } else if (frei0r->plugin_info.color_model == F0R_COLOR_MODEL_RGBA8888) {
-        ff_add_format(&formats, PIX_FMT_RGBA);
+        ff_add_format(&formats, AV_PIX_FMT_RGBA);
     } else {                                   /* F0R_COLOR_MODEL_PACKED32 */
-        static const enum PixelFormat pix_fmts[] = {
-            PIX_FMT_BGRA, PIX_FMT_ARGB, PIX_FMT_ABGR, PIX_FMT_ARGB, PIX_FMT_NONE
+        static const enum AVPixelFormat pix_fmts[] = {
+            AV_PIX_FMT_BGRA, AV_PIX_FMT_ARGB, AV_PIX_FMT_ABGR, AV_PIX_FMT_ARGB, AV_PIX_FMT_NONE
         };
         formats = ff_make_format_list(pix_fmts);
     }
@@ -368,6 +368,26 @@ static int end_frame(AVFilterLink *inlink)
     return 0;
 }
 
+static const AVFilterPad avfilter_vf_frei0r_inputs[] = {
+    {
+        .name         = "default",
+        .type         = AVMEDIA_TYPE_VIDEO,
+        .draw_slice   = null_draw_slice,
+        .config_props = config_input_props,
+        .end_frame    = end_frame,
+        .min_perms    = AV_PERM_READ
+    },
+    { NULL }
+};
+
+static const AVFilterPad avfilter_vf_frei0r_outputs[] = {
+    {
+        .name = "default",
+        .type = AVMEDIA_TYPE_VIDEO,
+    },
+    { NULL }
+};
+
 AVFilter avfilter_vf_frei0r = {
     .name      = "frei0r",
     .description = NULL_IF_CONFIG_SMALL("Apply a frei0r effect."),
@@ -378,17 +398,9 @@ AVFilter avfilter_vf_frei0r = {
 
     .priv_size = sizeof(Frei0rContext),
 
-    .inputs    = (const AVFilterPad[]) {{ .name             = "default",
-                                          .type             = AVMEDIA_TYPE_VIDEO,
-                                          .draw_slice       = null_draw_slice,
-                                          .config_props     = config_input_props,
-                                          .end_frame        = end_frame,
-                                          .min_perms        = AV_PERM_READ },
-                                        { .name = NULL}},
+    .inputs    = avfilter_vf_frei0r_inputs,
 
-    .outputs   = (const AVFilterPad[]) {{ .name             = "default",
-                                          .type             = AVMEDIA_TYPE_VIDEO, },
-                                        { .name = NULL}},
+    .outputs   = avfilter_vf_frei0r_outputs,
 };
 
 static av_cold int source_init(AVFilterContext *ctx, const char *args)
@@ -478,6 +490,16 @@ fail:
     return ret;
 }
 
+static const AVFilterPad avfilter_vsrc_frei0r_src_outputs[] = {
+    {
+        .name          = "default",
+        .type          = AVMEDIA_TYPE_VIDEO,
+        .request_frame = source_request_frame,
+        .config_props  = source_config_props
+    },
+    { NULL }
+};
+
 AVFilter avfilter_vsrc_frei0r_src = {
     .name        = "frei0r_src",
     .description = NULL_IF_CONFIG_SMALL("Generate a frei0r source."),
@@ -490,9 +512,5 @@ AVFilter avfilter_vsrc_frei0r_src = {
 
     .inputs    = NULL,
 
-    .outputs   = (const AVFilterPad[]) {{ .name            = "default",
-                                          .type            = AVMEDIA_TYPE_VIDEO,
-                                          .request_frame   = source_request_frame,
-                                          .config_props    = source_config_props },
-                                        { .name = NULL}},
+    .outputs   = avfilter_vsrc_frei0r_src_outputs,
 };

@@ -368,12 +368,12 @@ static int mkv_add_cuepoint(mkv_cues *cues, int stream, int64_t ts, int64_t clus
 {
     mkv_cuepoint *entries = cues->entries;
 
+    if (ts < 0)
+        return 0;
+
     entries = av_realloc(entries, (cues->num_entries + 1) * sizeof(mkv_cuepoint));
     if (entries == NULL)
         return AVERROR(ENOMEM);
-
-    if (ts < 0)
-        return 0;
 
     entries[cues->num_entries  ].pts = ts;
     entries[cues->num_entries  ].tracknum = stream + 1;
@@ -475,6 +475,16 @@ static int mkv_write_codecprivate(AVFormatContext *s, AVIOContext *pb, AVCodecCo
             ret = ff_flac_write_header(dyn_cp, codec, 1);
         else if (codec->codec_id == AV_CODEC_ID_H264)
             ret = ff_isom_write_avcc(dyn_cp, codec->extradata, codec->extradata_size);
+        else if (codec->codec_id == AV_CODEC_ID_ALAC) {
+            if (codec->extradata_size < 36) {
+                av_log(s, AV_LOG_ERROR,
+                       "Invalid extradata found, ALAC expects a 36-byte "
+                       "QuickTime atom.");
+                ret = AVERROR_INVALIDDATA;
+            } else
+                avio_write(dyn_cp, codec->extradata + 12,
+                                   codec->extradata_size - 12);
+        }
         else if (codec->extradata_size)
             avio_write(dyn_cp, codec->extradata, codec->extradata_size);
     } else if (codec->codec_type == AVMEDIA_TYPE_VIDEO) {
@@ -1040,7 +1050,7 @@ static void mkv_write_block(AVFormatContext *s, AVIOContext *pb,
     MatroskaMuxContext *mkv = s->priv_data;
     AVCodecContext *codec = s->streams[pkt->stream_index]->codec;
     uint8_t *data = NULL;
-    int size = pkt->size;
+    int offset = 0, size = pkt->size;
     int64_t ts = mkv->tracks[pkt->stream_index].write_dts ? pkt->dts : pkt->pts;
 
     av_log(s, AV_LOG_DEBUG, "Writing block at offset %" PRIu64 ", size %d, "
@@ -1051,12 +1061,20 @@ static void mkv_write_block(AVFormatContext *s, AVIOContext *pb,
         ff_avc_parse_nal_units_buf(pkt->data, &data, &size);
     else
         data = pkt->data;
+
+    if (codec->codec_id == AV_CODEC_ID_PRORES) {
+        /* Matroska specification requires to remove the first QuickTime atom
+         */
+        size -= 8;
+        offset = 8;
+    }
+
     put_ebml_id(pb, blockid);
     put_ebml_num(pb, size+4, 0);
     avio_w8(pb, 0x80 | (pkt->stream_index + 1));     // this assumes stream_index is less than 126
     avio_wb16(pb, ts - mkv->cluster_pts);
     avio_w8(pb, flags);
-    avio_write(pb, data, size);
+    avio_write(pb, data + offset, size);
     if (data != pkt->data)
         av_free(data);
 }

@@ -169,6 +169,7 @@ static int ogg_new_stream(AVFormatContext *s, uint32_t serial, int new_avstream)
     os->bufsize = DECODER_BUFFER_SIZE;
     os->buf = av_malloc(os->bufsize + FF_INPUT_BUFFER_PADDING_SIZE);
     os->header = -1;
+    os->start_granule = OGG_NOGRANULE_VALUE;
 
     if (new_avstream) {
         st = avformat_new_stream(s, NULL);
@@ -406,6 +407,7 @@ static int ogg_packet(AVFormatContext *s, int *str, int *dstart, int *dsize,
                     s->data_offset = FFMIN(s->data_offset, cur_os->sync_pos);
             }
         }else{
+            os->nb_header++;
             os->pstart += os->psize;
             os->psize = 0;
         }
@@ -445,7 +447,7 @@ static int ogg_packet(AVFormatContext *s, int *str, int *dstart, int *dsize,
 static int ogg_get_headers(AVFormatContext *s)
 {
     struct ogg *ogg = s->priv_data;
-    int ret;
+    int ret, i;
 
     do{
         ret = ogg_packet(s, NULL, NULL, NULL, NULL);
@@ -453,6 +455,19 @@ static int ogg_get_headers(AVFormatContext *s)
             return ret;
     }while (!ogg->headers);
 
+    for (i = 0; i < ogg->nstreams; i++) {
+        struct ogg_stream *os = ogg->streams + i;
+
+        if (os->codec && os->codec->nb_header &&
+            os->nb_header < os->codec->nb_header) {
+            av_log(s, AV_LOG_ERROR,
+                   "Headers mismatch for stream %d\n", i);
+            return AVERROR_INVALIDDATA;
+        }
+        if (os->start_granule != OGG_NOGRANULE_VALUE)
+            os->lastpts = s->streams[i]->start_time =
+                ogg_gptopts(s, i, os->start_granule, NULL);
+    }
     av_dlog(s, "found headers\n");
 
     return 0;

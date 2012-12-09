@@ -54,6 +54,8 @@ if test "$E1" != 0 || test "$E2" = 0; then
     exit 1
 fi
 
+test -d /usr/xpg4/bin && PATH=/usr/xpg4/bin:$PATH
+
 show_help(){
     cat <<EOF
 Usage: configure [options]
@@ -181,6 +183,7 @@ External library support:
   --enable-libopencore-amrwb enable AMR-WB decoding via libopencore-amrwb [no]
   --enable-libopencv       enable video filtering via libopencv [no]
   --enable-libopenjpeg     enable JPEG 2000 de/encoding via OpenJPEG [no]
+  --enable-libopus         enable Opus decoding via libopus [no]
   --enable-libpulse        enable Pulseaudio input via libpulse [no]
   --enable-librtmp         enable RTMP[E] support via librtmp [no]
   --enable-libschroedinger enable Dirac de/encoding via libschroedinger [no]
@@ -237,6 +240,7 @@ Advanced options (experts only):
                            disable buffer boundary checking in bitreaders
                            (faster, but may crash)
   --enable-memalign-hack   emulate memalign, interferes with memory debuggers
+  --enable-lto             use link-time optimization
 
 Optimization options (experts only):
   --disable-asm            disable all assembler optimizations
@@ -257,7 +261,6 @@ Optimization options (experts only):
   --disable-armv6          disable armv6 optimizations
   --disable-armv6t2        disable armv6t2 optimizations
   --disable-armvfp         disable ARM VFP optimizations
-  --disable-mmi            disable MMI optimizations
   --disable-neon           disable NEON optimizations
   --disable-vis            disable VIS optimizations
   --disable-inline-asm     disable use of inline assembler
@@ -607,7 +610,7 @@ print_config(){
 }
 
 print_enabled(){
-    test "$1" = -n && end=" " && shift || end="\n"
+    test x"$1" = x-n && end=" " && shift || end="\n"
     suf=$1
     shift
     for v; do
@@ -653,6 +656,12 @@ add_host_cflags(){
 
 add_host_ldflags(){
     append host_ldflags $($host_ldflags_filter "$@")
+}
+
+add_compat(){
+    append compat_objs $1
+    shift
+    map 'add_cppflags -D$v' "$@"
 }
 
 check_cmd(){
@@ -741,11 +750,8 @@ ld_o(){
 
 check_ld(){
     log check_ld "$@"
-    flags=''
-    libs=''
-    for f; do
-        test "${f}" = "${f#-l}" && flags="$flags $f" || libs="$libs $f"
-    done
+    flags=$(filter_out '-l*' "$@")
+    libs=$(filter '-l*' "$@")
     check_cc $($cflags_filter $flags) || return
     flags=$($ldflags_filter $flags)
     libs=$($ldflags_filter $libs)
@@ -993,7 +999,7 @@ apply(){
 cp_if_changed(){
     cmp -s "$1" "$2" && echo "$2 is unchanged" && return
     mkdir -p "$(dirname $2)"
-    cp -f "$1" "$2"
+    $cp_f "$1" "$2"
 }
 
 # CONFIG_LIST contains configurable options, while HAVE_LIST is for
@@ -1052,6 +1058,7 @@ CONFIG_LIST="
     libopencore_amrwb
     libopencv
     libopenjpeg
+    libopus
     libpulse
     librtmp
     libschroedinger
@@ -1119,6 +1126,8 @@ ARCH_LIST='
     sh4
     sparc
     sparc64
+    tilegx
+    tilepro
     tomi
     x86
     x86_32
@@ -1147,24 +1156,58 @@ ARCH_EXT_LIST="
     armv6
     armv6t2
     armvfp
-    mmi
     neon
     ppc4xx
     vfpv3
     vis
 "
 
+HAVE_LIST_CMDLINE='
+    inline_asm
+    symver
+    yasm
+'
+
 HAVE_LIST_PUB='
     bigendian
     fast_unaligned
 '
 
+MATH_FUNCS="
+    atanf
+    atan2f
+    cbrtf
+    cosf
+    exp2
+    exp2f
+    expf
+    isinf
+    isnan
+    ldexpf
+    llrint
+    llrintf
+    log2
+    log2f
+    log10f
+    lrint
+    lrintf
+    powf
+    rint
+    round
+    roundf
+    sinf
+    trunc
+    truncf
+"
+
 HAVE_LIST="
     $ARCH_EXT_LIST
     $(add_suffix _external $ARCH_EXT_LIST)
     $(add_suffix _inline   $ARCH_EXT_LIST)
+    $HAVE_LIST_CMDLINE
     $HAVE_LIST_PUB
     $THREADS_LIST
+    $MATH_FUNCS
     aligned_malloc
     aligned_stack
     alsa_asoundlib_h
@@ -1174,13 +1217,12 @@ HAVE_LIST="
     asm_mod_y
     attribute_may_alias
     attribute_packed
-    cbrtf
     closesocket
     cmov
     cpu_clips_negative
     cpu_clips_positive
-    cpuid
     cpunop
+    CryptGenRandom
     dcbzl
     dev_bktr_ioctl_bt848_h
     dev_bktr_ioctl_meteor_h
@@ -1194,8 +1236,6 @@ HAVE_LIST="
     dxva_h
     ebp_available
     ebx_available
-    exp2
-    exp2f
     fast_64bit
     fast_clz
     fast_cmov
@@ -1209,29 +1249,21 @@ HAVE_LIST="
     GetProcessTimes
     GetSystemTimeAsFileTime
     getrusage
+    getservbyport
     gettimeofday
     gnu_as
     ibm_asm
     inet_aton
-    inline_asm
     io_h
     isatty
-    isinf
-    isnan
     jack_port_get_latency_range
     ldbrx
     libdc1394_1
     libdc1394_2
-    llrint
-    llrintf
     local_aligned_16
     local_aligned_8
     localtime_r
-    log2
-    log2f
     loongson
-    lrint
-    lrintf
     machine_ioctl_bt848_h
     machine_ioctl_meteor_h
     malloc_h
@@ -1240,15 +1272,12 @@ HAVE_LIST="
     mkstemp
     mm_empty
     mmap
+    mprotect
     msvcrt
     nanosleep
     poll_h
     posix_memalign
     rdtsc
-    rint
-    round
-    roundf
-    rweflags
     sched_getaffinity
     sdl
     sdl_video_size
@@ -1271,7 +1300,6 @@ HAVE_LIST="
     struct_sockaddr_sa_len
     struct_sockaddr_storage
     struct_v4l2_frmivalenum_discrete
-    symver
     symver_asm_label
     symver_gnu_asm
     sysconf
@@ -1284,8 +1312,6 @@ HAVE_LIST="
     sys_time_h
     sys_videoio_h
     threads
-    trunc
-    truncf
     unistd_h
     usleep
     vfp_args
@@ -1293,9 +1319,7 @@ HAVE_LIST="
     windows_h
     winsock2_h
     xform_asm
-    xgetbv
     xmm_clobbers
-    yasm
 "
 
 # options emitted with CONFIG_ prefix but not available on command line
@@ -1314,6 +1338,7 @@ CONFIG_EXTRA="
     huffman
     lgplv3
     lpc
+    mpegaudio
     mpegaudiodsp
     mpegvideo
     mpegvideoenc
@@ -1327,16 +1352,15 @@ CONFIG_EXTRA="
 CMDLINE_SELECT="
     $ARCH_EXT_LIST
     $CONFIG_LIST
+    $HAVE_LIST_CMDLINE
     $THREADS_LIST
     asm
     cross_compile
     debug
     extra_warnings
-    inline_asm
     logging
+    lto
     optimizations
-    symver
-    yasm
 "
 
 PATHS_LIST='
@@ -1400,8 +1424,6 @@ armvfp_deps="arm"
 neon_deps="arm"
 vfpv3_deps="armvfp"
 
-mmi_deps="mips"
-
 altivec_deps="ppc"
 ppc4xx_deps="ppc"
 
@@ -1449,6 +1471,7 @@ log2_deps="!msvcrt"
 dct_select="rdft"
 mdct_select="fft"
 rdft_select="fft"
+mpegaudio_select="mpegaudiodsp"
 mpegaudiodsp_select="dct"
 mpegvideoenc_select="mpegvideo"
 
@@ -1511,16 +1534,16 @@ loco_decoder_select="golomb"
 mdec_decoder_select="error_resilience mpegvideo"
 mjpeg_encoder_select="aandcttables mpegvideoenc"
 mlp_decoder_select="mlp_parser"
-mp1_decoder_select="mpegaudiodsp"
-mp1float_decoder_select="mpegaudiodsp"
-mp2_decoder_select="mpegaudiodsp"
-mp2float_decoder_select="mpegaudiodsp"
-mp3_decoder_select="mpegaudiodsp"
-mp3adu_decoder_select="mpegaudiodsp"
-mp3adufloat_decoder_select="mpegaudiodsp"
-mp3float_decoder_select="mpegaudiodsp"
-mp3on4_decoder_select="mpegaudiodsp"
-mp3on4float_decoder_select="mpegaudiodsp"
+mp1_decoder_select="mpegaudio"
+mp1float_decoder_select="mpegaudio"
+mp2_decoder_select="mpegaudio"
+mp2float_decoder_select="mpegaudio"
+mp3_decoder_select="mpegaudio"
+mp3adu_decoder_select="mpegaudio"
+mp3adufloat_decoder_select="mpegaudio"
+mp3float_decoder_select="mpegaudio"
+mp3on4_decoder_select="mpegaudio"
+mp3on4float_decoder_select="mpegaudio"
 mpc7_decoder_select="mpegaudiodsp"
 mpc8_decoder_select="mpegaudiodsp"
 mpeg_vdpau_decoder_select="vdpau mpegvideo_decoder"
@@ -1634,6 +1657,8 @@ libopencore_amrnb_encoder_deps="libopencore_amrnb"
 libopencore_amrwb_decoder_deps="libopencore_amrwb"
 libopenjpeg_decoder_deps="libopenjpeg"
 libopenjpeg_encoder_deps="libopenjpeg"
+libopus_decoder_deps="libopus"
+libopus_encoder_deps="libopus"
 libschroedinger_decoder_deps="libschroedinger"
 libschroedinger_encoder_deps="libschroedinger"
 libspeex_decoder_deps="libspeex"
@@ -1765,49 +1790,6 @@ avserver_extralibs='$ldl'
 
 doc_deps="texi2html"
 
-# tests
-
-mpg_test_deps="mpeg1system_muxer mpegps_demuxer"
-seek_lavf_mxf_d10_test_deps="mxf_d10_test"
-
-test_deps(){
-    suf1=$1
-    suf2=$2
-    shift 2
-    for v; do
-        dep=${v%=*}
-        tests=${v#*=}
-        for name in ${tests}; do
-            append ${name}_test_deps ${dep}$suf1 ${dep}$suf2
-        done
-    done
-}
-
-test_deps _muxer _demuxer                                               \
-    aiff                                                                \
-    pcm_alaw=alaw                                                       \
-    asf                                                                 \
-    au                                                                  \
-    avi                                                                 \
-    dv=dv_fmt                                                           \
-    ffm                                                                 \
-    flv=flv_fmt                                                         \
-    gxf                                                                 \
-    matroska=mkv                                                        \
-    mmf                                                                 \
-    mov                                                                 \
-    pcm_mulaw=mulaw                                                     \
-    mxf="mxf mxf_d10"                                                   \
-    nut                                                                 \
-    ogg                                                                 \
-    rawvideo=pixfmt                                                     \
-    rm                                                                  \
-    swf                                                                 \
-    mpegts=ts                                                           \
-    voc                                                                 \
-    wav                                                                 \
-    yuv4mpegpipe=yuv4mpeg                                               \
-
 # default parameters
 
 logfile="config.log"
@@ -1827,6 +1809,7 @@ ar_default="ar"
 cc_default="gcc"
 cxx_default="g++"
 host_cc_default="gcc"
+cp_f="cp -f"
 ln_s="ln -sf"
 nm_default="nm -g"
 objformat="elf"
@@ -1988,6 +1971,8 @@ for n in $COMPONENT_LIST; do
     eval ${n}_if_any="\$$v"
 done
 
+disable snow_decoder snow_encoder
+
 enable $ARCH_EXT_LIST
 
 die_unknown(){
@@ -2110,8 +2095,6 @@ if enabled cross_compile; then
         die "Must specify target arch and OS when cross-compiling"
 fi
 
-set_default arch target_os
-
 ar_default="${cross_prefix}${ar_default}"
 cc_default="${cross_prefix}${cc_default}"
 cxx_default="${cross_prefix}${cxx_default}"
@@ -2122,17 +2105,29 @@ ranlib="${cross_prefix}${ranlib}"
 sysinclude_default="${sysroot}/usr/include"
 
 case "$toolchain" in
+    clang-asan)
+        cc_default="clang"
+        add_cflags  -faddress-sanitizer
+        add_ldflags -faddress-sanitizer
+    ;;
+    clang-tsan)
+        cc_default="clang"
+        add_cflags  -fthread-sanitizer
+        add_ldflags -fthread-sanitizer
+    ;;
     msvc)
         cc_default="c99wrap cl"
         ld_default="c99wrap link"
         nm_default="dumpbin -symbols"
+        ar_default="lib"
+        target_os_default="win32"
     ;;
     ?*)
         die "Unknown toolchain $toolchain"
     ;;
 esac
 
-set_default cc nm pkg_config sysinclude cxx qmake
+set_default arch cc pkg_config sysinclude target_os cxx qmake
 enabled cross_compile || host_cc_default=$cc
 set_default host_cc
 
@@ -2143,7 +2138,7 @@ fi
 
 exesuf() {
     case $1 in
-        mingw32*|cygwin*|*-dos|freedos|opendos|os/2*|symbian) echo .exe ;;
+        mingw32*|win32|win64|cygwin*|*-dos|freedos|opendos|os/2*|symbian) echo .exe ;;
     esac
 }
 
@@ -2208,12 +2203,14 @@ msvc_flags(){
             -Wall)                echo -W4 -wd4244 -wd4127 -wd4018 -wd4389 \
                                        -wd4146 -wd4057 -wd4204 -wd4706 -wd4305 \
                                        -wd4152 -wd4324 -we4013 -wd4100 -wd4214 \
-                                       -wd4996 ;;
+                                       -wd4996 -wd4273 ;;
             -std=c99)             ;;
             -fno-math-errno)      ;;
             -fno-common)          ;;
             -fno-signed-zeros)    ;;
             -lz)                  echo zlib.lib ;;
+            -lavifil32)           echo vfw32.lib ;;
+            -lavicap32)           echo vfw32.lib user32.lib ;;
             -l*)                  echo ${flag#-l}.lib ;;
             *)                    echo $flag ;;
         esac
@@ -2223,6 +2220,7 @@ msvc_flags(){
 pgi_flags(){
     for flag; do
         case $flag in
+            -flto)                echo -Mipa=fast,libopt,libinline,vestigial ;;
             -fomit-frame-pointer) echo -Mnoframe ;;
             -g)                   echo -gopt ;;
             *)                    echo $flag ;;
@@ -2281,6 +2279,7 @@ tms470_flags(){
             -mfpu=neon)     echo --float_support=vfpv3 --neon ;;
             -mfpu=vfp)      echo --float_support=vfpv2        ;;
             -mfpu=vfpv3)    echo --float_support=vfpv3        ;;
+            -mfpu=vfpv3-d16) echo --float_support=vfpv3d16    ;;
             -msoft-float)   echo --float_support=vfplib       ;;
             -O[0-3]|-mf=*)  echo $flag                        ;;
             -g)             echo -g -mn                       ;;
@@ -2356,15 +2355,12 @@ probe_cc(){
         _depflags='-MMD'
         _cflags_speed='-O3'
         _cflags_size='-Os'
-    elif $_cc -version 2>/dev/null | grep -q TMS470; then
+    elif $_cc -version 2>/dev/null | grep -Eq 'TMS470|TI ARM'; then
         _type=tms470
         _ident=$($_cc -version | head -n1 | tr -s ' ')
         _flags='--gcc --abi=eabi -me'
-        _cflags='-D__gnuc_va_list=va_list -D__USER_LABEL_PREFIX__='
         _cc_e='-ppl -fe=$@'
         _cc_o='-fe=$@'
-        as_default="${cross_prefix}gcc"
-        ld_default="${cross_prefix}gcc"
         _depflags='-ppa -ppd=$(@:.o=.d)'
         _cflags_speed='-O3 -mf=5'
         _cflags_size='-O3 -mf=2'
@@ -2401,7 +2397,7 @@ probe_cc(){
     elif $_cc -V 2>&1 | grep -q Portland; then
         _type=pgi
         _ident="PGI $($_cc -V 2>&1 | awk '/^pgcc/ { print $2; exit }')"
-        opt_common='-alias=ansi -Mlre -Mpre'
+        opt_common='-alias=ansi -Mdse -Mlre -Mpre'
         _cflags_speed="-O3 -Mautoinline -Munroll=c:4 $opt_common"
         _cflags_size="-O2 -Munroll=c:1 $opt_common"
         _cflags_noopt="-O1"
@@ -2497,6 +2493,17 @@ if [ -z "$CC_DEPFLAGS" ] && [ "$dep_cc" != "$cc" ]; then
     DEPCCFLAGS=$_flags
 fi
 
+if $ar 2>&1 | grep -q Microsoft; then
+    arflags="-nologo"
+    ar_o='-out:$@'
+elif $ar 2>&1 | grep -q 'Texas Instruments'; then
+    arflags="rq"
+    ar_o='$@'
+else
+    arflags="rc"
+    ar_o='$@'
+fi
+
 add_cflags $extra_cflags
 add_asflags $extra_cflags
 
@@ -2568,6 +2575,9 @@ case "$arch" in
     sun4u|sparc64)
         arch="sparc"
         subarch="sparc64"
+    ;;
+    tilegx|tile-gx)
+        arch="tilegx"
     ;;
     i[3-6]86|i86pc|BePC|x86pc|x86_64|amd64)
         arch="x86"
@@ -2857,8 +2867,31 @@ case $target_os in
         dlltool="${cross_prefix}dlltool"
         ranlib=:
         enable dos_paths
-        check_cflags -fno-common
         add_cppflags -U__STRICT_ANSI__
+        ;;
+    win32|win64)
+        if enabled shared; then
+            # Link to the import library instead of the normal static library
+            # for shared libs.
+            LD_LIB='%.lib'
+            # Cannot build shared and static libraries at the same time with
+            # MSVC.
+            disable static
+        fi
+        shlibdir_default="$bindir_default"
+        SLIBPREF=""
+        SLIBSUF=".dll"
+        SLIBNAME_WITH_VERSION='$(SLIBPREF)$(FULLNAME)-$(LIBVERSION)$(SLIBSUF)'
+        SLIBNAME_WITH_MAJOR='$(SLIBPREF)$(FULLNAME)-$(LIBMAJOR)$(SLIBSUF)'
+        SLIB_CREATE_DEF_CMD='makedef $(SUBDIR)lib$(NAME).ver $(OBJS) > $$(@:$(SLIBSUF)=.def)'
+        SLIB_INSTALL_NAME='$(SLIBNAME_WITH_MAJOR)'
+        SLIB_INSTALL_LINKS=
+        SLIB_INSTALL_EXTRA_SHLIB='$(SLIBNAME:$(SLIBSUF)=.lib)'
+        SLIB_INSTALL_EXTRA_LIB='$(SLIBNAME_WITH_MAJOR:$(SLIBSUF)=.def)'
+        SHFLAGS='-dll -def:$$(@:$(SLIBSUF)=.def) -implib:$(SUBDIR)$(SLIBNAME:$(SLIBSUF)=.lib)'
+        objformat="win32"
+        ranlib=:
+        enable dos_paths
         ;;
     cygwin*)
         target_os=cygwin
@@ -2873,7 +2906,6 @@ case $target_os in
         SHFLAGS='-shared -Wl,--out-implib,$(SUBDIR)lib$(FULLNAME).dll.a'
         objformat="win32"
         enable dos_paths
-        check_cflags -fno-common
         add_cppflags -U__STRICT_ANSI__
         ;;
     *-dos|freedos|opendos)
@@ -2935,6 +2967,25 @@ case $target_os in
                       -l:drtaeabi.dso -l:scppnwdl.dso -lsupc++ -lgcc \
                       -l:libc.dso -l:libm.dso -l:euser.dso -l:libcrt0.lib
         ;;
+    osf1)
+        add_cppflags -D_OSF_SOURCE -D_POSIX_PII -D_REENTRANT
+        AVSERVERLDFLAGS=
+        ;;
+    minix)
+        ;;
+    plan9)
+        add_cppflags -D_C99_SNPRINTF_EXTENSION  \
+                     -D_REENTRANT_SOURCE        \
+                     -D_RESEARCH_SOURCE         \
+                     -DFD_SETSIZE=96            \
+                     -DHAVE_SOCK_OPTS
+        add_compat strtod.o strtod=avpriv_strtod
+        network_extralibs='-lbsd'
+        exeobjs=compat/plan9/main.o
+        disable avserver
+        ln_s='ln -s -f'
+        cp_f='cp'
+        ;;
     none)
         ;;
     *)
@@ -2958,15 +3009,25 @@ elif check_cpp_condition newlib.h "defined _NEWLIB_VERSION"; then
     libc_type=newlib
 elif check_func_headers stdlib.h _get_doserrno; then
     libc_type=msvcrt
-    add_cflags -Dstrtod=avpriv_strtod
-    add_cflags -Dsnprintf=avpriv_snprintf   \
-               -D_snprintf=avpriv_snprintf  \
-               -Dvsnprintf=avpriv_vsnprintf
+    add_compat strtod.o strtod=avpriv_strtod
+    add_compat msvcrt/snprintf.o snprintf=avpriv_snprintf   \
+                                 _snprintf=avpriv_snprintf  \
+                                 vsnprintf=avpriv_vsnprintf
 elif check_cpp_condition stddef.h "defined __KLIBC__"; then
     libc_type=klibc
 fi
 
 test -n "$libc_type" && enable $libc_type
+
+# hacks for compiler/libc/os combinations
+
+if enabled_all tms470 glibc; then
+    CPPFLAGS="-I${source_path}/compat/tms470 ${CPPFLAGS}"
+    add_cppflags -D__USER_LABEL_PREFIX__=
+    add_cppflags -D__builtin_memset=memset
+    add_cppflags -D__gnuc_va_list=va_list -D_VA_LIST_DEFINED
+    add_cflags   -pds=48    # incompatible redefinition of macro
+fi
 
 esc(){
     echo "$*" | sed 's/%/%25/g;s/:/%3a/g'
@@ -3091,7 +3152,6 @@ EOF
 elif enabled mips; then
 
     check_inline_asm loongson '"dmult.g $1, $2, $3"'
-    enabled mmi && check_inline_asm mmi '"lq $2, 0($2)"'
 
 elif enabled ppc; then
 
@@ -3131,10 +3191,7 @@ elif enabled sparc; then
 
 elif enabled x86; then
 
-    check_code ld immintrin.h "return __xgetbv(0)" && enable xgetbv
-    check_code ld intrin.h "int info[4]; __cpuid(info, 0)" && enable cpuid
     check_code ld intrin.h "__rdtsc()" && enable rdtsc
-    check_code ld intrin.h "unsigned int x = __readeflags()" && enable rweflags
 
     check_code ld mmintrin.h "_mm_empty()" && enable mm_empty
 
@@ -3219,6 +3276,7 @@ if enabled network; then
     check_struct "sys/types.h sys/socket.h" "struct sockaddr" sa_len
     check_type netinet/sctp.h "struct sctp_event_subscribe"
     check_func getaddrinfo $network_extralibs
+    check_func getservbyport $network_extralibs
     # Prefer arpa/inet.h over winsock2
     if check_header arpa/inet.h ; then
         check_func closesocket
@@ -3258,6 +3316,7 @@ check_func  localtime_r
 check_func  ${malloc_prefix}memalign            && enable memalign
 check_func  mkstemp
 check_func  mmap
+check_func  mprotect
 check_func  ${malloc_prefix}posix_memalign      && enable posix_memalign
 check_func_headers malloc.h _aligned_malloc     && enable aligned_malloc
 check_func  setrlimit
@@ -3270,6 +3329,7 @@ check_func  sysctl
 check_func  usleep
 check_func_headers io.h setmode
 check_lib2 "windows.h shellapi.h" CommandLineToArgvW -lshell32
+check_lib2 "windows.h wincrypt.h" CryptGenRandom -ladvapi32
 check_lib2 "windows.h psapi.h" GetProcessMemoryInfo -lpsapi
 check_func_headers windows.h GetProcessAffinityMask
 check_func_headers windows.h GetProcessTimes
@@ -3334,22 +3394,9 @@ done
 check_lib math.h sin -lm && LIBM="-lm"
 enabled vaapi && require vaapi va/va.h vaInitialize -lva
 
-check_mathfunc cbrtf
-check_mathfunc exp2
-check_mathfunc exp2f
-check_mathfunc isinf
-check_mathfunc isnan
-check_mathfunc llrint
-check_mathfunc llrintf
-check_mathfunc log2
-check_mathfunc log2f
-check_mathfunc lrint
-check_mathfunc lrintf
-check_mathfunc rint
-check_mathfunc round
-check_mathfunc roundf
-check_mathfunc trunc
-check_mathfunc truncf
+for func in $MATH_FUNCS; do
+    check_mathfunc $func
+done
 
 # these are off by default, so fail if requested and not available
 enabled avisynth   && require2 vfw32 "windows.h vfw.h" AVIFileInit -lavifil32
@@ -3365,6 +3412,7 @@ enabled libopencore_amrnb  && require libopencore_amrnb opencore-amrnb/interf_de
 enabled libopencore_amrwb  && require libopencore_amrwb opencore-amrwb/dec_if.h D_IF_init -lopencore-amrwb
 enabled libopencv  && require_pkg_config opencv opencv/cv.h cvCreateImageHeader
 enabled libopenjpeg && require libopenjpeg openjpeg.h opj_version -lopenjpeg
+enabled libopus    && require_pkg_config opus opus_multistream.h opus_multistream_decoder_create
 enabled libpulse && require_pkg_config libpulse-simple pulse/simple.h pa_simple_new
 enabled librtmp    && require_pkg_config librtmp librtmp/rtmp.h RTMP_Socket
 enabled libschroedinger && require_pkg_config schroedinger-1.0 schroedinger/schro.h schro_init
@@ -3445,7 +3493,7 @@ enabled jack_indev && check_lib2 jack/jack.h jack_client_open -ljack &&
 enabled_any sndio_indev sndio_outdev && check_lib2 sndio.h sio_open -lsndio
 
 enabled libcdio &&
-    check_lib2 "cdio/cdda.h cdio/paranoia.h" cdio_cddap_open "-lcdio_paranoia -lcdio_cdda -lcdio" || disable libcdio
+    check_lib2 "cdio/cdda.h cdio/paranoia.h" cdio_cddap_open -lcdio_paranoia -lcdio_cdda -lcdio || disable libcdio
 
 enabled x11grab                                           &&
 require X11 X11/Xlib.h XOpenDisplay -lX11                 &&
@@ -3518,21 +3566,36 @@ void ff_foo(void) {}
 EOF
 fi
 
-if [ -n "$optflags" ]; then
-    add_cflags $optflags
-    add_cxxflags $optflags
-elif enabled small; then
-    add_cflags $cflags_size
-    add_cxxflags $size_cflags
-elif enabled optimizations; then
-    add_cflags $cflags_speed
-    add_cxxflags $speed_cflags
+if [ -z "$optflags" ]; then
+    if enabled small; then
+        optflags=$cflags_size
+        add_cxxflags $size_cflags
+    elif enabled optimizations; then
+        optflags=$cflags_speed
+        add_cxxflags $speed_cflags
+    else
+        optflags=$cflags_noopt
+        add_cxxflags $noopt_cflags
+    fi
 else
-    add_cflags $cflags_noopt
-    add_cxxflags $noopt_cflags
+    add_cxxflags $optflags
 fi
-check_cflags -fno-math-errno
-check_cflags -fno-signed-zeros
+
+check_optflags(){
+    check_cflags "$@"
+    enabled lto && check_ldflags "$@"
+}
+
+
+if enabled lto; then
+    test "$cc_type" != "$ld_type" && die "LTO requires same compiler and linker"
+    check_cflags  -flto
+    check_ldflags -flto $cpuflags
+fi
+
+check_optflags $optflags
+check_optflags -fno-math-errno
+check_optflags -fno-signed-zeros
 
 if enabled icc; then
     # Just warnings, no remarks
@@ -3567,10 +3630,11 @@ elif enabled ccc; then
     add_cflags -msg_disable ptrmismatch1
     add_cflags -msg_disable unreachcode
 elif enabled gcc; then
-    check_cflags -fno-tree-vectorize
+    check_optflags -fno-tree-vectorize
     check_cflags -Werror=implicit-function-declaration
     check_cflags -Werror=missing-prototypes
     check_cflags -Werror=declaration-after-statement
+    check_cflags -Werror=vla
 elif enabled llvm_gcc; then
     check_cflags -mllvm -stack-alignment=16
 elif enabled clang; then
@@ -3592,6 +3656,12 @@ elif enabled msvc; then
     enabled x86_32 && disable aligned_stack
 fi
 
+case $target_os in
+    plan9)
+        add_cppflags -Dmain=plan9_main
+    ;;
+esac
+
 enabled_any $THREADS_LIST      && enable threads
 
 enabled asm || { arch=c; disable $ARCH_LIST $ARCH_EXT_LIST; }
@@ -3600,7 +3670,6 @@ check_deps $CONFIG_LIST       \
            $CONFIG_EXTRA      \
            $HAVE_LIST         \
            $ALL_COMPONENTS    \
-           $ALL_TESTS         \
 
 ! enabled_any memalign posix_memalign aligned_malloc &&
     enabled_any $need_memalign && enable memalign_hack
@@ -3641,9 +3710,6 @@ if enabled arm; then
     echo "ARM VFP enabled           ${armvfp-no}"
     echo "NEON enabled              ${neon-no}"
 fi
-if enabled mips; then
-    echo "MMI enabled               ${mmi-no}"
-fi
 if enabled ppc; then
     echo "AltiVec enabled           ${altivec-no}"
     echo "PPC 4xx optimizations     ${ppc4xx-no}"
@@ -3679,6 +3745,7 @@ echo "libopencore-amrnb support ${libopencore_amrnb-no}"
 echo "libopencore-amrwb support ${libopencore_amrwb-no}"
 echo "libopencv support         ${libopencv-no}"
 echo "libopenjpeg enabled       ${libopenjpeg-no}"
+echo "libopus enabled           ${libopus-no}"
 echo "libpulse enabled          ${libpulse-no}"
 echo "librtmp enabled           ${librtmp-no}"
 echo "libschroedinger enabled   ${libschroedinger-no}"
@@ -3874,6 +3941,8 @@ DEPASFLAGS=$DEPASFLAGS \$(CPPFLAGS)
 YASM=$yasmexe
 DEPYASM=$yasmexe
 AR=$ar
+ARFLAGS=$arflags
+AR_O=$ar_o
 RANLIB=$ranlib
 LN_S=$ln_s
 CPPFLAGS=$CPPFLAGS
@@ -3935,6 +4004,8 @@ CFLAGS-avplay=$sdl_cflags
 ZLIB=$($ldflags_filter -lz)
 LIB_INSTALL_EXTRA_CMD=$LIB_INSTALL_EXTRA_CMD
 #EXTRALIBS=$extralibs
+COMPAT_OBJS=$compat_objs
+EXEOBJS=$exeobjs
 INSTALL=install
 LIBTARGET=${LIBTARGET}
 SLIBNAME=${SLIBNAME}
@@ -3953,7 +4024,7 @@ get_version(){
     lcname=$1
     name=$(toupper $lcname)
     file=$source_path/libs/libtorc-av/$lcname/version.h
-    eval $(grep "#define ${name}_VERSION_M" "$file" | awk '{ print $2"="$3 }')
+    eval $(awk "/#define ${name}_VERSION_M/ { print \$2 \"=\" \$3 }" "$file")
     eval ${name}_VERSION=\$${name}_VERSION_MAJOR.\$${name}_VERSION_MINOR.\$${name}_VERSION_MICRO
     eval echo "${lcname}_VERSION=\$${name}_VERSION" >> config.mak
     eval echo "${lcname}_VERSION_MAJOR=\$${name}_VERSION_MAJOR" >> config.mak
@@ -3994,12 +4065,6 @@ print_config HAVE_   "$config_files" $HAVE_LIST
 print_config CONFIG_ "$config_files" $CONFIG_LIST       \
                                      $CONFIG_EXTRA      \
                                      $ALL_COMPONENTS    \
-
-cat >>config.mak <<EOF
-LAVF_TESTS=$(print_enabled   -n _test $LAVF_TESTS)
-LAVFI_TESTS=$(print_enabled  -n _test $LAVFI_TESTS)
-SEEK_TESTS=$(print_enabled   -n _test $SEEK_TESTS)
-EOF
 
 echo "#endif /* LIBAV_CONFIG_H */" >> $TMPH
 

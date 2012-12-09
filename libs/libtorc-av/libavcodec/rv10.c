@@ -373,7 +373,6 @@ static int rv20_decode_picture_header(RVDecContext *rv)
 
     mb_pos = ff_h263_decode_mba(s);
 
-//av_log(s->avctx, AV_LOG_DEBUG, "%d\n", seq);
     seq |= s->time &~0x7FFF;
     if(seq - s->time >  0x4000) seq -= 0x8000;
     if(seq - s->time < -0x4000) seq += 0x8000;
@@ -392,11 +391,7 @@ static int rv20_decode_picture_header(RVDecContext *rv)
             ff_mpeg4_init_direct_mv(s);
         }
     }
-//    printf("%d %d %d %d %d\n", seq, (int)s->time, (int)s->last_non_b_time, s->pp_time, s->pb_time);
-/*for(i=0; i<32; i++){
-    av_log(s->avctx, AV_LOG_DEBUG, "%d", get_bits1(&s->gb));
-}
-av_log(s->avctx, AV_LOG_DEBUG, "\n");*/
+
     s->no_rounding= get_bits1(&s->gb);
 
     if(RV_GET_MINOR_VER(rv->sub_id) <= 1 && s->pict_type == AV_PICTURE_TYPE_B)
@@ -472,7 +467,7 @@ static av_cold int rv10_decode_init(AVCodecContext *avctx)
         av_log(avctx, AV_LOG_DEBUG, "ver:%X ver0:%X\n", rv->sub_id, avctx->extradata_size >= 4 ? ((uint32_t*)avctx->extradata)[0] : -1);
     }
 
-    avctx->pix_fmt = PIX_FMT_YUV420P;
+    avctx->pix_fmt = AV_PIX_FMT_YUV420P;
 
     if (ff_MPV_common_init(s) < 0)
         return -1;

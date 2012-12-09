@@ -105,19 +105,6 @@ static char* avi_stream2fourcc(char* tag, int index, enum AVMediaType type)
     return tag;
 }
 
-static void avi_write_info_tag(AVIOContext *pb, const char *tag, const char *str)
-{
-    int len = strlen(str);
-    if (len > 0) {
-        len++;
-        ffio_wfourcc(pb, tag);
-        avio_wl32(pb, len);
-        avio_put_str(pb, str);
-        if (len & 1)
-            avio_w8(pb, 0);
-    }
-}
-
 static int avi_write_counters(AVFormatContext* s, int riff_id)
 {
     AVIOContext *pb = s->pb;
@@ -300,7 +287,7 @@ static int avi_write_header(AVFormatContext *s)
         }
         ff_end_tag(pb, strf);
         if ((t = av_dict_get(s->streams[i]->metadata, "title", NULL, 0))) {
-            avi_write_info_tag(s->pb, "strn", t->value);
+            ff_riff_write_info_tag(s->pb, "strn", t->value);
             t = NULL;
         }
       }
@@ -377,14 +364,7 @@ static int avi_write_header(AVFormatContext *s)
 
     ff_end_tag(pb, list1);
 
-    list2 = ff_start_tag(pb, "LIST");
-    ffio_wfourcc(pb, "INFO");
-    ff_metadata_conv(&s->metadata, ff_riff_info_conv, NULL);
-    for (i = 0; *ff_riff_tags[i]; i++) {
-        if ((t = av_dict_get(s->metadata, ff_riff_tags[i], NULL, AV_DICT_MATCH_CASE)))
-            avi_write_info_tag(s->pb, t->key, t->value);
-    }
-    ff_end_tag(pb, list2);
+    ff_riff_write_info(s);
 
     /* some padding for easier tag editing */
     list2 = ff_start_tag(pb, "JUNK");
@@ -520,7 +500,6 @@ static int avi_write_packet(AVFormatContext *s, AVPacket *pkt)
     AVCodecContext *enc= s->streams[stream_index]->codec;
     int size= pkt->size;
 
-//    av_log(s, AV_LOG_DEBUG, "%"PRId64" %d %d\n", pkt->dts, avi->packet_count[stream_index], stream_index);
     while(enc->block_align==0 && pkt->dts != AV_NOPTS_VALUE && pkt->dts > avist->packet_count){
         AVPacket empty_packet;
 
@@ -529,7 +508,6 @@ static int avi_write_packet(AVFormatContext *s, AVPacket *pkt)
         empty_packet.data= NULL;
         empty_packet.stream_index= stream_index;
         avi_write_packet(s, &empty_packet);
-//        av_log(s, AV_LOG_DEBUG, "dup %"PRId64" %d\n", pkt->dts, avi->packet_count[stream_index]);
     }
     avist->packet_count++;
 

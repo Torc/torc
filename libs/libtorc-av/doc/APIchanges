@@ -6,21 +6,53 @@ libavcodec:    2012-01-27
 libavdevice:   2011-04-18
 libavfilter:   2012-06-22
 libavformat:   2012-01-27
-libavresample: 2012-04-24
+libavresample: 2012-10-05
 libswscale:    2011-06-20
-libavutil:     2011-04-18
+libavutil:     2012-10-22
 
 
 API changes, most recent first:
 
-2012-09-12 - xxxxxxx - lavu 51.41.0 - audioconvert.h
+2012-10-18 - xxxxxxx - lavu 51.45.0 - error.h
+  Add AVERROR_EXPERIMENTAL
+
+2012-10-12 - xxxxxxx - lavu 51.44.0 - pixdesc.h
+  Add functions for accessing pixel format descriptors.
+  Accessing the av_pix_fmt_descriptors array directly is now
+  deprecated.
+
+2012-10-xx - xxxxxxx - lavu 51.43.0 - aes.h, md5.h, sha.h, tree.h
+  Add functions for allocating the opaque contexts for the algorithms,
+  deprecate the context size variables.
+
+2012-10-xx - xxxxxxx - lavf 54.18.0 - avio.h
+  Add avio_closep to complement avio_close.
+
+2012-10-xx - xxxxxxx - lavu 51.42.0 - pixfmt.h
+  Rename PixelFormat to AVPixelFormat and all PIX_FMT_* to AV_PIX_FMT_*.
+  To provide backwards compatibility, PixelFormat is now #defined as
+  AVPixelFormat.
+  Note that this can break user code that includes pixfmt.h and uses the
+  'PixelFormat' identifier. Such code should either #undef PixelFormat
+  or stop using the PixelFormat name.
+
+2012-10-05 - e7ba5b1 - lavr 1.0.0 - avresample.h
+  Data planes parameters to avresample_convert() and
+  avresample_read() are now uint8_t** instead of void**.
+  Libavresample is now stable.
+
+2012-09-24 - a42aada - lavc 54.28.0 - avcodec.h
+  Add avcodec_free_frame(). This function must now
+  be used for freeing an AVFrame.
+
+2012-09-12 - 8919fee - lavu 51.41.0 - audioconvert.h
   Added AV_CH_LOW_FREQUENCY_2 channel mask value.
 
-2012-09-04 - xxxxxxx - lavu 51.40.0 - opt.h
+2012-09-04 - 686a329 - lavu 51.40.0 - opt.h
   Reordered the fields in default_val in AVOption, changed which
   default_val field is used for which AVOptionType.
 
-2012-xx-xx - xxxxxxx - lavc 54.26.1 - avcodec.h
+2012-08-30 - a231832 - lavc 54.26.1 - avcodec.h
   Add codec descriptor properties AV_CODEC_PROP_LOSSY and
   AV_CODEC_PROP_LOSSLESS.
 

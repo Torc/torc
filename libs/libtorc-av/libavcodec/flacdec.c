@@ -371,8 +371,8 @@ static inline int decode_subframe(FLACContext *s, int channel)
         bps -= wasted;
     }
     if (bps > 32) {
-        av_log_missing_feature(s->avctx, "decorrelated bit depth > 32", 0);
-        return -1;
+        av_log_missing_feature(s->avctx, "Decorrelated bit depth > 32", 0);
+        return AVERROR_PATCHWELCOME;
     }
 
 //FIXME use av_log2 for types

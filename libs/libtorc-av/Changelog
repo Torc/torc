@@ -2,6 +2,11 @@ Entries are sorted chronologically from oldest to youngest within each release,
 releases are sorted from youngest to oldest.
 
 version <next>:
+- metadata (INFO tag) support in WAV muxer
+- support for building DLLs using MSVC
+
+
+version 9_beta1:
 
 - XWD encoder and decoder
 - Support for fragmentation in the mov/mp4 muxer
@@ -48,6 +53,10 @@ version <next>:
 - Microsoft Screen 2 decoder
 - RTP depacketization of JPEG
 - Smooth Streaming live segmenter muxer
+- RTP packetization of JPEG
+- Opus decoder and encoder using libopus
+- remove -same_quant, it hasn't worked for years
+- support for building with MSVC
 
 
 version 0.8:

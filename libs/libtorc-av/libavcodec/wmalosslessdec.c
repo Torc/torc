@@ -23,6 +23,8 @@
  */
 
 #include "libavutil/attributes.h"
+#include "libavutil/avassert.h"
+
 #include "avcodec.h"
 #include "internal.h"
 #include "get_bits.h"
@@ -38,7 +40,7 @@
 #define MAX_ORDER             256
 
 #define WMALL_BLOCK_MIN_BITS    6                       ///< log2 of min block size
-#define WMALL_BLOCK_MAX_BITS   12                       ///< log2 of max block size
+#define WMALL_BLOCK_MAX_BITS   14                       ///< log2 of max block size
 #define WMALL_BLOCK_MAX_SIZE (1 << WMALL_BLOCK_MAX_BITS)    ///< maximum block size
 #define WMALL_BLOCK_SIZES    (WMALL_BLOCK_MAX_BITS - WMALL_BLOCK_MIN_BITS + 1) ///< possible block sizes
 
@@ -127,8 +129,8 @@ typedef struct WmallDecodeCtx {
     int8_t  mclms_scaling;
     int16_t mclms_coeffs[128];
     int16_t mclms_coeffs_cur[4];
-    int16_t mclms_prevvalues[64];
-    int16_t mclms_updates[64];
+    int16_t mclms_prevvalues[WMALL_MAX_CHANNELS * 2 * 32];
+    int16_t mclms_updates[WMALL_MAX_CHANNELS * 2 * 32];
     int     mclms_recent;
 
     int     movave_scaling;
@@ -158,14 +160,14 @@ typedef struct WmallDecodeCtx {
 
     int ave_sum[2];
 
-    int channel_residues[2][2048];
+    int channel_residues[2][WMALL_BLOCK_MAX_SIZE];
 
     int lpc_coefs[2][40];
     int lpc_order;
     int lpc_scaling;
     int lpc_intbits;
 
-    int channel_coeffs[2][2048];
+    int channel_coeffs[2][WMALL_BLOCK_MAX_SIZE];
 } WmallDecodeCtx;
 
 
@@ -184,10 +186,10 @@ static av_cold int decode_init(AVCodecContext *avctx)
         channel_mask       = AV_RL32(edata_ptr +  2);
         s->bits_per_sample = AV_RL16(edata_ptr);
         if (s->bits_per_sample == 16)
-            avctx->sample_fmt = AV_SAMPLE_FMT_S16;
+            avctx->sample_fmt = AV_SAMPLE_FMT_S16P;
         else if (s->bits_per_sample == 24) {
-            avctx->sample_fmt = AV_SAMPLE_FMT_S32;
-            av_log_missing_feature(avctx, "bit-depth higher than 16", 0);
+            avctx->sample_fmt = AV_SAMPLE_FMT_S32P;
+            av_log_missing_feature(avctx, "Bit-depth higher than 16", 0);
             return AVERROR_PATCHWELCOME;
         } else {
             av_log(avctx, AV_LOG_ERROR, "Unknown bit-depth: %d\n",
@@ -215,6 +217,7 @@ static av_cold int decode_init(AVCodecContext *avctx)
     /* get frame len */
     s->samples_per_frame = 1 << ff_wma_get_frame_len_bits(avctx->sample_rate,
                                                           3, s->decode_flags);
+    av_assert0(s->samples_per_frame <= WMALL_BLOCK_MAX_SIZE);
 
     /* init previous block len */
     for (i = 0; i < avctx->channels; i++)
@@ -403,7 +406,8 @@ static void decode_ac_filter(WmallDecodeCtx *s)
     s->acfilter_scaling = get_bits(&s->gb, 4);
 
     for (i = 0; i < s->acfilter_order; i++)
-        s->acfilter_coeffs[i] = get_bits(&s->gb, s->acfilter_scaling) + 1;
+        s->acfilter_coeffs[i] = (s->acfilter_scaling ?
+                                 get_bits(&s->gb, s->acfilter_scaling) : 0) + 1;
 }
 
 static void decode_mclms(WmallDecodeCtx *s)
@@ -516,7 +520,7 @@ static int decode_channel_residues(WmallDecodeCtx *s, int ch, int tile_size)
             residue = quo;
         else {
             rem_bits = av_ceil_log2(ave_mean);
-            rem      = rem_bits ? get_bits(&s->gb, rem_bits) : 0;
+            rem      = rem_bits ? get_bits_long(&s->gb, rem_bits) : 0;
             residue  = (quo << rem_bits) + rem;
         }
 
@@ -881,7 +885,7 @@ static int decode_subframe(WmallDecodeCtx *s)
 
         s->do_arith_coding    = get_bits1(&s->gb);
         if (s->do_arith_coding) {
-            av_log_missing_feature(s->avctx, "arithmetic coding", 1);
+            av_log_missing_feature(s->avctx, "Arithmetic coding", 1);
             return AVERROR_PATCHWELCOME;
         }
         s->do_ac_filter       = get_bits1(&s->gb);
@@ -980,11 +984,9 @@ static int decode_subframe(WmallDecodeCtx *s)
 
         for (j = 0; j < subframe_len; j++) {
             if (s->bits_per_sample == 16) {
-                *s->samples_16[c] = (int16_t) s->channel_residues[c][j] << padding_zeroes;
-                s->samples_16[c] += s->num_channels;
+                *s->samples_16[c]++ = (int16_t) s->channel_residues[c][j] << padding_zeroes;
             } else {
-                *s->samples_32[c] = s->channel_residues[c][j] << padding_zeroes;
-                s->samples_32[c] += s->num_channels;
+                *s->samples_32[c]++ = s->channel_residues[c][j] << padding_zeroes;
             }
         }
     }
@@ -1021,8 +1023,8 @@ static int decode_frame(WmallDecodeCtx *s)
         return ret;
     }
     for (i = 0; i < s->num_channels; i++) {
-        s->samples_16[i] = (int16_t *)s->frame.data[0] + i;
-        s->samples_32[i] = (int32_t *)s->frame.data[0] + i;
+        s->samples_16[i] = (int16_t *)s->frame.extended_data[i];
+        s->samples_32[i] = (int32_t *)s->frame.extended_data[i];
     }
 
     /* get frame length */
@@ -1226,6 +1228,7 @@ static int decode_packet(AVCodecContext *avctx, void *data, int *got_frame_ptr,
              * to decode incomplete frames in the s->len_prefix == 0 case. */
             s->num_saved_bits = 0;
             s->packet_loss    = 0;
+            init_put_bits(&s->pb, s->frame_data, MAX_FRAMESIZE);
         }
 
     } else {
@@ -1278,6 +1281,7 @@ static void flush(AVCodecContext *avctx)
     s->next_packet_start = 0;
     s->cdlms[0][0].order = 0;
     s->frame.nb_samples  = 0;
+    init_put_bits(&s->pb, s->frame_data, MAX_FRAMESIZE);
 }
 
 AVCodec ff_wmalossless_decoder = {
@@ -1290,4 +1294,7 @@ AVCodec ff_wmalossless_decoder = {
     .flush          = flush,
     .capabilities   = CODEC_CAP_SUBFRAMES | CODEC_CAP_DR1 | CODEC_CAP_DELAY,
     .long_name      = NULL_IF_CONFIG_SMALL("Windows Media Audio Lossless"),
+    .sample_fmts    = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_S16P,
+                                                      AV_SAMPLE_FMT_S32P,
+                                                      AV_SAMPLE_FMT_NONE },
 };

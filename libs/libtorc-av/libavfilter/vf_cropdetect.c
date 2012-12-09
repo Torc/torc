@@ -43,13 +43,13 @@ typedef struct {
 
 static int query_formats(AVFilterContext *ctx)
 {
-    static const enum PixelFormat pix_fmts[] = {
-        PIX_FMT_YUV420P, PIX_FMT_YUVJ420P,
-        PIX_FMT_YUV422P, PIX_FMT_YUVJ422P,
-        PIX_FMT_YUV444P, PIX_FMT_YUVJ444P,
-        PIX_FMT_YUV411P, PIX_FMT_GRAY8,
-        PIX_FMT_NV12,    PIX_FMT_NV21,
-        PIX_FMT_NONE
+    static const enum AVPixelFormat pix_fmts[] = {
+        AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUVJ420P,
+        AV_PIX_FMT_YUV422P, AV_PIX_FMT_YUVJ422P,
+        AV_PIX_FMT_YUV444P, AV_PIX_FMT_YUVJ444P,
+        AV_PIX_FMT_YUV411P, AV_PIX_FMT_GRAY8,
+        AV_PIX_FMT_NV12,    AV_PIX_FMT_NV21,
+        AV_PIX_FMT_NONE
     };
 
     ff_set_common_formats(ctx, ff_make_format_list(pix_fmts));
@@ -107,7 +107,7 @@ static int config_input(AVFilterLink *inlink)
     CropDetectContext *cd = ctx->priv;
 
     av_image_fill_max_pixsteps(cd->max_pixsteps, NULL,
-                               &av_pix_fmt_descriptors[inlink->format]);
+                               av_pix_fmt_desc_get(inlink->format));
 
     cd->x1 = inlink->w - 1;
     cd->y1 = inlink->h - 1;
@@ -197,6 +197,26 @@ static int end_frame(AVFilterLink *inlink)
     return ff_end_frame(inlink->dst->outputs[0]);
 }
 
+static const AVFilterPad avfilter_vf_cropdetect_inputs[] = {
+    {
+        .name             = "default",
+        .type             = AVMEDIA_TYPE_VIDEO,
+        .config_props     = config_input,
+        .get_video_buffer = ff_null_get_video_buffer,
+        .start_frame      = ff_null_start_frame,
+        .end_frame        = end_frame,
+    },
+    { NULL }
+};
+
+static const AVFilterPad avfilter_vf_cropdetect_outputs[] = {
+    {
+        .name = "default",
+        .type = AVMEDIA_TYPE_VIDEO
+    },
+    { NULL }
+};
+
 AVFilter avfilter_vf_cropdetect = {
     .name        = "cropdetect",
     .description = NULL_IF_CONFIG_SMALL("Auto-detect crop size."),
@@ -206,15 +226,7 @@ AVFilter avfilter_vf_cropdetect = {
 
     .query_formats = query_formats,
 
-    .inputs    = (const AVFilterPad[]) {{ .name = "default",
-                                          .type             = AVMEDIA_TYPE_VIDEO,
-                                          .config_props     = config_input,
-                                          .get_video_buffer = ff_null_get_video_buffer,
-                                          .start_frame      = ff_null_start_frame,
-                                          .end_frame        = end_frame, },
-                                        { .name = NULL}},
+    .inputs    = avfilter_vf_cropdetect_inputs,
 
-    .outputs   = (const AVFilterPad[]) {{ .name             = "default",
-                                          .type             = AVMEDIA_TYPE_VIDEO },
-                                        { .name = NULL}},
+    .outputs   = avfilter_vf_cropdetect_outputs,
 };

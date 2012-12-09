@@ -285,8 +285,10 @@ static int output_frame(AVFilterLink *outlink, int nb_samples)
         return AVERROR(ENOMEM);
 
     in_buf = ff_get_audio_buffer(outlink, AV_PERM_WRITE, nb_samples);
-    if (!in_buf)
+    if (!in_buf) {
+        avfilter_unref_buffer(out_buf);
         return AVERROR(ENOMEM);
+    }
 
     for (i = 0; i < s->nb_inputs; i++) {
         if (s->input_state[i] == INPUT_ON) {
@@ -547,6 +549,16 @@ static int query_formats(AVFilterContext *ctx)
     return 0;
 }
 
+static const AVFilterPad avfilter_af_amix_outputs[] = {
+    {
+        .name          = "default",
+        .type          = AVMEDIA_TYPE_AUDIO,
+        .config_props  = config_output,
+        .request_frame = request_frame
+    },
+    { NULL }
+};
+
 AVFilter avfilter_af_amix = {
     .name          = "amix",
     .description   = NULL_IF_CONFIG_SMALL("Audio mixing."),
@@ -557,9 +569,5 @@ AVFilter avfilter_af_amix = {
     .query_formats  = query_formats,
 
     .inputs    = NULL,
-    .outputs   = (const AVFilterPad[]) {{ .name          = "default",
-                                          .type          = AVMEDIA_TYPE_AUDIO,
-                                          .config_props  = config_output,
-                                          .request_frame = request_frame },
-                                        { .name = NULL}},
+    .outputs   = avfilter_af_amix_outputs,
 };

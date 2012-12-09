@@ -212,7 +212,7 @@ static void audio_encode_example(const char *filename)
     fclose(f);
 
     av_freep(&samples);
-    av_freep(&frame);
+    avcodec_free_frame(&frame);
     avcodec_close(c);
     av_free(c);
 }
@@ -308,7 +308,7 @@ static void audio_decode_example(const char *outfilename, const char *filename)
 
     avcodec_close(c);
     av_free(c);
-    av_free(decoded_frame);
+    avcodec_free_frame(&decoded_frame);
 }
 
 /*
@@ -345,7 +345,7 @@ static void video_encode_example(const char *filename)
     c->time_base= (AVRational){1,25};
     c->gop_size = 10; /* emit one intra frame every ten frames */
     c->max_b_frames=1;
-    c->pix_fmt = PIX_FMT_YUV420P;
+    c->pix_fmt = AV_PIX_FMT_YUV420P;
 
     /* open it */
     if (avcodec_open2(c, codec, NULL) < 0) {
@@ -432,7 +432,7 @@ static void video_encode_example(const char *filename)
     avcodec_close(c);
     av_free(c);
     av_freep(&picture->data[0]);
-    av_free(picture);
+    avcodec_free_frame(&picture);
     printf("\n");
 }
 
@@ -568,7 +568,7 @@ static void video_decode_example(const char *outfilename, const char *filename)
 
     avcodec_close(c);
     av_free(c);
-    av_free(picture);
+    avcodec_free_frame(&picture);
     printf("\n");
 }
 

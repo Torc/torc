@@ -521,13 +521,13 @@ static char *sdp_write_media_attributes(char *buff, int size, AVCodecContext *c,
                 return NULL;
 
             switch (c->pix_fmt) {
-            case PIX_FMT_YUV420P:
+            case AV_PIX_FMT_YUV420P:
                 pix_fmt = "YCbCr-4:2:0";
                 break;
-            case PIX_FMT_YUV422P:
+            case AV_PIX_FMT_YUV422P:
                 pix_fmt = "YCbCr-4:2:2";
                 break;
-            case PIX_FMT_YUV444P:
+            case AV_PIX_FMT_YUV444P:
                 pix_fmt = "YCbCr-4:4:4";
                 break;
             default:
@@ -546,6 +546,11 @@ static char *sdp_write_media_attributes(char *buff, int size, AVCodecContext *c,
         case AV_CODEC_ID_VP8:
             av_strlcatf(buff, size, "a=rtpmap:%d VP8/90000\r\n",
                                      payload_type);
+            break;
+        case AV_CODEC_ID_MJPEG:
+            if (payload_type >= RTP_PT_PRIVATE)
+                av_strlcatf(buff, size, "a=rtpmap:%d JPEG/90000\r\n",
+                                         payload_type);
             break;
         case AV_CODEC_ID_ADPCM_G722:
             if (payload_type >= RTP_PT_PRIVATE)
@@ -566,6 +571,14 @@ static char *sdp_write_media_attributes(char *buff, int size, AVCodecContext *c,
                                     "a=fmtp:%d mode=%d\r\n",
                                      payload_type, c->sample_rate,
                                      payload_type, c->block_align == 38 ? 20 : 30);
+            break;
+        case AV_CODEC_ID_SPEEX:
+            av_strlcatf(buff, size, "a=rtpmap:%d speex/%d\r\n",
+                                     payload_type, c->sample_rate);
+            break;
+        case AV_CODEC_ID_OPUS:
+            av_strlcatf(buff, size, "a=rtpmap:%d opus/48000\r\n",
+                                     payload_type);
             break;
         default:
             /* Nothing special to do here... */

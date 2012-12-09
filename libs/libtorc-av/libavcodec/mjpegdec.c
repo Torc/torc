@@ -244,8 +244,8 @@ int ff_mjpeg_decode_sof(MJpegDecodeContext *s)
         return -1;
     if (s->ls && !(s->bits <= 8 || nb_components == 1)) {
         av_log_missing_feature(s->avctx,
-                               "only <= 8 bits/component or "
-                               "16-bit gray accepted for JPEG-LS\n", 0);
+                               "For JPEG-LS anything except <= 8 bits/component"
+                               " or 16-bit gray", 0);
         return AVERROR_PATCHWELCOME;
     }
     s->nb_components = nb_components;
@@ -270,8 +270,7 @@ int ff_mjpeg_decode_sof(MJpegDecodeContext *s)
     }
 
     if (s->ls && (s->h_max > 1 || s->v_max > 1)) {
-        av_log_missing_feature(s->avctx,
-                               "Subsampling in JPEG-LS is not supported.\n", 0);
+        av_log_missing_feature(s->avctx, "Subsampling in JPEG-LS", 0);
         return AVERROR_PATCHWELCOME;
     }
 
@@ -321,22 +320,22 @@ int ff_mjpeg_decode_sof(MJpegDecodeContext *s)
     switch (pix_fmt_id) {
     case 0x11111100:
         if (s->rgb)
-            s->avctx->pix_fmt = PIX_FMT_BGRA;
+            s->avctx->pix_fmt = AV_PIX_FMT_BGRA;
         else
-            s->avctx->pix_fmt = s->cs_itu601 ? PIX_FMT_YUV444P : PIX_FMT_YUVJ444P;
+            s->avctx->pix_fmt = s->cs_itu601 ? AV_PIX_FMT_YUV444P : AV_PIX_FMT_YUVJ444P;
         assert(s->nb_components == 3);
         break;
     case 0x11000000:
-        s->avctx->pix_fmt = PIX_FMT_GRAY8;
+        s->avctx->pix_fmt = AV_PIX_FMT_GRAY8;
         break;
     case 0x12111100:
-        s->avctx->pix_fmt = s->cs_itu601 ? PIX_FMT_YUV440P : PIX_FMT_YUVJ440P;
+        s->avctx->pix_fmt = s->cs_itu601 ? AV_PIX_FMT_YUV440P : AV_PIX_FMT_YUVJ440P;
         break;
     case 0x21111100:
-        s->avctx->pix_fmt = s->cs_itu601 ? PIX_FMT_YUV422P : PIX_FMT_YUVJ422P;
+        s->avctx->pix_fmt = s->cs_itu601 ? AV_PIX_FMT_YUV422P : AV_PIX_FMT_YUVJ422P;
         break;
     case 0x22111100:
-        s->avctx->pix_fmt = s->cs_itu601 ? PIX_FMT_YUV420P : PIX_FMT_YUVJ420P;
+        s->avctx->pix_fmt = s->cs_itu601 ? AV_PIX_FMT_YUV420P : AV_PIX_FMT_YUVJ420P;
         break;
     default:
         av_log(s->avctx, AV_LOG_ERROR, "Unhandled pixel format 0x%x\n", pix_fmt_id);
@@ -344,11 +343,11 @@ int ff_mjpeg_decode_sof(MJpegDecodeContext *s)
     }
     if (s->ls) {
         if (s->nb_components > 1)
-            s->avctx->pix_fmt = PIX_FMT_RGB24;
+            s->avctx->pix_fmt = AV_PIX_FMT_RGB24;
         else if (s->bits <= 8)
-            s->avctx->pix_fmt = PIX_FMT_GRAY8;
+            s->avctx->pix_fmt = AV_PIX_FMT_GRAY8;
         else
-            s->avctx->pix_fmt = PIX_FMT_GRAY16;
+            s->avctx->pix_fmt = AV_PIX_FMT_GRAY16;
     }
 
     if (s->picture_ptr->data[0])
@@ -365,9 +364,9 @@ int ff_mjpeg_decode_sof(MJpegDecodeContext *s)
     for (i = 0; i < 3; i++)
         s->linesize[i] = s->picture_ptr->linesize[i] << s->interlaced;
 
-//    printf("%d %d %d %d %d %d\n",
-//           s->width, s->height, s->linesize[0], s->linesize[1],
-//           s->interlaced, s->avctx->height);
+    av_dlog(s->avctx, "%d %d %d %d %d %d\n",
+            s->width, s->height, s->linesize[0], s->linesize[1],
+            s->interlaced, s->avctx->height);
 
     if (len != (8 + (3 * nb_components)))
         av_log(s->avctx, AV_LOG_DEBUG, "decode_sof0: error, len(%d) mismatch\n", len);
@@ -892,11 +891,10 @@ static int mjpeg_decode_scan(MJpegDecodeContext *s, int nb_components, int Ah,
                             return AVERROR_INVALIDDATA;
                         }
                     }
-                    // av_log(s->avctx, AV_LOG_DEBUG, "mb: %d %d processed\n",
-                    //        mb_y, mb_x);
-                    // av_log(NULL, AV_LOG_DEBUG, "%d %d %d %d %d %d %d %d \n",
-                    //        mb_x, mb_y, x, y, c, s->bottom_field,
-                    //        (v * mb_y + y) * 8, (h * mb_x + x) * 8);
+                    av_dlog(s->avctx, "mb: %d %d processed\n", mb_y, mb_x);
+                    av_dlog(s->avctx, "%d %d %d %d %d %d %d %d \n",
+                            mb_x, mb_y, x, y, c, s->bottom_field,
+                            (v * mb_y + y) * 8, (h * mb_x + x) * 8);
                     if (++x == h) {
                         x = 0;
                         y++;
@@ -1178,8 +1176,6 @@ static int mjpeg_decode_app(MJpegDecodeContext *s)
             4bytes      field_size_less_padding
         */
         s->buggy_avid = 1;
-//      if (s->first_picture)
-//          printf("mjpeg: workarounding buggy AVID\n");
         i = get_bits(&s->gb, 8);
         if (i == 2)
             s->bottom_field = 1;
@@ -1191,8 +1187,6 @@ static int mjpeg_decode_app(MJpegDecodeContext *s)
         skip_bits(&s->gb, 32);
         len -= 10;
 #endif
-//        if (s->interlace_polarity)
-//            printf("mjpeg: interlace polarity: %d\n", s->interlace_polarity);
         goto out;
     }
 
@@ -1314,8 +1308,6 @@ static int mjpeg_decode_com(MJpegDecodeContext *s)
             /* buggy avid, it puts EOI only at every 10th frame */
             if (!strcmp(cbuf, "AVID")) {
                 s->buggy_avid = 1;
-                // if (s->first_picture)
-                // printf("mjpeg: workarounding buggy AVID\n");
             } else if (!strcmp(cbuf, "CS=ITU601"))
                 s->cs_itu601 = 1;
             else if ((len > 20 && !strncmp(cbuf, "Intel(R) JPEG Library", 21)) ||
@@ -1605,9 +1597,6 @@ eoi_parser:
                 av_log(avctx, AV_LOG_ERROR,
                        "mjpeg: unsupported coding type (%x)\n", start_code);
                 break;
-//              default:
-//              printf("mjpeg: unsupported marker (%x)\n", start_code);
-//              break;
             }
 
 not_the_end:

@@ -8,6 +8,10 @@ fate-aes: libavutil/aes-test$(EXESUF)
 fate-aes: CMD = run libavutil/aes-test
 fate-aes: REF = /dev/null
 
+FATE_LIBAVUTIL += fate-avstring
+fate-avstring: libavutil/avstring-test$(EXESUF)
+fate-avstring: CMD = run libavutil/avstring-test
+
 FATE_LIBAVUTIL += fate-base64
 fate-base64: libavutil/base64-test$(EXESUF)
 fate-base64: CMD = run libavutil/base64-test
@@ -36,6 +40,10 @@ fate-fifo: CMD = run libavutil/fifo-test
 FATE_LIBAVUTIL += fate-md5
 fate-md5: libavutil/md5-test$(EXESUF)
 fate-md5: CMD = run libavutil/md5-test
+
+FATE_LIBAVUTIL += fate-parseutils
+fate-parseutils: libavutil/parseutils-test$(EXESUF)
+fate-parseutils: CMD = run libavutil/parseutils-test
 
 FATE_LIBAVUTIL += fate-sha
 fate-sha: libavutil/sha-test$(EXESUF)

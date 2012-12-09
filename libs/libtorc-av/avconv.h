@@ -51,21 +51,19 @@
 
 /* select an input stream for an output stream */
 typedef struct StreamMap {
-    int disabled;           /** 1 is this mapping is disabled by a negative map */
+    int disabled;           /* 1 is this mapping is disabled by a negative map */
     int file_index;
     int stream_index;
     int sync_file_index;
     int sync_stream_index;
-    char *linklabel;       /** name of an output link, for mapping lavfi outputs */
+    char *linklabel;       /* name of an output link, for mapping lavfi outputs */
 } StreamMap;
 
-/**
- * select an input file for an output file
- */
+/* select an input file for an output file */
 typedef struct MetadataMap {
-    int  file;      ///< file index
-    char type;      ///< type of metadata to copy -- (g)lobal, (s)tream, (c)hapter or (p)rogram
-    int  index;     ///< stream/chapter/program number
+    int  file;      // file index
+    char type;      // type of metadata to copy -- (g)lobal, (s)tream, (c)hapter or (p)rogram
+    int  index;     // stream/chapter/program number
 } MetadataMap;
 
 typedef struct OptionsContext {
@@ -278,7 +276,6 @@ typedef struct OutputStream {
     int top_field_first;
 
     float frame_aspect_ratio;
-    float last_quality;
 
     /* forced key frames */
     int64_t *forced_kf_pts;
@@ -299,7 +296,7 @@ typedef struct OutputStream {
     const char *attachment_filename;
     int copy_initial_nonkeyframes;
 
-    enum PixelFormat pix_fmts[2];
+    enum AVPixelFormat pix_fmts[2];
 } OutputStream;
 
 typedef struct OutputFile {
@@ -343,7 +340,6 @@ extern int copy_tb;
 extern int exit_on_error;
 extern int print_stats;
 extern int qp_hist;
-extern int same_quant;
 
 extern const AVIOInterruptCB int_cb;
 

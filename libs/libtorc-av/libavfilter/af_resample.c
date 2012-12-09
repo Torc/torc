@@ -93,7 +93,11 @@ static int config_output(AVFilterLink *outlink)
 
     if (inlink->channel_layout == outlink->channel_layout &&
         inlink->sample_rate    == outlink->sample_rate    &&
-        inlink->format         == outlink->format)
+        (inlink->format        == outlink->format ||
+        (av_get_channel_layout_nb_channels(inlink->channel_layout)  == 1 &&
+         av_get_channel_layout_nb_channels(outlink->channel_layout) == 1 &&
+         av_get_planar_sample_fmt(inlink->format) ==
+         av_get_planar_sample_fmt(outlink->format))))
         return 0;
 
     if (!(s->avr = avresample_alloc_context()))
@@ -149,7 +153,7 @@ static int request_frame(AVFilterLink *outlink)
         if (!buf)
             return AVERROR(ENOMEM);
 
-        ret = avresample_convert(s->avr, (void**)buf->extended_data,
+        ret = avresample_convert(s->avr, buf->extended_data,
                                  buf->linesize[0], nb_samples,
                                  NULL, 0, 0);
         if (ret <= 0) {
@@ -186,13 +190,14 @@ static int filter_samples(AVFilterLink *inlink, AVFilterBufferRef *buf)
             goto fail;
         }
 
-        ret     = avresample_convert(s->avr, (void**)buf_out->extended_data,
+        ret     = avresample_convert(s->avr, buf_out->extended_data,
                                      buf_out->linesize[0], nb_samples,
-                                     (void**)buf->extended_data, buf->linesize[0],
+                                     buf->extended_data, buf->linesize[0],
                                      buf->audio->nb_samples);
-        if (ret < 0) {
+        if (ret <= 0) {
             avfilter_unref_buffer(buf_out);
-            goto fail;
+            if (ret < 0)
+                goto fail;
         }
 
         av_assert0(!avresample_available(s->avr));
@@ -226,12 +231,33 @@ static int filter_samples(AVFilterLink *inlink, AVFilterBufferRef *buf)
 fail:
         avfilter_unref_buffer(buf);
     } else {
+        buf->format = outlink->format;
         ret = ff_filter_samples(outlink, buf);
         s->got_output = 1;
     }
 
     return ret;
 }
+
+static const AVFilterPad avfilter_af_resample_inputs[] = {
+    {
+        .name           = "default",
+        .type           = AVMEDIA_TYPE_AUDIO,
+        .filter_samples = filter_samples,
+        .min_perms      = AV_PERM_READ
+    },
+    { NULL }
+};
+
+static const AVFilterPad avfilter_af_resample_outputs[] = {
+    {
+        .name          = "default",
+        .type          = AVMEDIA_TYPE_AUDIO,
+        .config_props  = config_output,
+        .request_frame = request_frame
+    },
+    { NULL }
+};
 
 AVFilter avfilter_af_resample = {
     .name          = "resample",
@@ -241,14 +267,6 @@ AVFilter avfilter_af_resample = {
     .uninit         = uninit,
     .query_formats  = query_formats,
 
-    .inputs    = (const AVFilterPad[]) {{ .name            = "default",
-                                          .type            = AVMEDIA_TYPE_AUDIO,
-                                          .filter_samples  = filter_samples,
-                                          .min_perms       = AV_PERM_READ },
-                                        { .name = NULL}},
-    .outputs   = (const AVFilterPad[]) {{ .name          = "default",
-                                          .type          = AVMEDIA_TYPE_AUDIO,
-                                          .config_props  = config_output,
-                                          .request_frame = request_frame },
-                                        { .name = NULL}},
+    .inputs    = avfilter_af_resample_inputs,
+    .outputs   = avfilter_af_resample_outputs,
 };

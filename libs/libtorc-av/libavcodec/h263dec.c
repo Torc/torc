@@ -59,7 +59,7 @@ av_cold int ff_h263_decode_init(AVCodecContext *avctx)
     s->decode_mb= ff_h263_decode_mb;
     s->low_delay= 1;
     if (avctx->codec->id == AV_CODEC_ID_MSS2)
-        avctx->pix_fmt = PIX_FMT_YUV420P;
+        avctx->pix_fmt = AV_PIX_FMT_YUV420P;
     else
         avctx->pix_fmt = avctx->get_format(avctx, avctx->codec->pix_fmts);
     s->unrestricted_mv= 1;
@@ -215,7 +215,8 @@ static int decode_slice(MpegEncContext *s){
             s->mv_dir = MV_DIR_FORWARD;
             s->mv_type = MV_TYPE_16X16;
 //            s->mb_skipped = 0;
-//printf("%d %d %06X\n", ret, get_bits_count(&s->gb), show_bits(&s->gb, 24));
+            av_dlog(s, "%d %d %06X\n",
+                    ret, get_bits_count(&s->gb), show_bits(&s->gb, 24));
             ret= s->decode_mb(s, s->block);
 
             if (s->pict_type!=AV_PICTURE_TYPE_B)
@@ -228,7 +229,6 @@ static int decode_slice(MpegEncContext *s){
                     if(s->loop_filter)
                         ff_h263_loop_filter(s);
 
-//printf("%d %d %d %06X\n", s->mb_x, s->mb_y, s->gb.size*8 - get_bits_count(&s->gb), show_bits(&s->gb, 24));
                     ff_er_add_slice(s, s->resync_mb_x, s->resync_mb_y, s->mb_x, s->mb_y, ER_MB_END&part_mask);
 
                     s->padding_bug_score--;
@@ -434,13 +434,6 @@ retry:
     if (ret < 0){
         av_log(s->avctx, AV_LOG_ERROR, "header damaged\n");
         return -1;
-    } else if ((s->width  != avctx->coded_width  ||
-                s->height != avctx->coded_height ||
-                (s->width  + 15) >> 4 != s->mb_width ||
-                (s->height + 15) >> 4 != s->mb_height) &&
-               (HAVE_THREADS && (s->avctx->active_thread_type & FF_THREAD_FRAME))) {
-        av_log_missing_feature(s->avctx, "Width/height/bit depth/chroma idc changing with threads is", 0);
-        return AVERROR_PATCHWELCOME;   // width / height changed during parallelized decoding
     }
 
     avctx->has_b_frames= !s->low_delay;
@@ -517,7 +510,6 @@ retry:
 
         if(s->divx_version>=0)
             s->workaround_bugs|= FF_BUG_DIRECT_BLOCKSIZE;
-//printf("padding_bug_score: %d\n", s->padding_bug_score);
         if(s->divx_version==501 && s->divx_build==20020416)
             s->padding_bug_score= 256*256*256*64;
 
@@ -577,19 +569,27 @@ retry:
         /* FIXME: By the way H263 decoder is evolving it should have */
         /* an H263EncContext                                         */
 
-    if (   s->width  != avctx->coded_width
-        || s->height != avctx->coded_height) {
-        /* H.263 could change picture size any time */
+    if (!avctx->coded_width || !avctx->coded_height) {
         ParseContext pc= s->parse_context; //FIXME move these demuxng hack to avformat
 
         s->parse_context.buffer=0;
         ff_MPV_common_end(s);
         s->parse_context= pc;
-    }
-    if (!s->context_initialized) {
         avcodec_set_dimensions(avctx, s->width, s->height);
 
         goto retry;
+    }
+
+    if (s->width  != avctx->coded_width  ||
+        s->height != avctx->coded_height ||
+        s->context_reinit) {
+        /* H.263 could change picture size any time */
+        s->context_reinit = 0;
+
+        avcodec_set_dimensions(avctx, s->width, s->height);
+
+        if ((ret = ff_MPV_common_frame_size_change(s)))
+            return ret;
     }
 
     if((s->codec_id==AV_CODEC_ID_H263 || s->codec_id==AV_CODEC_ID_H263P || s->codec_id == AV_CODEC_ID_H263I))

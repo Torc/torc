@@ -5,7 +5,6 @@ include $(SRC_PATH)/common.mak
 LIBVERSION := $(lib$(NAME)_VERSION)
 LIBMAJOR   := $(lib$(NAME)_VERSION_MAJOR)
 INCINSTDIR := $(INCDIR)/lib$(NAME)
-THIS_LIB   := $(SUBDIR)$($(CONFIG_SHARED:yes=S)LIBNAME)
 
 all-$(CONFIG_STATIC): $(SUBDIR)$(LIBNAME)
 all-$(CONFIG_SHARED): $(SUBDIR)$(SLIBNAME)
@@ -25,7 +24,7 @@ $(TESTOBJS): CPPFLAGS += -DTEST
 
 $(SUBDIR)$(LIBNAME): $(OBJS)
 	$(RM) $@
-	$(AR) rc $@ $^ $(EXTRAOBJS)
+	$(AR) $(ARFLAGS) $(AR_O) $^
 	$(RANLIB) $@
 
 install-headers: install-lib$(NAME)-headers
@@ -34,15 +33,18 @@ install-libs-$(CONFIG_STATIC): install-lib$(NAME)-static
 install-libs-$(CONFIG_SHARED): install-lib$(NAME)-shared
 
 define RULES
-$(EXAMPLES) $(TESTPROGS) $(TOOLS): %$(EXESUF): %.o
-	$$(LD) $(LDFLAGS) $$(LD_O) $$^ $(FULLNAME:%=$(LD_LIB)) $(FFEXTRALIBS) $$(ELIBS)
+$(EXAMPLES) $(TOOLS): THISLIB = $(FULLNAME:%=$(LD_LIB))
+$(TESTPROGS):         THISLIB = $(SUBDIR)$(LIBNAME)
+
+$(EXAMPLES) $(TESTPROGS) $(TOOLS): %$(EXESUF): %.o $(EXEOBJS)
+	$$(LD) $(LDFLAGS) $$(LD_O) $$(filter %.o,$$^) $$(THISLIB) $(FFEXTRALIBS) $$(ELIBS)
 
 $(SUBDIR)$(SLIBNAME): $(SUBDIR)$(SLIBNAME_WITH_MAJOR)
 	$(Q)cd ./$(SUBDIR) && $(LN_S) $(SLIBNAME_WITH_MAJOR) $(SLIBNAME)
 
 $(SUBDIR)$(SLIBNAME_WITH_MAJOR): $(OBJS) $(SUBDIR)lib$(NAME).ver $(DEP_LIBS)
 	$(SLIB_CREATE_DEF_CMD)
-	$$(LD) $(SHFLAGS) $(LDFLAGS) $$(LD_O) $$(filter %.o,$$^) $(FFEXTRALIBS) $(EXTRAOBJS)
+	$$(LD) $(SHFLAGS) $(LDFLAGS) $$(LD_O) $$(filter %.o,$$^) $(FFEXTRALIBS)
 	$(SLIB_EXTRA_CMD)
 
 clean::
@@ -85,8 +87,8 @@ endef
 
 $(eval $(RULES))
 
-$(EXAMPLES) $(TESTPROGS) $(TOOLS): $(THIS_LIB) $(DEP_LIBS)
-$(TESTPROGS): $(SUBDIR)$(LIBNAME)
+$(EXAMPLES) $(TOOLS): $(DEP_LIBS) $(SUBDIR)$($(CONFIG_SHARED:yes=S)LIBNAME)
+$(TESTPROGS):         $(DEP_LIBS) $(SUBDIR)$(LIBNAME)
 
 examples: $(EXAMPLES)
 testprogs: $(TESTPROGS)

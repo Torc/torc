@@ -99,14 +99,14 @@ typedef struct PacketQueue {
 #define SUBPICTURE_QUEUE_SIZE 4
 
 typedef struct VideoPicture {
-    double pts;                                  ///< presentation time stamp for this picture
-    double target_clock;                         ///< av_gettime() time at which this should be displayed ideally
-    int64_t pos;                                 ///< byte position in file
+    double pts;             // presentation timestamp for this picture
+    double target_clock;    // av_gettime() time at which this should be displayed ideally
+    int64_t pos;            // byte position in file
     SDL_Overlay *bmp;
     int width, height; /* source height & width */
     int allocated;
     int reallocate;
-    enum PixelFormat pix_fmt;
+    enum AVPixelFormat pix_fmt;
 
 #if CONFIG_AVFILTER
     AVFilterBufferRef *picref;
@@ -164,8 +164,10 @@ typedef struct VideoState {
     enum AVSampleFormat sdl_sample_fmt;
     uint64_t sdl_channel_layout;
     int sdl_channels;
+    int sdl_sample_rate;
     enum AVSampleFormat resample_sample_fmt;
     uint64_t resample_channel_layout;
+    int resample_sample_rate;
     AVAudioResampleContext *avr;
     AVFrame *frame;
 
@@ -191,13 +193,13 @@ typedef struct VideoState {
     double frame_timer;
     double frame_last_pts;
     double frame_last_delay;
-    double video_clock;                          ///< pts of last decoded frame / predicted pts of next decoded frame
+    double video_clock;             // pts of last decoded frame / predicted pts of next decoded frame
     int video_stream;
     AVStream *video_st;
     PacketQueue videoq;
-    double video_current_pts;                    ///< current displayed pts (different from video_clock if frame fifos are used)
-    double video_current_pts_drift;              ///< video_current_pts - time (av_gettime) at which we updated video_current_pts - used to have running video pts
-    int64_t video_current_pos;                   ///< current displayed file pos
+    double video_current_pts;       // current displayed pts (different from video_clock if frame fifos are used)
+    double video_current_pts_drift; // video_current_pts - time (av_gettime) at which we updated video_current_pts - used to have running video pts
+    int64_t video_current_pos;      // current displayed file pos
     VideoPicture pictq[VIDEO_PICTURE_QUEUE_SIZE];
     int pictq_size, pictq_rindex, pictq_windex;
     SDL_mutex *pictq_mutex;
@@ -213,8 +215,8 @@ typedef struct VideoState {
     PtsCorrectionContext pts_ctx;
 
 #if CONFIG_AVFILTER
-    AVFilterContext *in_video_filter;           ///< the first filter in the video chain
-    AVFilterContext *out_video_filter;          ///< the last filter in the video chain
+    AVFilterContext *in_video_filter;   // the first filter in the video chain
+    AVFilterContext *out_video_filter;  // the last filter in the video chain
     int use_dr1;
     FrameBuffer *buffer_pool;
 #endif
@@ -281,11 +283,6 @@ static AVPacket flush_pkt;
 #define FF_QUIT_EVENT    (SDL_USEREVENT + 2)
 
 static SDL_Surface *screen;
-
-void exit_program(int ret)
-{
-    exit(ret);
-}
 
 static int packet_queue_put(PacketQueue *q, AVPacket *pkt);
 
@@ -763,7 +760,7 @@ static void video_audio_display(VideoState *s)
            the last buffer computation */
         if (audio_callback_time) {
             time_diff = av_gettime() - audio_callback_time;
-            delay -= (time_diff * s->audio_st->codec->sample_rate) / 1000000;
+            delay -= (time_diff * s->sdl_sample_rate) / 1000000;
         }
 
         delay += 2 * data_used;
@@ -965,7 +962,7 @@ static double get_audio_clock(VideoState *is)
     hw_buf_size = audio_write_get_buf_size(is);
     bytes_per_sec = 0;
     if (is->audio_st) {
-        bytes_per_sec = is->audio_st->codec->sample_rate * is->sdl_channels *
+        bytes_per_sec = is->sdl_sample_rate * is->sdl_channels *
                         av_get_bytes_per_sample(is->sdl_sample_fmt);
     }
     if (bytes_per_sec)
@@ -1311,17 +1308,15 @@ static void alloc_picture(void *opaque)
     SDL_UnlockMutex(is->pictq_mutex);
 }
 
-/**
- *
- * @param pts the dts of the pkt / pts of the frame and guessed if not known
- */
+/* The 'pts' parameter is the dts of the packet / pts of the frame and
+ * guessed if not known. */
 static int queue_picture(VideoState *is, AVFrame *src_frame, double pts, int64_t pos)
 {
     VideoPicture *vp;
 #if CONFIG_AVFILTER
     AVPicture pict_src;
 #else
-    int dst_pix_fmt = PIX_FMT_YUV420P;
+    int dst_pix_fmt = AV_PIX_FMT_YUV420P;
 #endif
     /* wait until we have space to put a new picture */
     SDL_LockMutex(is->pictq_mutex);
@@ -1432,10 +1427,8 @@ static int queue_picture(VideoState *is, AVFrame *src_frame, double pts, int64_t
     return 0;
 }
 
-/**
- * compute the exact PTS for the picture if it is omitted in the stream
- * @param pts1 the dts of the pkt / pts of the frame
- */
+/* Compute the exact PTS for the picture if it is omitted in the stream.
+ * The 'pts1' parameter is the dts of the packet / pts of the frame. */
 static int output_picture2(VideoState *is, AVFrame *src_frame, double pts1, int64_t pos)
 {
     double frame_delay, pts;
@@ -1704,7 +1697,7 @@ static int video_thread(void *arg)
     avfilter_graph_free(&graph);
 #endif
     av_free_packet(&pkt);
-    av_free(frame);
+    avcodec_free_frame(&frame);
     return 0;
 }
 
@@ -1826,7 +1819,7 @@ static int synchronize_audio(VideoState *is, short *samples,
                 avg_diff = is->audio_diff_cum * (1.0 - is->audio_diff_avg_coef);
 
                 if (fabs(avg_diff) >= is->audio_diff_threshold) {
-                    wanted_size = samples_size + ((int)(diff * is->audio_st->codec->sample_rate) * n);
+                    wanted_size = samples_size + ((int)(diff * is->sdl_sample_rate) * n);
                     nb_samples = samples_size / n;
 
                     min_size = ((nb_samples * (100 - SAMPLE_CORRECTION_PERCENT_MAX)) / 100) * n;
@@ -1914,13 +1907,15 @@ static int audio_decode_frame(VideoState *is, double *pts_ptr)
             }
             data_size = av_samples_get_buffer_size(NULL, dec->channels,
                                                    is->frame->nb_samples,
-                                                   dec->sample_fmt, 1);
+                                                   is->frame->format, 1);
 
-            audio_resample = dec->sample_fmt     != is->sdl_sample_fmt ||
-                             dec->channel_layout != is->sdl_channel_layout;
+            audio_resample = is->frame->format         != is->sdl_sample_fmt     ||
+                             is->frame->channel_layout != is->sdl_channel_layout ||
+                             is->frame->sample_rate    != is->sdl_sample_rate;
 
-            resample_changed = dec->sample_fmt     != is->resample_sample_fmt ||
-                               dec->channel_layout != is->resample_channel_layout;
+            resample_changed = is->frame->format         != is->resample_sample_fmt     ||
+                               is->frame->channel_layout != is->resample_channel_layout ||
+                               is->frame->sample_rate    != is->resample_sample_rate;
 
             if ((!is->avr && audio_resample) || resample_changed) {
                 int ret;
@@ -1934,20 +1929,21 @@ static int audio_decode_frame(VideoState *is, double *pts_ptr)
                     }
                 }
                 if (audio_resample) {
-                    av_opt_set_int(is->avr, "in_channel_layout",  dec->channel_layout,    0);
-                    av_opt_set_int(is->avr, "in_sample_fmt",      dec->sample_fmt,        0);
-                    av_opt_set_int(is->avr, "in_sample_rate",     dec->sample_rate,       0);
-                    av_opt_set_int(is->avr, "out_channel_layout", is->sdl_channel_layout, 0);
-                    av_opt_set_int(is->avr, "out_sample_fmt",     is->sdl_sample_fmt,     0);
-                    av_opt_set_int(is->avr, "out_sample_rate",    dec->sample_rate,       0);
+                    av_opt_set_int(is->avr, "in_channel_layout",  is->frame->channel_layout, 0);
+                    av_opt_set_int(is->avr, "in_sample_fmt",      is->frame->format,         0);
+                    av_opt_set_int(is->avr, "in_sample_rate",     is->frame->sample_rate,    0);
+                    av_opt_set_int(is->avr, "out_channel_layout", is->sdl_channel_layout,    0);
+                    av_opt_set_int(is->avr, "out_sample_fmt",     is->sdl_sample_fmt,        0);
+                    av_opt_set_int(is->avr, "out_sample_rate",    is->sdl_sample_rate,       0);
 
                     if ((ret = avresample_open(is->avr)) < 0) {
                         fprintf(stderr, "error initializing libavresample\n");
                         break;
                     }
                 }
-                is->resample_sample_fmt     = dec->sample_fmt;
-                is->resample_channel_layout = dec->channel_layout;
+                is->resample_sample_fmt     = is->frame->format;
+                is->resample_channel_layout = is->frame->channel_layout;
+                is->resample_sample_rate    = is->frame->sample_rate;
             }
 
             if (audio_resample) {
@@ -1966,9 +1962,9 @@ static int audio_decode_frame(VideoState *is, double *pts_ptr)
                 is->audio_buf1 = tmp_out;
 
                 out_samples = avresample_convert(is->avr,
-                                                 (void **)&is->audio_buf1,
+                                                 &is->audio_buf1,
                                                  out_linesize, nb_samples,
-                                                 (void **)is->frame->data,
+                                                 is->frame->data,
                                                  is->frame->linesize[0],
                                                  is->frame->nb_samples);
                 if (out_samples < 0) {
@@ -1986,7 +1982,7 @@ static int audio_decode_frame(VideoState *is, double *pts_ptr)
             *pts_ptr = pts;
             n = is->sdl_channels * av_get_bytes_per_sample(is->sdl_sample_fmt);
             is->audio_clock += (double)data_size /
-                (double)(n * dec->sample_rate);
+                (double)(n * is->sdl_sample_rate);
 #ifdef DEBUG
             {
                 static double last_clock;
@@ -2101,8 +2097,7 @@ static int stream_component_open(VideoState *is, int stream_index)
 
     /* prepare audio output */
     if (avctx->codec_type == AVMEDIA_TYPE_AUDIO) {
-        wanted_spec.freq = avctx->sample_rate;
-        wanted_spec.format = AUDIO_S16SYS;
+        is->sdl_sample_rate = avctx->sample_rate;
 
         if (!avctx->channel_layout)
             avctx->channel_layout = av_get_default_channel_layout(avctx->channels);
@@ -2116,6 +2111,8 @@ static int stream_component_open(VideoState *is, int stream_index)
             is->sdl_channel_layout = AV_CH_LAYOUT_STEREO;
         is->sdl_channels = av_get_channel_layout_nb_channels(is->sdl_channel_layout);
 
+        wanted_spec.format = AUDIO_S16SYS;
+        wanted_spec.freq = is->sdl_sample_rate;
         wanted_spec.channels = is->sdl_channels;
         wanted_spec.silence = 0;
         wanted_spec.samples = SDL_AUDIO_BUFFER_SIZE;
@@ -2128,7 +2125,8 @@ static int stream_component_open(VideoState *is, int stream_index)
         is->audio_hw_buf_size = spec.size;
         is->sdl_sample_fmt          = AV_SAMPLE_FMT_S16;
         is->resample_sample_fmt     = is->sdl_sample_fmt;
-        is->resample_channel_layout = is->sdl_channel_layout;
+        is->resample_channel_layout = avctx->channel_layout;
+        is->resample_sample_rate    = avctx->sample_rate;
     }
 
     ic->streams[stream_index]->discard = AVDISCARD_DEFAULT;
@@ -2191,7 +2189,7 @@ static void stream_component_close(VideoState *is, int stream_index)
             avresample_free(&is->avr);
         av_freep(&is->audio_buf1);
         is->audio_buf = NULL;
-        av_freep(&is->frame);
+        avcodec_free_frame(&is->frame);
 
         if (is->rdft) {
             av_rdft_end(is->rdft);

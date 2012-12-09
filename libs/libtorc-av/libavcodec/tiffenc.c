@@ -27,6 +27,7 @@
 
 #include "libavutil/log.h"
 #include "libavutil/opt.h"
+#include "libavutil/pixdesc.h"
 
 #include "avcodec.h"
 #include "config.h"
@@ -214,11 +215,12 @@ static int encode_frame(AVCodecContext * avctx, AVPacket *pkt,
     uint32_t *strip_offsets = NULL;
     int bytes_per_row;
     uint32_t res[2] = { 72, 1 };        // image resolution (72/1)
-    static const uint16_t bpp_tab[] = { 8, 8, 8, 8 };
+    uint16_t bpp_tab[] = { 8, 8, 8, 8 };
     int ret;
     int is_yuv = 0;
     uint8_t *yuv_line = NULL;
     int shift_h, shift_v;
+    const AVPixFmtDescriptor* pfd;
 
     s->avctx = avctx;
 
@@ -233,31 +235,40 @@ static int encode_frame(AVCodecContext * avctx, AVPacket *pkt,
     s->subsampling[1] = 1;
 
     switch (avctx->pix_fmt) {
-    case PIX_FMT_RGB24:
-        s->bpp = 24;
-        s->photometric_interpretation = 2;
+    case AV_PIX_FMT_RGB48LE:
+    case AV_PIX_FMT_GRAY16LE:
+    case AV_PIX_FMT_RGB24:
+    case AV_PIX_FMT_GRAY8:
+    case AV_PIX_FMT_PAL8:
+        pfd = av_pix_fmt_desc_get(avctx->pix_fmt);
+        s->bpp = av_get_bits_per_pixel(pfd);
+        if (pfd->flags & PIX_FMT_PAL) {
+            s->photometric_interpretation = 3;
+        } else if (pfd->flags & PIX_FMT_RGB) {
+            s->photometric_interpretation = 2;
+        } else {
+            s->photometric_interpretation = 1;
+        }
+        s->bpp_tab_size = pfd->nb_components;
+        for (i = 0; i < s->bpp_tab_size; i++) {
+            bpp_tab[i] = s->bpp / s->bpp_tab_size;
+        }
         break;
-    case PIX_FMT_GRAY8:
-        s->bpp = 8;
-        s->photometric_interpretation = 1;
-        break;
-    case PIX_FMT_PAL8:
-        s->bpp = 8;
-        s->photometric_interpretation = 3;
-        break;
-    case PIX_FMT_MONOBLACK:
+    case AV_PIX_FMT_MONOBLACK:
         s->bpp = 1;
         s->photometric_interpretation = 1;
+        s->bpp_tab_size = 0;
         break;
-    case PIX_FMT_MONOWHITE:
+    case AV_PIX_FMT_MONOWHITE:
         s->bpp = 1;
         s->photometric_interpretation = 0;
+        s->bpp_tab_size = 0;
         break;
-    case PIX_FMT_YUV420P:
-    case PIX_FMT_YUV422P:
-    case PIX_FMT_YUV444P:
-    case PIX_FMT_YUV410P:
-    case PIX_FMT_YUV411P:
+    case AV_PIX_FMT_YUV420P:
+    case AV_PIX_FMT_YUV422P:
+    case AV_PIX_FMT_YUV444P:
+    case AV_PIX_FMT_YUV410P:
+    case AV_PIX_FMT_YUV411P:
         s->photometric_interpretation = 6;
         avcodec_get_chroma_sub_sample(avctx->pix_fmt,
                 &shift_h, &shift_v);
@@ -272,8 +283,6 @@ static int encode_frame(AVCodecContext * avctx, AVPacket *pkt,
                "This colors format is not supported\n");
         return -1;
     }
-    if (!is_yuv)
-        s->bpp_tab_size = (s->bpp >> 3);
 
     if (s->compr == TIFF_DEFLATE || s->compr == TIFF_ADOBE_DEFLATE || s->compr == TIFF_LZW)
         //best choose for DEFLATE
@@ -307,6 +316,10 @@ static int encode_frame(AVCodecContext * avctx, AVPacket *pkt,
 
     strip_sizes = av_mallocz(sizeof(*strip_sizes) * strips);
     strip_offsets = av_mallocz(sizeof(*strip_offsets) * strips);
+    if (!strip_sizes || !strip_offsets) {
+        ret = AVERROR(ENOMEM);
+        goto fail;
+    }
 
     bytes_per_row = (((s->width - 1)/s->subsampling[0] + 1) * s->bpp
                     * s->subsampling[0] * s->subsampling[1] + 7) >> 3;
@@ -314,6 +327,7 @@ static int encode_frame(AVCodecContext * avctx, AVPacket *pkt,
         yuv_line = av_malloc(bytes_per_row);
         if (yuv_line == NULL){
             av_log(s->avctx, AV_LOG_ERROR, "Not enough memory\n");
+            ret = AVERROR(ENOMEM);
             goto fail;
         }
     }
@@ -326,6 +340,10 @@ static int encode_frame(AVCodecContext * avctx, AVPacket *pkt,
 
         zlen = bytes_per_row * s->rps;
         zbuf = av_malloc(zlen);
+        if (!zbuf) {
+            ret = AVERROR(ENOMEM);
+            goto fail;
+        }
         strip_offsets[0] = ptr - pkt->data;
         zn = 0;
         for (j = 0; j < s->rps; j++) {
@@ -350,8 +368,13 @@ static int encode_frame(AVCodecContext * avctx, AVPacket *pkt,
     } else
 #endif
     {
-        if(s->compr == TIFF_LZW)
+        if (s->compr == TIFF_LZW) {
             s->lzws = av_malloc(ff_lzw_encode_state_size);
+            if (!s->lzws) {
+                ret = AVERROR(ENOMEM);
+                goto fail;
+            }
+        }
         for (i = 0; i < s->height; i++) {
             if (strip_sizes[i / s->rps] == 0) {
                 if(s->compr == TIFF_LZW){
@@ -410,7 +433,7 @@ static int encode_frame(AVCodecContext * avctx, AVPacket *pkt,
     add_entry(s, TIFF_SOFTWARE_NAME,     TIFF_STRING,
               strlen(LIBAVCODEC_IDENT) + 1, LIBAVCODEC_IDENT);
 
-    if (avctx->pix_fmt == PIX_FMT_PAL8) {
+    if (avctx->pix_fmt == AV_PIX_FMT_PAL8) {
         uint16_t pal[256 * 3];
         for (i = 0; i < 256; i++) {
             uint32_t rgb = *(uint32_t *) (p->data[1] + i * 4);
@@ -473,12 +496,13 @@ AVCodec ff_tiff_encoder = {
     .id             = AV_CODEC_ID_TIFF,
     .priv_data_size = sizeof(TiffEncoderContext),
     .encode2        = encode_frame,
-    .pix_fmts       = (const enum PixelFormat[]) {
-        PIX_FMT_RGB24, PIX_FMT_PAL8, PIX_FMT_GRAY8,
-        PIX_FMT_MONOBLACK, PIX_FMT_MONOWHITE,
-        PIX_FMT_YUV420P, PIX_FMT_YUV422P, PIX_FMT_YUV444P,
-        PIX_FMT_YUV410P, PIX_FMT_YUV411P,
-        PIX_FMT_NONE
+    .pix_fmts       = (const enum AVPixelFormat[]) {
+        AV_PIX_FMT_RGB24, AV_PIX_FMT_RGB48LE, AV_PIX_FMT_PAL8,
+        AV_PIX_FMT_GRAY8, AV_PIX_FMT_GRAY16LE,
+        AV_PIX_FMT_MONOBLACK, AV_PIX_FMT_MONOWHITE,
+        AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUV422P, AV_PIX_FMT_YUV444P,
+        AV_PIX_FMT_YUV410P, AV_PIX_FMT_YUV411P,
+        AV_PIX_FMT_NONE
     },
     .long_name      = NULL_IF_CONFIG_SMALL("TIFF image"),
     .priv_class     = &tiffenc_class,

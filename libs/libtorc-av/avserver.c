@@ -39,6 +39,7 @@
 #include "libavutil/avstring.h"
 #include "libavutil/lfg.h"
 #include "libavutil/dict.h"
+#include "libavutil/intreadwrite.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/random_seed.h"
 #include "libavutil/parseutils.h"
@@ -323,9 +324,35 @@ static AVLFG random_state;
 
 static FILE *logfile = NULL;
 
-void exit_program(int ret)
+static int64_t ffm_read_write_index(int fd)
 {
-    exit(ret);
+    uint8_t buf[8];
+
+    lseek(fd, 8, SEEK_SET);
+    if (read(fd, buf, 8) != 8)
+        return AVERROR(EIO);
+    return AV_RB64(buf);
+}
+
+static int ffm_write_write_index(int fd, int64_t pos)
+{
+    uint8_t buf[8];
+    int i;
+
+    for(i=0;i<8;i++)
+        buf[i] = (pos >> (56 - i * 8)) & 0xff;
+    lseek(fd, 8, SEEK_SET);
+    if (write(fd, buf, 8) != 8)
+        return AVERROR(EIO);
+    return 8;
+}
+
+static void ffm_set_write_index(AVFormatContext *s, int64_t pos,
+                                int64_t file_size)
+{
+    FFMContext *ffm = s->priv_data;
+    ffm->write_index = pos;
+    ffm->file_size = file_size;
 }
 
 /* FIXME: make avserver work with IPv6 */
@@ -2663,8 +2690,6 @@ static int http_receive_data(HTTPContext *c)
         /* a packet has been received : write it in the store, except
            if header */
         if (c->data_count > FFM_PACKET_SIZE) {
-
-            //            printf("writing pos=0x%"PRIx64" size=0x%"PRIx64"\n", feed->feed_write_index, feed->feed_size);
             /* XXX: use llseek or url_seek */
             lseek(c->feed_fd, feed->feed_write_index, SEEK_SET);
             if (write(c->feed_fd, c->buffer, FFM_PACKET_SIZE) < 0) {

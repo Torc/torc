@@ -24,6 +24,7 @@
 const CodecTags ff_mkv_codec_tags[]={
     {"A_AAC"            , AV_CODEC_ID_AAC},
     {"A_AC3"            , AV_CODEC_ID_AC3},
+    {"A_ALAC"           , AV_CODEC_ID_ALAC},
     {"A_DTS"            , AV_CODEC_ID_DTS},
     {"A_EAC3"           , AV_CODEC_ID_EAC3},
     {"A_FLAC"           , AV_CODEC_ID_FLAC},
@@ -70,6 +71,7 @@ const CodecTags ff_mkv_codec_tags[]={
     {"V_MPEG4/ISO/SP"   , AV_CODEC_ID_MPEG4},
     {"V_MPEG4/ISO/AVC"  , AV_CODEC_ID_H264},
     {"V_MPEG4/MS/V3"    , AV_CODEC_ID_MSMPEG4V3},
+    {"V_PRORES"         , AV_CODEC_ID_PRORES},
     {"V_REAL/RV10"      , AV_CODEC_ID_RV10},
     {"V_REAL/RV20"      , AV_CODEC_ID_RV20},
     {"V_REAL/RV30"      , AV_CODEC_ID_RV30},

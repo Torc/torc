@@ -29,6 +29,7 @@
 #include "avcodec.h"
 #include "dsputil.h"
 #include "get_bits.h"
+#include "mathops.h"
 
 typedef struct {
     AVCodecContext *avctx;
@@ -44,7 +45,7 @@ static uint8_t vble_read_reverse_unary(GetBitContext *gb)
     uint8_t val = show_bits(gb, 8);
 
     if (val) {
-        val = 7 - av_log2_16bit(av_reverse[val]);
+        val = 7 - av_log2_16bit(ff_reverse[val]);
         skip_bits(gb, val + 1);
         return val;
     } else {
@@ -193,7 +194,7 @@ static av_cold int vble_decode_init(AVCodecContext *avctx)
     ctx->avctx = avctx;
     ff_dsputil_init(&ctx->dsp, avctx);
 
-    avctx->pix_fmt = PIX_FMT_YUV420P;
+    avctx->pix_fmt = AV_PIX_FMT_YUV420P;
     avctx->bits_per_raw_sample = 8;
     avctx->coded_frame = avcodec_alloc_frame();
 

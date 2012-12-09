@@ -40,7 +40,7 @@
 /**
  *  huffman codebook descriptor
  */
-typedef struct {
+typedef struct IVIHuffDesc {
     int32_t     num_rows;
     uint8_t     xbits[16];
 } IVIHuffDesc;
@@ -48,7 +48,7 @@ typedef struct {
 /**
  *  macroblock/block huffman table descriptor
  */
-typedef struct {
+typedef struct IVIHuffTab {
     int32_t     tab_sel;    /// index of one of the predefined tables
                             /// or "7" for custom one
     VLC         *tab;       /// pointer to the table associated with tab_sel
@@ -85,7 +85,7 @@ typedef void (DCTransformPtr) (const int32_t *in, int16_t *out, uint32_t pitch, 
 /**
  *  run-value (RLE) table descriptor
  */
-typedef struct {
+typedef struct RVMapDesc {
     uint8_t     eob_sym; ///< end of block symbol
     uint8_t     esc_sym; ///< escape symbol
     uint8_t     runtab[256];
@@ -98,7 +98,7 @@ extern const RVMapDesc ff_ivi_rvmap_tabs[9];
 /**
  *  information for Indeo macroblock (16x16, 8x8 or 4x4)
  */
-typedef struct {
+typedef struct IVIMbInfo {
     int16_t     xpos;
     int16_t     ypos;
     uint32_t    buf_offs; ///< address in the output buffer for this mb
@@ -113,7 +113,7 @@ typedef struct {
 /**
  *  information for Indeo tile
  */
-typedef struct {
+typedef struct IVITile {
     int         xpos;
     int         ypos;
     int         width;
@@ -130,7 +130,7 @@ typedef struct {
 /**
  *  information for Indeo wavelet band
  */
-typedef struct {
+typedef struct IVIBandDesc {
     int             plane;          ///< plane number this band belongs to
     int             band_num;       ///< band number
     int             width;
@@ -177,7 +177,7 @@ typedef struct {
 /**
  *  color plane (luma or chroma) information
  */
-typedef struct {
+typedef struct IVIPlaneDesc {
     uint16_t    width;
     uint16_t    height;
     uint8_t     num_bands;  ///< number of bands this plane subdivided into
@@ -185,7 +185,7 @@ typedef struct {
 } IVIPlaneDesc;
 
 
-typedef struct {
+typedef struct IVIPicConfig {
     uint16_t    pic_width;
     uint16_t    pic_height;
     uint16_t    chroma_width;
@@ -248,6 +248,8 @@ typedef struct IVI45DecContext {
     int             (*decode_mb_info)  (struct IVI45DecContext *ctx, IVIBandDesc *band, IVITile *tile, AVCodecContext *avctx);
     void            (*switch_buffers)  (struct IVI45DecContext *ctx);
     int             (*is_nonnull_frame)(struct IVI45DecContext *ctx);
+
+    int gop_invalid;
 } IVI45DecContext;
 
 /** compare some properties of two pictures */
@@ -372,18 +374,6 @@ int  ff_ivi_dec_tile_data_size(GetBitContext *gb);
  *  @return     result code: 0 - OK, -1 = error (corrupted blocks data)
  */
 int  ff_ivi_decode_blocks(GetBitContext *gb, IVIBandDesc *band, IVITile *tile);
-
-/**
- *  Handle empty tiles by performing data copying and motion
- *  compensation respectively.
- *
- *  @param[in]  avctx     ptr to the AVCodecContext
- *  @param[in]  band      pointer to the band descriptor
- *  @param[in]  tile      pointer to the tile descriptor
- *  @param[in]  mv_scale  scaling factor for motion vectors
- */
-void ff_ivi_process_empty_tile(AVCodecContext *avctx, IVIBandDesc *band,
-                               IVITile *tile, int32_t mv_scale);
 
 /**
  *  Convert and output the current plane.

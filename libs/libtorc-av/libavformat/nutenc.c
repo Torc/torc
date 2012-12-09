@@ -95,16 +95,12 @@ static int find_header_idx(AVFormatContext *s, AVCodecContext *c, int size, int 
     int i;
     int len= find_expected_header(c, size, frame_type, out);
 
-//av_log(NULL, AV_LOG_ERROR, "expected_h len=%d size=%d codec_id=%d\n", len, size, c->codec_id);
-
     for(i=1; i<nut->header_count; i++){
         if(   len == nut->header_len[i]
            && !memcmp(out, nut->header[i], len)){
-//    av_log(NULL, AV_LOG_ERROR, "found %d\n", i);
             return i;
         }
     }
-//    av_log(NULL, AV_LOG_ERROR, "nothing found\n");
     return 0;
 }
 
@@ -263,13 +259,17 @@ static void put_s(AVIOContext *bc, int64_t val){
 }
 
 #ifdef TRACE
-static inline void ff_put_v_trace(AVIOContext *bc, uint64_t v, char *file, char *func, int line){
+static inline void ff_put_v_trace(AVIOContext *bc, uint64_t v, const char *file,
+                                  const char *func, int line)
+{
     av_log(NULL, AV_LOG_DEBUG, "ff_put_v %5"PRId64" / %"PRIX64" in %s %s:%d\n", v, v, file, func, line);
 
     ff_put_v(bc, v);
 }
 
-static inline void put_s_trace(AVIOContext *bc, int64_t v, char *file, char *func, int line){
+static inline void put_s_trace(AVIOContext *bc, int64_t v, const char *file,
+                               const char *func, int line)
+{
     av_log(NULL, AV_LOG_DEBUG, "put_s %5"PRId64" / %"PRIX64" in %s %s:%d\n", v, v, file, func, line);
 
     put_s(bc, v);
@@ -374,6 +374,8 @@ static void write_mainheader(NUTContext *nut, AVIOContext *bc){
 static int write_streamheader(AVFormatContext *avctx, AVIOContext *bc, AVStream *st, int i){
     NUTContext *nut = avctx->priv_data;
     AVCodecContext *codec = st->codec;
+    unsigned codec_tag = av_codec_get_tag(ff_nut_codec_tags, codec->codec_id);
+
     ff_put_v(bc, i);
     switch(codec->codec_type){
     case AVMEDIA_TYPE_VIDEO: ff_put_v(bc, 0); break;
@@ -382,8 +384,12 @@ static int write_streamheader(AVFormatContext *avctx, AVIOContext *bc, AVStream 
     default              : ff_put_v(bc, 3); break;
     }
     ff_put_v(bc, 4);
-    if (codec->codec_tag){
-        avio_wl32(bc, codec->codec_tag);
+
+    if (!codec_tag || codec->codec_id == AV_CODEC_ID_RAWVIDEO)
+        codec_tag = codec->codec_tag;
+
+    if (codec_tag) {
+        avio_wl32(bc, codec_tag);
     } else {
         av_log(avctx, AV_LOG_ERROR, "No codec tag defined for stream %d\n", i);
         return AVERROR(EINVAL);
@@ -873,8 +879,5 @@ AVOutputFormat ff_nut_muxer = {
     .write_packet   = nut_write_packet,
     .write_trailer  = nut_write_trailer,
     .flags          = AVFMT_GLOBALHEADER | AVFMT_VARIABLE_FPS,
-    .codec_tag      = (const AVCodecTag * const []){
-        ff_codec_bmp_tags, ff_nut_video_tags, ff_codec_wav_tags,
-        ff_nut_subtitle_tags, 0
-    },
+    .codec_tag      = ff_nut_codec_tags,
 };
