@@ -304,7 +304,7 @@ double UIDisplay::GetRefreshRatePriv(void)
                 else
                 {
                     ignore  = moderate < 10.0f || moderate > 121.0f || !sizematch;
-                    current = sizematch && qFuzzyCompare(moderate + 1.0f, currentrate + 1.0f) && (realinterlaced == interlaced);
+                    current = sizematch && qFuzzyCompare(moderate + 1.0f, currentrate + 1.0f) && (currentinterlaced == interlaced);
 
                     LOG(VB_GUI, LOG_INFO, QString("Mode %1: %2x%3@%4%5%6%7")
                         .arg(mode.name).arg(mode.width).arg(mode.height).arg(moderate)
