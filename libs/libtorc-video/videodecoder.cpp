@@ -335,6 +335,7 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
 
     // Decode a frame
     AVFrame avframe;
+    memset(&avframe, 0, sizeof(AVFrame));
     avcodec_get_frame_defaults(&avframe);
     int gotframe = 0;
 
