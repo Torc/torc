@@ -16,9 +16,13 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 
 INCLUDEPATH += ../../libs/libtorc-baseui
 INCLUDEPATH += ../../libs/libtorc-tenfootui
+INCLUDEPATH += ../../libs/libtorc-audio
+INCLUDEPATH += ../../libs/libtorc-video
 INCLUDEPATH += ../../libs/libtorc-videoui
 LIBS += -L../../libs/libtorc-baseui -ltorc-baseui-$$LIBVERSION
 LIBS += -L../../libs/libtorc-tenfootui -ltorc-tenfootui-$$LIBVERSION
+LIBS += -L../../libs/libtorc-audio -ltorc-audio-$$LIBVERSION
+LIBS += -L../../libs/libtorc-video -ltorc-video-$$LIBVERSION
 LIBS += -L../../libs/libtorc-videoui -ltorc-videoui-$$LIBVERSION
 
 setting.path = $${PREFIX}/share/$${PROJECTNAME}/

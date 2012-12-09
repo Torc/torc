@@ -21,12 +21,34 @@
 */
 
 // Torc
+#include "torcconfig.h"
 #include "torcthread.h"
 #include "torcdecoder.h"
 #include "videoframe.h"
 #include "videorenderer.h"
 #include "videocolourspace.h"
 #include "videouiplayer.h"
+
+#if CONFIG_X11BASE
+#if CONFIG_VDPAU
+#include "videovdpau.h"
+#endif
+#if CONFIG_VAAPI
+#include "videovaapi.h"
+#endif
+#endif
+
+void VideoUIPlayer::Initialise(void)
+{
+#if CONFIG_X11BASE
+#if CONFIG_VDPAU
+    (void)VideoVDPAU::VDPAUAvailable();
+#endif
+#if CONFIG_VAAPI
+    (void)VideoVAAPI::VAAPIAvailable();
+#endif
+#endif
+}
 
 VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : VideoPlayer(Parent, PlaybackFlags, DecodeFlags),

@@ -17,6 +17,9 @@ class VideoUIPlayer : public VideoPlayer, public TorcHTTPService
     Q_OBJECT
 
   public:
+    static void        Initialise    (void);
+
+  public:
     VideoUIPlayer(QObject* Parent, int PlaybackFlags, int DecodeFlags);
     virtual ~VideoUIPlayer();
 

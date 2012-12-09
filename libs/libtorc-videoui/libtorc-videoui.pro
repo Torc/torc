@@ -34,10 +34,20 @@ HEADERS += videorenderer.h       videorendereropengl.h
 SOURCES += videocolourspace.cpp  videouiplayer.cpp
 SOURCES += videorenderer.cpp     videorendereropengl.cpp
 
-contains(CONFIG_VDPAU, yes) {
-}
+contains(CONFIG_X11BASE, yes) {
+    contains(CONFIG_VDPAU, yes) {
+        DEPENDPATH += ./platforms
+        HEADERS += videovdpau.h
+        SOURCES += videovdpau.cpp
+        LIBS    += -lvdpau
+    }
 
-contains(CONFIG_VAAPI, yes) {
+    contains(CONFIG_VAAPI, yes) {
+        DEPENDPATH += ./platforms
+        HEADERS += videovaapi.h
+        SOURCES += videovaapi.cpp
+        LIBS    += -lva
+    }
 }
 
 contains(CONFIG_DXVA2, yes) {
