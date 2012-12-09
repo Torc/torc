@@ -58,10 +58,7 @@ SOURCES += uigroup.cpp        uibutton.cpp
 SOURCES += uiactions.cpp      uishaperenderer.cpp
 SOURCES += uimessenger.cpp
 
-greaterThan(QT_MAJOR_VERSION, 4) {
-    SOURCES += uidisplay-qt5.cpp
-}
-else:contains(CONFIG_X11BASE, yes) {
+contains(CONFIG_X11BASE, yes) {
     DEPENDPATH += ./platforms/nvctrl
     HEADERS    += NVCtrl.h NVCtrlLib.h nv_control.h uinvcontrol.h
     SOURCES    += NVCtrl.c uinvcontrol.cpp
@@ -74,6 +71,9 @@ else:macx {
 }
 else:win32 {
     SOURCES += uidisplay-win.cpp
+}
+else:greaterThan(QT_MAJOR_VERSION, 4) {
+    SOURCES += uidisplay-qt5.cpp
 }
 else: {
     error(No valid display class. Aborting)
