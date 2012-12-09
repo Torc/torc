@@ -1850,7 +1850,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
         int error;
         if ((error = av_read_frame(m_priv->m_avFormatContext, packet)) < 0)
         {
-            if ((uint)error == AVERROR_EOF || m_priv->m_avFormatContext->pb->eof_reached)
+            if (error == AVERROR_EOF || m_priv->m_avFormatContext->pb->eof_reached)
             {
                 LOG(VB_GENERAL, LOG_INFO, "End of file");
                 eof = true;
