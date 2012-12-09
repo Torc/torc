@@ -32,6 +32,11 @@
 #include "torcusbprivosx.h"
 #elif CONFIG_LIBUDEV
 #include "torcusbprivunix.h"
+#else
+class TorcUSBPriv : public QObject
+{
+    Q_OBJECT
+};
 #endif
 
 TorcUSBDevice::TorcUSBDevice()
