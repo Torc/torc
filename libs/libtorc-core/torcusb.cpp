@@ -24,6 +24,7 @@
 #include <QtGlobal>
 
 // Torc
+#include "torcconfig.h"
 #include "torclocalcontext.h"
 #include "torcadminthread.h"
 #include "torcusb.h"
@@ -33,9 +34,10 @@
 #elif CONFIG_LIBUDEV
 #include "torcusbprivunix.h"
 #else
-class TorcUSBPriv : public QObject
+class TorcUSBPriv
 {
-    Q_OBJECT
+  public:
+    void deleteLater() {}
 };
 #endif
 
