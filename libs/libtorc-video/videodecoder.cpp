@@ -467,6 +467,7 @@ void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)
         vda_context *context = (vda_context*)Stream->codec->hwaccel_context;
         if (context)
         {
+            LOG(VB_PLAYBACK, LOG_INFO, "Destroying VDA decoder");
             ff_vda_destroy_decoder(context);
             delete context;
             Stream->codec->hwaccel_context = NULL;
