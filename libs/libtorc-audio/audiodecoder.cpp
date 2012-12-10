@@ -739,9 +739,18 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
         }
     }
 
+    {
+        // NB this may need locking
+        int index = m_currentStreams[StreamTypeVideo];
+        AVStream *stream = index > -1 ? m_priv->m_avFormatContext->streams[index] : NULL;
+        if (stream && stream->codec)
+            avcodec_flush_buffers(stream->codec);
+        CleanupVideoDecoder(stream);
+        FlushVideoBuffers(true);
+        queue->Flush(true, false);
+    }
+
     *state = TorcDecoder::Stopped;
-    FlushVideoBuffers(true);
-    queue->Flush(true, false);
 }
 
 bool AudioDecoder::VideoBufferStatus(int &Unused, int &Inuse, int &Held)
