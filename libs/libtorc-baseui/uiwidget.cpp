@@ -313,8 +313,6 @@ bool UIWidget::Initialise(QDomElement *Element, const QString &Position)
         size           = m_scaledRect.size();
     }
 
-    bool ok;
-
     for (QDomNode node = Element->firstChild(); !node.isNull(); node = node.nextSibling())
     {
         QDomElement element = node.toElement();
@@ -345,100 +343,24 @@ bool UIWidget::Initialise(QDomElement *Element, const QString &Position)
         }
         else if (element.tagName() == "effect")
         {
-            QString alphas  = element.attribute("alpha");
-            QString hzoom   = element.attribute("horizontalzoom");
-            QString vzoom   = element.attribute("verticalzoom");
-            QString zoom    = element.attribute("zoom");
-            QString angle   = element.attribute("rotation");
-            QString centres = element.attribute("centre").toLower();
-            QString hrefls  = element.attribute("hreflection");
-            QString vrefls  = element.attribute("vreflection");
+            UIEffect::ParseEffect(element, m_effect);
 
-            if (!alphas.isEmpty())
-            {
-                qreal alphaf = alphas.toFloat(&ok);
-                if (ok && alphaf >= 0.0 && alphaf <= 1.0)
-                {
-                    alpha             = alphaf;
-                    m_effect->m_alpha = alphaf;
-                }
-            }
+            // the reflection needs to be scaled for the display
+            if (m_effect->m_hReflecting)
+                SetHorizontalReflection(m_effect->m_hReflection);
 
-            if (!hzoom.isEmpty())
-            {
-                qreal hzoomf = hzoom.toFloat(&ok);
-                if (ok && hzoomf >= 0.0 && hzoomf <= 1.0)
-                {
-                    horizontalzoom    = hzoomf;
-                    m_effect->m_hZoom = hzoomf;
-                }
-            }
+            if (m_effect->m_vReflecting)
+                SetVerticalReflection(m_effect->m_vReflection);
 
-            if (!vzoom.isEmpty())
-            {
-                qreal vzoomf = vzoom.toFloat(&ok);
-                if (ok && vzoomf >= 0.0 && vzoomf <= 1.0)
-                {
-                    verticalzoom      = vzoomf;
-                    m_effect->m_vZoom = vzoomf;
-                }
-            }
-
-            if (!zoom.isEmpty())
-            {
-                qreal zoomf = zoom.toFloat(&ok);
-                if (ok && zoomf >= 0.0 && zoomf <= 1.0)
-                {
-                    horizontalzoom    = zoomf;
-                    m_effect->m_hZoom = zoomf;
-                    verticalzoom      = zoomf;
-                    m_effect->m_vZoom = zoomf;
-                }
-            }
-
-            if (!angle.isEmpty())
-            {
-                qreal anglef = angle.toFloat(&ok);
-                if (ok)
-                {
-                    rotation = anglef;
-                    m_effect->m_rotation = anglef;
-                }
-            }
-
-            if (!centres.isEmpty())
-            {
-                if (centres      == "topleft")     m_effect->m_centre = UIEffect::TopLeft;
-                else if (centres == "top")         m_effect->m_centre = UIEffect::Top;
-                else if (centres == "topright")    m_effect->m_centre = UIEffect::TopRight;
-                else if (centres == "left")        m_effect->m_centre = UIEffect::Left;
-                else if (centres == "middle")      m_effect->m_centre = UIEffect::Middle;
-                else if (centres == "right")       m_effect->m_centre = UIEffect::Right;
-                else if (centres == "bottomleft")  m_effect->m_centre = UIEffect::BottomLeft;
-                else if (centres == "bottom")      m_effect->m_centre = UIEffect::Bottom;
-                else if (centres == "bottomright") m_effect->m_centre = UIEffect::BottomRight;
-
-                centre = (int)m_effect->m_centre;
-            }
-
-            if (!hrefls.isEmpty())
-            {
-                qreal hrefl = hrefls.toFloat(&ok);
-                if (ok)
-                    SetHorizontalReflection(hrefl);
-            }
-
-            if (!vrefls.isEmpty())
-            {
-                qreal vrefl = vrefls.toFloat(&ok);
-                if (ok)
-                    SetVerticalReflection(vrefl);
-            }
-
-            hreflecting = m_effect->m_hReflecting;
-            hreflection = m_effect->m_hReflection;
-            vreflecting = m_effect->m_vReflecting;
-            vreflection = m_effect->m_vReflection;
+            alpha          = m_effect->m_alpha;
+            horizontalzoom = m_effect->m_hZoom;
+            verticalzoom   = m_effect->m_vZoom;
+            rotation       = m_effect->m_rotation;
+            centre         = m_effect->m_centre;
+            hreflecting    = m_effect->m_hReflecting;
+            hreflection    = m_effect->m_hReflection;
+            vreflecting    = m_effect->m_vReflecting;
+            vreflection    = m_effect->m_vReflection;
         }
         else if (element.tagName() == "connect")
         {

@@ -13,6 +13,95 @@ UIEffect::UIEffect()
 {
 }
 
+void UIEffect::ParseEffect(QDomElement &Element, UIEffect *Effect)
+{
+    if (!Effect)
+        return;
+
+    QString alphas  = Element.attribute("alpha");
+    QString hzoom   = Element.attribute("horizontalzoom");
+    QString vzoom   = Element.attribute("verticalzoom");
+    QString zoom    = Element.attribute("zoom");
+    QString angle   = Element.attribute("rotation");
+    QString centres = Element.attribute("centre").toLower();
+    QString hrefls  = Element.attribute("hreflection");
+    QString vrefls  = Element.attribute("vreflection");
+
+    bool ok = false;
+
+    if (!alphas.isEmpty())
+    {
+        qreal alphaf = alphas.toFloat(&ok);
+        if (ok && alphaf >= 0.0 && alphaf <= 1.0)
+            Effect->m_alpha = alphaf;
+    }
+
+    if (!hzoom.isEmpty())
+    {
+        qreal hzoomf = hzoom.toFloat(&ok);
+        if (ok && hzoomf >= 0.0 && hzoomf <= 1.0)
+            Effect->m_hZoom = hzoomf;
+    }
+
+    if (!vzoom.isEmpty())
+    {
+        qreal vzoomf = vzoom.toFloat(&ok);
+        if (ok && vzoomf >= 0.0 && vzoomf <= 1.0)
+            Effect->m_vZoom = vzoomf;
+    }
+
+    if (!zoom.isEmpty())
+    {
+        qreal zoomf = zoom.toFloat(&ok);
+        if (ok && zoomf >= 0.0 && zoomf <= 1.0)
+        {
+            Effect->m_hZoom = zoomf;
+            Effect->m_vZoom = zoomf;
+        }
+    }
+
+    if (!angle.isEmpty())
+    {
+        qreal anglef = angle.toFloat(&ok);
+        if (ok)
+            Effect->m_rotation = anglef;
+    }
+
+    if (!centres.isEmpty())
+    {
+        if (centres      == "topleft")     Effect->m_centre = UIEffect::TopLeft;
+        else if (centres == "top")         Effect->m_centre = UIEffect::Top;
+        else if (centres == "topright")    Effect->m_centre = UIEffect::TopRight;
+        else if (centres == "left")        Effect->m_centre = UIEffect::Left;
+        else if (centres == "middle")      Effect->m_centre = UIEffect::Middle;
+        else if (centres == "right")       Effect->m_centre = UIEffect::Right;
+        else if (centres == "bottomleft")  Effect->m_centre = UIEffect::BottomLeft;
+        else if (centres == "bottom")      Effect->m_centre = UIEffect::Bottom;
+        else if (centres == "bottomright") Effect->m_centre = UIEffect::BottomRight;
+    }
+
+    if (!hrefls.isEmpty())
+    {
+        qreal hrefl = hrefls.toFloat(&ok);
+        if (ok)
+        {
+            Effect->m_hReflecting = true;
+            Effect->m_hReflection = hrefl;
+        }
+
+    }
+
+    if (!vrefls.isEmpty())
+    {
+        qreal vrefl = vrefls.toFloat(&ok);
+        if (ok)
+        {
+            Effect->m_vReflecting = true;
+            Effect->m_vReflection = vrefl;
+        }
+    }
+}
+
 QPointF UIEffect::GetCentre(const QRectF *Rect) const
 {
     if (!Rect)

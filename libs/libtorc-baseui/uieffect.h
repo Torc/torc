@@ -1,6 +1,8 @@
 #ifndef UIEFFECT_H
 #define UIEFFECT_H
 
+//Qt
+#include <QDomElement>
 #include <QPointF>
 #include <QRect>
 
@@ -19,7 +21,8 @@ class UIEffect
                   BottomLeft, Bottom, BottomRight };
 
     UIEffect();
-    QPointF GetCentre(const QRectF *Rect) const;
+    static  void ParseEffect (QDomElement &Element, UIEffect *Effect);
+    QPointF      GetCentre   (const QRectF *Rect) const;
 
     qreal  m_alpha;
     qreal  m_hZoom;
