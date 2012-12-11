@@ -92,6 +92,7 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
     m_active(false),
     m_selected(false),
     m_effect(new UIEffect()),
+    m_secondaryEffect(NULL),
     m_scaledRect(0.0, 0.0, 0.0, 0.0),
     m_positionChanged(true),
     m_scaleX(1.0),
@@ -197,6 +198,9 @@ UIWidget::~UIWidget()
     delete m_effect;
     m_effect = NULL;
 
+    delete m_secondaryEffect;
+    m_secondaryEffect = NULL;
+
     // unregister name
     DeregisterWidget(this);
 }
@@ -220,12 +224,34 @@ bool UIWidget::Draw(quint64 TimeNow, UIWindow *Window, qreal XOffset, qreal YOff
     XOffset += m_scaledRect.left();
     YOffset += m_scaledRect.top();
 
-    bool hreflecting = m_effect->m_hReflecting;
-    bool vreflecting = m_effect->m_vReflecting;
-    m_effect->m_hReflecting = false;
-    m_effect->m_vReflecting = false;
-
     Window->PushEffect(m_effect, &m_scaledRect);
+
+    if (m_secondaryEffect)
+    {
+        if (m_clipping)
+        {
+            QRect clip(m_clipRect.translated(m_scaledRect.left(), m_scaledRect.top()));
+
+            if (m_secondaryEffect->m_hReflecting)
+                clip.moveTop(YOffset + m_secondaryEffect->m_hReflection + (YOffset + m_secondaryEffect->m_hReflection - clip.top() - clip.height()));
+            else if (m_secondaryEffect->m_vReflecting)
+                clip.moveLeft(XOffset + m_secondaryEffect->m_vReflection + (XOffset + m_secondaryEffect->m_vReflection - clip.left() - clip.width()));
+
+            Window->PushClip(clip);
+        }
+
+        QRectF rect(0, 0, m_scaledRect.width(), m_scaledRect.height());
+        Window->PushEffect(m_secondaryEffect, &rect);
+        DrawSelf(Window, XOffset, YOffset);
+
+        foreach (UIWidget* child, m_children)
+            child->Draw(TimeNow, Window, XOffset, YOffset);
+
+        if (m_clipping)
+            Window->PopClip();
+
+        Window->PopEffect();
+    }
 
     if (m_clipping)
     {
@@ -248,36 +274,6 @@ bool UIWidget::Draw(quint64 TimeNow, UIWindow *Window, qreal XOffset, qreal YOff
         Window->PopClip();
 
     Window->PopEffect();
-
-    if (hreflecting || vreflecting)
-    {
-        m_effect->m_hReflecting = hreflecting;
-        m_effect->m_vReflecting = vreflecting;
-
-        Window->PushEffect(m_effect, &m_scaledRect);
-
-        if (m_clipping)
-        {
-            QRect clip(m_clipRect.translated(m_scaledRect.left(), m_scaledRect.top()));
-
-            if (m_effect->m_hReflecting)
-                clip.moveTop(YOffset + m_effect->m_hReflection + (YOffset + m_effect->m_hReflection - clip.top() - clip.height()));
-            else if (m_effect->m_vReflecting)
-                clip.moveLeft(XOffset + m_effect->m_vReflection + (XOffset + m_effect->m_vReflection - clip.left() - clip.width()));
-
-            Window->PushClip(clip);
-        }
-
-        DrawSelf(Window, XOffset, YOffset);
-
-        foreach (UIWidget* child, m_children)
-            child->Draw(TimeNow, Window, XOffset, YOffset);
-
-        if (m_clipping)
-            Window->PopClip();
-
-        Window->PopEffect();
-    }
 
     return true;
 }
@@ -345,7 +341,21 @@ bool UIWidget::Initialise(QDomElement *Element, const QString &Position)
         {
             UIEffect::ParseEffect(element, m_effect);
 
-            // the reflection needs to be scaled for the display
+            QDomElement secondeffect = element.firstChildElement("effect");
+            if (!secondeffect.isNull())
+            {
+                delete m_secondaryEffect;
+                m_secondaryEffect = new UIEffect();
+                UIEffect::ParseEffect(secondeffect, m_secondaryEffect);
+
+                if (m_secondaryEffect->m_vReflecting)
+                    m_secondaryEffect->m_vReflection *= m_rootParent->GetXScale();
+
+                if (m_secondaryEffect->m_hReflecting)
+                    m_secondaryEffect->m_hReflection *= m_rootParent->GetYScale();
+            }
+
+            // the line of reflection needs to be scaled for the display
             if (m_effect->m_hReflecting)
                 SetHorizontalReflection(m_effect->m_hReflection);
 
@@ -926,9 +936,21 @@ void UIWidget::CopyFrom(UIWidget *Other)
     SetCentre(Other->GetCentre());
 
     if (Other->m_effect->m_hReflecting)
-        SetHorizontalReflection(Other->m_effect->m_hReflection / Other->GetXScale());
+        SetHorizontalReflection(Other->m_effect->m_hReflection / Other->GetYScale());
     if (Other->m_effect->m_vReflecting)
-        SetVerticalReflection(Other->m_effect->m_vReflection / Other->GetYScale());
+        SetVerticalReflection(Other->m_effect->m_vReflection / Other->GetXScale());
+
+    if (Other->m_secondaryEffect)
+    {
+        delete m_secondaryEffect;
+        m_secondaryEffect = new UIEffect();
+        *m_secondaryEffect = *Other->m_secondaryEffect;
+        if (m_secondaryEffect->m_hReflecting)
+            m_secondaryEffect->m_hReflection = (m_secondaryEffect->m_hReflection / Other->GetYScale()) * m_rootParent->GetYScale();
+        if (m_secondaryEffect->m_vReflecting)
+            m_secondaryEffect->m_vReflection = (m_secondaryEffect->m_vReflection / Other->GetXScale()) * m_rootParent->GetXScale();
+    }
+
 
     m_scaleX = Other->GetXScale();
     m_scaleY = Other->GetYScale();

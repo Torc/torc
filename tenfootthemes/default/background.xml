@@ -9,12 +9,6 @@
         <animation name="basewindow_Deactivated">
             <element duration="250" property="alpha" endvalue="0" easingcurve="outquad"/>
         </animation>
-        <shape name="basewindow_background" position="0,0,1920,1080">
-            <path>
-                <brush color="555555FF" brushstyle="Dense4Pattern"/>
-                <addrect rect="0,0,1920,1080"/>
-            </path>
-        </shape>
     </window>
     <window name="templates" template="true" position="0,0,1,1">
         <state disabled="1"/>
@@ -65,14 +59,8 @@
         </group>
     </window>
     <window name="gridmenu" from="basewindow">
-        <shape name="gridmenu_floor" position="0,800,1920,280" decoration="1">
-            <path>
-                <brush color="FFA00033" brushstyle="SolidPattern"/>
-                <addrect rect="0,0,1920,630"/>
-            </path>
-        </shape>
         <group name="gridmenu_menu" position="200,0,600,800">
-            <effect hreflection="800"/>
+            <effect><effect hreflection="800" alpha="0.3"/></effect>
             <clip rect="-100,0,1000,800"/>
             <layout type="grid" fixedwidth="300" fixedheight="100" selectrange="0,0,600,800"/>
             <scroll speed="1000" easingcurve="linear"/>

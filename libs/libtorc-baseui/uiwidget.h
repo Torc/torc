@@ -229,6 +229,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     bool            m_active;
     bool            m_selected;
     UIEffect       *m_effect;
+    UIEffect       *m_secondaryEffect;
     QRectF          m_scaledRect;
     bool            m_positionChanged;
     qreal           m_scaleX;

@@ -713,32 +713,31 @@ bool UIGroup::Draw(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal YOffs
     if (focusindex < 0)
         focusindex = 0;
 
-    bool hreflecting = m_effect->m_hReflecting;
-    bool vreflecting = m_effect->m_vReflecting;
-    m_effect->m_hReflecting = false;
-    m_effect->m_vReflecting = false;
-
-    DrawGroup(TimeNow, Window, XOffset, YOffset, focusindex, focuswidget);
-
-    if (hreflecting || vreflecting)
-    {
-        m_effect->m_hReflecting = hreflecting;
-        m_effect->m_vReflecting = vreflecting;
-        DrawGroup(TimeNow, Window, XOffset, YOffset, focusindex, focuswidget);
-    }
-
-    return true;
-}
-
-void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal YOffset,
-                        int FocusIndex, UIWidget *FocusWidget)
-{
-    // selected widget to be drawn last
-    QPointF toppos;
-    UIWidget* topwidget = NULL;
-
     // effects
     Window->PushEffect(m_effect, &m_scaledRect);
+
+    if (m_secondaryEffect)
+    {
+        if (m_clipping)
+        {
+            QRect clip(m_clipRect.translated(m_scaledRect.left(), m_scaledRect.top()));
+
+            if (m_secondaryEffect->m_hReflecting)
+                clip.moveTop(YOffset + m_secondaryEffect->m_hReflection + (YOffset + m_secondaryEffect->m_hReflection - clip.top() - clip.height()));
+            else if (m_secondaryEffect->m_vReflecting)
+                clip.moveLeft(XOffset + m_secondaryEffect->m_vReflection + (XOffset + m_secondaryEffect->m_vReflection - clip.left() - clip.width()));
+
+            Window->PushClip(clip);
+        }
+
+        QRectF rect(0, 0, m_scaledRect.width(), m_scaledRect.height());
+        Window->PushEffect(m_secondaryEffect, &rect);
+        DrawGroup(TimeNow, Window, XOffset, YOffset, focusindex, focuswidget);
+        Window->PopEffect();
+
+        if (m_clipping)
+            Window->PopClip();
+    }
 
     if (m_clipping)
     {
@@ -751,6 +750,24 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
 
         Window->PushClip(clip);
     }
+
+    DrawGroup(TimeNow, Window, XOffset, YOffset, focusindex, focuswidget);
+
+    // revert effects
+    if (m_clipping)
+        Window->PopClip();
+
+    Window->PopEffect();
+
+    return true;
+}
+
+void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal YOffset,
+                        int FocusIndex, UIWidget *FocusWidget)
+{
+    // selected widget to be drawn last
+    QPointF toppos;
+    UIWidget* topwidget = NULL;
 
     // draw decoration widgets (i.e. background)
     foreach (UIWidget* child, m_children)
@@ -1219,12 +1236,6 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
         topwidget->SetScaledPosition(toppos);
         topwidget->Draw(TimeNow, Window, XOffset, YOffset);
     }
-
-    // revert effects
-    if (m_clipping)
-        Window->PopClip();
-
-    Window->PopEffect();
 }
 
 bool UIGroup::Finalise(void)
