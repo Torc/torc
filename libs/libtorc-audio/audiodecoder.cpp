@@ -958,10 +958,6 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                             if (context->codec_id == CODEC_ID_AC3)
                                 context->channels = m_audio->GetMaxChannels();
                         }
-                        else
-                        {
-                            context->request_channels = 0;
-                        }
 
                         used = m_priv->DecodeAudioPacket(context, audiosamples, datasize, &temp);
                         decodedsize = datasize;
@@ -1027,20 +1023,24 @@ int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
 {
     AVFrame frame;
     int gotframe = 0;
+    memset(&frame, 0, sizeof(AVFrame));
+    avcodec_get_frame_defaults(&frame);
 
     int result = avcodec_decode_audio4(Context, &frame, &gotframe, Packet);
 
     if (result < 0 || !gotframe)
     {
+        if (result < 0)
+            LOG(VB_GENERAL, LOG_ERR, QString("Error decoding audio: '%1'").arg(AVErrorToString(result)));
+
         DataSize = 0;
         return result;
     }
 
-    int planesize;
-    int planar = av_sample_fmt_is_planar(Context->sample_fmt);
-    DataSize   = av_samples_get_buffer_size(&planesize, Context->channels, frame.nb_samples, Context->sample_fmt, 1);
+    int planar = av_sample_fmt_is_planar((AVSampleFormat)frame.format);
+    DataSize   = av_samples_get_buffer_size(NULL, Context->channels, frame.nb_samples, (AVSampleFormat)frame.format, 1);
 
-    if (planar && Context->channels > 1)
+    if (planar)
     {
         if (!m_audioResampleContext)
             m_audioResampleContext = avresample_alloc_context();
@@ -1052,13 +1052,13 @@ int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
             return -1;
         }
 
-        if (m_audioResampleChannelLayout != Context->channel_layout ||
-            m_audioResampleFormat        != Context->sample_fmt     ||
-            m_audioResampleSampleRate    != Context->sample_rate)
+        if (m_audioResampleChannelLayout != frame.channel_layout ||
+            m_audioResampleFormat        != (AVSampleFormat)frame.format ||
+            m_audioResampleSampleRate    != frame.sample_rate)
         {
-            m_audioResampleChannelLayout = Context->channel_layout;
-            m_audioResampleFormat        = Context->sample_fmt;
-            m_audioResampleSampleRate    = Context->sample_rate;
+            m_audioResampleChannelLayout = frame.channel_layout;
+            m_audioResampleFormat        = (AVSampleFormat)frame.format;
+            m_audioResampleSampleRate    = frame.sample_rate;
             avresample_close(m_audioResampleContext);
             av_opt_set_int(m_audioResampleContext, "in_channel_layout",  m_audioResampleChannelLayout, 0);
             av_opt_set_int(m_audioResampleContext, "in_sample_fmt",      m_audioResampleFormat, 0);
@@ -1076,7 +1076,7 @@ int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
         }
 
         int samples = avresample_convert(m_audioResampleContext, &Buffer,
-                                         planesize, frame.nb_samples,
+                                         DataSize, frame.nb_samples,
                                          frame.extended_data,
                                          frame.linesize[0], frame.nb_samples);
 
@@ -1085,7 +1085,7 @@ int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
     }
     else
     {
-        memcpy(Buffer, frame.extended_data[0], planesize);
+        memcpy(Buffer, frame.extended_data[0], DataSize);
     }
 
     return result;
