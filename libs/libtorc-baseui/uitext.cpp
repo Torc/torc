@@ -196,7 +196,6 @@ void UIText::CopyFrom(UIWidget *Other)
     // Avoid warning messages
     m_fontName = text->GetFont();
 
-
     UIWidget::CopyFrom(Other);
 }
 

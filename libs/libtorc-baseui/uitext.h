@@ -16,6 +16,7 @@ class TORC_BASEUI_PUBLIC UIText : public UIWidget
     static  int  kUITextType;
     UIText(UIWidget *Root, UIWidget* Parent, const QString &Name, int Flags);
     virtual ~UIText();
+
     virtual bool DrawSelf    (UIWindow* Window, qreal XOffset, qreal YOffset);
     virtual bool Finalise    (void);
     virtual void CopyFrom    (UIWidget *Other);
@@ -42,17 +43,17 @@ class TORC_BASEUI_PUBLIC UIText : public UIWidget
     void         UpdateFont     (void);
 
   protected:
-    QString  m_text;
-    QString  m_fontName;
-    UIFont  *m_font;
-    int      m_flags;
-    int      m_blur;
-    UIImage *m_fallback;
+    QString      m_text;
+    QString      m_fontName;
+    UIFont      *m_font;
+    int          m_flags;
+    int          m_blur;
+    UIImage     *m_fallback;
 
   protected:
-    QString  text;
-    QString  font;
-    int      flags;
+    QString      text;
+    QString      font;
+    int          flags;
 
   private:
    Q_DISABLE_COPY(UIText)
