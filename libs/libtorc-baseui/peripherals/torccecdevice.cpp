@@ -789,9 +789,7 @@ void TorcCECDevice::Destroy(void)
 
 TorcCECDevice::TorcCECDevice()
   : QObject(NULL),
-    m_priv(NULL),
-    m_retryCount(0),
-    m_retryTimer(0)
+    m_priv(NULL)
 {
 }
 
@@ -851,15 +849,6 @@ bool TorcCECDevice::event(QEvent *Event)
             }
         }
     }
-    else if (Event->type() == QEvent::Timer && m_retryTimer)
-    {
-        QTimerEvent *timerevent = static_cast<QTimerEvent*>(Event);
-        if (timerevent && (timerevent->timerId() == m_retryTimer))
-        {
-            killTimer(m_retryTimer);
-            Open();
-        }
-    }
 
     return false;
 }
@@ -867,13 +856,6 @@ bool TorcCECDevice::event(QEvent *Event)
 void TorcCECDevice::Open(void)
 {
     QMutexLocker locker(gCECDeviceLock);
-
-    if (!TorcEDID::Ready() && (m_retryCount++ < 10))
-    {
-        LOG(VB_GENERAL, LOG_INFO, "EDID not ready yet - deferring CEC device startup");
-        m_retryTimer = startTimer(200);
-        return;
-    }
 
     if (!m_priv)
     {
@@ -885,14 +867,6 @@ void TorcCECDevice::Open(void)
 void TorcCECDevice::Close(void)
 {
     QMutexLocker locker(gCECDeviceLock);
-
-    // stop the retry timer
-    if (m_retryTimer)
-    {
-        killTimer(m_retryTimer);
-        m_retryTimer = 0;
-    }
-    m_retryCount = 0;
 
     // stop listening for power events
     gLocalContext->RemoveObserver(this);

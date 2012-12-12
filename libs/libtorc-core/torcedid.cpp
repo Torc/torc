@@ -37,17 +37,10 @@ QMutex* TorcEDID::gTorcEDIDLock = new QMutex(QMutex::Recursive);
  * uses this directly to assist with CEC setup and detection of 3D video modes.
  * The underlying video and audio libraries will already be using this data
  * to detect supported video and audio (over HDMI) modes.
- *
- * Depending upon the operating system in use, grabbing the EDID may require
- * a graphics server to be running. Hence implementations may submit a provisional
- * EDID which will only be used if a further update is not provided when the
- * the GUI is created. This revised EDID may provide more accurate data on systems
- * with multiple connected displays.
 */
 
 TorcEDID::TorcEDID()
-  : m_edidDataProvisional(true),
-    m_physicalAddress(0x0000)
+  : m_physicalAddress(0x0000)
 {
 }
 
@@ -55,27 +48,12 @@ TorcEDID::~TorcEDID()
 {
 }
 
-bool TorcEDID::Ready(void)
-{
-    QMutexLocker locker(gTorcEDIDLock);
-
-    return !gTorcEDID->m_edidData.isEmpty() && !gTorcEDID->m_edidDataProvisional;
-}
-
-bool TorcEDID::Provisional(void)
-{
-    QMutexLocker locker(gTorcEDIDLock);
-
-    return !gTorcEDID->m_edidDataProvisional;
-}
-
-void TorcEDID::RegisterEDID(QByteArray Data, bool Provisional)
+void TorcEDID::RegisterEDID(QByteArray Data)
 {
     QMutexLocker locker(gTorcEDIDLock);
 
     if (!Data.isEmpty())
     {
-        gTorcEDID->m_edidDataProvisional = Provisional;
         gTorcEDID->m_edidData = Data;
         gTorcEDID->Process();
     }
@@ -111,8 +89,7 @@ void TorcEDID::Process(void)
         return;
     }
 
-    LOG(VB_GENERAL, LOG_INFO, QString("Processing %1EDID")
-        .arg(m_edidDataProvisional ? "provisional " : ""));
+    LOG(VB_GENERAL, LOG_INFO, "Processing EDID");
 
     // reset
     m_physicalAddress = 0x0000;

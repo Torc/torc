@@ -42,7 +42,7 @@ bool UIDisplay::InitialiseDisplay(void)
     {
         CocoaAutoReleasePool pool;
         CGDirectDisplayID disp = GetOSXDisplay(m_widget->winId());
-        TorcEDID::RegisterEDID(GetOSXEDID(disp), false);
+        TorcEDID::RegisterEDID(GetOSXEDID(disp));
     }
 
     return true;

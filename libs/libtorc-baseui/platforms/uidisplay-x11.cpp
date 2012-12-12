@@ -149,7 +149,7 @@ bool UIDisplay::InitialiseDisplay(void)
         {
             int screen = DefaultScreen(display);
             UINVControl::InitialiseMetaModes(display, screen);
-            TorcEDID::RegisterEDID(UINVControl::GetNVEDID(display, screen), false);
+            TorcEDID::RegisterEDID(UINVControl::GetNVEDID(display, screen));
         }
         XCloseDisplay(display);
     }

@@ -12,9 +12,7 @@ class QMutex;
 class TORC_CORE_PUBLIC TorcEDID
 {
   public:
-    static bool      Ready           (void);
-    static bool      Provisional     (void);
-    static void      RegisterEDID    (QByteArray Data, bool Provisional);
+    static void      RegisterEDID    (QByteArray Data);
     static qint16    PhysicalAddress (void);
 
   protected:
@@ -24,8 +22,6 @@ class TORC_CORE_PUBLIC TorcEDID
   protected:
     static TorcEDID* gTorcEDID;
     static QMutex*   gTorcEDIDLock;
-
-    bool             m_edidDataProvisional;
     QByteArray       m_edidData;
 
   private:
