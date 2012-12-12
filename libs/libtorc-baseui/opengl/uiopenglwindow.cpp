@@ -299,17 +299,6 @@ void UIOpenGLWindow::customEvent(QEvent *Event)
             case Torc::Exit:
                 close();
                 break;
-            case Torc::KeyPress:
-            case Torc::KeyRelease:
-                {
-                    QKeyEvent *keyevent = new QKeyEvent(
-                                event == Torc::KeyPress ? QEvent::KeyPress : QEvent::KeyRelease,
-                                torcevent->Data().value("key").toInt(),
-                                TORC_KEYEVENT_MODIFIERS,
-                                torcevent->Data().value("source").toString());
-                    QApplication::postEvent(this, keyevent);
-                }
-                break;
             default:
                 break;
         }

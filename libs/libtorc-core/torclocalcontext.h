@@ -65,8 +65,6 @@ class TORC_CORE_PUBLIC Torc
         None = 0,
         Custom,
         Exit,
-        KeyPress,
-        KeyRelease,
         Message,
         // Power management
         Shutdown = 1000,
