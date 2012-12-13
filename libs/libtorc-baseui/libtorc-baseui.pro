@@ -38,7 +38,7 @@ HEADERS += uitext.h           uishape.h
 HEADERS += uiimagewidget.h    uigroup.h
 HEADERS += uibutton.h         uiactions.h
 HEADERS += uishaperenderer.h  uimedia.h
-HEADERS += uimessenger.h
+HEADERS += uimessenger.h      uitexteditor.h
 
 SOURCES += uiimage.cpp        uiimagetracker.cpp
 SOURCES += uifont.cpp         uitextrenderer.cpp
@@ -56,7 +56,7 @@ SOURCES += uianimation.cpp    uitext.cpp
 SOURCES += uishape.cpp        uiimagewidget.cpp
 SOURCES += uigroup.cpp        uibutton.cpp
 SOURCES += uiactions.cpp      uishaperenderer.cpp
-SOURCES += uimessenger.cpp
+SOURCES += uimessenger.cpp    uitexteditor.cpp
 
 contains(CONFIG_X11BASE, yes) {
     DEPENDPATH += ./platforms/nvctrl
@@ -93,6 +93,7 @@ inc.files += uitext.h         uimedia.h
 inc.files += uishape.h        uiimagewidget.h
 inc.files += uigroup.h        uibutton.h
 inc.files += uidisplay.h      uidisplaybase.h
+inc.files += uitexteditor.h
 
 inc2.path  = $${PREFIX}/include/$${PROJECTNAME}/lib$${THIS_LIB}
 inc2.files = $${inc.files}
