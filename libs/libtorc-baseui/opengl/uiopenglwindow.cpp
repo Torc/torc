@@ -39,6 +39,7 @@
 #include "../uieffect.h"
 #include "../uitimer.h"
 #include "uishapepath.h"
+#include "uitexteditor.h"
 #include "uiopenglwindow.h"
 
 static inline GLenum __glCheck__(const QString &loc, const char* fileName, int n)
@@ -115,6 +116,7 @@ UIOpenGLWindow::UIOpenGLWindow(const QGLFormat &Format, GLType Type)
     show();
 
     setCursor(Qt::BlankCursor);
+    grabKeyboard();
 
     SetRefreshRate(m_refreshRate);
     m_mainTimer = startTimer(0);
@@ -317,32 +319,47 @@ bool UIOpenGLWindow::event(QEvent *Event)
 
     if (type == QEvent::KeyPress || type == QEvent::KeyRelease)
     {
-        int action = GetActionFromKey(Event);
+        QKeyEvent *keyevent = static_cast<QKeyEvent*>(Event);
 
-        if (m_theme && action && m_theme->GetFocusWidget())
+        if (keyevent)
         {
-            if (m_theme->GetFocusWidget()->HandleAction(action))
-                return true;
-        }
+            keyevent->accept();
+            UIWidget* focuswidget = m_theme ? m_theme->GetFocusWidget() : NULL;
 
-        switch (action)
-        {
-            case Torc::Escape:
-                close();
-                return true;
-            case Torc::Suspend:
-                gPower->Suspend();
-                return true;
-            case Torc::DisableStudioLevels:
-                SetStudioLevels(false);
-                break;
-            case Torc::EnableStudioLevels:
-                SetStudioLevels(true);
-                break;
-            case Torc::ToggleStudioLevels:
-                SetStudioLevels(!m_studioLevels);
-                break;
-            default: break;
+            if (focuswidget && focuswidget->Type() == UITextEditor::kUITextEditorType)
+            {
+                UITextEditor *texteditor = static_cast<UITextEditor*>(focuswidget);
+                if (texteditor && texteditor->HandleTextInput(keyevent))
+                    return true;
+            }
+
+            int action = GetActionFromKey(keyevent);
+
+            if (action && focuswidget)
+            {
+                if (focuswidget->HandleAction(action))
+                    return true;
+            }
+
+            switch (action)
+            {
+                case Torc::Escape:
+                    close();
+                    return true;
+                case Torc::Suspend:
+                    gPower->Suspend();
+                    return true;
+                case Torc::DisableStudioLevels:
+                    SetStudioLevels(false);
+                    break;
+                case Torc::EnableStudioLevels:
+                    SetStudioLevels(true);
+                    break;
+                case Torc::ToggleStudioLevels:
+                    SetStudioLevels(!m_studioLevels);
+                    break;
+                default: break;
+            }
         }
     }
 

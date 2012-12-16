@@ -35,22 +35,20 @@ UIActions::~UIActions()
 {
 }
 
-int UIActions::GetActionFromKey(QEvent *Event)
+int UIActions::GetActionFromKey(QKeyEvent *Event)
 {
-    QKeyEvent *keyevent = dynamic_cast<QKeyEvent*>(Event);
-
-    if (!keyevent)
+    if (!Event)
         return Torc::None;
 
-    int key  = keyevent->key();
-    int type = keyevent->type();
-    int mods = keyevent->modifiers();
+    int key  = Event->key();
+    int type = Event->type();
+    int mods = Event->modifiers();
 
-    bool internal = mods == TORC_KEYEVENT_MODIFIERS;
+    bool internal = (mods == TORC_KEYEVENT_MODIFIERS || mods == TORC_KEYEVENT_PRINTABLE_MODIFIERS);
 
     if (internal)
     {
-        LOG(VB_GENERAL, LOG_DEBUG, QString("Simulated keypress from %1").arg(keyevent->text()));
+        LOG(VB_GENERAL, LOG_DEBUG, QString("Simulated keypress from %1").arg(Event->text()));
         mods = Qt::NoModifier;
     }
 
@@ -78,7 +76,7 @@ int UIActions::GetActionFromKey(QEvent *Event)
         key == Qt::Key_Select)
     {
         LOG(VB_GENERAL, LOG_DEBUG, QString("KeyPress/Release %1").arg(key, 0, 16));
-        return keyevent->type() == QEvent::KeyPress ? Torc::Pushed : Torc::Released;
+        return Event->type() == QEvent::KeyPress ? Torc::Pushed : Torc::Released;
     }
 
     // NB we generally trigger on KeyPress events as the release sequence when
@@ -88,11 +86,14 @@ int UIActions::GetActionFromKey(QEvent *Event)
         return Torc::None;
 
     LOG(VB_GENERAL, LOG_DEBUG, QString("KeyPress %1 (%2)")
-        .arg(key, 0, 16).arg(keyevent->text()));
+        .arg(key, 0, 16).arg(Event->text()));
 
     // NB these are temporary
     switch (key)
     {
+        case Qt::Key_Backspace:
+        case Qt::Key_Delete:
+            return Torc::BackSpace;
         case Qt::Key_Down:
             return Torc::Down;
         case Qt::Key_Up:

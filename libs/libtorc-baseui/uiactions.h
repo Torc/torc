@@ -4,7 +4,7 @@
 // Qt
 #include <QString>
 
-class QEvent;
+class QKeyEvent;
 
 class UIActions
 {
@@ -12,7 +12,7 @@ class UIActions
     UIActions();
     virtual ~UIActions();
 
-    int GetActionFromKey(QEvent *Event);
+    int GetActionFromKey(QKeyEvent *Event);
 };
 
 #endif // UIACTIONS_H
