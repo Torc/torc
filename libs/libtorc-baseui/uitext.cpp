@@ -78,6 +78,14 @@ int UIText::GetFlags(void)
     return m_flags;
 }
 
+qreal UIText::GetWidth(const QString &Text)
+{
+    if (m_font)
+        return m_font->GetWidth(Text);
+
+    return 0;
+}
+
 void UIText::SetText(const QString &Text)
 {
     m_text = Text;

@@ -35,6 +35,7 @@ class TORC_BASEUI_PUBLIC UIFont : public TorcReferenceCounter
     QString    GetImageFileName (void) const;
     UIImage*   GetImage         (void) const;
     bool       GetImageReady    (void) const;
+    qreal      GetWidth         (const QString &Text);
 
     void       SetFace          (const QFont &Face);
     void       SetColor         (const QColor &Color);

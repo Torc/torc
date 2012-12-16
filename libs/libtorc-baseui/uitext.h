@@ -29,6 +29,7 @@ class TORC_BASEUI_PUBLIC UIText : public UIWidget
     QString      GetText     (void);
     QString      GetFont     (void);
     int          GetFlags    (void);
+    qreal        GetWidth    (const QString &Text);
     void         SetText     (const QString &Text);
     void         SetFont     (const QString &Font);
     void         SetFlags    (int Flags);
