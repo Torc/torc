@@ -20,10 +20,26 @@
 * USA.
 */
 
+// Qt
+#include <QKeyEvent>
+
 // Torc
+#include "torclocalcontext.h"
 #include "torclogging.h"
 #include "uitext.h"
 #include "uitexteditor.h"
+
+/*! \class UITextEditor
+ *  \brief A text entry widget.
+ *
+ * \todo Size limit
+ * \todo Cursor positioning only works for left aligned text
+ * \todo Adjust cursor width for highlighted character (or crop)
+ * \todo Allow text edit to be disabled
+ * \todo Cursor should not be visible initially (theme?)
+ * \todo Add hooks (text changed, text finalised)
+ * \todo Multi-line (or new class)
+*/
 
 int UITextEditor::kUITextEditorType = UIWidget::RegisterWidgetType();
 
@@ -34,9 +50,13 @@ static QScriptValue UITextEditorConstructor(QScriptContext *context, QScriptEngi
 
 UITextEditor::UITextEditor(UIWidget *Root, UIWidget *Parent, const QString &Name, int Flags)
   : UIWidget(Root, Parent, Name, Flags),
-    m_text(NULL),
+    m_textWidget(NULL),
+    m_cursorPosition(0),
     m_cursor(NULL)
 {
+    m_type = kUITextEditorType;
+    m_focusable = true;
+
     if (m_parent && !m_template)
         m_parent->IncreaseFocusableChildCount();
 }
@@ -46,8 +66,8 @@ UITextEditor::~UITextEditor()
     if (m_parent && !m_template)
         m_parent->DecreaseFocusableChildCount();
 
-    if (m_text)
-        m_text->DownRef();
+    if (m_textWidget)
+        m_textWidget->DownRef();
 
     if (m_cursor)
         m_cursor->DownRef();
@@ -55,7 +75,80 @@ UITextEditor::~UITextEditor()
 
 bool UITextEditor::HandleAction(int Action)
 {
+    if (Action == Torc::Left)
+    {
+        if (m_cursorPosition > 0)
+        {
+            m_cursorPosition--;
+            UpdateCursor();
+        }
+        return true;
+    }
+    else if (Action == Torc::Right)
+    {
+        if (m_cursorPosition < m_text.size())
+        {
+            m_cursorPosition++;
+            UpdateCursor();
+        }
+        return true;
+    }
+    else if (Action == Torc::BackSpace)
+    {
+        if (m_cursorPosition > 0 && m_text.size())
+        {
+            m_text.remove(m_cursorPosition - 1, 1);
+            m_cursorPosition--;
+            UpdateCursor();
+            if (m_textWidget)
+                m_textWidget->SetText(m_text);
+        }
+        return true;
+    }
+
+    if (m_parent)
+        return m_parent->HandleAction(Action);
+
     return false;
+}
+
+bool UITextEditor::HandleTextInput(QKeyEvent *Event)
+{
+    if (!Event)
+        return false;
+
+    // For consistency with UIActions::GetActionFromKey, only handle KeyPress
+    if (Event->type() == QEvent::KeyRelease)
+        return false;
+
+    LOG(VB_GUI, LOG_DEBUG, QString("KeyPress %1 (%2)")
+        .arg(Event->key(), 0, 16).arg(Event->text()));
+
+    // Event must produce printable text and, in the case of simulated kepresses,
+    // must be marked as printable. For a typical basic remote, this *should* mean
+    // that only 0-9 are handled here..
+    // As ever, this approach will probably need re-visiting to handle remapping
+    // and remote input methods where printable/non-printable cannot be flagged
+    if (Event->modifiers() == TORC_KEYEVENT_MODIFIERS)
+        return false;
+
+    QString text = Event->text();
+    if (text.isEmpty())
+        return false;
+
+    QChar character = text.at(0);
+    if (!character.isPrint())
+        return false;
+
+    m_text.insert(m_cursorPosition, text);
+    m_cursorPosition += text.size();
+
+    if (m_textWidget)
+        m_textWidget->SetText(m_text);
+
+    UpdateCursor();
+
+    return true;
 }
 
 bool UITextEditor::Finalise(void)
@@ -63,19 +156,16 @@ bool UITextEditor::Finalise(void)
     if (m_template)
         return true;
 
-    if (!m_text)
+    if (!m_textWidget)
     {
         UIWidget *text = FindChildByName(objectName() + "_text");
         if (text && text->Type() == UIText::kUITextType)
-            m_text = static_cast<UIText*>(text);
-
-        if (!m_text)
-            return false;
+            m_textWidget = static_cast<UIText*>(text);
     }
 
-    if (!m_cursor)
+    if (!m_cursor && m_textWidget)
     {
-        m_cursor = FindChildByName(objectName() + "_cursor");
+        m_cursor = FindChildByName(objectName() + "_text_cursor", true);
         if (m_cursor)
         {
             connect(this, SIGNAL(Selected()),   m_cursor, SLOT(Show()));
@@ -83,7 +173,18 @@ bool UITextEditor::Finalise(void)
         }
     }
 
+    UpdateCursor();
+
     return UIWidget::Finalise();
+}
+
+void UITextEditor::UpdateCursor(void)
+{
+    if (!m_cursor || !m_textWidget || !m_rootParent)
+        return;
+
+    QString text = m_text.left(m_cursorPosition);
+    m_cursor->SetPosition(m_textWidget->GetWidth(text) / m_rootParent->GetXScale(), 0.0);
 }
 
 void UITextEditor::CopyFrom(UIWidget *Other)

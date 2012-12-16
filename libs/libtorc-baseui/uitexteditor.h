@@ -6,6 +6,7 @@
 #include "uiwidget.h"
 
 class UIText;
+class QKeyEvent;
 
 class TORC_BASEUI_PUBLIC UITextEditor : public UIWidget
 {
@@ -17,16 +18,23 @@ class TORC_BASEUI_PUBLIC UITextEditor : public UIWidget
     virtual ~UITextEditor();
 
     bool     HandleAction     (int Action);
+    bool     HandleTextInput  (QKeyEvent *Event);
     bool     Finalise         (void);
     void     CopyFrom         (UIWidget *Other);
 
   protected:
     bool     InitialisePriv   (QDomElement *Element);
     void     CreateCopy       (UIWidget *Parent);
+    void     UpdateCursor     (void);
 
   protected:
-    UIText   *m_text;
+    QString   m_text;
+    UIText   *m_textWidget;
+    int       m_cursorPosition;
     UIWidget *m_cursor;
+
+    private:
+    Q_DISABLE_COPY(UITextEditor);
 };
 
 Q_DECLARE_METATYPE(UITextEditor*);
