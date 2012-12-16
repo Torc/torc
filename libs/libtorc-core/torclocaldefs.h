@@ -6,7 +6,8 @@
 #define TORC_MAIN_THREAD  QString("MainLoop")
 #define TORC_ADMIN_THREAD QString("AdminLoop")
 
-#define TORC_KEYEVENT_MODIFIERS (Qt::NoModifier | Qt::ShiftModifier | Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier | Qt::KeypadModifier)
+#define TORC_KEYEVENT_MODIFIERS           (Qt::NoModifier | Qt::ShiftModifier | Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier | Qt::KeypadModifier)
+#define TORC_KEYEVENT_PRINTABLE_MODIFIERS (Qt::NoModifier | Qt::ShiftModifier | Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier)
 
 #define TORC_CORE                  QString("CORE_")
 #define TORC_GUI                   QString("GUI_")
