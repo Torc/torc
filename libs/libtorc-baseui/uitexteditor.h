@@ -17,10 +17,19 @@ class TORC_BASEUI_PUBLIC UITextEditor : public UIWidget
     explicit UITextEditor(UIWidget *Root, UIWidget* Parent, const QString &Name, int Flags);
     virtual ~UITextEditor();
 
+    Q_PROPERTY (QString m_text READ GetText WRITE SetText)
+
     bool     HandleAction     (int Action);
     bool     HandleTextInput  (QKeyEvent *Event);
     bool     Finalise         (void);
     void     CopyFrom         (UIWidget *Other);
+
+  public slots:
+    QString  GetText          (void);
+    void     SetText          (const QString &Text);
+
+  signals:
+    void     TextChanged      (void);
 
   protected:
     bool     InitialisePriv   (QDomElement *Element);
@@ -33,7 +42,7 @@ class TORC_BASEUI_PUBLIC UITextEditor : public UIWidget
     int       m_cursorPosition;
     UIWidget *m_cursor;
 
-    private:
+  private:
     Q_DISABLE_COPY(UITextEditor);
 };
 

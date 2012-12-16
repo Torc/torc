@@ -71,6 +71,25 @@ UITextEditor::~UITextEditor()
         m_cursor->DownRef();
 }
 
+QString UITextEditor::GetText(void)
+{
+    return m_text;
+}
+
+void UITextEditor::SetText(const QString &Text)
+{
+    if (m_text != Text)
+    {
+        m_text = Text;
+        if (m_textWidget)
+            m_textWidget->SetText(m_text);
+
+        emit TextChanged();
+    }
+
+    UpdateCursor();
+}
+
 bool UITextEditor::HandleAction(int Action)
 {
     if (Action == Torc::Left)
@@ -95,11 +114,10 @@ bool UITextEditor::HandleAction(int Action)
     {
         if (m_cursorPosition > 0 && m_text.size())
         {
-            m_text.remove(m_cursorPosition - 1, 1);
+            QString newtext(m_text);
+            newtext.remove(m_cursorPosition - 1, 1);
             m_cursorPosition--;
-            UpdateCursor();
-            if (m_textWidget)
-                m_textWidget->SetText(m_text);
+            SetText(newtext);
         }
         return true;
     }
@@ -138,13 +156,10 @@ bool UITextEditor::HandleTextInput(QKeyEvent *Event)
     if (!character.isPrint())
         return false;
 
-    m_text.insert(m_cursorPosition, text);
+    QString newtext(m_text);
+    newtext.insert(m_cursorPosition, text);
     m_cursorPosition += text.size();
-
-    if (m_textWidget)
-        m_textWidget->SetText(m_text);
-
-    UpdateCursor();
+    SetText(newtext);
 
     return true;
 }
@@ -182,6 +197,12 @@ void UITextEditor::UpdateCursor(void)
 {
     if (!m_cursor || !m_textWidget || !m_rootParent)
         return;
+
+    if (m_cursorPosition > m_text.size())
+        m_cursorPosition = m_text.size();
+
+    if (m_cursorPosition < 0)
+        m_cursorPosition = 0;
 
     qreal top    = m_textWidget->GetPosition().y() * m_rootParent->GetYScale();
     QString text = m_text.left(m_cursorPosition);
