@@ -21,6 +21,7 @@
 */
 
 // Qt
+#include <QDomElement>
 #include <QKeyEvent>
 
 // Torc
@@ -34,8 +35,7 @@
  *
  * \todo Size limit
  * \todo Adjust cursor width for highlighted character (or crop)
- * \todo Allow text edit to be disabled
- * \todo Add hooks (text changed, text finalised)
+ * \todo Remove focusable code duplicated with UIButton
  * \todo Multi-line (or new class)
 */
 
@@ -221,6 +221,33 @@ void UITextEditor::UpdateCursor(void)
     m_cursor->SetPosition(left / m_rootParent->GetXScale(), top);
 }
 
+void UITextEditor::SetFocusable(bool Focusable)
+{
+    if (Focusable)
+    {
+        if (!m_focusable)
+            m_parent->IncreaseFocusableChildCount();
+    }
+    else
+    {
+        if (m_focusable)
+            m_parent->DecreaseFocusableChildCount();
+
+        if (m_parent && m_parent->GetLastChildWithFocus() == this)
+            m_parent->SetLastChildWithFocus(NULL);
+
+        if (GetFocusWidget() == this)
+        {
+            Deselect();
+
+            // TODO get index from parent
+            AutoSelectFocusWidget(0);
+        }
+    }
+
+    m_focusable = Focusable;
+}
+
 void UITextEditor::CopyFrom(UIWidget *Other)
 {
     UITextEditor *text = dynamic_cast<UITextEditor*>(Other);
@@ -230,6 +257,9 @@ void UITextEditor::CopyFrom(UIWidget *Other)
         LOG(LOG_INFO, LOG_ERR, "Failed to cast widget to UITextEditor");
         return;
     }
+
+    // NB IsFocusable returns false for a template
+    m_focusable = text->m_focusable;
 
     UIWidget::CopyFrom(Other);
 }
@@ -245,6 +275,15 @@ void UITextEditor::CreateCopy(UIWidget *Parent)
 
 bool UITextEditor::InitialisePriv(QDomElement *Element)
 {
+    if (Element->tagName() == "state")
+    {
+        // NB don't return true to allow UIWidget to parse base state
+        QString focus  = Element->attribute("focusable");
+
+        if (!focus.isEmpty())
+            SetFocusable(GetBool(focus));
+    }
+
     return false;
 }
 

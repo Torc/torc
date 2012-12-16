@@ -27,6 +27,7 @@ class TORC_BASEUI_PUBLIC UITextEditor : public UIWidget
   public slots:
     QString  GetText          (void);
     void     SetText          (const QString &Text);
+    void     SetFocusable     (bool Focusable);
 
   signals:
     void     TextChanged      (void);
