@@ -33,7 +33,6 @@
  *  \brief A text entry widget.
  *
  * \todo Size limit
- * \todo Cursor positioning only works for left aligned text
  * \todo Adjust cursor width for highlighted character (or crop)
  * \todo Allow text edit to be disabled
  * \todo Add hooks (text changed, text finalised)
@@ -184,8 +183,21 @@ void UITextEditor::UpdateCursor(void)
     if (!m_cursor || !m_textWidget || !m_rootParent)
         return;
 
+    qreal top    = m_textWidget->GetPosition().y() * m_rootParent->GetYScale();
     QString text = m_text.left(m_cursorPosition);
-    m_cursor->SetPosition(m_textWidget->GetWidth(text) / m_rootParent->GetXScale(), 0.0);
+    qreal left   = m_textWidget->GetWidth(text);
+    int flags    = m_textWidget->GetFlags();
+
+    if (flags & Qt::AlignRight || flags & Qt::AlignHCenter)
+    {
+        qreal adj = (m_textWidget->GetSize().width() * m_rootParent->GetXScale()) -
+                     m_textWidget->GetWidth(m_text);
+        if (flags & Qt::AlignHCenter)
+            adj /= 2.0f;
+        left += adj;
+    }
+
+    m_cursor->SetPosition(left / m_rootParent->GetXScale(), top);
 }
 
 void UITextEditor::CopyFrom(UIWidget *Other)
