@@ -36,7 +36,6 @@
  * \todo Cursor positioning only works for left aligned text
  * \todo Adjust cursor width for highlighted character (or crop)
  * \todo Allow text edit to be disabled
- * \todo Cursor should not be visible initially (theme?)
  * \todo Add hooks (text changed, text finalised)
  * \todo Multi-line (or new class)
 */
@@ -170,6 +169,8 @@ bool UITextEditor::Finalise(void)
         {
             connect(this, SIGNAL(Selected()),   m_cursor, SLOT(Show()));
             connect(this, SIGNAL(Deselected()), m_cursor, SLOT(Hide()));
+            if (!m_selected)
+                m_cursor->Hide();
         }
     }
 
