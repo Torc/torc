@@ -111,6 +111,7 @@ class TORC_CORE_PUBLIC Torc
         Seven,
         Eight,
         Nine,
+        BackSpace,
         // Media playback
         Stop = 3000,
         Play,
