@@ -328,47 +328,58 @@ class TorcCECDevicePriv
     {
         QString code;
         int action = 0;
+        bool print = false;
         switch (Key.keycode)
         {
             case CEC_USER_CONTROL_CODE_NUMBER0:
                 action = Qt::Key_0;
                 code   = "0";
+                print  = true;
                 break;
             case CEC_USER_CONTROL_CODE_NUMBER1:
                 action = Qt::Key_1;
                 code   = "1";
+                print  = true;
                 break;
             case CEC_USER_CONTROL_CODE_NUMBER2:
                 action = Qt::Key_2;
                 code   = "2";
+                print  = true;
                 break;
             case CEC_USER_CONTROL_CODE_NUMBER3:
                 action = Qt::Key_3;
                 code   = "3";
+                print  = true;
                 break;
             case CEC_USER_CONTROL_CODE_NUMBER4:
                 action = Qt::Key_4;
                 code   = "4";
+                print  = true;
                 break;
             case CEC_USER_CONTROL_CODE_NUMBER5:
                 action = Qt::Key_5;
                 code   = "5";
+                print  = true;
                 break;
             case CEC_USER_CONTROL_CODE_NUMBER6:
                 action = Qt::Key_6;
                 code   = "6";
+                print  = true;
                 break;
             case CEC_USER_CONTROL_CODE_NUMBER7:
                 action = Qt::Key_7;
                 code   = "7";
+                print  = true;
                 break;
             case CEC_USER_CONTROL_CODE_NUMBER8:
                 action = Qt::Key_8;
                 code   = "8";
+                print  = true;
                 break;
             case CEC_USER_CONTROL_CODE_NUMBER9:
                 action = Qt::Key_9;
                 code   = "9";
+                print  = true;
                 break;
             case CEC_USER_CONTROL_CODE_SELECT:
                 action = Qt::Key_Select;
@@ -512,6 +523,7 @@ class TorcCECDevicePriv
                 break;
             case CEC_USER_CONTROL_CODE_DOT:
                 action = Qt::Key_Period;
+                print  = true;
                 code  = "DOT";
                 break;
             case CEC_USER_CONTROL_CODE_NEXT_FAVORITE:
@@ -649,7 +661,7 @@ class TorcCECDevicePriv
 
         QKeyEvent *keyevent = new QKeyEvent(
                             Key.duration > 0 ? QEvent::KeyRelease : QEvent::KeyPress,
-                            action, TORC_KEYEVENT_MODIFIERS,
+                            action, print ? TORC_KEYEVENT_PRINTABLE_MODIFIERS : TORC_KEYEVENT_MODIFIERS,
                             CEC_KEYPRESS_CONTEXT);
 
         if (gLocalContext->GetUIObject())
