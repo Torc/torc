@@ -31,6 +31,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     friend class UIShapePath;
     friend class UIGroup;
     friend class UIMessenger;
+    friend class UITextEditor;
 
   public:
     enum WidgetFlags
