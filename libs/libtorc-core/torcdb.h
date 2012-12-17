@@ -9,7 +9,7 @@ class TorcDB
 {
   public:
     TorcDB(const QString &DatabaseName, const QString &DatabaseType);
-   ~TorcDB();
+    virtual ~TorcDB();
 
     static void  DebugError(QSqlQuery *Query);
     static void  DebugError(QSqlDatabase *Database);
