@@ -40,7 +40,11 @@ QMutex* TorcEDID::gTorcEDIDLock = new QMutex(QMutex::Recursive);
 */
 
 TorcEDID::TorcEDID()
-  : m_physicalAddress(0x0000)
+  : m_physicalAddress(0x0000),
+    m_audioLatency(0),
+    m_videoLatency(0),
+    m_interlacedAudioLatency(-1),
+    m_interlacedVideoLatency(-1)
 {
 }
 
@@ -64,6 +68,16 @@ qint16 TorcEDID::PhysicalAddress(void)
     QMutexLocker locker(gTorcEDIDLock);
 
     return gTorcEDID->m_physicalAddress;
+}
+
+int TorcEDID::GetAVLatency(bool Interlaced)
+{
+    QMutexLocker locker(gTorcEDIDLock);
+
+    if (Interlaced && gTorcEDID->m_interlacedAudioLatency >=0 && gTorcEDID->m_interlacedVideoLatency >= 0)
+        return gTorcEDID->m_interlacedAudioLatency - gTorcEDID->m_interlacedVideoLatency;
+
+    return gTorcEDID->m_audioLatency - gTorcEDID->m_videoLatency;;
 }
 
 void TorcEDID::Process(void)
@@ -92,21 +106,66 @@ void TorcEDID::Process(void)
     LOG(VB_GENERAL, LOG_INFO, "Processing EDID");
 
     // reset
-    m_physicalAddress = 0x0000;
+    m_physicalAddress        = 0x0000;
+    m_audioLatency           = 0;
+    m_videoLatency           = 0;
+    m_interlacedAudioLatency = -1;
+    m_interlacedVideoLatency = -1;
 
     // extensions
-    if (m_edidData.size() > 128)
+    int size = m_edidData.size();
+    if (size > 128)
     {
-        for (int i = 0; i < m_edidData.size(); ++i)
+        for (int i = 1; i < size - 4; ++i)
         {
             if (m_edidData.at(i)     == 0x03 &&
                 m_edidData.at(i + 1) == 0x0C &&
                 m_edidData.at(i + 2) == 0x0)
             {
-              m_physicalAddress = (m_edidData.at(i + 3) << 8) + m_edidData.at(i + 4);
-              LOG(VB_GENERAL, LOG_INFO, QString("EDID physical address 0x%1")
-                  .arg(m_physicalAddress,0,16));
-              break;
+                int length = m_edidData.at(i - 1) & 0xf;
+                LOG(VB_GUI, LOG_INFO, QString("HDMI VSDB size: %1").arg(length));
+
+                if (length >= 5)
+                {
+                    m_physicalAddress = (m_edidData.at(i + 3) << 8) + m_edidData.at(i + 4);
+                    LOG(VB_GENERAL, LOG_INFO, QString("EDID physical address: 0x%1").arg(m_physicalAddress,0,16));
+
+                    if (length >= 8 && ((i + 7) < size))
+                    {
+                        int flags = (uint8_t)m_edidData.at(i + 7);
+                        bool latencies  = flags & 0x80;
+                        bool ilatencies = flags & 0x40;
+
+                        if (latencies && length >= 10 && ((i + 9) < size))
+                        {
+                            uint8_t video = m_edidData.at(i + 8);
+                            if (video > 0 && video <= 251)
+                                m_videoLatency = (video - 1) * 2;
+
+                            uint8_t audio = m_edidData.at(i + 9);
+                            if (audio > 0 && audio <= 251)
+                                m_audioLatency = (audio - 1) * 2;
+
+                            LOG(VB_GUI, LOG_INFO, QString("HDMI latencies, audio: %1 video: %2").arg(m_audioLatency).arg(m_videoLatency));
+
+                            if (ilatencies && length >= 12 && ((i + 11) < size))
+                            {
+                                uint8_t ivideo = m_edidData.at(i + 10);
+                                if (ivideo > 0 && ivideo <= 251)
+                                    m_interlacedVideoLatency = (ivideo - 1) * 2;
+
+                                uint8_t iaudio = m_edidData.at(i + 11);
+                                if (iaudio > 0 && iaudio <= 251)
+                                    m_interlacedAudioLatency = (iaudio - 1) * 2;
+
+                                LOG(VB_GUI, LOG_INFO, QString("HDMI interlaced latencies, audio: %1 video: %2")
+                                    .arg(m_interlacedAudioLatency).arg(m_interlacedVideoLatency));
+                            }
+                        }
+                    }
+                }
+
+                break;
             }
         }
     }
