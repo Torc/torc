@@ -73,10 +73,7 @@ void VideoUIPlayer::Teardown(void)
 void VideoUIPlayer::Refresh(void)
 {
     if (m_reset)
-    {
         Reset();
-        m_reset = false;
-    }
 
     VideoFrame *frame = m_buffers.GetFrameForDisplaying();
 

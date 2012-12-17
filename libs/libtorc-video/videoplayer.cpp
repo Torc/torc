@@ -53,10 +53,7 @@ void VideoPlayer::Refresh(void)
 {
     VideoFrame *frame = m_buffers.GetFrameForDisplaying();
     if (frame)
-    {
-        //LOG(VB_GENERAL, LOG_INFO, QString("AV %1").arg(m_audioWrapper->GetAudioTime() - frame->m_pts));
         m_buffers.ReleaseFrameFromDisplaying(frame, false);
-    }
 
     TorcPlayer::Refresh();
 }
@@ -64,6 +61,7 @@ void VideoPlayer::Refresh(void)
 void VideoPlayer::Reset(void)
 {
     m_buffers.Reset(true);
+    m_reset = false;
 }
 
 void* VideoPlayer::GetAudio(void)
