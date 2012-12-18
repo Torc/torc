@@ -16,6 +16,7 @@ class UIMedia : public UIWidget, public TorcPlayerInterface
 
     bool            HandleAction       (int Action);
     void            CopyFrom           (UIWidget *Other);
+    bool            Refresh            (quint64 TimeNow);
     bool            Draw               (quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal YOffset);
     bool            Finalise           (void);
 

@@ -58,6 +58,7 @@ VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGL
     m_openglWindow(Window),
     m_outputFormat(PIX_FMT_UYVY422),
     m_validVideoFrame(false),
+    m_updateFrameVertices(true),
     m_rawVideoTexture(NULL),
     m_rgbVideoTexture(NULL),
     m_rgbVideoBuffer(0),
@@ -94,12 +95,10 @@ void VideoRendererOpenGL::ResetOutput(void)
     m_validVideoFrame = false;
 }
 
-void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
+void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame)
 {
     if (!m_openglWindow)
         return;
-
-    bool updatevertices = false;
 
     if (Frame && !Frame->m_corrupt)
     {
@@ -225,14 +224,17 @@ void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame)
 
         // update the display setup
         UpdateRefreshRate(Frame);
-        updatevertices = UpdatePosition(Frame);
+        m_updateFrameVertices |= UpdatePosition(Frame);
     }
+}
 
-    if (m_validVideoFrame)
+void VideoRendererOpenGL::RenderFrame(void)
+{
+    if (m_validVideoFrame && m_openglWindow && m_rgbVideoTexture)
     {
         // and finally draw
         QSizeF size = m_rgbVideoTexture->m_actualSize;
-        m_openglWindow->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, updatevertices, false, false);
+        m_openglWindow->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, m_updateFrameVertices, false, false);
     }
 }
 

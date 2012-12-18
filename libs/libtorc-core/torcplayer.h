@@ -43,7 +43,9 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 
     virtual ~TorcPlayer();
 
-    virtual void    Refresh            (void);
+    virtual bool    Refresh            (quint64 TimeNow);
+    virtual void    Render             (quint64 TimeNow);
+
     void            Reset              (void);
     bool            HandleEvent        (QEvent *Event);
     bool            HandleAction       (int Action);

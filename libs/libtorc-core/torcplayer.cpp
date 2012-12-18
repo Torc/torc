@@ -28,6 +28,7 @@
 
 // Torc
 #include "torclocalcontext.h"
+#include "torccoreutils.h"
 #include "torclogging.h"
 #include "torcdecoder.h"
 #include "torcplayer.h"
@@ -155,7 +156,7 @@ bool TorcPlayer::HandleEvent(QEvent *Event)
 
             if (id == m_refreshTimer)
             {
-                Refresh();
+                Refresh(GetMicrosecondCount());
                 return true;
             }
             else if (id == m_nextDecoderStartTimer)
@@ -358,8 +359,10 @@ void TorcPlayer::KillTimer(int &Timer)
     Timer= 0;
 }
 
-void TorcPlayer::Refresh(void)
+bool TorcPlayer::Refresh(quint64 TimeNow)
 {
+    (void)TimeNow;
+
     // destroy last decoder once it has stopped
     if (m_oldDecoder && m_oldDecoder->State() == TorcDecoder::Stopped)
         DestroyOldDecoder();
@@ -398,7 +401,7 @@ void TorcPlayer::Refresh(void)
 
     // I need fixing
     if ((m_state == Stopped || m_state == Errored) && m_nextState == None)
-        return;
+        return false;
 
     // check for fatal errors
     if (m_decoder)
@@ -408,17 +411,17 @@ void TorcPlayer::Refresh(void)
             SendUserMessage(QObject::tr("Fatal error decoding media"));
             LOG(VB_GENERAL, LOG_ERR, "Fatal decoder error detected. Stopping playback");
             SetState(Errored);
-            return;
+            return false;
         }
     }
     else
     // no decoder
     {
         if (m_state == None || m_state == Opening)
-            return;
+            return false;
 
         SetState(Errored);
-        return;
+        return false;
     }
 
     // check for playback completion
@@ -440,7 +443,7 @@ void TorcPlayer::Refresh(void)
                 if (m_oldDecoder)
                 {
                     LOG(VB_GENERAL, LOG_WARNING, "Trying to start decoder before old decoder stopped");
-                    return;
+                    return false;
                 }
 
                 SetState(Starting);
@@ -479,6 +482,13 @@ void TorcPlayer::Refresh(void)
         else if (m_decoder->State() != TorcDecoder::Stopping)
             m_decoder->Stop();
     }
+
+    return true;
+}
+
+void TorcPlayer::Render(quint64 TimeNow)
+{
+    (void)TimeNow;
 }
 
 void TorcPlayer::DestroyNextDecoder(void)

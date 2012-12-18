@@ -20,7 +20,8 @@ class VideoRenderer
     explicit VideoRenderer (VideoColourSpace *ColourSpace, UIWindow *Window);
     virtual ~VideoRenderer ();
 
-    virtual void           RenderFrame          (VideoFrame* Frame) = 0;
+    virtual void           RefreshFrame         (VideoFrame* Frame) = 0;
+    virtual void           RenderFrame          (void) = 0;
     virtual PixelFormat    PreferredPixelFormat (void) = 0;
     void                   PlaybackFinished     (void);
 

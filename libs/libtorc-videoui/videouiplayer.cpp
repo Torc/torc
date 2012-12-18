@@ -70,7 +70,7 @@ void VideoUIPlayer::Teardown(void)
     VideoPlayer::Teardown();
 }
 
-void VideoUIPlayer::Refresh(void)
+bool VideoUIPlayer::Refresh(quint64 TimeNow)
 {
     if (m_reset)
         Reset();
@@ -83,14 +83,20 @@ void VideoUIPlayer::Refresh(void)
             m_state == Playing || m_state == Searching ||
             m_state == Pausing || m_state == Stopping)
         {
-            m_render->RenderFrame(frame);
+            m_render->RefreshFrame(frame);
         }
     }
 
     if (frame)
         m_buffers.ReleaseFrameFromDisplaying(frame, false);
 
-    TorcPlayer::Refresh();
+    return TorcPlayer::Refresh(TimeNow) && (frame != NULL);
+}
+
+void VideoUIPlayer::Render(quint64 TimeNow)
+{
+    if (m_render)
+        m_render->RenderFrame();
 }
 
 void VideoUIPlayer::Reset(void)

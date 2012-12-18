@@ -92,10 +92,16 @@ void UIMedia::CopyFrom(UIWidget *Other)
     UIWidget::CopyFrom(Other);
 }
 
+bool UIMedia::Refresh(quint64 TimeNow)
+{
+    bool refresh = m_player ? m_player->Refresh(TimeNow) : false;
+    return refresh |= UIWidget::Refresh(TimeNow);
+}
+
 bool UIMedia::Draw(quint64 TimeNow, UIWindow *Window, qreal XOffset, qreal YOffset)
 {
     if (m_player)
-        m_player->Refresh();
+        m_player->Render(TimeNow);
 
     return UIWidget::Draw(TimeNow, Window, XOffset, YOffset);
 }
