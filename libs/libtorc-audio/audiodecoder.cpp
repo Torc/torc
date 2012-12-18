@@ -74,7 +74,9 @@ class TorcStreamData
         m_secondaryIndex(-1),
         m_avDisposition(AV_DISPOSITION_DEFAULT),
         m_language(DEFAULT_QT_LANGUAGE),
-        m_originalChannels(0)
+        m_originalChannels(0),
+        m_width(0),
+        m_height(0)
     {
     }
 
@@ -90,6 +92,8 @@ class TorcStreamData
     int                   m_avDisposition;
     QLocale::Language     m_language;
     int                   m_originalChannels;
+    int                   m_width;
+    int                   m_height;
     QMap<QString,QString> m_avMetaData;
 };
 
@@ -2100,6 +2104,13 @@ TorcStreamData* AudioDecoder::ScanStream(uint Index)
         }
     }
 
+    // video resolution
+    if (avstream->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+    {
+        stream->m_width  = avstream->codec->width;
+        stream->m_height = avstream->codec->height;
+    }
+
     if (!stream->IsValid())
     {
         delete stream;
@@ -2162,6 +2173,7 @@ bool AudioDecoder::SelectStream(TorcStreamTypes Type)
     int index = 0;
     int score = 0;
 
+
     QList<TorcStreamData*>::iterator it = m_programs[m_currentProgram]->m_streams[Type].begin();
     for ( ; it != m_programs[m_currentProgram]->m_streams[Type].end(); ++it)
     {
@@ -2170,7 +2182,8 @@ bool AudioDecoder::SelectStream(TorcStreamTypes Type)
         bool defaultstream = (*it)->m_avDisposition & AV_DISPOSITION_DEFAULT;
         int thisscore = (count - index) + (languagematch ? 500 : 0) +
                         (forced ? 1000 : 0) + (defaultstream ? 100 : 0) +
-                        (((*it)->m_originalChannels + count) * 2);
+                        (((*it)->m_originalChannels + count) * 2) +
+                        (((*it)->m_width * (*it)->m_height) >> 16);
 
         if (thisscore > score)
         {
