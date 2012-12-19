@@ -76,7 +76,8 @@ UIOpenGLTextures::UIOpenGLTextures()
     m_activeTexture(0),
     m_activeTextureType(0),
     m_maxTextureSize(0),
-    m_defaultTextureType(GL_TEXTURE_2D)
+    m_defaultTextureType(GL_TEXTURE_2D),
+    m_rectTextureType(GL_TEXTURE_2D)
 {
 }
 
@@ -102,25 +103,36 @@ bool UIOpenGLTextures::InitialiseTextures(const QString &Extensions, GLType Type
             LOG(VB_GENERAL, LOG_INFO, "Disabling NPOT textures.");
     }
 
+    if (Extensions.contains("GL_NV_texture_rectangle") && rects)
+        m_rectTextureType = GL_TEXTURE_RECTANGLE_NV;
+    else if (Extensions.contains("GL_ARB_texture_rectangle") && rects)
+        m_rectTextureType = GL_TEXTURE_RECTANGLE_ARB;
+    else if (Extensions.contains("GL_EXT_texture_rectangle") && rects)
+        m_rectTextureType = GL_TEXTURE_RECTANGLE_EXT;
+
     if (Extensions.contains("GL_ARB_texture_non_power_of_two") && rects)
         m_allowRects = true;
     else if (Extensions.contains("GL_OES_texture_npot") && Type == kGLOpenGL2ES && rects)
         m_allowRects = true;
-    else if (Extensions.contains("GL_NV_texture_rectangle") && rects)
-        m_defaultTextureType = GL_TEXTURE_RECTANGLE_NV;
-    else if (Extensions.contains("GL_ARB_texture_rectangle") && rects)
-        m_defaultTextureType = GL_TEXTURE_RECTANGLE_ARB;
-    else if (Extensions.contains("GL_EXT_texture_rectangle") && rects)
-        m_defaultTextureType = GL_TEXTURE_RECTANGLE_EXT;
+    else if (IsRectTexture(m_rectTextureType))
+        m_defaultTextureType = m_rectTextureType;
 
     m_mipMapping = Extensions.contains("GL_SGIS_generate_mipmap");
 
     if (m_allowRects)
+    {
         LOG(VB_GENERAL, LOG_INFO, "Using 'non power of two' textures");
+        if (IsRectTexture(m_rectTextureType))
+            LOG(VB_GENERAL, LOG_INFO, "Rectangular textures available");
+    }
     else if (m_defaultTextureType != GL_TEXTURE_2D)
+    {
         LOG(VB_GENERAL, LOG_INFO, "Using rectangular textures");
+    }
     else
+    {
         LOG(VB_GENERAL, LOG_INFO, "Using default texture type");
+    }
 
     LOG(VB_GENERAL, LOG_INFO, QString("Max texture size: %1 x %2")
             .arg(m_maxTextureSize).arg(m_maxTextureSize));
@@ -275,6 +287,11 @@ uint UIOpenGLTextures::GetBufferSize(QSize Size, uint Format, uint Type)
         return 0;
 
     return Size.width() * Size.height() * bpp * bytes;
+}
+
+int UIOpenGLTextures::GetRectTextureType(void)
+{
+    return m_rectTextureType;
 }
 
 void UIOpenGLTextures::DeleteTextures(void)

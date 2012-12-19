@@ -62,6 +62,7 @@ class UIOpenGLTextures : public UIOpenGLBufferObjects
     void  UpdateTextureVertices (GLTexture *Texture, const QSizeF *Source, const QRectF *Dest);
     bool  ClearTexture          (GLTexture *Texture);
     uint  GetBufferSize         (QSize Size, uint Format, uint Type);
+    int   GetRectTextureType    (void);
 
   protected:
     bool  InitialiseTextures    (const QString &Extensions, GLType Type);
@@ -74,6 +75,7 @@ class UIOpenGLTextures : public UIOpenGLBufferObjects
     int                         m_activeTextureType;
     int                         m_maxTextureSize;
     int                         m_defaultTextureType;
+    int                         m_rectTextureType;
     QHash<GLuint,GLTexture*>    m_textures;
 
     TORC_GLACTIVETEXTUREPROC    m_glActiveTexture;
