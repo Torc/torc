@@ -429,7 +429,7 @@ void UIOpenGLWindow::DrawImage(UIEffect *Effect,
 
     GLTexture *texture = AllocateTexture(Image);
     if (texture)
-        DrawTexture(texture, Dest, Image->GetSizeF(), PositionChanged, true, true);
+        DrawTexture(texture, Dest, Image->GetSizeF(), PositionChanged);
 }
 
 void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size, uint Shader)
@@ -476,18 +476,16 @@ void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size,
     m_glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size,
-                                 bool &PositionChanged, bool Blend, bool Studio)
+void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged)
 {
-    bool studio = m_studioLevels && Studio;
-    uint ShaderObject = m_shaders[studio ? kShaderStudio : kShaderDefault];
+    uint ShaderObject = m_shaders[m_studioLevels ? kShaderStudio : kShaderDefault];
 
     BindFramebuffer(0);
 
     EnableShaderObject(ShaderObject);
     SetShaderParams(ShaderObject, &m_currentProjection->m[0][0], "u_projection");
     SetShaderParams(ShaderObject, &m_transforms[m_currentTransformIndex].m[0][0], "u_transform");
-    SetBlend(Blend);
+    SetBlend(true);
 
     glBindTexture(Texture->m_type, Texture->m_val);
 

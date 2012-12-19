@@ -35,7 +35,9 @@ class VideoRendererOpenGL : public VideoRenderer
     GLTexture         *m_rawVideoTexture;
     GLTexture         *m_rgbVideoTexture;
     uint               m_rgbVideoBuffer;
-    uint               m_videoShader;
+    uint               m_yuvShader;
+    uint               m_rgbShader;
+    uint               m_bicubicShader;
     SwsContext        *m_conversionContext;
 };
 

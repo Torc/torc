@@ -53,6 +53,46 @@ static const char YUV2RGBFragmentShader[] =
 "    gl_FragColor = vec4(yuva.arb, 1.0) * COLOUR_UNIFORM;\n"
 "}\n";
 
+static const char DefaultFragmentShader[] =
+"GLSL_DEFINES"
+"RGB_DEFINES"
+"uniform RGB_SAMPLER s_texture0;\n"
+"varying vec2 v_texcoord0;\n"
+"void main(void)\n"
+"{\n"
+"    gl_FragColor = RGB_TEXTURE(s_texture0, v_texcoord0);\n"
+"}\n";
+
+static const char BicubicShader[] =
+"GLSL_DEFINES"
+"RGB_DEFINES"
+"uniform sampler2DRect s_texture0;\n"
+"varying vec2 v_texcoord0;\n"
+"void main(void)\n"
+"{\n"
+"    vec2 coord = v_texcoord0 - vec2(0.5, 0.5);\n"
+"    vec2 index = floor(coord);\n"
+"    vec2 fract = coord - index;\n"
+"    vec2 one   = 1.0 - fract;\n"
+"    vec2 two   = one * one;\n"
+"    vec2 frac2 = fract * fract;\n"
+"    vec2 w0    = (1.0 / 6.0) * (two * one);\n"
+"    vec2 w1    = (2.0 / 3.0) - ((0.5 * frac2) * (2.0 - fract));\n"
+"    vec2 w2    = (2.0 / 3.0) - ((0.5 * two) * (2.0 - one));\n"
+"    vec2 w3    = (1.0 / 6.0) * (frac2 * fract);\n"
+"    vec2 g0    = w0 + w1;\n"
+"    vec2 g1    = w2 + w3;\n"
+"    vec2 h0    = (w1 / g0) - 0.5 + index;\n"
+"    vec2 h1    = (w3 / g1) + 1.5 + index;\n"
+"    vec4 tex00 = texture2DRect(s_texture0, h0);\n"
+"    vec4 tex10 = texture2DRect(s_texture0, vec2(h1.x, h0.y));\n"
+"    vec4 tex01 = texture2DRect(s_texture0, vec2(h0.x, h1.y));\n"
+"    vec4 tex11 = texture2DRect(s_texture0, h1);\n"
+"    tex00      = mix(tex01, tex00, g0.y);\n"
+"    tex10      = mix(tex11, tex10, g0.y);\n"
+"    gl_FragColor = mix(tex10, tex00, g0.x);\n"
+"}\n";
+
 VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGLWindow *Window)
   : VideoRenderer(ColourSpace, Window),
     m_openglWindow(Window),
@@ -62,9 +102,12 @@ VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGL
     m_rawVideoTexture(NULL),
     m_rgbVideoTexture(NULL),
     m_rgbVideoBuffer(0),
-    m_videoShader(0),
+    m_yuvShader(0),
+    m_rgbShader(0),
+    m_bicubicShader(0),
     m_conversionContext(NULL)
 {
+    m_allowHighQualityScaling = m_openglWindow->IsRectTexture(m_openglWindow->GetRectTextureType());
 }
 
 VideoRendererOpenGL::~VideoRendererOpenGL()
@@ -87,12 +130,20 @@ void VideoRendererOpenGL::ResetOutput(void)
         m_openglWindow->DeleteTexture(m_rgbVideoTexture->m_val);
     m_rgbVideoTexture = NULL;
 
-    m_openglWindow->DeleteShaderObject(m_videoShader);
-    m_videoShader = 0;
+    m_openglWindow->DeleteShaderObject(m_yuvShader);
+    m_yuvShader = 0;
+
+    m_openglWindow->DeleteShaderObject(m_rgbShader);
+    m_rgbShader = 0;
+
+    m_openglWindow->DeleteShaderObject(m_bicubicShader);
+    m_bicubicShader = 0;
 
     m_colourSpace->SetChanged();
 
     m_validVideoFrame = false;
+
+    VideoRenderer::ResetOutput();
 }
 
 void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame)
@@ -133,25 +184,25 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame)
             LOG(VB_GENERAL, LOG_INFO, QString("Created video texture %1x%2").arg(Frame->m_rawWidth).arg(Frame->m_rawHeight));
         }
 
-        // create a shader
-        if (!m_videoShader)
+        // create a yuv to rgb shader
+        if (!m_yuvShader)
         {
             QByteArray vertex(YUV2RGBVertexShader);
             QByteArray fragment(YUV2RGBFragmentShader);
             CustomiseShader(fragment);
-            m_videoShader = m_openglWindow->CreateShaderObject(vertex, fragment);
+            m_yuvShader = m_openglWindow->CreateShaderObject(vertex, fragment);
 
-            if (!m_videoShader)
+            if (!m_yuvShader)
                 return;
         }
 
-        // TODO optimise this away when not needed
         // TODO check for FBO support
         // create rgb texture and framebuffer
         if (!m_rgbVideoTexture)
         {
             QSize size(Frame->m_rawWidth, Frame->m_rawHeight);
-            m_rgbVideoTexture = m_openglWindow->CreateTexture(size, false, 0, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA);
+            m_rgbVideoTexture = m_openglWindow->CreateTexture(size, false, m_allowHighQualityScaling ? m_openglWindow->GetRectTextureType() : 0,
+                                                              GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA);
 
             if (!m_rgbVideoTexture)
             {
@@ -160,6 +211,18 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame)
             }
 
             m_rgbVideoTexture->m_fullVertices = true;
+        }
+
+        // create a plain rgb shader. We need to use a custom shader in case
+        // the texture type differs from the main UI type (bicubic requires rect)
+        if (!m_rgbShader)
+        {
+            QByteArray fragment(DefaultFragmentShader);
+            CustomiseShader(fragment);
+            m_rgbShader = m_openglWindow->CreateShaderObject(QByteArray(), fragment);
+
+            if (!m_rgbShader)
+                return;
         }
 
         if (!m_rgbVideoBuffer && m_rgbVideoTexture)
@@ -218,8 +281,8 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame)
         m_colourSpace->SetColourSpace(Frame->m_colourSpace);
         m_colourSpace->SetStudioLevels(m_window->GetStudioLevels());
         if (m_colourSpace->HasChanged())
-            m_openglWindow->SetShaderParams(m_videoShader, m_colourSpace->Data(), "COLOUR_UNIFORM");
-        m_openglWindow->DrawTexture(m_rawVideoTexture, &destination, &size, m_videoShader);
+            m_openglWindow->SetShaderParams(m_yuvShader, m_colourSpace->Data(), "COLOUR_UNIFORM");
+        m_openglWindow->DrawTexture(m_rawVideoTexture, &destination, &size, m_yuvShader);
         m_openglWindow->SetViewPort(viewport);
 
         // update the display setup
@@ -232,9 +295,31 @@ void VideoRendererOpenGL::RenderFrame(void)
 {
     if (m_validVideoFrame && m_openglWindow && m_rgbVideoTexture)
     {
-        // and finally draw
         QSizeF size = m_rgbVideoTexture->m_actualSize;
-        m_openglWindow->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, m_updateFrameVertices, false, false);
+        m_openglWindow->SetBlend(false);
+        m_openglWindow->BindFramebuffer(0);
+
+        if (m_updateFrameVertices)
+        {
+            m_rgbVideoTexture->m_vboUpdated = false;
+            m_updateFrameVertices = false;
+        }
+
+        if (m_usingHighQualityScaling)
+        {
+            if (!m_bicubicShader)
+            {
+                QByteArray bicubic(BicubicShader);
+                CustomiseShader(bicubic);
+                m_bicubicShader = m_openglWindow->CreateShaderObject(QByteArray(), bicubic);
+            }
+
+            m_openglWindow->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, m_bicubicShader);
+        }
+        else
+        {
+            m_openglWindow->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, m_rgbShader);
+        }
     }
 }
 
@@ -247,8 +332,23 @@ void VideoRendererOpenGL::CustomiseShader(QByteArray &Source)
 {
     float selectcolumn = 1.0f;
 
-    if (m_rawVideoTexture && !m_openglWindow->IsRectTexture(m_rawVideoTexture->m_type && m_rawVideoTexture->m_size.width() > 0))
+    if (m_rawVideoTexture && !m_openglWindow->IsRectTexture(m_rawVideoTexture->m_type) && m_rawVideoTexture->m_size.width() > 0)
         selectcolumn /= ((float)m_rawVideoTexture->m_size.width());
+
+    QByteArray extensions = "";
+    QByteArray rgbsampler = "sampler2D";
+    QByteArray rgbtexture = "texture2D";
+
+    if (m_allowHighQualityScaling)
+    {
+        extensions += "#extension GL_ARB_texture_rectangle : enable\n";
+        rgbsampler += "Rect";
+        rgbtexture += "Rect";
+    }
+
+    Source.replace("RGB_SAMPLER", rgbsampler);
+    Source.replace("RGB_TEXTURE", rgbtexture);
+    Source.replace("RGB_DEFINES", extensions);
 
     Source.replace("SELECT_COLUMN", QByteArray::number(1.0f / selectcolumn, 'f', 8));
 }

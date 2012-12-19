@@ -21,6 +21,7 @@
 */
 
 // Torc
+#include "torclocalcontext.h"
 #include "torclogging.h"
 #include "uidisplay.h"
 #include "uiwindow.h"
@@ -39,12 +40,17 @@
 
 VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
   : m_window(Window),
-    m_colourSpace(ColourSpace)
+    m_colourSpace(ColourSpace),
+    m_wantHighQualityScaling(false),
+    m_allowHighQualityScaling(false),
+    m_usingHighQualityScaling(false)
 {
     m_display = dynamic_cast<UIDisplay*>(Window);
 
     if (!m_display)
         LOG(VB_GENERAL, LOG_ERR, "Failed to find display object");
+
+    m_wantHighQualityScaling = gLocalContext->GetSetting(TORC_GUI + "BicubicScaling", false);
 }
 
 VideoRenderer::~VideoRenderer()
@@ -57,6 +63,11 @@ void VideoRenderer::PlaybackFinished(void)
 
     if (m_display)
         m_window->SetRefreshRate(m_display->GetDefaultRefreshRate(), m_display->GetDefaultMode());
+}
+
+void VideoRenderer::ResetOutput(void)
+{
+    m_usingHighQualityScaling = false;
 }
 
 void VideoRenderer::UpdateRefreshRate(VideoFrame* Frame)
@@ -99,12 +110,29 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame)
         left = (displaysize.width() - width) / 2.0f;
     }
 
-    LOG(VB_PLAYBACK, LOG_DEBUG, QString("Display rect: %1x%2+%3+%4 %5")
-        .arg(width).arg(height).arg(left).arg(top).arg(displayPAR));
-
     QRectF newrect(left, top, width, height);
     bool changed = newrect != m_presentationRect;
     m_presentationRect = newrect;
+
+    if (changed)
+    {
+        LOG(VB_GENERAL, LOG_INFO, QString("Display rect: %1x%2+%3+%4 %5")
+            .arg(width).arg(height).arg(left).arg(top).arg(displayPAR));
+    }
+
+    // enable/disable high quality scaling
+    if (m_wantHighQualityScaling && m_allowHighQualityScaling && !m_usingHighQualityScaling &&
+        (Frame->m_rawWidth < width || Frame->m_rawHeight < height))
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Enabling high quality scaling");
+        m_usingHighQualityScaling = true;
+    }
+    else if (m_usingHighQualityScaling && !(Frame->m_rawWidth < displaysize.width() || Frame->m_rawHeight < displaysize.height()))
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Disabling high quality scaling");
+        m_usingHighQualityScaling = false;
+    }
+
     return changed;
 }
 

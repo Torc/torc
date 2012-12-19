@@ -26,7 +26,7 @@ class VideoRenderer
     void                   PlaybackFinished     (void);
 
   protected:
-    virtual void           ResetOutput          (void) = 0;
+    virtual void           ResetOutput          (void);
     void                   UpdateRefreshRate    (VideoFrame* Frame);
     bool                   UpdatePosition       (VideoFrame* Frame);
 
@@ -35,6 +35,9 @@ class VideoRenderer
     UIDisplay              *m_display;
     QRectF                  m_presentationRect;
     VideoColourSpace       *m_colourSpace;
+    bool                    m_wantHighQualityScaling;
+    bool                    m_allowHighQualityScaling;
+    bool                    m_usingHighQualityScaling;
 };
 
 class RenderFactory

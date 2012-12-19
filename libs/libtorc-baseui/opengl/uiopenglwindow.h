@@ -74,7 +74,7 @@ class TORC_BASEUI_PUBLIC UIOpenGLWindow
 
     void        SetBlend          (bool Enable);
     void        DrawTexture       (GLTexture *Texture, QRectF *Dest, QSizeF *Size, uint Shader);
-    void        DrawTexture       (GLTexture *Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged, bool Blend, bool Studio);
+    void        DrawTexture       (GLTexture *Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged);
 
   public slots:
     // UIWindow
