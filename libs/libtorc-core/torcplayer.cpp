@@ -22,6 +22,7 @@
 
 // Qt
 #include <QCoreApplication>
+#include <QMetaType>
 #include <QTimerEvent>
 #include <QThread>
 #include <QObject>
@@ -101,6 +102,15 @@ TorcPlayer::TorcPlayer(QObject *Parent, int PlaybackFlags, int DecoderFlags)
     m_oldDecoder(NULL),
     m_oldDecoderStopTimer(0)
 {
+    static bool registered = false;
+
+    // NB this keeps the StateChanged signal happy when it is a queued connection
+    // BUT we should always be using a direction connection (i.e. all UI thread)
+    if (!registered)
+    {
+        qRegisterMetaType<TorcPlayer::PlayerState>("TorcPlayer::PlayerState");
+        registered = true;
+    }
 }
 
 TorcPlayer::~TorcPlayer()
