@@ -125,6 +125,12 @@ int UIActions::GetActionFromKey(QKeyEvent *Event)
             return Torc::EnableStudioLevels;
         case Qt::Key_R:
             return Torc::ToggleStudioLevels;
+        case Qt::Key_A:
+            return Torc::EnableHighQualityScaling;
+        case Qt::Key_S:
+            return Torc::DisableHighQualityScaling;
+        case Qt::Key_D:
+            return Torc::ToggleHighQualityScaling;
         default:
             break;
     }

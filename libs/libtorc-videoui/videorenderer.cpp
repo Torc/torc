@@ -65,6 +65,28 @@ void VideoRenderer::PlaybackFinished(void)
         m_window->SetRefreshRate(m_display->GetDefaultRefreshRate(), m_display->GetDefaultMode());
 }
 
+bool VideoRenderer::HighQualityScalingAllowed(void)
+{
+    return m_allowHighQualityScaling;
+}
+
+bool VideoRenderer::HighQualityScalingEnabled(void)
+{
+    return m_usingHighQualityScaling;
+}
+
+bool VideoRenderer::GetHighQualityScaling(void)
+{
+    return m_wantHighQualityScaling;
+}
+
+bool VideoRenderer::SetHighQualityScaling(bool Enable)
+{
+    m_wantHighQualityScaling = Enable;
+    gLocalContext->SetSetting(TORC_GUI + "BicubicScaling", m_wantHighQualityScaling);
+    return true;
+}
+
 void VideoRenderer::ResetOutput(void)
 {
     m_usingHighQualityScaling = false;
@@ -127,7 +149,7 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame)
         LOG(VB_GENERAL, LOG_INFO, "Enabling high quality scaling");
         m_usingHighQualityScaling = true;
     }
-    else if (m_usingHighQualityScaling && !(Frame->m_rawWidth < displaysize.width() || Frame->m_rawHeight < displaysize.height()))
+    else if (m_usingHighQualityScaling && (!(Frame->m_rawWidth < displaysize.width() || Frame->m_rawHeight < displaysize.height()) || !m_wantHighQualityScaling))
     {
         LOG(VB_GENERAL, LOG_INFO, "Disabling high quality scaling");
         m_usingHighQualityScaling = false;

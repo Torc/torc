@@ -26,6 +26,7 @@ class VideoUIPlayer : public VideoPlayer, public TorcHTTPService
     bool               Refresh       (quint64 TimeNow);
     void               Render        (quint64 TimeNow);
     void               Reset         (void);
+    bool               HandleAction  (int Action);
 
   protected:
     virtual void       Teardown      (void);

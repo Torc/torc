@@ -25,6 +25,11 @@ class VideoRenderer
     virtual PixelFormat    PreferredPixelFormat (void) = 0;
     void                   PlaybackFinished     (void);
 
+    bool                   GetHighQualityScaling     (void);
+    bool                   SetHighQualityScaling     (bool Enable);
+    bool                   HighQualityScalingAllowed (void);
+    bool                   HighQualityScalingEnabled (void);
+
   protected:
     virtual void           ResetOutput          (void);
     void                   UpdateRefreshRate    (VideoFrame* Frame);

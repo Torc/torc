@@ -133,6 +133,9 @@ class TORC_CORE_PUBLIC Torc
         JumpBackwardTrack,
         JumpToStart,
         PlayMedia,
+        EnableHighQualityScaling,
+        DisableHighQualityScaling,
+        ToggleHighQualityScaling,
         // storage
         DiskInserted = 4000,
         DiskRemoved,

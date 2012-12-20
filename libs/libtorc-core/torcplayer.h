@@ -48,7 +48,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 
     void            Reset              (void);
     bool            HandleEvent        (QEvent *Event);
-    bool            HandleAction       (int Action);
+    virtual bool    HandleAction       (int Action);
     bool            IsSwitching        (void);
     PlayerState     GetState           (void);
     PlayerState     GetNextState       (void);

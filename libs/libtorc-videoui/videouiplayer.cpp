@@ -114,6 +114,44 @@ void VideoUIPlayer::Reset(void)
     }
 }
 
+bool VideoUIPlayer::HandleAction(int Action)
+{
+    if (m_render)
+    {
+        if (Action == Torc::EnableHighQualityScaling ||
+            Action == Torc::DisableHighQualityScaling ||
+            Action == Torc::ToggleHighQualityScaling)
+        {
+            if (m_render->HighQualityScalingAllowed())
+            {
+                if (Action == Torc::EnableHighQualityScaling)
+                {
+                    SendUserMessage(QObject::tr("Requested high quality scaling"));
+                    return m_render->SetHighQualityScaling(true);
+                }
+                else if (Action == Torc::DisableHighQualityScaling)
+                {
+                    SendUserMessage(QObject::tr("Disabled high quality scaling"));
+                    return m_render->SetHighQualityScaling(false);
+                }
+                else if (Action == Torc::ToggleHighQualityScaling)
+                {
+                    bool enabled = !m_render->GetHighQualityScaling();
+                    SendUserMessage(enabled ? QObject::tr("Requested high quality scaling") :
+                                              QObject::tr("Disabled high quality scaling"));
+                    return m_render->SetHighQualityScaling(enabled);
+                }
+            }
+            else
+            {
+                SendUserMessage(QObject::tr("Not available"));
+            }
+        }
+    }
+
+    return VideoPlayer::HandleAction(Action);
+}
+
 class VideoUIPlayerFactory : public PlayerFactory
 {
     TorcPlayer* Create(QObject *Parent, int PlaybackFlags, int DecoderFlags)
