@@ -548,6 +548,7 @@ void TorcRAOPConnection::ProcessText(void)
                 timingport  = item.mid(item.indexOf("=") + 1).trimmed().toUInt();
             else if (item.startsWith("events"))
                 events = true;
+            (void)events;
         }
 
         LOG(VB_GENERAL, LOG_INFO, IDENT + QString("Negotiated setup with client %1 on port %2")
