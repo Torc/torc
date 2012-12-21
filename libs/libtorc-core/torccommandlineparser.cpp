@@ -55,13 +55,14 @@ using namespace std;
 #include <QDateTime>
 
 // Torc
-#include "torccommandlineparser.h"
+#include "torclocalcontext.h"
 #include "torcexitcodes.h"
 #include "torcconfig.h"
 #include "torclogging.h"
 #include "torcloggingimp.h"
 #include "version.h"
 #include "torccoreutils.h"
+#include "torccommandlineparser.h"
 
 #define TERMWIDTH 79
 

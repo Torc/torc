@@ -21,6 +21,7 @@
 */
 
 // Torc
+#include "torcconfig.h"
 #include "torclogging.h"
 #include "videoframe.h"
 #include "videobuffers.h"
@@ -39,6 +40,10 @@
 extern "C" {
 #include "libavutil/pixdesc.h"
 }
+
+#if HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 /*! \class VideoBuffers
  *  \brief A class to track and manage video buffers.

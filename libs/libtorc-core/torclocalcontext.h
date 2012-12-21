@@ -13,6 +13,10 @@
 #include "torcobservable.h"
 #include "torccommandlineparser.h"
 
+#if HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 class TorcAdminObject;
 
 class TORC_CORE_PUBLIC Torc

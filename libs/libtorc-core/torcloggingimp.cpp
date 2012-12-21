@@ -29,6 +29,9 @@
 // Various ways to get to thread's tid
 #if defined(linux)
 #include <sys/syscall.h>
+#if HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 #elif defined(__FreeBSD__)
 extern "C" {
 #include <sys/ucontext.h>
