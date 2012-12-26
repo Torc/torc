@@ -201,7 +201,8 @@ void UIOpenGLWindow::MainLoop(void)
         m_timer->Start();
     }
 
-    swapBuffers();
+    if (isVisible())
+        swapBuffers();
 }
 
 QVariantMap UIOpenGLWindow::GetDisplayDetails(void)
@@ -362,8 +363,7 @@ bool UIOpenGLWindow::event(QEvent *Event)
             }
         }
     }
-
-    if (type == QEvent::Timer)
+    else if (type == QEvent::Timer)
     {
         QTimerEvent *timerevent = dynamic_cast<QTimerEvent*>(Event);
 
@@ -391,7 +391,9 @@ void UIOpenGLWindow::SetRefreshRate(double Rate, int ModeIndex)
     if (ModeIndex > -1)
         SwitchToMode(ModeIndex); // NB this will also update m_refreshRate
 
-    LOG(VB_GENERAL, LOG_INFO, QString("Setting display rate to %1").arg(m_refreshRate));
+    LOG(VB_GENERAL, LOG_INFO, QString("Setting display rate to %1 (interval %2us)")
+        .arg(m_refreshRate).arg(1000000.0f / m_refreshRate));
+
     SetFrameCount(5000.0 / m_refreshRate);
 
     if (m_timer)
