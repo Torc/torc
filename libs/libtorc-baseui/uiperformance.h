@@ -19,8 +19,8 @@ class UIPerformance
     void    FinishDrawing   (void);
 
   private:
-    quint64 RecordStartTime (void);
-    bool    RecordEndTime   (void);
+    void    RecordStartTime (quint64 Time);
+    void    RecordEndTime   (quint64 Time);
     QString GetCPUStat      (void);
 
   private:

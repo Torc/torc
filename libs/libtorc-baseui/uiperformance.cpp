@@ -61,6 +61,8 @@ void UIPerformance::SetFrameCount(int Count)
     m_totalCount   = Count;
     m_totalTimes.resize(m_totalCount);
     m_renderTimes.resize(m_totalCount);
+    m_totalTimes.fill(0);
+    m_renderTimes.fill(0);
 }
 
 quint64 UIPerformance::StartFrame(void)
@@ -68,8 +70,10 @@ quint64 UIPerformance::StartFrame(void)
     if (!m_totalCount)
         return 0;
 
-    RecordEndTime();
-    return RecordStartTime();
+    quint64 time = GetMicrosecondCount();
+    RecordEndTime(time);
+    RecordStartTime(time);
+    return time;
 }
 
 void UIPerformance::FinishDrawing(void)
@@ -80,16 +84,16 @@ void UIPerformance::FinishDrawing(void)
     m_renderTimes[m_currentCount] = GetMicrosecondCount() - m_starttime;
 }
 
-bool UIPerformance::RecordEndTime()
+void UIPerformance::RecordEndTime(quint64 Time)
 {
     if (!m_totalCount)
-        return false;
+        return;
 
     int cycles = m_totalCount;
 
     if (m_starttimeValid)
     {
-        m_totalTimes[m_currentCount] = GetMicrosecondCount() - m_starttime;
+        m_totalTimes[m_currentCount] = Time - m_starttime;
         m_currentCount++;
     }
 
@@ -141,24 +145,22 @@ bool UIPerformance::RecordEndTime()
                 + extra);
 
         m_currentCount = 0;
-        return true;
+        return;
     }
-    return false;
+
+    return;
 }
 
-quint64 UIPerformance::RecordStartTime()
+void UIPerformance::RecordStartTime(quint64 Time)
 {
-    if (!m_totalCount)
-        return 0;
-    m_starttime = GetMicrosecondCount();
+    m_starttime = Time;
     m_starttimeValid = true;
-    return m_starttime;
 }
 
 QString UIPerformance::GetCPUStat(void)
 {
     if (!m_CPUStat)
-        return "N/A";
+        return QString();
 
 #ifdef __linux__
     QString res;
@@ -201,6 +203,6 @@ QString UIPerformance::GetCPUStat(void)
     }
     return res;
 #else
-    return "N/A";
+    return QString();
 #endif
 }
