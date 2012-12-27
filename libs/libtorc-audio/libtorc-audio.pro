@@ -24,31 +24,47 @@ LIBS += -L../libtorc-av/libavresample -ltorc-avresample
 
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 
-HEADERS += audiosettings.h          audiooutputsettings.h
-HEADERS += audiooutput.h            audiooutputbase.h
-HEADERS += audiooutputnull.h        audiooutpututil.h
-HEADERS += audiooutputlisteners.h   audiooutputdownmix.h
-HEADERS += audiovolume.h            audioeld.h
-HEADERS += audiospdifencoder.h      audiooutputdigitalencoder.h
+HEADERS += audiosettings.h
+HEADERS += audiooutputsettings.h
+HEADERS += audiooutput.h
+HEADERS += audiooutputbase.h
+HEADERS += audiooutputnull.h
+HEADERS += audiooutpututil.h
+HEADERS += audiooutputlisteners.h
+HEADERS += audiooutputdownmix.h
+HEADERS += audiovolume.h
+HEADERS += audioeld.h
+HEADERS += audiospdifencoder.h
+HEADERS += audiooutputdigitalencoder.h
 HEADERS += audiowrapper.h
 
-SOURCES += audiosettings.cpp        audiooutputsettings.cpp
-SOURCES += audiooutput.cpp          audiooutputbase.cpp
-SOURCES += audiooutputnull.cpp      audiooutpututil.cpp
-SOURCES += audiooutputlisteners.cpp audiooutputdownmix.cpp
-SOURCES += audiovolume.cpp          audioeld.cpp
-SOURCES += audiospdifencoder.cpp    audiooutputdigitalencoder.cpp
+SOURCES += audiosettings.cpp
+SOURCES += audiooutputsettings.cpp
+SOURCES += audiooutput.cpp
+SOURCES += audiooutputbase.cpp
+SOURCES += audiooutputnull.cpp
+SOURCES += audiooutpututil.cpp
+SOURCES += audiooutputlisteners.cpp
+SOURCES += audiooutputdownmix.cpp
+SOURCES += audiovolume.cpp
+SOURCES += audioeld.cpp
+SOURCES += audiospdifencoder.cpp
+SOURCES += audiooutputdigitalencoder.cpp
 SOURCES += audiowrapper.cpp
 
-HEADERS += audioplayer.h            audiodecoder.h
-HEADERS += audiointerface.h         torcavutils.h
-SOURCES += audioplayer.cpp          audiodecoder.cpp
-SOURCES += audiointerface.cpp       torcavutils.cpp
+HEADERS += audioplayer.h
+HEADERS += audiodecoder.h
+HEADERS += audiointerface.h
+HEADERS += torcavutils.h
+SOURCES += audioplayer.cpp
+SOURCES += audiodecoder.cpp
+SOURCES += audiointerface.cpp
+SOURCES += torcavutils.cpp
 
 contains(CONFIG_LIBCDIO_INDEV, yes) {
     DEPENDPATH += ./cdaudio
-    HEADERS    += torccdbuffer.h
-    SOURCES    += torccdbuffer.cpp
+    HEADERS    += cdaudio/torccdbuffer.h
+    SOURCES    += cdaudio/torccdbuffer.cpp
 }
 
 contains(CONFIG_LIBPULSE, yes) {
@@ -58,8 +74,8 @@ contains(CONFIG_LIBPULSE, yes) {
 }
 
 macx {
-    HEADERS += audiooutputosx.h
-    SOURCES += audiooutputosx.cpp
+    HEADERS += platforms/audiooutputosx.h
+    SOURCES += platforms/audiooutputosx.cpp
 
     FWKS = ApplicationServices AudioUnit AudioToolbox CoreAudio
     FC = $$join(FWKS,",","{","}")
@@ -68,47 +84,64 @@ macx {
 }
 
 contains(CONFIG_ALSA_OUTDEV, yes) {
-    HEADERS += audiooutputalsa.h
-    SOURCES += audiooutputalsa.cpp
+    HEADERS += platforms/audiooutputalsa.h
+    SOURCES += platforms/audiooutputalsa.cpp
     LIBS    += -lasound
 }
 
 contains(CONFIG_OSS_OUTDEV, yes) {
-    HEADERS += audiooutputoss.h
-    SOURCES += audiooutputoss.cpp
+    HEADERS += platforms/audiooutputoss.h
+    SOURCES += platforms/audiooutputoss.cpp
 }
 
 contains(CONFIG_LIBCRYPTO, yes) {
     contains(CONFIG_LIBDNS_SD, yes) {
         DEPENDPATH += ./raop
-        HEADERS += torcraopdevice.h    torcraopbuffer.h   torcraopconnection.h
-        SOURCES += torcraopdevice.cpp  torcraopbuffer.cpp torcraopconnection.cpp
+        HEADERS += raop/torcraopdevice.h
+        HEADERS += raop/torcraopbuffer.h
+        HEADERS += raop/torcraopconnection.h
+        SOURCES += raop/torcraopdevice.cpp
+        SOURCES += raop/torcraopbuffer.cpp
+        SOURCES += raop/torcraopconnection.cpp
         LIBS    += -lcrypto
         QT      += network
     }
 }
 
 #soundtouch
-HEADERS += AAFilter.h       cpu_detect.h FIRFilter.h
-HEADERS += RateTransposer.h TDStretch.h  STTypes.h
+HEADERS += soundtouch/AAFilter.h
+HEADERS += soundtouch/cpu_detect.h
+HEADERS += soundtouch/FIRFilter.h
+HEADERS += soundtouch/RateTransposer.h
+HEADERS += soundtouch/TDStretch.h
+HEADERS += soundtouch/STTypes.h
 
-SOURCES += AAFilter.cpp FIRFilter.cpp FIFOSampleBuffer.cpp
-SOURCES += RateTransposer.cpp SoundTouch.cpp TDStretch.cpp
-SOURCES += cpu_detect_x86.cpp
+SOURCES += soundtouch/AAFilter.cpp
+SOURCES += soundtouch/FIRFilter.cpp
+SOURCES += soundtouch/FIFOSampleBuffer.cpp
+SOURCES += soundtouch/RateTransposer.cpp
+SOURCES += soundtouch/SoundTouch.cpp
+SOURCES += soundtouch/TDStretch.cpp
+SOURCES += soundtouch/cpu_detect_x86.cpp
 
 contains(ARCH_X86, yes) {
     DEFINES += ALLOW_SSE2 ALLOW_SSE3
-    SOURCES += sse_optimized.cpp
+    SOURCES += soundtouch/sse_optimized.cpp
     unix:QMAKE_CXXFLAGS += -msse3
 }
 
 # samplerate
-HEADERS += samplerate.h
-SOURCES += samplerate.c src_linear.c src_sinc.c src_zoh.c
+HEADERS += samplerate/samplerate.h
+SOURCES += samplerate/samplerate.c
+SOURCES += samplerate/src_linear.c
+SOURCES += samplerate/src_sinc.c
+SOURCES += samplerate/src_zoh.c
 
 #freesurround
-HEADERS += el_processor.h           freesurround.h
-SOURCES += el_processor.cpp         freesurround.cpp
+HEADERS += freesurround/el_processor.h
+HEADERS += freesurround/freesurround.h
+SOURCES += freesurround/el_processor.cpp
+SOURCES += freesurround/freesurround.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files += audiosettings.h audiooutput.h audiooutputsettings.h
