@@ -28,24 +28,28 @@ LIBS += -L../libtorc-av/libswscale   -ltorc-swscale
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 
 HEADERS += torcvideouiexport.h
-HEADERS += videocolourspace.h    videouiplayer.h
-HEADERS += videorenderer.h       videorendereropengl.h
+HEADERS += videocolourspace.h
+HEADERS += videouiplayer.h
+HEADERS += videorenderer.h
+HEADERS += opengl/videorendereropengl.h
 
-SOURCES += videocolourspace.cpp  videouiplayer.cpp
-SOURCES += videorenderer.cpp     videorendereropengl.cpp
+SOURCES += videocolourspace.cpp
+SOURCES += videouiplayer.cpp
+SOURCES += videorenderer.cpp
+SOURCES += opengl/videorendereropengl.cpp
 
 contains(CONFIG_X11BASE, yes) {
     contains(CONFIG_VDPAU, yes) {
         DEPENDPATH += ./platforms
-        HEADERS += videovdpau.h
-        SOURCES += videovdpau.cpp
+        HEADERS += platforms/videovdpau.h
+        SOURCES += platforms/videovdpau.cpp
         LIBS    += -lvdpau
     }
 
     contains(CONFIG_VAAPI, yes) {
         DEPENDPATH += ./platforms
-        HEADERS += videovaapi.h
-        SOURCES += videovaapi.cpp
+        HEADERS += platforms/videovaapi.h
+        SOURCES += platforms/videovaapi.cpp
         LIBS    += -lva
     }
 }
