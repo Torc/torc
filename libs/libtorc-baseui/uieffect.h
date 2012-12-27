@@ -25,6 +25,7 @@ class UIEffect
     QPointF      GetCentre   (const QRectF *Rect) const;
 
     qreal  m_alpha;
+    qreal  m_color;
     qreal  m_hZoom;
     qreal  m_vZoom;
     qreal  m_rotation;
