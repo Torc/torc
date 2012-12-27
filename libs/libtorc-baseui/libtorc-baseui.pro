@@ -20,68 +20,106 @@ LIBS += -L../libtorc-core -ltorc-core-$$LIBVERSION
 
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 
-HEADERS += torcbaseuiexport.h uiimagetracker.h
-HEADERS += uiimage.h          uifont.h
-HEADERS += uitextrenderer.h   uiopenglwindow.h
-HEADERS += uieffect.h         uiwindow.h
-HEADERS += uiopenglshaders.h
-HEADERS += uiopenglfence.h    uiopenglmatrix.h
-HEADERS += uiopengltextures.h uiopenglview.h
-HEADERS += uiopenglbufferobjects.h
-HEADERS += uiopenglframebuffers.h
-HEADERS += uiimageloader.h    uiwidget.h
-HEADERS += uidisplay.h        uidisplaybase.h
-HEADERS += uiperformance.h    uitheme.h
-HEADERS += uithemeloader.h    uishapepath.h
-HEADERS += uitimer.h          uianimation.h
-HEADERS += uitext.h           uishape.h
-HEADERS += uiimagewidget.h    uigroup.h
-HEADERS += uibutton.h         uiactions.h
-HEADERS += uishaperenderer.h  uimedia.h
-HEADERS += uimessenger.h      uitexteditor.h
+HEADERS += torcbaseuiexport.h
+HEADERS += uiimagetracker.h
+HEADERS += uiimage.h
+HEADERS += uifont.h
+HEADERS += uitextrenderer.h
+HEADERS += uieffect.h
+HEADERS += uiwindow.h
+HEADERS += uiimageloader.h
+HEADERS += uiwidget.h
+HEADERS += uidisplay.h
+HEADERS += uidisplaybase.h
+HEADERS += uiperformance.h
+HEADERS += uitheme.h
+HEADERS += uithemeloader.h
+HEADERS += uishapepath.h
+HEADERS += uitimer.h
+HEADERS += uianimation.h
+HEADERS += uitext.h
+HEADERS += uishape.h
+HEADERS += uiimagewidget.h
+HEADERS += uigroup.h
+HEADERS += uibutton.h
+HEADERS += uiactions.h
+HEADERS += uishaperenderer.h
+HEADERS += uimedia.h
+HEADERS += uimessenger.h
+HEADERS += uitexteditor.h
 
-SOURCES += uiimage.cpp        uiimagetracker.cpp
-SOURCES += uifont.cpp         uitextrenderer.cpp
-SOURCES += uiopenglwindow.cpp uieffect.cpp
-SOURCES += uiwindow.cpp       uiopenglshaders.cpp
-SOURCES += uiopenglfence.cpp  uimedia.cpp
-SOURCES += uiopenglmatrix.cpp uiopengltextures.cpp
-SOURCES += uiopenglview.cpp   uiopenglbufferobjects.cpp
-SOURCES += uiopenglframebuffers.cpp
-SOURCES += uiimageloader.cpp  uiwidget.cpp
-SOURCES += uidisplaybase.cpp  uiperformance.cpp
-SOURCES += uitheme.cpp        uithemeloader.cpp
-SOURCES += uishapepath.cpp    uitimer.cpp
-SOURCES += uianimation.cpp    uitext.cpp
-SOURCES += uishape.cpp        uiimagewidget.cpp
-SOURCES += uigroup.cpp        uibutton.cpp
-SOURCES += uiactions.cpp      uishaperenderer.cpp
-SOURCES += uimessenger.cpp    uitexteditor.cpp
+SOURCES += uiimage.cpp
+SOURCES += uiimagetracker.cpp
+SOURCES += uifont.cpp
+SOURCES += uitextrenderer.cpp
+SOURCES += uieffect.cpp
+SOURCES += uiwindow.cpp
+SOURCES += uimedia.cpp
+SOURCES += uiimageloader.cpp
+SOURCES += uiwidget.cpp
+SOURCES += uidisplaybase.cpp
+SOURCES += uiperformance.cpp
+SOURCES += uitheme.cpp
+SOURCES += uithemeloader.cpp
+SOURCES += uishapepath.cpp
+SOURCES += uitimer.cpp
+SOURCES += uianimation.cpp
+SOURCES += uitext.cpp
+SOURCES += uishape.cpp
+SOURCES += uiimagewidget.cpp
+SOURCES += uigroup.cpp
+SOURCES += uibutton.cpp
+SOURCES += uiactions.cpp
+SOURCES += uishaperenderer.cpp
+SOURCES += uimessenger.cpp
+SOURCES += uitexteditor.cpp
+
+HEADERS += opengl/uiopenglwindow.h
+HEADERS += opengl/uiopenglshaders.h
+HEADERS += opengl/uiopenglfence.h
+HEADERS += opengl/uiopenglmatrix.h
+HEADERS += opengl/uiopengltextures.h
+HEADERS += opengl/uiopenglview.h
+HEADERS += opengl/uiopenglbufferobjects.h
+HEADERS += opengl/uiopenglframebuffers.h
+
+SOURCES += opengl/uiopenglshaders.cpp
+SOURCES += opengl/uiopenglfence.cpp
+SOURCES += opengl/uiopenglwindow.cpp
+SOURCES += opengl/uiopenglmatrix.cpp
+SOURCES += opengl/uiopengltextures.cpp
+SOURCES += opengl/uiopenglview.cpp
+SOURCES += opengl/uiopenglbufferobjects.cpp
+SOURCES += opengl/uiopenglframebuffers.cpp
 
 contains(CONFIG_X11BASE, yes) {
     DEPENDPATH += ./platforms/nvctrl
-    HEADERS    += NVCtrl.h NVCtrlLib.h nv_control.h uinvcontrol.h
-    SOURCES    += NVCtrl.c uinvcontrol.cpp
-    SOURCES    += uidisplay-x11.cpp
+    HEADERS    += platforms/nvctrl/NVCtrl.h
+    HEADERS    += platforms/nvctrl/NVCtrlLib.h
+    HEADERS    += platforms/nvctrl/nv_control.h
+    HEADERS    += platforms/nvctrl/uinvcontrol.h
+    SOURCES    += platforms/nvctrl/NVCtrl.c
+    SOURCES    += platforms/nvctrl/uinvcontrol.cpp
+    SOURCES    += platforms/uidisplay-x11.cpp
     LIBS       += -lXxf86vm
 }
 else:macx {
     LIBS    += -framework Cocoa
-    SOURCES += uidisplay-osx.cpp
+    SOURCES += platforms/uidisplay-osx.cpp
 }
 else:win32 {
-    SOURCES += uidisplay-win.cpp
+    SOURCES += platforms/uidisplay-win.cpp
 }
 else:greaterThan(QT_MAJOR_VERSION, 4) {
-    SOURCES += uidisplay-qt5.cpp
+    SOURCES += platforms/uidisplay-qt5.cpp
 }
 else: {
     error(No valid display class. Aborting)
 }
 
 contains(CONFIG_LIBCEC, yes) {
-    HEADERS += torccecdevice.h
-    SOURCES += torccecdevice.cpp
+    HEADERS += peripherals/torccecdevice.h
+    SOURCES += peripherals/torccecdevice.cpp
     LIBS += -lcec
 }
 
