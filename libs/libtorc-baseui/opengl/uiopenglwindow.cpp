@@ -101,6 +101,7 @@ UIOpenGLWindow::UIOpenGLWindow(const QGLFormat &Format, GLType Type)
 
     //installEventFilter(this);
     setAutoBufferSwap(false);
+    show();
 
     setAttribute(Qt::WA_NoSystemBackground);
     setAutoFillBackground(false);
@@ -113,7 +114,6 @@ UIOpenGLWindow::UIOpenGLWindow(const QGLFormat &Format, GLType Type)
     setFixedSize(m_pixelSize);
 
     raise();
-    show();
 
     setCursor(Qt::BlankCursor);
     grabKeyboard();
