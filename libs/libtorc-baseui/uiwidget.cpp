@@ -99,6 +99,7 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
     m_scaleY(1.0),
     m_clipping(false),
     alpha(1.0),
+    color(1.0),
     zoom(1.0),
     verticalzoom(1.0),
     horizontalzoom(1.0),
@@ -592,14 +593,14 @@ bool UIWidget::ParseFont(UIWidget *Root, QDomElement *Element)
         if (element.tagName() == "outline")
         {
             int width    = element.attribute("width").toInt();
-            QColor color = GetColor(element.attribute("color"));
+            QColor color = GetQColor(element.attribute("color"));
             if (width)
                 font->SetOutline(true, color, width);
         }
         else if (element.tagName() == "shadow")
         {
             QPoint offset = GetPoint(element.attribute("offset"));
-            QColor color  = GetColor(element.attribute("color"));
+            QColor color  = GetQColor(element.attribute("color"));
             QString blurs = element.attribute("fixedblur");
             int fixedblur = 0;
             if (!blurs.isEmpty())
@@ -628,7 +629,7 @@ bool UIWidget::ParseFont(UIWidget *Root, QDomElement *Element)
             if (element.hasAttribute("color"))
             {
                 font->SetImageReady(true);
-                font->SetColor(GetColor(element.attribute("color")));
+                font->SetColor(GetQColor(element.attribute("color")));
             }
             else if (element.hasAttribute("image"))
             {
@@ -722,7 +723,7 @@ QString UIWidget::GetText(QDomElement *Element)
     return QString("");
 }
 
-QColor UIWidget::GetColor(const QString &Color)
+QColor UIWidget::GetQColor(const QString &Color)
 {
     if (Color.size() == 8)
     {
@@ -930,6 +931,7 @@ void UIWidget::CopyFrom(UIWidget *Other)
     SetActive(Other->IsActive());
     SetSelected(Other->IsSelected());
     SetAlpha(Other->GetAlpha());
+    SetColor(Other->GetColor());
     SetRotation(Other->GetRotation());
     SetHorizontalZoom(Other->GetHorizontalZoom());
     SetVerticalZoom(Other->GetVerticalZoom());
@@ -957,6 +959,7 @@ void UIWidget::CopyFrom(UIWidget *Other)
 
     // defaults
     alpha          = Other->alpha;
+    color          = Other->color;
     zoom           = Other->zoom;
     verticalzoom   = Other->verticalzoom;
     horizontalzoom = Other->horizontalzoom;
@@ -1588,6 +1591,11 @@ qreal UIWidget::GetAlpha(void)
     return m_effect->m_alpha;
 }
 
+qreal UIWidget::GetColor(void)
+{
+    return m_effect->m_color;
+}
+
 qreal UIWidget::GetZoom(void)
 {
     return m_effect->m_hZoom; // NB
@@ -1881,6 +1889,11 @@ void UIWidget::SetPositionChanged(bool Changed)
 void UIWidget::SetAlpha(qreal Alpha)
 {
     m_effect->m_alpha = Alpha;
+}
+
+void UIWidget::SetColor(qreal Color)
+{
+    m_effect->m_color = Color;
 }
 
 void UIWidget::SetZoom(qreal Zoom)

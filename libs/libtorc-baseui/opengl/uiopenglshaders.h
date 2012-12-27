@@ -10,7 +10,6 @@
 typedef enum DefaultShaders
 {
     kShaderDefault = 0,
-    kShaderStudio,
     kShaderCount
 } DefaultShaders;
 

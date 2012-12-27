@@ -466,7 +466,7 @@ void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size,
     m_glVertexAttribPointer(VERTEX_INDEX, VERTEX_SIZE, GL_FLOAT, GL_FALSE,
                             VERTEX_SIZE * sizeof(GLfloat),
                             (const void *) kVertexOffset);
-    m_glVertexAttrib4f(COLOR_INDEX, 1.0, 1.0, 1.0, m_transforms[m_currentTransformIndex].alpha);
+    m_glVertexAttrib4f(COLOR_INDEX, 1.0, 1.0, 0.0, m_transforms[m_currentTransformIndex].alpha);
     m_glVertexAttribPointer(TEXTURE_INDEX, TEXTURE_SIZE, GL_FLOAT, GL_FALSE,
                             TEXTURE_SIZE * sizeof(GLfloat),
                             (const void *) kTextureOffset);
@@ -480,7 +480,9 @@ void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size,
 
 void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged)
 {
-    uint ShaderObject = m_shaders[m_studioLevels ? kShaderStudio : kShaderDefault];
+    static const GLfloat studiorange  = 219.0f / 255.0f;
+    static const GLfloat studiooffset = 16.0f / 255.0f;
+    uint ShaderObject = m_shaders[kShaderDefault];
 
     BindFramebuffer(0);
 
@@ -517,7 +519,11 @@ void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size,
     m_glVertexAttribPointer(VERTEX_INDEX, VERTEX_SIZE, GL_FLOAT, GL_FALSE,
                             VERTEX_SIZE * sizeof(GLfloat),
                             (const void *) kVertexOffset);
-    m_glVertexAttrib4f(COLOR_INDEX, 1.0, 1.0, 1.0, m_transforms[m_currentTransformIndex].alpha);
+    m_glVertexAttrib4f(COLOR_INDEX,
+                       m_transforms[m_currentTransformIndex].color,
+                       m_studioLevels ? studiorange : 1.0f,
+                       m_studioLevels ? studiooffset : 0.0f,
+                       m_transforms[m_currentTransformIndex].alpha);
     m_glVertexAttribPointer(TEXTURE_INDEX, TEXTURE_SIZE, GL_FLOAT, GL_FALSE,
                             TEXTURE_SIZE * sizeof(GLfloat),
                             (const void *) kTextureOffset);

@@ -345,7 +345,7 @@ bool UIShapePath::ParsePath(QDomElement *Element)
             QString caps   = element.attribute("pencapstyle");
 
             if (!colors.isEmpty())
-                SetPenColor(UIWidget::GetColor(colors));
+                SetPenColor(UIWidget::GetQColor(colors));
 
             if (!widths.isEmpty())
             {
@@ -386,7 +386,7 @@ bool UIShapePath::ParsePath(QDomElement *Element)
             QString styles = element.attribute("brushstyle");
 
             if (!colors.isEmpty())
-                SetBrushColor(UIWidget::GetColor(colors));
+                SetBrushColor(UIWidget::GetQColor(colors));
 
             if (!styles.isEmpty())
             {
@@ -459,7 +459,7 @@ void UIShapePath::ParseLinearGradient(QDomElement *Element)
             if (!points.isEmpty() && !colors.isEmpty())
             {
                 bool ok = false;
-                QColor color = UIWidget::GetColor(colors);
+                QColor color = UIWidget::GetQColor(colors);
                 qreal point = points.toFloat(&ok);
 
                 if (ok)

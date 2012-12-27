@@ -229,7 +229,7 @@ void UIShape::SetPenColor(const QColor &Color)
 
 void UIShape::SetPenColor(const QString &Color)
 {
-    SetPenColor(UIWidget::GetColor(Color));
+    SetPenColor(UIWidget::GetQColor(Color));
 }
 
 void UIShape::SetPenWidth(int Width)
@@ -264,7 +264,7 @@ void UIShape::SetBrushColor(const QColor &Color)
 
 void UIShape::SetBrushColor(const QString &Color)
 {
-    SetBrushColor(UIWidget::GetColor(Color));
+    SetBrushColor(UIWidget::GetQColor(Color));
 }
 
 void UIShape::SetBrushStyle(int BrushStyle)

@@ -77,7 +77,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     static bool     ParseWidget         (UIWidget *Root, UIWidget *Parent, QDomElement *Element);
     static bool     ParseFont           (UIWidget *Root, QDomElement *Element);
     static QString  GetText             (QDomElement *Element);
-    static QColor   GetColor            (const QString &Color);
+    static QColor   GetQColor           (const QString &Color);
     static QRectF   GetRect             (QDomElement  *Element);
     static QRectF   GetRect             (const QString &Rect);
     static QSizeF   GetSizeF            (const QString &Size);
@@ -101,6 +101,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     Q_PROPERTY      (bool    m_selected        READ IsSelected          WRITE SetSelected)
     Q_PROPERTY      (bool    m_positionChanged READ IsPositionChanged   WRITE SetPositionChanged)
     Q_PROPERTY      (qreal   alpha             READ GetAlpha            WRITE SetAlpha)
+    Q_PROPERTY      (qreal   color             READ GetColor            WRITE SetColor)
     Q_PROPERTY      (qreal   zoom              READ GetZoom             WRITE SetZoom)
     Q_PROPERTY      (qreal   horizontalzoom    READ GetHorizontalZoom   WRITE SetHorizontalZoom)
     Q_PROPERTY      (qreal   verticalzoom      READ GetVerticalZoom     WRITE SetVerticalZoom)
@@ -120,6 +121,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     bool            IsSelected          (void);
     bool            IsPositionChanged   (void);
     qreal           GetAlpha            (void);
+    qreal           GetColor            (void);
     qreal           GetZoom             (void);
     qreal           GetHorizontalZoom   (void);
     qreal           GetVerticalZoom     (void);
@@ -136,6 +138,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     void            SetSelected         (bool    Selected);
     void            SetPositionChanged  (bool    Changed);
     void            SetAlpha            (qreal   Alpha);
+    void            SetColor            (qreal   Color);
     void            SetZoom             (qreal   Zoom);
     void            SetHorizontalZoom   (qreal   HorizontalZoom);
     void            SetVerticalZoom     (qreal   VerticalZoom);
@@ -240,6 +243,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
 
     // these are proxies for members of UIEffect and double up as defaults
     qreal           alpha;
+    qreal           color;
     qreal           zoom;
     qreal           verticalzoom;
     qreal           horizontalzoom;

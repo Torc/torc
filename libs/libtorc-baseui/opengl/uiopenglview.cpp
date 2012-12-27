@@ -122,6 +122,7 @@ bool UIOpenGLView::PushTransformation(const UIEffect *Effect,
 
     UIOpenGLMatrix matrix;
     matrix.alpha = m_transforms[m_currentTransformIndex].alpha * Effect->m_alpha;
+    matrix.color = m_transforms[m_currentTransformIndex].color * Effect->m_color;
 
     if (Effect->m_hReflecting)
     {
