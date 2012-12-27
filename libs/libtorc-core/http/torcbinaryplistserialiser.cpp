@@ -211,7 +211,7 @@ quint64 TorcBinaryPListSerialiser::BinaryFromVariant(const QString &Name, const 
 
     quint64 result = m_objectOffsets.size();
 
-    switch (Value.type())
+    switch ((int)Value.type())
     {
         case QMetaType::QVariantList: return BinaryFromArray(Name, Value.toList());
         case QMetaType::QStringList:  return BinaryFromStringList(Name, Value.toStringList());

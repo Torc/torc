@@ -59,7 +59,7 @@ void TorcPListSerialiser::End(void)
 
 void TorcPListSerialiser::PListFromVariant(const QString &Name, const QVariant &Value, bool NeedKey)
 {
-    switch (Value.type())
+    switch ((int)Value.type())
     {
         case QMetaType::QVariantList: PListFromList(Name, Value.toList());             break;
         case QMetaType::QStringList:  PListFromStringList(Name, Value.toStringList()); break;
