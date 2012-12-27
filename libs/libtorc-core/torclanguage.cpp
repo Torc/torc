@@ -162,7 +162,6 @@ void TorcLanguage::Initialise(void)
     gLanguageMap.insert("est", QLocale::Estonian);
     gLanguageMap.insert("ewe", QLocale::Ewe);
     gLanguageMap.insert("fao", QLocale::Faroese);
-    gLanguageMap.insert("fij", QLocale::FijiLanguage);
     gLanguageMap.insert("fil", QLocale::Filipino);
     gLanguageMap.insert("fin", QLocale::Finnish);
     gLanguageMap.insert("fre", QLocale::French);
@@ -213,7 +212,6 @@ void TorcLanguage::Initialise(void)
     gLanguageMap.insert("kor", QLocale::Korean);
     gLanguageMap.insert("kpe", QLocale::Kpelle);
     gLanguageMap.insert("kur", QLocale::Kurdish);
-    gLanguageMap.insert("lao", QLocale::Laothian);
     gLanguageMap.insert("lat", QLocale::Latin);
     gLanguageMap.insert("lav", QLocale::Latvian);
     gLanguageMap.insert("lin", QLocale::Lingala);
@@ -250,12 +248,10 @@ void TorcLanguage::Initialise(void)
     gLanguageMap.insert("rum", QLocale::Romanian);
     gLanguageMap.insert("run", QLocale::Kurundi);
     gLanguageMap.insert("rus", QLocale::Russian);
-    gLanguageMap.insert("sag", QLocale::Sangho);
     gLanguageMap.insert("san", QLocale::Sanskrit);
     gLanguageMap.insert("scc", QLocale::Serbian);
     gLanguageMap.insert("scr", QLocale::Croatian);
     gLanguageMap.insert("sid", QLocale::Sidamo);
-    gLanguageMap.insert("sin", QLocale::Singhalese);
     gLanguageMap.insert("slo", QLocale::Slovak);
     gLanguageMap.insert("slv", QLocale::Slovenian);
     gLanguageMap.insert("syr", QLocale::Syriac);
@@ -264,9 +260,7 @@ void TorcLanguage::Initialise(void)
     gLanguageMap.insert("sna", QLocale::Shona);
     gLanguageMap.insert("snd", QLocale::Sindhi);
     gLanguageMap.insert("som", QLocale::Somali);
-    gLanguageMap.insert("sot", QLocale::Sesotho);
     gLanguageMap.insert("spa", QLocale::Spanish);
-    gLanguageMap.insert("ssw", QLocale::Siswati);
     gLanguageMap.insert("sun", QLocale::Sundanese);
     gLanguageMap.insert("swa", QLocale::Swahili);
     gLanguageMap.insert("swe", QLocale::Swedish);
@@ -279,8 +273,6 @@ void TorcLanguage::Initialise(void)
     gLanguageMap.insert("tib", QLocale::Tibetan);
     gLanguageMap.insert("tig", QLocale::Tigre);
     gLanguageMap.insert("tir", QLocale::Tigrinya);
-    gLanguageMap.insert("ton", QLocale::TongaLanguage);
-    gLanguageMap.insert("tsn", QLocale::Setswana);
     gLanguageMap.insert("tso", QLocale::Tsonga);
     gLanguageMap.insert("tuk", QLocale::Turkmen);
     gLanguageMap.insert("tur", QLocale::Turkish);
@@ -363,4 +355,24 @@ void TorcLanguage::Initialise(void)
     gLanguageMap.insert("ses", QLocale::KoyraboroSenni);
     gLanguageMap.insert("ksb", QLocale::Shambala);
     gLanguageMap.insert("gsw", QLocale::SwissGerman);
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+    gLanguageMap.insert("fij", QLocale::FijiLanguage);
+    gLanguageMap.insert("lao", QLocale::Laothian);
+    gLanguageMap.insert("sag", QLocale::Sangho);
+    gLanguageMap.insert("sin", QLocale::Singhalese);
+    gLanguageMap.insert("sot", QLocale::Sesotho);
+    gLanguageMap.insert("ssw", QLocale::Siswati);
+    gLanguageMap.insert("ton", QLocale::TongaLanguage);
+    gLanguageMap.insert("tsn", QLocale::Setswana);
+#else
+    gLanguageMap.insert("fij", QLocale::Fijian);
+    gLanguageMap.insert("lao", QLocale::Lao);
+    gLanguageMap.insert("sag", QLocale::Sango);
+    gLanguageMap.insert("sin", QLocale::Sinhala);
+    gLanguageMap.insert("sot", QLocale::SouthernSotho);
+    gLanguageMap.insert("ssw", QLocale::Swati);
+    gLanguageMap.insert("ton", QLocale::Tongan);
+    gLanguageMap.insert("tsn", QLocale::Tswana);
+#endif
 }
