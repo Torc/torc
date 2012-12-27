@@ -157,19 +157,19 @@ void VideoBuffers::FormatChanged(PixelFormat Format, int Width, int Height, int 
         {
             QList<VideoFrame*>::iterator it;
             if (m_reference.size())
-                for (it = m_reference.begin() ; it != m_reference.end(), framestorecover > 0; ++it, --framestorecover)
+                for (it = m_reference.begin() ; it != m_reference.end() && framestorecover > 0; ++it, --framestorecover)
                     (*it)->SetDiscard();
             else if (m_displayed.size())
-                for (it = m_displayed.begin() ; it != m_displayed.end(), framestorecover > 0; ++it, --framestorecover)
+                for (it = m_displayed.begin() ; it != m_displayed.end() && framestorecover > 0; ++it, --framestorecover)
                     (*it)->SetDiscard();
             else if (m_displaying.size())
-                for (it = m_displaying.begin() ; it != m_displaying.end(), framestorecover > 0; ++it, --framestorecover)
+                for (it = m_displaying.begin() ; it != m_displaying.end() && framestorecover > 0; ++it, --framestorecover)
                     (*it)->SetDiscard();
             else if (m_ready.size())
-                for (it = m_ready.begin() ; it != m_ready.end(), framestorecover > 0; ++it, --framestorecover)
+                for (it = m_ready.begin() ; it != m_ready.end() && framestorecover > 0; ++it, --framestorecover)
                     (*it)->SetDiscard();
             else if (m_unused.size())
-                for (it = m_unused.begin() ; it != m_unused.end(), framestorecover > 0; ++it, --framestorecover)
+                for (it = m_unused.begin() ; it != m_unused.end() && framestorecover > 0; ++it, --framestorecover)
                     (*it)->SetDiscard();
             else
                 break;
