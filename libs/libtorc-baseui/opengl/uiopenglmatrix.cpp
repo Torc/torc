@@ -34,7 +34,8 @@ UIOpenGLMatrix::UIOpenGLMatrix()
 
 void UIOpenGLMatrix::setToIdentity(void)
 {
-    alpha = 1.0;
+    alpha = 1.0f;
+    color = 1.0f;
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
             m[i][j] = (i == j) ? 1.0f : 0.0f;

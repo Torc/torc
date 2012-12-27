@@ -18,7 +18,8 @@ class UIOpenGLMatrix
 
   public:
     GLfloat m[4][4];
-    qreal   alpha;
+    GLfloat alpha;
+    GLfloat color;
 
   private:
     void product       (int Row, const UIOpenGLMatrix &Other);
