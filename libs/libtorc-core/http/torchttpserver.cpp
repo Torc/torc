@@ -26,6 +26,7 @@
 #include <QCoreApplication>
 
 // Torc
+#include "torccompat.h"
 #include "torclocalcontext.h"
 #include "torclogging.h"
 #include "torcadminthread.h"
