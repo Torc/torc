@@ -43,7 +43,7 @@ QDateTime TorcDateTimeFromString(const QString &String)
 
 quint64 GetMicrosecondCount(void)
 {
-#ifdef _MSC_VER
+#ifdef Q_OS_WIN
     LARGE_INTEGER ticksPerSecond;
     LARGE_INTEGER ticks;
     if (QueryPerformanceFrequency(&ticksPerSecond))
@@ -52,7 +52,7 @@ quint64 GetMicrosecondCount(void)
         return (quint64)(((qreal)ticks.QuadPart / ticksPerSecond.QuadPart) * 1000000);
     }
     return GetTickCount() * 1000;
-#elif __APPLE__
+#elif defined(Q_OS_MAC)
     struct timeval timenow;
     gettimeofday(&timenow, NULL);
     return (timenow.tv_sec * 1000000) + timenow.tv_usec;
