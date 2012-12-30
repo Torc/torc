@@ -37,7 +37,7 @@ class TORC_BASEUI_PUBLIC GLTexture
     GLfloat m_vertexData[20];
 };
 
-class UIOpenGLTextures : public UIOpenGLBufferObjects
+class TORC_BASEUI_PUBLIC UIOpenGLTextures : public UIOpenGLBufferObjects
 {
   public:
     UIOpenGLTextures();

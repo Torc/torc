@@ -5,6 +5,9 @@
 #include <QWidget>
 #include <QSize>
 
+// Torc
+#include "torcbaseuiexport.h"
+
 class UIDisplayMode
 {
   public:
@@ -19,7 +22,7 @@ class UIDisplayMode
     int    m_index;
 };
 
-class UIDisplayBase
+class TORC_BASEUI_PUBLIC UIDisplayBase
 {
   public:
     UIDisplayBase(QWidget *Widget);

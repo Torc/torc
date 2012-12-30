@@ -6,6 +6,7 @@
 #include <QRect>
 
 // Torc
+#include "torcbaseuiexport.h"
 #include "uiopengldefs.h"
 #include "uiopenglmatrix.h"
 
@@ -13,7 +14,7 @@ class UIEffect;
 
 #define MAX_STACK_DEPTH 10
 
-class UIOpenGLView
+class TORC_BASEUI_PUBLIC UIOpenGLView
 {
     enum Projection
     {

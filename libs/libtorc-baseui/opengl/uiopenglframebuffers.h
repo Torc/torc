@@ -5,13 +5,14 @@
 #include <QVector>
 
 // Torc
+#include "torcbaseuiexport.h"
 #include "uiopengldefs.h"
 #include "uiopengltextures.h"
 #include "uiopenglview.h"
 
 class GLTexture;
 
-class UIOpenGLFramebuffers : public UIOpenGLView, public UIOpenGLTextures
+class TORC_BASEUI_PUBLIC UIOpenGLFramebuffers : public UIOpenGLView, public UIOpenGLTextures
 {
   public:
     UIOpenGLFramebuffers();

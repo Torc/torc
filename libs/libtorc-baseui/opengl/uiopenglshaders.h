@@ -5,6 +5,7 @@
 #include <QHash>
 
 // Torc
+#include "torcbaseuiexport.h"
 #include "uiopengldefs.h"
 
 typedef enum DefaultShaders
@@ -23,7 +24,7 @@ class GLShaderObject
     GLuint m_fragmentShader;
 };
 
-class UIOpenGLShaders
+class TORC_BASEUI_PUBLIC UIOpenGLShaders
 {
   public:
     UIOpenGLShaders();
