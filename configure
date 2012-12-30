@@ -2511,11 +2511,13 @@ if test -n "$sysroot"; then
     case "$cc_type" in
         gcc|llvm_gcc|clang)
             add_cppflags --sysroot="$sysroot"
+            add_cxxppflags --sysroot="$sysroot"
             add_ldflags --sysroot="$sysroot"
         ;;
         tms470)
             add_cppflags -I"$sysinclude"
             add_ldflags  --sysroot="$sysroot"
+            add_cxxppflags -I"$sysinclude"
         ;;
     esac
 fi
