@@ -3,9 +3,10 @@
 
 // Torc
 #include "audiooutput.h"
+#include "torcaudioexport.h"
 #include "torcplayer.h"
 
-class AudioWrapper
+class TORC_AUDIO_PUBLIC AudioWrapper
 {
     friend class AudioDecoder;
 
