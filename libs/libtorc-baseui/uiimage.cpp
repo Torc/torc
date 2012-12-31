@@ -65,7 +65,11 @@ UIImage::ImageState UIImage::GetState(void)
 
 void UIImage::Assign(const QImage &Image)
 {
-    *(static_cast<QImage *> (this)) = Image;
+    QImage* current = static_cast<QImage*>(this);
+    if (current)
+        *current = Image;
+    else
+        LOG(VB_GENERAL, LOG_ERR, "Failed to assign image");
     m_state = ImageLoaded;
     m_sizeF = QSizeF((qreal)size().width(), (qreal)size().height());
 }

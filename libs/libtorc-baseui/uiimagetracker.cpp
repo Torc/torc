@@ -293,12 +293,15 @@ void UIImageTracker::UpdateImages(void)
     m_completedImages.clear();
     m_completedImagesLock->unlock();
 
-    QHashIterator<UIImage*,QImage*> it(images);
-    while (it.hasNext())
+    QHash<UIImage*,QImage*>::iterator it = images.begin();
+    for ( ; it != images.end(); ++it)
     {
-        it.next();
         m_softwareCacheSize -= it.key()->byteCount();
-        it.key()->Assign(*(it.value()));
+        if (it.value())
+        {
+            QImage& image = *(it.value());
+            it.key()->Assign(image);
+        }
         delete it.value();
         m_softwareCacheSize += it.key()->byteCount();
     }
