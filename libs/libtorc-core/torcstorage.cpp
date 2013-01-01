@@ -42,7 +42,7 @@ TorcStorage* gStorage     = NULL;
 QMutex*      gStorageLock = new QMutex(QMutex::Recursive);
 
 TorcStoragePriv::TorcStoragePriv(TorcStorage *Parent)
-  : QObject((QObject*)Parent)
+  : QObject(static_cast<QObject*>(Parent))
 {
 }
 

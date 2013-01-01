@@ -221,7 +221,7 @@ void TorcHTTPServer::Close(void)
 
 void TorcHTTPServer::NewRequest(void)
 {
-    TorcHTTPConnection* connection = (TorcHTTPConnection*)sender();
+    TorcHTTPConnection* connection = static_cast<TorcHTTPConnection*>(sender());
 
     while (connection && connection->HasRequests())
     {

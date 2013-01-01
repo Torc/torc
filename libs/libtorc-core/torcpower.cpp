@@ -43,7 +43,7 @@ QMutex* TorcPower::gPowerLock = new QMutex(QMutex::Recursive);
 */
 
 TorcPowerPriv::TorcPowerPriv(TorcPower *Parent)
-  : QObject((QObject*)Parent),
+  : QObject(static_cast<QObject*>(Parent)),
     m_canShutdown(false),
     m_canSuspend(false),
     m_canHibernate(false),

@@ -132,10 +132,10 @@ static int GetBuffer(struct AVCodecContext *Context, AVFrame *Frame)
     if (!Context->codec)
         return -1;
 
-    if (!Context->codec->capabilities & CODEC_CAP_DR1)
+    if (!(Context->codec->capabilities & CODEC_CAP_DR1))
         return avcodec_default_get_buffer(Context, Frame);
 
-    VideoDecoder *parent = (VideoDecoder*)Context->opaque;
+    VideoDecoder *parent = static_cast<VideoDecoder*>(Context->opaque);
     if (parent)
         return parent->GetAVBuffer(Context, Frame);
 
@@ -184,7 +184,7 @@ static void ReleaseBuffer(AVCodecContext *Context, AVFrame *Frame)
         return;
     }
 
-    VideoDecoder *parent = (VideoDecoder*)Context->opaque;
+    VideoDecoder *parent = static_cast<VideoDecoder*>(Context->opaque);
     if (parent)
         parent->ReleaseAVBuffer(Context, Frame);
     else
@@ -193,7 +193,7 @@ static void ReleaseBuffer(AVCodecContext *Context, AVFrame *Frame)
 
 void VideoDecoder::ReleaseAVBuffer(AVCodecContext *Context, AVFrame *Frame)
 {
-    m_videoParent->Buffers()->ReleaseFrameFromDecoded((VideoFrame*)Frame->opaque);
+    m_videoParent->Buffers()->ReleaseFrameFromDecoded(static_cast<VideoFrame*>(Frame->opaque));
 
     if (Frame->type != FF_BUFFER_TYPE_USER)
         LOG(VB_GENERAL, LOG_ERR, "Unexpected buffer type");
@@ -216,7 +216,7 @@ static PixelFormat GetFormat(AVCodecContext *Context, const PixelFormat *Formats
     if (!Context || !Formats)
         return PIX_FMT_YUV420P;
 
-    VideoDecoder* parent = (VideoDecoder*)Context->opaque;
+    VideoDecoder* parent = static_cast<VideoDecoder*>(Context->opaque);
     if (parent)
         return parent->AgreePixelFormat(Context, Formats);
 
@@ -242,7 +242,7 @@ PixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const PixelF
     if (!Context || !Formats)
         return PIX_FMT_YUV420P;
 
-    VideoDecoder* parent = (VideoDecoder*)Context->opaque;
+    VideoDecoder* parent = static_cast<VideoDecoder*>(Context->opaque);
     if (parent != this)
         return GetFormatDefault(Context, Formats);
 
@@ -354,7 +354,7 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     if (!m_keyframeSeen && avframe.key_frame)
         m_keyframeSeen = true;
 
-    VideoFrame *frame = avframe.opaque ? (VideoFrame*)avframe.opaque : m_videoParent->Buffers()->GetFrameForDecoding();
+    VideoFrame *frame = avframe.opaque ? static_cast<VideoFrame*>(avframe.opaque) : m_videoParent->Buffers()->GetFrameForDecoding();
 
     if (!frame)
     {
@@ -464,7 +464,7 @@ void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)
 #if CONFIG_VDA
     if (Stream->codec->hwaccel_context && Stream->codec->pix_fmt == PIX_FMT_VDA_VLD)
     {
-        vda_context *context = (vda_context*)Stream->codec->hwaccel_context;
+        vda_context *context = static_cast<vda_context*>(Stream->codec->hwaccel_context);
         if (context)
         {
             LOG(VB_PLAYBACK, LOG_INFO, "Destroying VDA decoder");

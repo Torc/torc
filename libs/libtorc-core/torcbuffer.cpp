@@ -77,7 +77,7 @@ void* TorcBuffer::RequiredAVFormat(void)
 
 int TorcBuffer::Read(void *Object, quint8 *Buffer, qint32 BufferSize)
 {
-    TorcBuffer* buffer = (TorcBuffer*)Object;
+    TorcBuffer* buffer = static_cast<TorcBuffer*>(Object);
 
     if (buffer)
         return buffer->Read(Buffer, BufferSize);
@@ -87,7 +87,7 @@ int TorcBuffer::Read(void *Object, quint8 *Buffer, qint32 BufferSize)
 
 int TorcBuffer::Write(void *Object, quint8 *Buffer, qint32 BufferSize)
 {
-    TorcBuffer* buffer = (TorcBuffer*)Object;
+    TorcBuffer* buffer = static_cast<TorcBuffer*>(Object);
 
     if (buffer)
         return buffer->Write(Buffer, BufferSize);
@@ -97,7 +97,7 @@ int TorcBuffer::Write(void *Object, quint8 *Buffer, qint32 BufferSize)
 
 int64_t TorcBuffer::Seek(void *Object, int64_t Offset, int Whence)
 {
-    TorcBuffer* buffer = (TorcBuffer*)Object;
+    TorcBuffer* buffer = static_cast<TorcBuffer*>(Object);
 
     if (buffer)
         return buffer->Seek(Offset, Whence);
