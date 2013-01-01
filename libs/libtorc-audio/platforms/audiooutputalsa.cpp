@@ -365,8 +365,7 @@ AudioOutputSettings* AudioOutputALSA::GetOutputSettings(bool Passthrough)
             return NULL;
         }
 
-        Warn("Supported audio format detection will be inacurrate "
-             "(using plugin?)");
+        LOG(VB_GENERAL, LOG_WARNING, "Supported audio format detection will be inacurrate");
     }
 
     QList<int> rates = settings->GetRates();
