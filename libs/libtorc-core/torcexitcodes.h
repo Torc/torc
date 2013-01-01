@@ -25,7 +25,7 @@
 #define GENERIC_EXIT_RUNNING            142 ///< Process is running
 #define GENERIC_EXIT_PIPE_FAILURE       143 ///< Error creating I/O pipes
 #define GENERIC_EXIT_NO_HANDLER         144 ///< No MythSystem Handler
-#define GENERIC_EXIT_DAEMONIZING_ERROR  145 ///< Error daemonizing or execl
+//#define GENERIC_EXIT_DAEMONIZING_ERROR  145 ///< Error daemonizing or execl
 #define GENERIC_EXIT_NO_RECORDING_DATA  146 ///< No program/recording data
 #define GENERIC_EXIT_REMOTE_FILE        147 ///< Can't transcode a remote file
 #define GENERIC_EXIT_RESTART            148 ///< Need to restart transcoding
