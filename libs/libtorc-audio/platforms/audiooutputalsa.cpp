@@ -246,7 +246,6 @@ QByteArray AudioOutputALSA::GetELD(int Card, int Device, int Subdevice)
     snd_ctl_elem_id_t *id;
     snd_ctl_elem_value_t *control;
     snd_ctl_elem_type_t type;
-    unsigned int count;
     int err;
 
     snd_ctl_elem_info_alloca(&info);
@@ -289,7 +288,7 @@ QByteArray AudioOutputALSA::GetELD(int Card, int Device, int Subdevice)
             return result;
         }
 
-        count = snd_ctl_elem_info_get_count(info);
+        unsigned int count = snd_ctl_elem_info_get_count(info);
         type = snd_ctl_elem_info_get_type(info);
         if (!snd_ctl_elem_info_is_readable(info))
         {
