@@ -766,8 +766,8 @@ void TorcRAOPConnection::ReadData(void)
             }
 
             // check we're ready for audio
-            if (!m_priv->m_state & AESKey      || !m_priv->m_state & AESIV ||
-                !m_priv->m_state & AudioFormat || !m_priv->m_state & Transport)
+            if (!(m_priv->m_state & AESKey)      || !(m_priv->m_state & AESIV) ||
+                !(m_priv->m_state & AudioFormat) || !(m_priv->m_state & Transport))
             {
                 LOG(VB_GENERAL, LOG_WARNING, IDENT + "Not ready to process audio data");
                 continue;
