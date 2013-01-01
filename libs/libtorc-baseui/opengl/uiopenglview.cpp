@@ -25,8 +25,6 @@
 #include "../uieffect.h"
 #include "uiopenglview.h"
 
-#define LOC QString("GLView: ")
-
 UIOpenGLView::UIOpenGLView()
     : m_currentTransformIndex(0)
 {
