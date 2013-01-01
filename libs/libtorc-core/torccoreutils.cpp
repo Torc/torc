@@ -22,8 +22,10 @@
 
 // Std
 #include <time.h>
+#include <errno.h>
 
 // Torc
+#include "torcconfig.h"
 #include "torccompat.h"
 #include "torccoreutils.h"
 
@@ -63,4 +65,16 @@ quint64 GetMicrosecondCount(void)
 #endif
 
     return 0;
+}
+
+void TorcUSleep(int USecs)
+{
+#if HAVE_NANOSLEEP
+    struct timespec ts = { USecs / 1000000, USecs % 1000000 * 1000 };
+    while (nanosleep(&ts, &ts) < 0 && errno == EINTR) {}
+#elif HAVE_USLEEP
+    usleep(USecs);
+#elif HAVE_SLEEP
+    Sleep(USecs / 1000);
+#endif
 }
