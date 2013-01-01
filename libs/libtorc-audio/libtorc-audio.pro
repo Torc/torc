@@ -83,6 +83,14 @@ macx {
     LIBS           += -framework $$join(FWKS," -framework ")
 }
 
+win32 {
+    HEADERS += platforms/audiooutputdx.h
+    HEADERS += platforms/audiooutputwin.h
+    SOURCES += platforms/audiooutputdx.cpp
+    SOURCES += platforms/audiooutputwin.cpp
+    LIBS    += -lwinmm
+}
+
 contains(CONFIG_ALSA_OUTDEV, yes) {
     HEADERS += platforms/audiooutputalsa.h
     SOURCES += platforms/audiooutputalsa.cpp
