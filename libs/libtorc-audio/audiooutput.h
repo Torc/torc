@@ -79,8 +79,6 @@ class TORC_AUDIO_PUBLIC AudioOutput : public AudioVolume, public AudioOutputList
     virtual qint64  GetAudiotime         (void) = 0;
     virtual qint64  GetAudioBufferedTime (void);
     virtual void    SetSourceBitrate     (int Rate);
-    QString         GetError             (void) const;
-    QString         GetWarning           (void) const;
     virtual int     GetFillStatus        (void);
     virtual void    GetBufferStatus      (uint &Fill, uint &Total);
 
@@ -92,16 +90,11 @@ class TORC_AUDIO_PUBLIC AudioOutput : public AudioVolume, public AudioOutputList
     virtual bool    CanUpmix             (void) = 0;
     static bool     IsPulseAudioRunning  (void);
     bool            PulseStatus          (void);
+    bool            IsErrored            (void);
 
   protected:
-    void            SilentError          (const QString &Message);
-    void            Warn                 (const QString &Message);
-    void            ClearError           (void);
-    void            ClearWarning         (void);
-
-    QString         m_lastError;
-    QString         m_lastWarning;
     bool            m_pulseWasSuspended;
+    bool            m_configError;
 };
 
 #endif

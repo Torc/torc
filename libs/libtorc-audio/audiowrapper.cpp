@@ -93,11 +93,10 @@ bool AudioWrapper::Initialise(void)
         }
         else
         {
-            QString error = m_audioOutput->GetError();
-            if (!error.isEmpty())
+            if (m_audioOutput->IsErrored())
             {
-                LOG(VB_GENERAL, LOG_ERR, QString("Audio disabled (%1)").arg(error));
-                m_parent->SendUserMessage(error);
+                LOG(VB_GENERAL, LOG_ERR, "Audio disabled");
+                m_parent->SendUserMessage(QObject::tr("Audio disabled"));
                 m_noAudioOut = true;
             }
             else
@@ -113,11 +112,11 @@ bool AudioWrapper::Initialise(void)
                                      m_samplerate, m_passthrough, 0,
                                      m_codecProfile);
         m_audioOutput->Reconfigure(settings);
-        QString error = m_audioOutput->GetError();
-        if (!error.isEmpty())
+
+        if (m_audioOutput->IsErrored())
         {
-            LOG(VB_GENERAL, LOG_ERR, QString("Audio disabled (%1)").arg(error));
-            m_parent->SendUserMessage(error);
+            LOG(VB_GENERAL, LOG_ERR, "Audio disabled");
+            m_parent->SendUserMessage(QObject::tr("Audio disavled"));
             m_noAudioOut = true;
         }
         else

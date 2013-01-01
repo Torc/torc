@@ -215,7 +215,8 @@ AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
 AudioOutput::AudioOutput()
   : AudioVolume(),
     AudioOutputListeners(),
-    m_pulseWasSuspended(false)
+    m_pulseWasSuspended(false),
+    m_configError(false)
 {
 }
 
@@ -298,16 +299,6 @@ void AudioOutput::SetSourceBitrate(int Rate)
     (void)Rate;
 }
 
-QString AudioOutput::GetError(void) const
-{
-    return m_lastError;
-}
-
-QString AudioOutput::GetWarning(void) const
-{
-    return m_lastWarning;
-}
-
 int AudioOutput::GetFillStatus(void)
 {
     return -1;
@@ -348,27 +339,9 @@ bool AudioOutput::PulseStatus(void)
     return m_pulseWasSuspended;
 }
 
-void AudioOutput::SilentError(const QString &Message)
+bool AudioOutput::IsErrored(void)
 {
-    m_lastError = Message;
-    m_lastError.detach();
-}
-
-void AudioOutput::Warn(const QString &Message)
-{
-    m_lastWarning = Message;
-    m_lastWarning.detach();
-    LOG(VB_GENERAL, LOG_WARNING, "AudioOutput Warning: " + m_lastWarning);
-}
-
-void AudioOutput::ClearError(void)
-{
-    m_lastError = QString();
-}
-
-void AudioOutput::ClearWarning(void)
-{
-    m_lastWarning = QString();
+    return m_configError;
 }
 
 AudioDeviceConfig* AudioOutput::GetAudioDeviceConfig(QString &Name, QString &Description, bool WillSuspendPulse)

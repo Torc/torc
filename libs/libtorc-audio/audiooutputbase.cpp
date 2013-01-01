@@ -617,8 +617,7 @@ void AudioOutputBase::Reconfigure(const AudioSettings &Settings)
         }
     }
 
-    ClearError();
-
+    m_configError = false;
     bool general_deps = true;
 
     /* Set TempSamplerate and TempChannels to appropriate values
@@ -672,13 +671,12 @@ void AudioOutputBase::Reconfigure(const AudioSettings &Settings)
     m_killAudio = m_pauseAudio = false;
     m_wasPaused = true;
 
-    // Don't try to do anything if audio hasn't been
-    // initialized yet (e.g. rubbish was provided)
+    // Don't try to do anything if audio hasn't been initialized yet
     if (m_sourceChannels <= 0 || m_format <= 0 || m_samplerate <= 0)
     {
-        SilentError(QString("Aborting Audio Reconfigure. ") +
-                    QString("Invalid audio parameters ch %1 fmt %2 @ %3Hz")
-                    .arg(m_sourceChannels).arg(m_format).arg(m_samplerate));
+        m_configError = true;
+        LOG(VB_GENERAL, LOG_ERR, QString("Invalid audio parameters ch %1 fmt %2 @ %3Hz")
+            .arg(m_sourceChannels).arg(m_format).arg(m_samplerate));
         return;
     }
 
@@ -720,8 +718,8 @@ void AudioOutputBase::Reconfigure(const AudioSettings &Settings)
         m_needResampler = true;
         dest_rate = 48000;
     }
-        // this will always be false for passthrough audio as
-        // CanPassthrough() already tested these conditions
+    // this will always be false for passthrough audio as
+    // CanPassthrough() already tested these conditions
     else if ((m_needResampler =
               !OutputSettings(m_encode || m_passthrough)->IsSupportedRate(m_samplerate)))
     {
@@ -834,10 +832,7 @@ void AudioOutputBase::Reconfigure(const AudioSettings &Settings)
     // Actually do the device specific open call
     if (!OpenDevice())
     {
-        if (GetError().isEmpty())
-            LOG(VB_GENERAL, LOG_ERR, "Aborting reconfigure");
-        else
-            LOG(VB_GENERAL, LOG_INFO,   "Aborting reconfigure");
+        LOG(VB_GENERAL, LOG_ERR, "Aborting reconfigure");
         m_configureSucceeded = false;
         return;
     }
