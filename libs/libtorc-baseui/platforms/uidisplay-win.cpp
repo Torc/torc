@@ -37,10 +37,10 @@ double UIDisplay::GetRefreshRatePriv(void)
     HDC hdc = GetDC(m_widget->winId());
 
     double res = 0.0;
-    int rate = 0;
+
     if (hdc)
     {
-        rate = GetDeviceCaps(hdc, VREFRESH);
+        int rate = GetDeviceCaps(hdc, VREFRESH);
         // see http://support.microsoft.com/kb/2006076
         switch (rate)
         {
