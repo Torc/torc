@@ -77,7 +77,8 @@ UIOpenGLTextures::UIOpenGLTextures()
     m_activeTextureType(0),
     m_maxTextureSize(0),
     m_defaultTextureType(GL_TEXTURE_2D),
-    m_rectTextureType(GL_TEXTURE_2D)
+    m_rectTextureType(GL_TEXTURE_2D),
+    m_glActiveTexture(NULL)
 {
 }
 
