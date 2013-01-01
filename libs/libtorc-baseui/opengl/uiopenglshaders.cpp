@@ -66,6 +66,7 @@ UIOpenGLShaders::UIOpenGLShaders()
   : m_valid(false),
     m_usingRects(false),
     m_active_obj(0),
+    m_maxTextureUnits(0),
     m_glGetShaderiv(NULL),
     m_glCreateShader(NULL),
     m_glShaderSource(NULL),
@@ -182,8 +183,7 @@ bool UIOpenGLShaders::InitialiseShaders(const QString &Extensions, GLType Type, 
     if (m_valid)
     {
         LOG(VB_GENERAL, LOG_INFO, "GLSL support enabled");
-        LOG(VB_GENERAL, LOG_INFO, QString("Max texture units: %1")
-                .arg(m_maxTextureUnits));
+        LOG(VB_GENERAL, LOG_INFO, QString("Max texture units: %1").arg(m_maxTextureUnits));
     }
     else
     {
@@ -361,11 +361,11 @@ bool UIOpenGLShaders::CheckObjectStatus(uint Object)
     LOG(VB_GENERAL, LOG_ERR, "Failed to link shader object.");
     int infologLength = 0;
     int charsWritten  = 0;
-    char *infoLog;
+
     m_glGetProgramiv(Object, GL_OBJECT_INFO_LOG_LENGTH, &infologLength);
     if (infologLength > 0)
     {
-        infoLog = (char *)malloc(infologLength);
+        char *infoLog = (char *)malloc(infologLength);
         m_glGetProgramInfoLog(Object, infologLength, &charsWritten, infoLog);
         LOG(VB_GENERAL, LOG_ERR, QString("\n\n%1").arg(infoLog));
         free(infoLog);
