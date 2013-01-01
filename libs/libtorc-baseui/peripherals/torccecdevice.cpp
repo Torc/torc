@@ -190,7 +190,8 @@ class TorcCECDevicePriv
         {
             QString comm = QString::fromLatin1(devices[i].comm);
             bool match = find ? (comm == m_defaultDevice) : (i == 0);
-            devicenum = match ? i : devicenum;
+            if (match)
+                devicenum = i;
             LOG(VB_GENERAL, LOG_INFO,
                 QString("Device %1: path '%2' com port '%3' %4").arg(i + 1)
                 .arg(QString::fromLatin1(devices[i].path)).arg(comm)
