@@ -31,7 +31,6 @@
 
 #ifndef _WIN32
 #include <sys/ioctl.h>
-#include <pwd.h>
 #include <grp.h>
 #if defined(__linux__) || defined(__LINUX__)
 #include <sys/prctl.h>
@@ -75,8 +74,6 @@ const int kEnd          = 0,
           kInvalid      = 6;
 
 const char* NamedOptType(int type);
-bool OpenPidFile(ofstream &pidfs, const QString &pidfile);
-bool SetUser(const QString &username);
 int GetTermWidth(void);
 
 /** \fn GetTermWidth(void)
@@ -2391,17 +2388,6 @@ void TorcCommandLineParser::AddMouse(void)
         ->SetGroup("User Interface");
 }
 
-/** \brief Canned argument definition for --daemon
- */
-void TorcCommandLineParser::AddDaemon(void)
-{
-    Add(QStringList( QStringList() << "-d" << "--daemon" ), "daemon", false,
-            "Fork application into background after startup.",
-            "Fork application into background, detatching from "
-            "the local terminal.\nOften used with: "
-            " --logpath --pidfile --user");
-}
-
 /** \brief Canned argument definition for --override-setting and
  *  --override-settings-file
  */
@@ -2536,124 +2522,4 @@ bool TorcCommandLineParser::SetValue(const QString &Key, QVariant Value)
 
     arg->Set(Value);
     return true;
-}
-
-bool OpenPidFile(ofstream &pidfs, const QString &pidfile)
-{
-    if (!pidfile.isEmpty())
-    {
-        pidfs.open(pidfile.toLatin1().constData());
-        if (!pidfs)
-        {
-            cerr << "Could not open pid file: " << ENO_STR << endl;
-            return false;
-        }
-    }
-    return true;
-}
-
-/** \brief Drop permissions to the specified user
- */
-bool SetUser(const QString &username)
-{
-    if (username.isEmpty())
-        return true;
-
-#ifdef _WIN32
-    cerr << "--user option is not supported on Windows" << endl;
-    return false;
-#else // ! _WIN32
-#if defined(__linux__) || defined(__LINUX__)
-    // Check the current dumpability of core dumps, which will be disabled
-    // by setuid, so we can re-enable, if appropriate
-    int dumpability = prctl(PR_GET_DUMPABLE);
-#endif
-    struct passwd *user_info = getpwnam(username.toLocal8Bit().constData());
-    const uid_t user_id = geteuid();
-
-    if (user_id && (!user_info || user_id != user_info->pw_uid))
-    {
-        cerr << "You must be running as root to use the --user switch." << endl;
-        return false;
-    }
-    else if (user_info && user_id == user_info->pw_uid)
-    {
-        LOG(VB_GENERAL, LOG_WARNING,
-            QString("Already running as '%1'").arg(username));
-    }
-    else if (!user_id && user_info)
-    {
-        if (setenv("HOME", user_info->pw_dir,1) == -1)
-        {
-            cerr << "Error setting home directory." << endl;
-            return false;
-        }
-        if (setgid(user_info->pw_gid) == -1)
-        {
-            cerr << "Error setting effective group." << endl;
-            return false;
-        }
-        if (initgroups(user_info->pw_name, user_info->pw_gid) == -1)
-        {
-            cerr << "Error setting groups." << endl;
-            return false;
-        }
-        if (setuid(user_info->pw_uid) == -1)
-        {
-            cerr << "Error setting effective user." << endl;
-            return false;
-        }
-#if defined(__linux__) || defined(__LINUX__)
-        if (dumpability && (prctl(PR_SET_DUMPABLE, dumpability) == -1))
-            LOG(VB_GENERAL, LOG_WARNING, "Unable to re-enable core file "
-                    "creation. Run without the --user argument to use "
-                    "shell-specified limits.");
-#endif
-    }
-    else
-    {
-        cerr << QString("Invalid user '%1' specified with --user")
-                    .arg(username).toLocal8Bit().constData() << endl;
-        return false;
-    }
-    return true;
-#endif // ! _WIN32
-}
-
-
-/** \brief Fork application into background, and detatch from terminal
- */
-int TorcCommandLineParser::Daemonize(void)
-{
-
-#ifdef _WIN32
-    LOG(VB_GENERAL, LOG_WARNING, "Fixme: Daemonize not yet supported on windows.");
-    return GENERIC_EXIT_DAEMONIZING_ERROR;
-#else
-
-    ofstream pidfs;
-    if (!OpenPidFile(pidfs, ToString("pidfile")))
-        return GENERIC_EXIT_PERMISSIONS_ERROR;
-
-    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
-        LOG(VB_GENERAL, LOG_WARNING, "Unable to ignore SIGPIPE");
-
-    if (ToBool("daemon") && (daemon(0, 1) < 0))
-    {
-        cerr << "Failed to daemonize: " << ENO_STR << endl;
-        return GENERIC_EXIT_DAEMONIZING_ERROR;
-    }
-
-    QString username = ToString("username");
-    if (!username.isEmpty() && !SetUser(username))
-        return GENERIC_EXIT_PERMISSIONS_ERROR;
-
-    if (pidfs)
-    {
-        pidfs << getpid() << endl;
-        pidfs.close();
-    }
-
-    return GENERIC_EXIT_OK;
-#endif // !_WIN32
 }

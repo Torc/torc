@@ -153,7 +153,6 @@ class TORC_CORE_PUBLIC TorcCommandLineParser
     QMap<QString,QString>   ToMap               (QString Key) const;
     QDateTime               ToDateTime          (QString Key) const;
     bool                    SetValue            (const QString &Key, QVariant Value);
-    int                     Daemonize           (void);
 
   protected:
     void                    AllowArgs           (bool Allow = true);
@@ -164,7 +163,6 @@ class TORC_CORE_PUBLIC TorcCommandLineParser
     void                    AddVersion          (void);
     void                    AddWindowed         (void);
     void                    AddMouse            (void);
-    void                    AddDaemon           (void);
     void                    AddSettingsOverride (void);
     void                    AddRecording        (void);
     void                    AddDisplay          (void);
