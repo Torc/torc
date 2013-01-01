@@ -210,14 +210,14 @@ bool TorcPlayer::HandleAction(int Action)
     return false;
 }
 
-bool TorcPlayer::PlayMedia(const QString &URI, bool Paused)
+bool TorcPlayer::PlayMedia(const QString &URI, bool StartPaused)
 {
     if (thread() != QThread::currentThread())
     {
         // turn this into an asynchronous call
         QVariantMap data;
         data.insert("uri", URI);
-        data.insert("paused", Paused);
+        data.insert("paused", StartPaused);
         TorcEvent *event = new TorcEvent(Torc::PlayMedia, data);
         QCoreApplication::postEvent(parent(), event);
         return true;
@@ -244,7 +244,7 @@ bool TorcPlayer::PlayMedia(const QString &URI, bool Paused)
         SetState(Opening);
 
     // create the new decoder
-    m_nextDecoderPlay = !Paused;
+    m_nextDecoderPlay = !StartPaused;
     m_nextUri = URI;
     m_nextDecoder = TorcDecoder::Create(m_decoderFlags, URI, this);
 

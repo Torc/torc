@@ -59,7 +59,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
     int             GetDecoderFlags    (void);
 
   public slots:
-    virtual bool    PlayMedia          (const QString &URI, bool Paused);
+    virtual bool    PlayMedia          (const QString &URI, bool StartPaused);
     qreal           GetSpeed           (void);
     bool            Play               (void);
     bool            Stop               (void);
