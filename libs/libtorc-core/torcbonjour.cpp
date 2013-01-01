@@ -715,7 +715,7 @@ void BonjourBrowseCallback(DNSServiceRef Ref, DNSServiceFlags Flags,
     else
         bonjour->RemoveBrowseResult(Ref, service);
 
-    if ((!Flags & kDNSServiceFlagsMoreComing))
+    if (!(Flags & kDNSServiceFlagsMoreComing))
     {
         // TODO
     }
