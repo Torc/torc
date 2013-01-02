@@ -74,7 +74,7 @@ void UIImageWidget::UpdateFile(void)
         m_image->DownRef();
     m_image = NULL;
 
-    UITheme* theme = (UITheme*)m_rootParent;
+    UITheme* theme = static_cast<UITheme*>(m_rootParent);
     if (theme)
         m_fileName = theme->GetDirectory() + "/" + m_fileName;
 }
