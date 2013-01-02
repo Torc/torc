@@ -169,7 +169,8 @@ bool UIOpenGLShaders::InitialiseShaders(const QString &Extensions, GLType Type, 
                    m_glDeleteShader     && m_glGetUniformLocation &&
                    m_glUniformMatrix4fv && m_glVertexAttribPointer &&
                    m_glVertexAttrib4f   && m_glEnableVertexAttribArray &&
-                   m_glDisableVertexAttribArray && m_glBindAttribLocation;
+                   m_glDisableVertexAttribArray && m_glBindAttribLocation &&
+                   m_glDeleteProgram;
 
     // OpenGL 2.0
     bool exts = Extensions.contains("GL_ARB_fragment_shader") &&
@@ -198,16 +199,13 @@ uint UIOpenGLShaders::CreateShaderObject(const QByteArray &Vertex, const QByteAr
     if (!m_valid)
         return 0;
 
-    uint result = 0;
     QByteArray vert_shader = Vertex.isEmpty() ? kDefaultVertexShader : Vertex;
     QByteArray frag_shader = Fragment.isEmpty() ? kDefaultFragmentShader: Fragment;
-    vert_shader.detach();
-    frag_shader.detach();
 
     OptimiseShaderSource(vert_shader);
     OptimiseShaderSource(frag_shader);
 
-    result = m_glCreateProgram();
+    uint result = m_glCreateProgram();
     if (!result)
         return 0;
 
@@ -217,6 +215,7 @@ uint UIOpenGLShaders::CreateShaderObject(const QByteArray &Vertex, const QByteAr
 
     if (!ValidateShaderObject(result))
     {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to validate shader");
         DeleteShaderObject(result);
         return 0;
     }
@@ -226,8 +225,9 @@ uint UIOpenGLShaders::CreateShaderObject(const QByteArray &Vertex, const QByteAr
 
 void UIOpenGLShaders::DeleteShaderObject(uint Object)
 {
-    if (!m_valid)
+    if (!m_valid || !Object)
         return;
+
     if (!m_shaderObjects.contains(Object))
         return;
 
@@ -304,24 +304,27 @@ uint UIOpenGLShaders::CreateShader(int Type, const QByteArray &Source)
         return 0;
 
     uint result = m_glCreateShader(Type);
+
     const char* tmp[1] = { Source.constData() };
-    m_glShaderSource(result, 1, tmp, NULL);
+    const int  size[1] = { Source.size()      };
+    m_glShaderSource(result, 1, tmp, size);
     m_glCompileShader(result);
+
     GLint compiled;
     m_glGetShaderiv(result, GL_COMPILE_STATUS, &compiled);
     if (!compiled)
     {
         GLint length = 0;
         m_glGetShaderiv(result, GL_INFO_LOG_LENGTH, &length);
-        if (length > 1)
+        if (length > 0)
         {
-            char *log = (char*)malloc(sizeof(char) * length);
-            m_glGetShaderInfoLog(result, length, NULL, log);
+            QByteArray log(length, '\0');
+            m_glGetShaderInfoLog(result, length, NULL, log.data());
             LOG(VB_GENERAL, LOG_ERR, "Failed to compile shader.");
-            LOG(VB_GENERAL, LOG_ERR, log);
+            LOG(VB_GENERAL, LOG_ERR, log.data());
             LOG(VB_GENERAL, LOG_ERR, Source);
-            free(log);
         }
+
         m_glDeleteShader(result);
         result = 0;
     }
@@ -335,8 +338,8 @@ bool UIOpenGLShaders::ValidateShaderObject(uint Object)
 
     if (!m_shaderObjects.contains(Object))
         return false;
-    if (!m_shaderObjects[Object].m_fragmentShader ||
-        !m_shaderObjects[Object].m_vertexShader)
+
+    if (!m_shaderObjects[Object].m_fragmentShader || !m_shaderObjects[Object].m_vertexShader)
         return false;
 
     m_glAttachShader(Object, m_shaderObjects[Object].m_fragmentShader);
@@ -345,6 +348,7 @@ bool UIOpenGLShaders::ValidateShaderObject(uint Object)
     m_glBindAttribLocation(Object, COLOR_INDEX,   "a_color");
     m_glBindAttribLocation(Object, TEXTURE_INDEX, "a_texcoord0");
     m_glLinkProgram(Object);
+
     return CheckObjectStatus(Object);
 }
 
@@ -359,17 +363,17 @@ bool UIOpenGLShaders::CheckObjectStatus(uint Object)
         return true;
 
     LOG(VB_GENERAL, LOG_ERR, "Failed to link shader object.");
-    int infologLength = 0;
-    int charsWritten  = 0;
 
+    int infologLength = 0;
     m_glGetProgramiv(Object, GL_OBJECT_INFO_LOG_LENGTH, &infologLength);
     if (infologLength > 0)
     {
-        char *infoLog = (char *)malloc(infologLength);
-        m_glGetProgramInfoLog(Object, infologLength, &charsWritten, infoLog);
-        LOG(VB_GENERAL, LOG_ERR, QString("\n\n%1").arg(infoLog));
-        free(infoLog);
+        int charsWritten  = 0;
+        QByteArray infoLog(infologLength, '\0');
+        m_glGetProgramInfoLog(Object, infologLength, &charsWritten, infoLog.data());
+        LOG(VB_GENERAL, LOG_ERR, QString("\n\n%1").arg(infoLog.data()));
     }
+
     return false;
 }
 
@@ -413,5 +417,6 @@ void UIOpenGLShaders::DeleteShaders(void)
         m_glDeleteShader(fragment);
         m_glDeleteProgram(object);
     }
+
     m_shaderObjects.clear();
 }
