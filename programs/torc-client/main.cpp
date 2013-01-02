@@ -41,7 +41,8 @@ int main(int argc, char **argv)
     }
 
     UIWindow *window = UIWindow::Create();
-    TenfootTheme::Load(false, window);
+    if (window)
+        window->ThemeReady(TenfootTheme::Load(false, window));
 
     // NB torc-client has no explicit dependancy on libtorc-videoui and GCC 4.6
     // will optimise away any linkage by default. So force its hand and initialise
