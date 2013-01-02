@@ -21,7 +21,8 @@
 
 AudioVolume::AudioVolume()
   : m_volume(80),
-    m_currentMuteState(kMuteOff)
+    m_currentMuteState(kMuteOff),
+    m_channels(2)
 {
     m_internalVolumeControl = gLocalContext->GetSetting(TORC_CORE + "InternalVolumeControl", 1);
     QString mixerdevice     = gLocalContext->GetSetting(TORC_CORE + "MixerDevice", QString("default"));
