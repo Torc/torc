@@ -25,6 +25,7 @@
 #include <QDir>
 
 // Torc
+#include "torccoreutils.h"
 #include "torclocalcontext.h"
 #include "torclogging.h"
 #include "torcadminthread.h"
@@ -79,9 +80,7 @@ bool TorcStorage::DiskIsMounted(const QString &Disk)
     int tries = 0;
     int wait = 50000;
     if (!dir.exists() && --tries < 30)
-    {
-        usleep(wait += 10000);
-    }
+        TorcUSleep(wait += 10000);
 
     if (dir.exists())
     {

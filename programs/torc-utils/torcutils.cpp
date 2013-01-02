@@ -3,6 +3,7 @@
 
 // Torc
 #include "torcexitcodes.h"
+#include "torccoreutils.h"
 #include "torcdecoder.h"
 #include "torcplayer.h"
 #include "audiointerface.h"
@@ -26,7 +27,7 @@ int TorcUtils::Probe(const UtilsCommandLineParser *Cmdline)
                  decoder->State() == TorcDecoder::Paused ||
                  decoder->State() == TorcDecoder::Errored))
         {
-            usleep(50000);
+            TorcUSleep(50000);
         }
     }
 

@@ -2,6 +2,7 @@
 #include <QMutexLocker>
 
 // Torc
+#include "torccoreutils.h"
 #include "torclogging.h"
 #include "torccompat.h"
 #include "audiooutputdigitalencoder.h"
@@ -1749,7 +1750,7 @@ int AudioOutputBase::GetAudioData(unsigned char *Buffer, int size, bool FullBuff
 void AudioOutputBase::Drain()
 {
     while (audioready() > m_fragmentSize)
-        usleep(1000);
+        TorcUSleep(1000);
 }
 
 /**
@@ -1804,7 +1805,7 @@ void AudioOutputBase::run(void)
                                       "have %1 want %2")
                               .arg(ready).arg(m_fragmentSize));
 
-                usleep(10000);
+                TorcUSleep(10000);
                 continue;
             }
 

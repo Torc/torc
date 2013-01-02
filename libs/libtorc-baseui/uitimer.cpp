@@ -40,7 +40,7 @@ void UITimer::Wait(void)
 {
     qint64 remaining = m_nextEvent - GetMicrosecondCount();
     if (remaining > 0 && remaining < (m_interval * 4))
-        TorcThread::usleep(remaining);
+        TorcUSleep(remaining);
 }
 
 void UITimer::Reset(void)

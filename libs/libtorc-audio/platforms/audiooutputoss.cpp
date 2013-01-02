@@ -1,4 +1,5 @@
 // Torc
+#include "torccoreutils.h"
 #include "torclocalcontext.h"
 #include "torctimer.h"
 #include "audiooutputoss.h"
@@ -118,7 +119,7 @@ bool AudioOutputOSS::OpenDevice()
                          .arg(m_mainDevice));
         }
         if (m_audioFd < 0)
-            usleep(50);
+            TorcUSleep(50);
     }
 
     if (m_audioFd == -1)

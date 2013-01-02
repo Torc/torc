@@ -1,4 +1,5 @@
 // Torc
+#include "torccoreutils.h"
 #include "torccompat.h"
 #include "torclogging.h"
 #include "audiooutputdx.h"
@@ -225,7 +226,7 @@ class AudioOutputDXPrivate
                 (m_bufferPosition >= play_pos &&
                  m_bufferPosition + size >= play_pos + m_parent->m_soundcardBufferSize))
             {
-                usleep(50000);
+                TorcUSleep(50000);
                 continue;
             }
 

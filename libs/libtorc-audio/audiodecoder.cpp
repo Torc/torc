@@ -26,6 +26,7 @@
 #include <QWaitCondition>
 
 // Torc
+#include "torccoreutils.h"
 #include "torclocalcontext.h"
 #include "torclanguage.h"
 #include "torclogging.h"
@@ -360,7 +361,7 @@ class TorcDecoderThread : public TorcThread
             timer.Start();
 
         while (m_threadRunning && (!MSecs || (MSecs && (timer.Elapsed() <= MSecs))))
-            usleep(50000);
+            TorcUSleep(50000);
 
         if (m_threadRunning)
         {
@@ -615,7 +616,7 @@ bool AudioDecoder::Open(void)
         return false;
 
     m_priv->m_demuxerThread->start();
-    usleep(50000);
+    TorcUSleep(50000);
     return true;
 }
 
@@ -703,7 +704,7 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
         {
             // TODO make this sleep dynamic
             queue->m_lock->unlock();
-            usleep(4000);
+            TorcUSleep(4000);
             yield = !queue->Length() && uptodate;
             continue;
         }
@@ -841,7 +842,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
         if (fill > (int)m_audioOut->m_bestFillSize)
         {
             queue->m_lock->unlock();
-            usleep(m_audioOut->m_bufferTime * 500);
+            TorcUSleep(m_audioOut->m_bufferTime * 500);
             yield = !queue->Length();
             continue;
         }
@@ -1704,7 +1705,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
                 continue;
             }
 
-            usleep(10000);
+            TorcUSleep(10000);
             continue;
         }
 
@@ -1724,7 +1725,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
                 Thread->m_videoThread->IsPaused()    || !Thread->m_videoThread->IsRunning() ||
                 Thread->m_subtitleThread->IsPaused() || !Thread->m_subtitleThread->IsRunning())
             {
-                usleep(10000);
+                TorcUSleep(10000);
                 continue;
             }
 
@@ -1782,7 +1783,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
 
         if (*state == TorcDecoder::Paused)
         {
-            usleep(10000);
+            TorcUSleep(10000);
             continue;
         }
 
@@ -1792,7 +1793,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
             Thread->m_videoThread->m_queue->m_wait->wakeAll();
             Thread->m_audioThread->m_queue->m_wait->wakeAll();
             Thread->m_subtitleThread->m_queue->m_wait->wakeAll();
-            usleep(50000);
+            TorcUSleep(50000);
             continue;
         }
 
@@ -1847,7 +1848,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
                     Thread->m_videoThread->m_queue->m_wait->wakeAll();
                     Thread->m_audioThread->m_queue->m_wait->wakeAll();
                     Thread->m_subtitleThread->m_queue->m_wait->wakeAll();
-                    usleep(50000);
+                    TorcUSleep(50000);
                     continue;
                 }
 
@@ -1855,7 +1856,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
             }
             else
             {
-                usleep(50000);
+                TorcUSleep(50000);
                 continue;
             }
         }
@@ -1877,7 +1878,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
                 break;
             }
 
-            usleep(50000);
+            TorcUSleep(50000);
             continue;
         }
 
@@ -1904,7 +1905,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
     LOG(VB_GENERAL, LOG_INFO, "Demuxer stopped");
 
     while (!m_interruptDecoder && !demuxererror && *nextstate != TorcDecoder::Stopped)
-        usleep(50000);
+        TorcUSleep(50000);
 
     m_interruptDecoder = 1;
     LOG(VB_GENERAL, LOG_INFO, "Demuxer exiting");

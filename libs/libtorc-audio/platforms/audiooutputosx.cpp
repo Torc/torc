@@ -19,6 +19,7 @@
 #include <AudioToolbox/AudioFormat.h>
 
 // Torc
+#include "torccoreutils.h"
 #include "torclocalcontext.h"
 #include "torcosxutils.h"
 #include "SoundTouch.h"
@@ -1336,7 +1337,7 @@ bool AudioOutputOSX::OpenDevice(void)
             if (result < 0)
             {
                 m_priv->CloseAnalog();
-                usleep(1000 * 1000);
+                TorcUSleep(1000 * 1000);
             }
         }
 

@@ -26,6 +26,7 @@
 #include <QPair>
 
 // Torc
+#include "torccoreutils.h"
 #include "torclocalcontext.h"
 #include "torclogging.h"
 #include "torcavutils.h"
@@ -267,7 +268,7 @@ int TorcRAOPBuffer::Read(quint8 *Buffer, qint32 BufferSize)
     {
         if ((data = TorcRAOPDevice::Read(m_streamId)))
             continue;
-        usleep(50000);
+        TorcUSleep(50000);
     }
 
     if (!data)

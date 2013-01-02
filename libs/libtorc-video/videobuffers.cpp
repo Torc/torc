@@ -22,6 +22,7 @@
 
 // Torc
 #include "torcconfig.h"
+#include "torccoreutils.h"
 #include "torclogging.h"
 #include "videoframe.h"
 #include "videobuffers.h"
@@ -273,7 +274,7 @@ VideoFrame* VideoBuffers::GetFrameForDecoding(void)
         if (m_unused.isEmpty())
         {
             m_lock->unlock();
-            usleep(WAIT_FOR_UNUSED_RETRY);
+            TorcUSleep(WAIT_FOR_UNUSED_RETRY);
             continue;
         }
 
@@ -337,7 +338,7 @@ VideoFrame* VideoBuffers::GetFrameForDisplaying(int WaitUSecs /*= 0*/)
         if (m_ready.isEmpty())
         {
             m_lock->unlock();
-            usleep(WAIT_FOR_READY_RETRY);
+            TorcUSleep(WAIT_FOR_READY_RETRY);
             continue;
         }
 

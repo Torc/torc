@@ -4,6 +4,7 @@
 #include <QMutex>
 
 // Torc
+#include "torccoreutils.h"
 #include "torclogging.h"
 #include "torcthread.h"
 #include "audiooutput.h"
@@ -253,7 +254,7 @@ bool PulseHandler::Init(void)
     while ((tries++ < 100) && !IS_READY(m_contextState))
     {
         pa_mainloop_iterate(m_loop, 0, &ret);
-        usleep(10000);
+        TorcUSleep(10000);
     }
 
     if (PA_CONTEXT_READY != m_contextState)
@@ -304,7 +305,7 @@ bool PulseHandler::SuspendInternal(bool Suspend)
     while (m_pendingOperations && count++ < 100)
     {
         pa_mainloop_iterate(m_loop, 0, &ret);
-        usleep(10000);
+        TorcUSleep(10000);
     }
 
     // a failure isn't necessarily disastrous
