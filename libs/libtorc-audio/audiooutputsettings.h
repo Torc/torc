@@ -90,9 +90,6 @@ class TORC_AUDIO_PUBLIC AudioOutputSettings
     int                  BestSupportedPCMChannelsELD (void);
 
   private:
-    void                 SortSupportedChannels(void);
-
-  private:
     Passthrough          m_passthrough;
     uint                 m_features;
     bool                 m_invalid;

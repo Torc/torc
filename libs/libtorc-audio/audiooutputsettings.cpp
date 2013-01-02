@@ -262,14 +262,6 @@ void AudioOutputSettings::SetFeature(unsigned int Feature)
     m_features |= Feature;
 }
 
-void AudioOutputSettings::SortSupportedChannels(void)
-{
-    if (m_channels.empty())
-        return;
-
-    qSort(m_channels.begin(), m_channels.end());
-}
-
 void AudioOutputSettings::SetBestSupportedChannels(int Channels)
 {
     if (m_channels.empty())
