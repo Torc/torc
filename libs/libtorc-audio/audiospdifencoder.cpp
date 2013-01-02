@@ -167,7 +167,7 @@ bool AudioSPDIFEncoder::SetMaxHDRate(int Rate)
  */
 int AudioSPDIFEncoder::EncoderCallback(void *Object, unsigned char *Buffer, int Size)
 {
-    AudioSPDIFEncoder *enc = (AudioSPDIFEncoder*)Object;
+    AudioSPDIFEncoder *enc = static_cast<AudioSPDIFEncoder*>(Object);
 
     memcpy(enc->m_buffer + enc->m_size, Buffer, Size);
     enc->m_size += Size;
