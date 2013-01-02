@@ -36,8 +36,11 @@
 #define LOC QString("UIImageTracker: ")
 
 UIImageTracker::UIImageTracker()
-  : m_hardwareCacheSize(0),    m_softwareCacheSize(0),
-    m_maxHardwareCacheSize(0), m_maxSoftwareCacheSize(0),
+  : m_synchronous(false),
+    m_hardwareCacheSize(0),
+    m_softwareCacheSize(0),
+    m_maxHardwareCacheSize(0),
+    m_maxSoftwareCacheSize(0),
     m_allocatedImageLock(new QMutex(QMutex::Recursive)),
     m_maxExpireListSize(0),
     m_completedImagesLock(new QMutex(QMutex::Recursive))
@@ -192,7 +195,15 @@ UIImage* UIImageTracker::GetSimpleTextImage(const QString &Text,
     ExpireImages();
 
     UITextRenderer *render = new UITextRenderer(this, image, Text, Rect->size(), Font, Flags, Blur);
-    QThreadPool::globalInstance()->start(render, QThread::NormalPriority);
+    if (m_synchronous)
+    {
+        render->run();
+        delete render;
+    }
+    else
+    {
+        QThreadPool::globalInstance()->start(render, QThread::NormalPriority);
+    }
 
     return image;
 }
@@ -240,7 +251,15 @@ UIImage* UIImageTracker::GetShapeImage(UIShapePath *Path, const QRectF *Rect)
     ExpireImages();
 
     UIShapeRenderer *render = new UIShapeRenderer(this, image, Path, Rect->size());
-    QThreadPool::globalInstance()->start(render, QThread::NormalPriority);
+    if (m_synchronous)
+    {
+        render->run();
+        delete render;
+    }
+    else
+    {
+        QThreadPool::globalInstance()->start(render, QThread::NormalPriority);
+    }
 
     return image;
 }
@@ -266,7 +285,15 @@ void UIImageTracker::LoadImageFromFile(UIImage *Image)
     }
 
     UIImageLoader *loader = new UIImageLoader(this, Image);
-    QThreadPool::globalInstance()->start(loader, QThread::NormalPriority);
+    if (m_synchronous)
+    {
+        loader->run();
+        delete loader;
+    }
+    else
+    {
+        QThreadPool::globalInstance()->start(loader, QThread::NormalPriority);
+    }
 }
 
 void UIImageTracker::ImageCompleted(UIImage *Image, QImage *Text)

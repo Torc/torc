@@ -11,6 +11,8 @@ class UIImageTracker;
 
 class UITextRenderer : public QRunnable
 {
+    friend class UIImageTracker;
+
   public:
     UITextRenderer(UIImageTracker *Parent, UIImage *Image,
                    QString Text,           QSizeF  Size,

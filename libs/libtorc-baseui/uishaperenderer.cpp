@@ -56,6 +56,7 @@ void UIShapeRenderer::RenderShape(QPaintDevice *Device, UIShapePath *Path)
         Path->RenderPath(Device);
 }
 
+#include "torclogging.h"
 void UIShapeRenderer::run(void)
 {
     QSize size((int)m_size.width(), (int)m_size.height());

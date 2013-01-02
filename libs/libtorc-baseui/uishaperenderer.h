@@ -13,6 +13,8 @@ class UIImageTracker;
 
 class UIShapeRenderer : public QRunnable
 {
+    friend class UIImageTracker;
+
   public:
     UIShapeRenderer(UIImageTracker *Parent, UIImage *Image,
                     UIShapePath    *Path,   QSizeF  Size);

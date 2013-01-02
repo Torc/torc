@@ -43,6 +43,7 @@ class TORC_BASEUI_PUBLIC UIImageTracker
                                        quint64 ExpirableItems);
 
   protected:
+    bool                    m_synchronous;
     quint64                 m_hardwareCacheSize;
     quint64                 m_softwareCacheSize;
     quint64                 m_maxHardwareCacheSize;

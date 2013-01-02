@@ -9,6 +9,8 @@ class UIImageTracker;
 
 class UIImageLoader : public QRunnable
 {
+    friend class UIImageTracker;
+
   public:
     UIImageLoader(UIImageTracker *Parent, UIImage *Image);
     virtual ~UIImageLoader();
