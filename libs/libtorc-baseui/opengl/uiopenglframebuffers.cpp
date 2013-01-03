@@ -29,7 +29,7 @@
 UIOpenGLFramebuffers::UIOpenGLFramebuffers()
   : UIOpenGLView(), UIOpenGLTextures(),
     m_usingFramebuffers(false),
-    m_active_fb(0),
+    m_activeFramebuffer(0),
     m_glGenFramebuffers(NULL),
     m_glBindFramebuffer(NULL),
     m_glFramebufferTexture2D(NULL),
@@ -74,14 +74,14 @@ bool UIOpenGLFramebuffers::InitialiseFramebuffers(const QString &Extensions, GLT
 
 void UIOpenGLFramebuffers::BindFramebuffer(uint FrameBuffer)
 {
-    if (FrameBuffer == (uint)m_active_fb)
+    if (FrameBuffer == m_activeFramebuffer)
         return;
 
     if (FrameBuffer && !m_framebuffers.contains(FrameBuffer))
         return;
 
     m_glBindFramebuffer(GL_FRAMEBUFFER, FrameBuffer);
-    m_active_fb = FrameBuffer;
+    m_activeFramebuffer = FrameBuffer;
 }
 
 void UIOpenGLFramebuffers::ClearFramebuffer(void)

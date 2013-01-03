@@ -29,7 +29,7 @@ class TORC_BASEUI_PUBLIC UIOpenGLFramebuffers : public UIOpenGLView, public UIOp
 
   protected:
     bool                              m_usingFramebuffers;
-    int                               m_active_fb;
+    uint                              m_activeFramebuffer;
     QVector<GLuint>                   m_framebuffers;
 
     TORC_GLGENFRAMEBUFFERSPROC        m_glGenFramebuffers;
