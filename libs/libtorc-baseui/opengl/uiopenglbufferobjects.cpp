@@ -123,15 +123,8 @@ bool UIOpenGLBufferObjects::CreatePBO(GLTexture *Texture)
     if (!m_usingPBOs || !Texture)
         return false;
 
-    m_glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-    glTexImage2D(Texture->m_type, 0, Texture->m_internalFmt,
-                 Texture->m_size.width(),
-                 Texture->m_size.height(), 0,
-                 Texture->m_dataFmt, Texture->m_dataType, NULL);
-
     GLuint newpbo;
     m_glGenBuffers(1, &newpbo);
-    m_glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
     Texture->m_pbo = newpbo;
 
     return true;
