@@ -245,7 +245,9 @@ void UIOpenGLWindow::InitialiseWindow(void)
     if (m_openGLType == kGLOpenGL2ES)
         LOG(VB_GENERAL, LOG_INFO, "Using OpenGL ES 2.0");
 
-    m_extensions = (reinterpret_cast<const char *>(glGetString(GL_EXTENSIONS)));
+    QByteArray exts((const char*)(glGetString(GL_EXTENSIONS)));
+    m_extensions = QString(exts);
+    m_extensions.detach();
 
     LOG(VB_GENERAL, LOG_INFO, QString("OpenGL vendor  : %1")
             .arg((const char*) glGetString(GL_VENDOR)));
