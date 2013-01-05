@@ -132,10 +132,9 @@ SOURCES += soundtouch/SoundTouch.cpp
 SOURCES += soundtouch/TDStretch.cpp
 SOURCES += soundtouch/cpu_detect_x86.cpp
 
-contains(ARCH_X86, yes) {
-    DEFINES += ALLOW_SSE2 ALLOW_SSE3
+contains(HAVE_SSE3, yes) {
     SOURCES += soundtouch/sse_optimized.cpp
-    unix:QMAKE_CXXFLAGS += -msse3
+    unix|mingw:QMAKE_CXXFLAGS += -msse3
 }
 
 # samplerate
