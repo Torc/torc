@@ -52,6 +52,8 @@ double UIDisplay::GetRefreshRatePriv(void)
             case 119: res = 119.880; break;
             default:  res = (double)rate;
         }
+
+        ReleaseDC(m_widget->winId(), hdc);
     }
 
     return res;
@@ -65,6 +67,9 @@ QSize UIDisplay::GetPhysicalSizePriv(void)
     {
         int width  = GetDeviceCaps(hdc, HORZSIZE);
         int height = GetDeviceCaps(hdc, VERTSIZE);
+
+        ReleaseDC(m_widget->winId(), hdc);
+
         return QSize(width, height);
     }
 
