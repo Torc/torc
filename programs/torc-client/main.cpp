@@ -40,18 +40,26 @@ int main(int argc, char **argv)
             return error;
     }
 
+    int ret = GENERIC_EXIT_NO_THEME;
     UIWindow *window = UIWindow::Create();
     if (window)
+    {
         window->ThemeReady(TenfootTheme::Load(false, window));
 
-    // NB torc-client has no explicit dependancy on libtorc-videoui and GCC 4.6
-    // will optimise away any linkage by default. So force its hand and initialise
-    // the hardware decoders now.
-    VideoUIPlayer::Initialise();
+        // NB torc-client has no explicit dependancy on libtorc-videoui and GCC 4.6
+        // will optimise away any linkage by default. So force its hand and initialise
+        // the hardware decoders now.
+        VideoUIPlayer::Initialise();
 
-    int ret = qApp->exec();
+        ret = qApp->exec();
 
-    delete window;
+        delete window;
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to create main window");
+    }
+
 
     TorcLocalContext::TearDown();
 
