@@ -49,9 +49,6 @@ class TORC_BASEUI_PUBLIC UIWindow
     bool             GetStudioLevels   (void);
     void             SetStudioLevels   (bool Value);
 
-  public slots:
-    virtual void     MainLoop          (void) = 0;
-
   protected:
     void             CheckForNewTheme  (void);
 
