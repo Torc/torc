@@ -8,12 +8,9 @@ using namespace std;
 #include <iostream>
 #include <cmath>
 #include <mmsystem.h>
-#include <dsound.h>
 #include <initguid.h>
 
-#ifndef IID_IDirectSoundNotify
-DEFINE_GUID(IID_IDirectSoundNotify, 0xb0210783, 0x89cd, 0x11d0, 0xaf, 0x8, 0x0, 0xa0, 0xc9, 0x25, 0xcd, 0x16);
-#endif
+#include "dsound.h"
 
 #ifndef WAVE_FORMAT_DOLBY_AC3_SPDIF
 #define WAVE_FORMAT_DOLBY_AC3_SPDIF 0x0092
