@@ -694,10 +694,12 @@ void UIDirect3D9Window::PopEffect(void)
 
 void UIDirect3D9Window::PushClip(const QRect &Rect)
 {
+    PushClipRect(m_d3dDevice, Rect);
 }
 
 void UIDirect3D9Window::PopClip(void)
 {
+    PopClipRect(m_d3dDevice);
 }
 
 void UIDirect3D9Window::SetBlend(bool Enable)

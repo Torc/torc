@@ -36,6 +36,7 @@ UID3DMatrix::UID3DMatrix()
 UIDirect3D9View::UIDirect3D9View()
   : m_viewValid(false),
     m_currentTransformIndex(0),
+    m_currentClipIndex(0),
     m_D3DXMatrixMultiply(NULL),
     m_D3DXMatrixPerspectiveOffCenterLH(NULL),
     m_D3DXMatrixOrthoOffCenterLH(NULL),
@@ -163,5 +164,58 @@ bool UIDirect3D9View::PushTransformation(const UIEffect *Effect, const QRectF *D
 
 void UIDirect3D9View::PopTransformation(void)
 {
-    m_currentTransformIndex--;
+    if (m_currentTransformIndex > 0)
+        m_currentTransformIndex--;
+    else
+        LOG(VB_GENERAL, LOG_ERR, "Mismatched calls to Push/PopTransformation");
+}
+
+void UIDirect3D9View::PushClipRect(IDirect3DDevice9 *Device, const QRect &Rect)
+{
+    if (m_currentClipIndex >= MAX_STACK_DEPTH)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Max clip depth reached");
+        return;
+    }
+
+    if (++m_currentClipIndex == 1 && Device)
+        Device->SetRenderState(D3DRS_SCISSORTESTENABLE, 1);
+
+    m_clipRects[m_currentClipIndex] = Rect;
+
+    if (Device)
+    {
+        RECT clip;
+        clip.left   = Rect.left();
+        clip.right  = clip.left + Rect.width();
+        clip.top    = Rect.top();
+        clip.bottom = clip.top + Rect.height();
+        Device->SetScissorRect(&clip);
+    }
+}
+
+void UIDirect3D9View::PopClipRect(IDirect3DDevice9 *Device)
+{
+    if (m_currentClipIndex > 0)
+    {
+        m_currentClipIndex--;
+
+        if (m_currentClipIndex == 0 && Device)
+        {
+            Device->SetRenderState(D3DRS_SCISSORTESTENABLE, 0);
+        }
+        else if (Device)
+        {
+            RECT clip;
+            clip.left   = m_clipRects[m_currentClipIndex].left();
+            clip.right  = clip.left + m_clipRects[m_currentClipIndex].width();
+            clip.top    = m_clipRects[m_currentClipIndex].top();
+            clip.bottom = clip.top + m_clipRects[m_currentClipIndex].height();
+            Device->SetScissorRect(&clip);
+        }
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Mismatched calls to Push/PopClipRect");
+    }
 }

@@ -40,6 +40,8 @@ class TORC_BASEUI_PUBLIC UIDirect3D9View
     bool  InitialiseView     (IDirect3DDevice9 *Device, const QRect &Rect);
     bool  PushTransformation (const UIEffect *Effect, const QRectF *Dest);
     void  PopTransformation  (void);
+    void  PushClipRect       (IDirect3DDevice9 *Device, const QRect &Rect);
+    void  PopClipRect        (IDirect3DDevice9 *Device);
 
   protected:
     bool         m_viewValid;
@@ -49,6 +51,8 @@ class TORC_BASEUI_PUBLIC UIDirect3D9View
     D3DXMATRIX   m_perspective;
     int          m_currentTransformIndex;
     UID3DMatrix  m_transforms[MAX_STACK_DEPTH];
+    int          m_currentClipIndex;
+    QRect        m_clipRects[MAX_STACK_DEPTH];
 
     TORC_D3DXMATRIXMULTIPLY               m_D3DXMatrixMultiply;
     TORC_D3DXMATRIXPERSPECTIVEOFFCENTERLH m_D3DXMatrixPerspectiveOffCenterLH;
