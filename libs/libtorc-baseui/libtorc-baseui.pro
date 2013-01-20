@@ -8,9 +8,9 @@ CONFIG += thread dll
 target.path = $${LIBDIR}
 INSTALLS = target
 
-QT += opengl xml script
+QT += xml script
 
-DEPENDPATH  += ./opengl ./platforms ./peripherals
+DEPENDPATH  += ./opengl ./platforms ./peripherals ./direct3d
 
 INCLUDEPATH += ../libtorc-core ../libtorc-core/platforms
 INCLUDEPATH += ../.. ../
@@ -74,23 +74,26 @@ SOURCES += uishaperenderer.cpp
 SOURCES += uimessenger.cpp
 SOURCES += uitexteditor.cpp
 
-HEADERS += opengl/uiopenglwindow.h
-HEADERS += opengl/uiopenglshaders.h
-HEADERS += opengl/uiopenglfence.h
-HEADERS += opengl/uiopenglmatrix.h
-HEADERS += opengl/uiopengltextures.h
-HEADERS += opengl/uiopenglview.h
-HEADERS += opengl/uiopenglbufferobjects.h
-HEADERS += opengl/uiopenglframebuffers.h
+!win32 {
+    QT += opengl
+    HEADERS += opengl/uiopenglwindow.h
+    HEADERS += opengl/uiopenglshaders.h
+    HEADERS += opengl/uiopenglfence.h
+    HEADERS += opengl/uiopenglmatrix.h
+    HEADERS += opengl/uiopengltextures.h
+    HEADERS += opengl/uiopenglview.h
+    HEADERS += opengl/uiopenglbufferobjects.h
+    HEADERS += opengl/uiopenglframebuffers.h
 
-SOURCES += opengl/uiopenglshaders.cpp
-SOURCES += opengl/uiopenglfence.cpp
-SOURCES += opengl/uiopenglwindow.cpp
-SOURCES += opengl/uiopenglmatrix.cpp
-SOURCES += opengl/uiopengltextures.cpp
-SOURCES += opengl/uiopenglview.cpp
-SOURCES += opengl/uiopenglbufferobjects.cpp
-SOURCES += opengl/uiopenglframebuffers.cpp
+    SOURCES += opengl/uiopenglshaders.cpp
+    SOURCES += opengl/uiopenglfence.cpp
+    SOURCES += opengl/uiopenglwindow.cpp
+    SOURCES += opengl/uiopenglmatrix.cpp
+    SOURCES += opengl/uiopengltextures.cpp
+    SOURCES += opengl/uiopenglview.cpp
+    SOURCES += opengl/uiopenglbufferobjects.cpp
+    SOURCES += opengl/uiopenglframebuffers.cpp
+}
 
 contains(CONFIG_X11BASE, yes) {
     DEPENDPATH += ./platforms/nvctrl
@@ -109,6 +112,24 @@ else:macx {
 }
 else:win32 {
     SOURCES += platforms/uidisplay-win.cpp
+
+    HEADERS += direct3d/_mingw_unicode.h
+    HEADERS += direct3d/d3dx9.h
+    HEADERS += direct3d/d3dx9core.h
+    HEADERS += direct3d/d3dx9math.h
+    HEADERS += direct3d/d3dx9math.inl
+    HEADERS += direct3d/d3dx9shader.h
+    HEADERS += direct3d/d3dxtex.h
+    HEADERS += direct3d/uidirect3d9window.h
+    HEADERS += direct3d/uidirect3d9view.h
+    HEADERS += direct3d/uidirect3d9textures.h
+    HEADERS += direct3d/uidirect3d9shaders.h
+    SOURCES += direct3d/uidirect3d9window.cpp
+    SOURCES += direct3d/uidirect3d9view.cpp
+    SOURCES += direct3d/uidirect3d9textures.cpp
+    SOURCES += direct3d/uidirect3d9shaders.cpp
+
+    LIBS += -lgdi32
 }
 else:greaterThan(QT_MAJOR_VERSION, 4) {
     SOURCES += platforms/uidisplay-qt5.cpp

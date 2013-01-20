@@ -26,11 +26,14 @@
 // Torc
 #include "torclocalcontext.h"
 #include "torclogging.h"
-#include "uiopenglwindow.h"
 #include "uitheme.h"
 #include "uiwindow.h"
 
-#define LOC QString("UIWindow: ")
+#ifdef Q_OS_WIN
+#include "direct3d/uidirect3d9window.h"
+#else
+#include "opengl/uiopenglwindow.h"
+#endif
 
 UIWindow::UIWindow()
   : m_theme(NULL),
@@ -58,7 +61,12 @@ UIWindow::~UIWindow()
 
 UIWindow* UIWindow::Create(void)
 {
+#ifdef Q_OS_WIN
+    return UIDirect3D9Window::Create();
+#else
     return UIOpenGLWindow::Create();
+#endif
+    return NULL;
 }
 
 void UIWindow::ThemeReady(UITheme *Theme)
@@ -72,13 +80,13 @@ void UIWindow::ThemeReady(UITheme *Theme)
         if (Theme->GetState() != UITheme::ThemeReady)
         {
             Theme->DownRef();
-            LOG(VB_GENERAL, LOG_ERR, LOC + "New theme is invalid.");
+            LOG(VB_GENERAL, LOG_ERR, "New theme is invalid.");
             return;
         }
 
         if (m_newTheme)
         {
-            LOG(VB_GENERAL, LOG_WARNING, LOC + "Already have 1 new theme queued!!");
+            LOG(VB_GENERAL, LOG_WARNING, "Already have 1 new theme queued!!");
             m_newTheme->DownRef();
         }
 

@@ -31,12 +31,15 @@ HEADERS += torcvideouiexport.h
 HEADERS += videocolourspace.h
 HEADERS += videouiplayer.h
 HEADERS += videorenderer.h
-HEADERS += opengl/videorendereropengl.h
 
 SOURCES += videocolourspace.cpp
 SOURCES += videouiplayer.cpp
 SOURCES += videorenderer.cpp
-SOURCES += opengl/videorendereropengl.cpp
+
+!win32 {
+    HEADERS += opengl/videorendereropengl.h
+    SOURCES += opengl/videorendereropengl.cpp
+}
 
 contains(CONFIG_X11BASE, yes) {
     contains(CONFIG_VDPAU, yes) {
