@@ -39,6 +39,9 @@ class VideoRenderer
   protected:
     UIWindow               *m_window;
     UIDisplay              *m_display;
+    double                  m_lastFrameAspectRatio;
+    int                     m_lastFrameWidth;
+    int                     m_lastFrameHeight;
     QRectF                  m_presentationRect;
     VideoColourSpace       *m_colourSpace;
     bool                    m_wantHighQualityScaling;

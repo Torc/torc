@@ -287,8 +287,10 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
 
         // update the display setup
         UpdateRefreshRate(Frame);
-        m_updateFrameVertices |= UpdatePosition(Frame, Size);
     }
+
+    // update position even with no frame as the display may be animated while paused/seeking etc
+    m_updateFrameVertices |= UpdatePosition(Frame, Size);
 }
 
 void VideoRendererOpenGL::RenderFrame(void)

@@ -41,6 +41,9 @@
 
 VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
   : m_window(Window),
+    m_lastFrameAspectRatio(1.77778f),
+    m_lastFrameWidth(1920),
+    m_lastFrameHeight(1080),
     m_colourSpace(ColourSpace),
     m_wantHighQualityScaling(false),
     m_allowHighQualityScaling(false),
@@ -106,13 +109,20 @@ void VideoRenderer::UpdateRefreshRate(VideoFrame* Frame)
 
 bool VideoRenderer::UpdatePosition(VideoFrame* Frame, const QSizeF &Size)
 {
-    if (!m_display || !Frame)
+    if (!m_display)
         return false;
 
-    qreal avframePAR   = Frame->m_pixelAspectRatio;
+    if (Frame)
+    {
+        m_lastFrameAspectRatio = Frame->m_pixelAspectRatio;
+        m_lastFrameWidth       = Frame->m_rawWidth;
+        m_lastFrameHeight      = Frame->m_rawHeight;
+    }
+
+    qreal avframePAR   = m_lastFrameAspectRatio;
     qreal displayPAR   = m_display->GetPixelAspectRatio();
-    qreal width        = Frame->m_rawWidth * avframePAR * displayPAR;
-    qreal height       = Frame->m_rawHeight;
+    qreal width        = m_lastFrameWidth * avframePAR * displayPAR;
+    qreal height       = m_lastFrameHeight;
     qreal widthfactor  = (qreal)Size.width() / width;
     qreal heightfactor = (qreal)Size.height() / height;
 
