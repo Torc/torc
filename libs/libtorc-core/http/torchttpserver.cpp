@@ -134,7 +134,12 @@ void TorcHTTPServer::Destroy(void)
 {
     QMutexLocker locker(gWebServerLock);
 
-    delete gWebServer;
+    if (gWebServer)
+    {
+        gWebServer->Close();
+        gWebServer->deleteLater();
+    }
+
     gWebServer = NULL;
 }
 
