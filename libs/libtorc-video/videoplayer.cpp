@@ -49,13 +49,13 @@ void VideoPlayer::Teardown(void)
     TorcPlayer::Teardown();
 }
 
-bool VideoPlayer::Refresh(quint64 TimeNow)
+bool VideoPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
 {
     VideoFrame *frame = m_buffers.GetFrameForDisplaying();
     if (frame)
         m_buffers.ReleaseFrameFromDisplaying(frame, false);
 
-    return TorcPlayer::Refresh(TimeNow);
+    return TorcPlayer::Refresh(TimeNow, Size);
 }
 
 void VideoPlayer::Render(quint64 TimeNow)

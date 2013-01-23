@@ -166,7 +166,8 @@ bool TorcPlayer::HandleEvent(QEvent *Event)
 
             if (id == m_refreshTimer)
             {
-                Refresh(GetMicrosecondCount());
+                static QSizeF dummy;
+                Refresh(GetMicrosecondCount(), dummy);
                 return true;
             }
             else if (id == m_nextDecoderStartTimer)
@@ -369,9 +370,10 @@ void TorcPlayer::KillTimer(int &Timer)
     Timer= 0;
 }
 
-bool TorcPlayer::Refresh(quint64 TimeNow)
+bool TorcPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
 {
     (void)TimeNow;
+    (void)Size;
 
     // destroy last decoder once it has stopped
     if (m_oldDecoder && m_oldDecoder->State() == TorcDecoder::Stopped)

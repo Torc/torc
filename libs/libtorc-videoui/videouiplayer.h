@@ -23,7 +23,7 @@ class VideoUIPlayer : public VideoPlayer, public TorcHTTPService
     VideoUIPlayer(QObject* Parent, int PlaybackFlags, int DecodeFlags);
     virtual ~VideoUIPlayer();
 
-    bool               Refresh       (quint64 TimeNow);
+    bool               Refresh       (quint64 TimeNow, const QSizeF &Size);
     void               Render        (quint64 TimeNow);
     void               Reset         (void);
     bool               HandleAction  (int Action);

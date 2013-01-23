@@ -9,6 +9,7 @@
 
 class UIWindow;
 class UIDisplay;
+class VideoPlayer;
 class VideoColourSpace;
 
 class VideoRenderer
@@ -17,10 +18,10 @@ class VideoRenderer
     static VideoRenderer*  Create(VideoColourSpace *ColourSpace);
 
   public:
-    explicit VideoRenderer (VideoColourSpace *ColourSpace, UIWindow *Window);
+    VideoRenderer          (VideoColourSpace *ColourSpace, UIWindow *Window);
     virtual ~VideoRenderer ();
 
-    virtual void           RefreshFrame         (VideoFrame* Frame) = 0;
+    virtual void           RefreshFrame         (VideoFrame* Frame, const QSizeF &Size) = 0;
     virtual void           RenderFrame          (void) = 0;
     virtual PixelFormat    PreferredPixelFormat (void) = 0;
     void                   PlaybackFinished     (void);
@@ -33,7 +34,7 @@ class VideoRenderer
   protected:
     virtual void           ResetOutput          (void);
     void                   UpdateRefreshRate    (VideoFrame* Frame);
-    bool                   UpdatePosition       (VideoFrame* Frame);
+    bool                   UpdatePosition       (VideoFrame* Frame, const QSizeF &Size);
 
   protected:
     UIWindow               *m_window;

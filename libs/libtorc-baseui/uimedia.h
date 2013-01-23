@@ -17,7 +17,6 @@ class UIMedia : public UIWidget, public TorcPlayerInterface
     bool            HandleAction       (int Action);
     void            CopyFrom           (UIWidget *Other);
     bool            Refresh            (quint64 TimeNow);
-    bool            Draw               (quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal YOffset);
     bool            Finalise           (void);
 
     bool            InitialisePlayer   (void);
@@ -27,6 +26,7 @@ class UIMedia : public UIWidget, public TorcPlayerInterface
     void            PlayerStateChanged (TorcPlayer::PlayerState NewState);
 
   protected:
+    bool            DrawSelf           (UIWindow* Window, qreal XOffset, qreal YOffset);
     bool            event              (QEvent      *Event);
     bool            InitialisePriv     (QDomElement *Element);
     void            CreateCopy         (UIWidget *Parent);

@@ -2,6 +2,7 @@
 #define TORCPLAYER_H
 
 // Qt
+#include <QSize>
 #include <QObject>
 #include <QString>
 
@@ -43,7 +44,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 
     virtual ~TorcPlayer();
 
-    virtual bool    Refresh            (quint64 TimeNow);
+    virtual bool    Refresh            (quint64 TimeNow, const QSizeF &Size);
     virtual void    Render             (quint64 TimeNow);
 
     void            Reset              (void);

@@ -19,7 +19,7 @@ class VideoRendererOpenGL : public VideoRenderer
     VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGLWindow *Window);
     virtual ~VideoRendererOpenGL();
 
-    void               RefreshFrame         (VideoFrame *Frame);
+    void               RefreshFrame         (VideoFrame *Frame, const QSizeF &Size);
     void               RenderFrame          (void);
     PixelFormat        PreferredPixelFormat (void);
     void               CustomiseShader      (QByteArray &Source);

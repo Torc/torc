@@ -44,6 +44,8 @@ UIMedia::UIMedia(UIWidget *Root, UIWidget *Parent, const QString &Name, int Flag
         m_parent->IncreaseFocusableChildCount();
 
     gLocalContext->AddObserver(this);
+
+    SetURI("/home/mark/Dropbox/Videos/colbert.mpg");
 }
 
 UIMedia::~UIMedia()
@@ -94,16 +96,16 @@ void UIMedia::CopyFrom(UIWidget *Other)
 
 bool UIMedia::Refresh(quint64 TimeNow)
 {
-    bool refresh = m_player ? m_player->Refresh(TimeNow) : false;
+    bool refresh = m_player ? m_player->Refresh(TimeNow, m_scaledRect.size()) : false;
     return refresh |= UIWidget::Refresh(TimeNow);
 }
 
-bool UIMedia::Draw(quint64 TimeNow, UIWindow *Window, qreal XOffset, qreal YOffset)
+bool UIMedia::DrawSelf(UIWindow *Window, qreal XOffset, qreal YOffset)
 {
     if (m_player)
-        m_player->Render(TimeNow);
+        m_player->Render(0);
 
-    return UIWidget::Draw(TimeNow, Window, XOffset, YOffset);
+    return true;
 }
 
 bool UIMedia::Finalise(void)

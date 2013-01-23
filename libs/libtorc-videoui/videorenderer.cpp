@@ -25,6 +25,7 @@
 #include "torclogging.h"
 #include "uidisplay.h"
 #include "uiwindow.h"
+#include "videoplayer.h"
 #include "videoframe.h"
 #include "videocolourspace.h"
 #include "videorenderer.h"
@@ -103,18 +104,17 @@ void VideoRenderer::UpdateRefreshRate(VideoFrame* Frame)
         m_window->SetRefreshRate(Frame->m_frameRate, modeindex);
 }
 
-bool VideoRenderer::UpdatePosition(VideoFrame* Frame)
+bool VideoRenderer::UpdatePosition(VideoFrame* Frame, const QSizeF &Size)
 {
     if (!m_display || !Frame)
         return false;
 
     qreal avframePAR   = Frame->m_pixelAspectRatio;
     qreal displayPAR   = m_display->GetPixelAspectRatio();
-    QSize displaysize  = m_display->GetGeometry();
     qreal width        = Frame->m_rawWidth * avframePAR * displayPAR;
     qreal height       = Frame->m_rawHeight;
-    qreal widthfactor  = (qreal)displaysize.width() / width;
-    qreal heightfactor = (qreal)displaysize.height() / height;
+    qreal widthfactor  = (qreal)Size.width() / width;
+    qreal heightfactor = (qreal)Size.height() / height;
 
     qreal left = 0.0f;
     qreal top  = 0.0f;
@@ -123,13 +123,13 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame)
     {
         width *= widthfactor;
         height *= widthfactor;
-        top = (displaysize.height() - height) / 2.0f;
+        top = (Size.height() - height) / 2.0f;
     }
     else
     {
         width *= heightfactor;
         height *= heightfactor;
-        left = (displaysize.width() - width) / 2.0f;
+        left = (Size.width() - width) / 2.0f;
     }
 
     QRectF newrect(left, top, width, height);
@@ -149,7 +149,7 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame)
         LOG(VB_GENERAL, LOG_INFO, "Enabling high quality scaling");
         m_usingHighQualityScaling = true;
     }
-    else if (m_usingHighQualityScaling && (!(Frame->m_rawWidth < displaysize.width() || Frame->m_rawHeight < displaysize.height()) || !m_wantHighQualityScaling))
+    else if (m_usingHighQualityScaling && (!(Frame->m_rawWidth < Size.width() || Frame->m_rawHeight < Size.height()) || !m_wantHighQualityScaling))
     {
         LOG(VB_GENERAL, LOG_INFO, "Disabling high quality scaling");
         m_usingHighQualityScaling = false;

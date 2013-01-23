@@ -146,7 +146,7 @@ void VideoRendererOpenGL::ResetOutput(void)
     VideoRenderer::ResetOutput();
 }
 
-void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame)
+void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
 {
     if (!m_openglWindow)
         return;
@@ -287,7 +287,7 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame)
 
         // update the display setup
         UpdateRefreshRate(Frame);
-        m_updateFrameVertices |= UpdatePosition(Frame);
+        m_updateFrameVertices |= UpdatePosition(Frame, Size);
     }
 }
 
