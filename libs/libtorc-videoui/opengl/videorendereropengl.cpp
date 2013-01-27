@@ -96,9 +96,6 @@ static const char BicubicShader[] =
 VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGLWindow *Window)
   : VideoRenderer(ColourSpace, Window),
     m_openglWindow(Window),
-    m_outputFormat(PIX_FMT_UYVY422),
-    m_validVideoFrame(false),
-    m_updateFrameVertices(true),
     m_rawVideoTexture(NULL),
     m_rgbVideoTexture(NULL),
     m_rgbVideoBuffer(0),
@@ -138,10 +135,6 @@ void VideoRendererOpenGL::ResetOutput(void)
 
     m_openglWindow->DeleteShaderObject(m_bicubicShader);
     m_bicubicShader = 0;
-
-    m_colourSpace->SetChanged();
-
-    m_validVideoFrame = false;
 
     VideoRenderer::ResetOutput();
 }
@@ -323,11 +316,6 @@ void VideoRendererOpenGL::RenderFrame(void)
             m_openglWindow->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, m_rgbShader);
         }
     }
-}
-
-PixelFormat VideoRendererOpenGL::PreferredPixelFormat(void)
-{
-    return m_outputFormat;
 }
 
 void VideoRendererOpenGL::CustomiseShader(QByteArray &Source)

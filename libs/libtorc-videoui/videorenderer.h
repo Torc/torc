@@ -7,6 +7,11 @@
 // Torc
 #include "videoframe.h"
 
+extern "C" {
+#include "libavutil/pixfmt.h"
+#include "libswscale/swscale.h"
+}
+
 class UIWindow;
 class UIDisplay;
 class VideoPlayer;
@@ -23,7 +28,7 @@ class VideoRenderer
 
     virtual void           RefreshFrame         (VideoFrame* Frame, const QSizeF &Size) = 0;
     virtual void           RenderFrame          (void) = 0;
-    virtual PixelFormat    PreferredPixelFormat (void) = 0;
+    PixelFormat            PreferredPixelFormat (void);
     void                   PlaybackFinished     (void);
 
     bool                   GetHighQualityScaling     (void);
@@ -39,11 +44,14 @@ class VideoRenderer
   protected:
     UIWindow               *m_window;
     UIDisplay              *m_display;
+    PixelFormat             m_outputFormat;
+    bool                    m_validVideoFrame;
     double                  m_lastFrameAspectRatio;
     int                     m_lastFrameWidth;
     int                     m_lastFrameHeight;
     QRectF                  m_presentationRect;
     VideoColourSpace       *m_colourSpace;
+    bool                    m_updateFrameVertices;
     bool                    m_wantHighQualityScaling;
     bool                    m_allowHighQualityScaling;
     bool                    m_usingHighQualityScaling;

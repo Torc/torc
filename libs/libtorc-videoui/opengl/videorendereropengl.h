@@ -4,11 +4,6 @@
 // Torc
 #include "videorenderer.h"
 
-extern "C" {
-#include "libavutil/pixfmt.h"
-#include "libswscale/swscale.h"
-}
-
 class VideoColourSpace;
 class UIOpenGLWindow;
 class GLTexture;
@@ -21,7 +16,6 @@ class VideoRendererOpenGL : public VideoRenderer
 
     void               RefreshFrame         (VideoFrame *Frame, const QSizeF &Size);
     void               RenderFrame          (void);
-    PixelFormat        PreferredPixelFormat (void);
     void               CustomiseShader      (QByteArray &Source);
 
   protected:
@@ -29,9 +23,6 @@ class VideoRendererOpenGL : public VideoRenderer
 
   protected:
     UIOpenGLWindow    *m_openglWindow;
-    PixelFormat        m_outputFormat;
-    bool               m_validVideoFrame;
-    bool               m_updateFrameVertices;
     GLTexture         *m_rawVideoTexture;
     GLTexture         *m_rgbVideoTexture;
     uint               m_rgbVideoBuffer;

@@ -41,10 +41,13 @@
 
 VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
   : m_window(Window),
+    m_outputFormat(PIX_FMT_UYVY422),
+    m_validVideoFrame(false),
     m_lastFrameAspectRatio(1.77778f),
     m_lastFrameWidth(1920),
     m_lastFrameHeight(1080),
     m_colourSpace(ColourSpace),
+    m_updateFrameVertices(true),
     m_wantHighQualityScaling(false),
     m_allowHighQualityScaling(false),
     m_usingHighQualityScaling(false)
@@ -59,6 +62,11 @@ VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
 
 VideoRenderer::~VideoRenderer()
 {
+}
+
+PixelFormat VideoRenderer::PreferredPixelFormat(void)
+{
+    return m_outputFormat;
 }
 
 void VideoRenderer::PlaybackFinished(void)
@@ -93,6 +101,8 @@ bool VideoRenderer::SetHighQualityScaling(bool Enable)
 
 void VideoRenderer::ResetOutput(void)
 {
+    m_colourSpace->SetChanged();
+    m_validVideoFrame = false;
     m_usingHighQualityScaling = false;
 }
 

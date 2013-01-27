@@ -22,16 +22,12 @@ class VideoRenderDirect3D9 : public VideoRenderer
 
     void               RefreshFrame         (VideoFrame *Frame, const QSizeF &Size);
     void               RenderFrame          (void);
-    PixelFormat        PreferredPixelFormat (void);
 
   protected:
     void               ResetOutput          (void);
 
   protected:
     UIDirect3D9Window *m_direct3D9Window;
-    PixelFormat        m_outputFormat;
-    bool               m_validVideoFrame;
-    bool               m_updateFrameVertices;
     D3D9Texture       *m_rawVideoTexture;
     D3D9Texture       *m_rgbVideoTexture;
     SwsContext        *m_conversionContext;

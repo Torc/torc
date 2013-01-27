@@ -72,9 +72,6 @@ static const char YUV2RGBFragmentShader[] =
 VideoRenderDirect3D9::VideoRenderDirect3D9(VideoColourSpace *ColourSpace, UIDirect3D9Window *Window)
   : VideoRenderer(ColourSpace, Window),
     m_direct3D9Window(Window),
-    m_outputFormat(PIX_FMT_UYVY422),
-    m_validVideoFrame(false),
-    m_updateFrameVertices(true),
     m_rawVideoTexture(NULL),
     m_rgbVideoTexture(NULL),
     m_conversionContext(NULL),
@@ -86,11 +83,6 @@ VideoRenderDirect3D9::~VideoRenderDirect3D9()
 {
     ResetOutput();
     sws_freeContext(m_conversionContext);
-}
-
-PixelFormat VideoRenderDirect3D9::PreferredPixelFormat(void)
-{
-    return m_outputFormat;
 }
 
 void VideoRenderDirect3D9::ResetOutput(void)
@@ -110,8 +102,6 @@ void VideoRenderDirect3D9::ResetOutput(void)
         m_yuvShader = NULL;
     }
 
-    m_colourSpace->SetChanged();
-    m_validVideoFrame = false;
     VideoRenderer::ResetOutput();
 }
 
