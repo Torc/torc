@@ -98,6 +98,11 @@ void Matrix::debug(void)
         .arg(m[2][1], 4, 'f', 4, QLatin1Char('0'))
         .arg(m[2][2], 4, 'f', 4, QLatin1Char('0'))
         .arg(m[2][3], 4, 'f', 4, QLatin1Char('0')));
+    LOG(VB_PLAYBACK, LOG_DEBUG, QString("%1 %2 %3 %4")
+        .arg(m[3][0], 4, 'f', 4, QLatin1Char('0'))
+        .arg(m[3][1], 4, 'f', 4, QLatin1Char('0'))
+        .arg(m[3][2], 4, 'f', 4, QLatin1Char('0'))
+        .arg(m[3][3], 4, 'f', 4, QLatin1Char('0')));
 }
 
 /*! \class VideoColourSpace
