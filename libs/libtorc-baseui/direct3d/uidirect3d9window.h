@@ -46,7 +46,9 @@ class TORC_BASEUI_PUBLIC UIDirect3D9Window
 
     QSize       GetSize             (void);
     void        SetRefreshRate      (double Rate, int ModeIndex = -1);
+    void        SetRenderTarget     (D3D9Texture* Texture);
     void        DrawTexture         (D3D9Texture* Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged);
+    void        DrawTexture         (D3D9Shader* Shader, D3D9Texture* Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged);
     void        DrawImage           (UIEffect *Effect, QRectF *Dest, bool &PositionChanged, UIImage *Image);
     UIImage*    DrawText            (UIEffect *Effect, QRectF *Dest, bool &PositionChanged,
                                      const QString &Text, UIFont *Font, int Flags, int Blur,
@@ -59,6 +61,7 @@ class TORC_BASEUI_PUBLIC UIDirect3D9Window
     void        SetBlend            (bool Enable);
 
     QPaintEngine* paintEngine() const;
+    IDirect3DDevice9* GetDevice() const;
 
   public slots:
     void         MainLoop           (void);
@@ -84,6 +87,8 @@ class TORC_BASEUI_PUBLIC UIDirect3D9Window
     UITimer                     *m_timer;
     IDirect3D9                  *m_d3dObject;
     IDirect3DDevice9            *m_d3dDevice;
+    IDirect3DSurface9           *m_defaultRenderTarget;
+    IDirect3DSurface9           *m_currentRenderTarget;
     QHash<UIImage*,D3D9Texture*> m_textureHash;
     QList<UIImage*>              m_textureExpireList;
     bool                         m_blend;

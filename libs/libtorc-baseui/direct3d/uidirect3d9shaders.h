@@ -3,7 +3,7 @@
 
 // Qt
 #include <QSize>
-#include <QHash>
+#include <QList>
 
 // Torc
 #include "torcbaseuiexport.h"
@@ -35,18 +35,19 @@ class TORC_BASEUI_PUBLIC UIDirect3D9Shaders
     bool          InitialiseShaders    (IDirect3DDevice9 *Device);
     bool          CreateDefaultShaders (IDirect3DDevice9 *Device);
     void          DeleteDefaultShaders (void);
-    unsigned int  CreateShader         (IDirect3DDevice9 *Device,
+    D3D9Shader*   CreateShader         (IDirect3DDevice9 *Device,
                                         const char* Vertex, unsigned int VertexSize,
                                         const char* Pixel, unsigned int PixelSize);
-    void          DeleteShader         (unsigned int Shader);
+    void          DeleteShader         (D3D9Shader *Shader);
     void          DeleteShaders        (void);
 
   protected:
     bool                                  m_shadersValid;
-    unsigned int                          m_defaultShader;
+    D3D9Shader                           *m_defaultShader;
     IDirect3DVertexDeclaration9          *m_vertexDeclaration;
-    QHash<unsigned int,D3D9Shader*>       m_shaders;
 
+  private:
+    QList<D3D9Shader*>                    m_shaders;
     TORC_D3DXCOMPILESHADER                m_D3DXCompileShader;
 };
 

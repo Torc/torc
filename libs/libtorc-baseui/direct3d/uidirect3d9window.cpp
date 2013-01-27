@@ -69,12 +69,21 @@ UIDirect3D9Window::UIDirect3D9Window()
     m_timer(NULL),
     m_d3dObject(NULL),
     m_d3dDevice(NULL),
+    m_defaultRenderTarget(NULL),
+    m_currentRenderTarget(NULL),
     m_blend(false)
 {
 }
 
 UIDirect3D9Window::~UIDirect3D9Window()
 {
+    // release framebuffers
+    if (m_currentRenderTarget)
+        m_currentRenderTarget->Release();
+
+    if (m_defaultRenderTarget)
+        m_defaultRenderTarget->Release();
+
     // ensure QObjects are deleted immediately
     TorcReferenceCounter::EventLoopEnding(true);
 
@@ -282,6 +291,9 @@ bool UIDirect3D9Window::InitialiseWindow(void)
     m_d3dDevice->SetRenderState(D3DRS_DESTBLEND,     D3DBLEND_INVSRCALPHA);
 
     SetBlend(true);
+
+    if (FAILED(m_d3dDevice->GetRenderTarget(0, &m_defaultRenderTarget)))
+        LOG(VB_GENERAL, LOG_ERR, "Failed to get default render target");
 
     return InitialiseView(m_d3dDevice, geometry()) &&
            InitialiseTextures(m_d3dObject, m_d3dDevice, adaptor, m_adaptorFormat) &&
@@ -632,15 +644,77 @@ void UIDirect3D9Window::DrawImage(UIEffect *Effect, QRectF *Dest, bool &Position
         DrawTexture(texture, Dest, Image->GetSizeF(), PositionChanged);
 }
 
+void UIDirect3D9Window::DrawTexture(D3D9Shader *Shader, D3D9Texture *Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged)
+{
+    if (!Shader || !Texture || !Dest || !m_d3dDevice || !Size)
+        return;
+
+    if (PositionChanged || !Texture->m_verticesUpdated)
+    {
+        PositionChanged = false;
+        UpdateVertices(Texture, Dest, Size);
+    }
+
+    Shader->m_vertexConstants->SetMatrix(m_d3dDevice, "Projection", m_currentProjection);
+    Shader->m_vertexConstants->SetMatrix(m_d3dDevice, "Transform", &m_transforms[m_currentTransformIndex].m);
+    m_d3dDevice->SetTexture(0, (LPDIRECT3DBASETEXTURE9)Texture->m_texture);
+    m_d3dDevice->SetVertexShader(Shader->m_vertexShader);
+    m_d3dDevice->SetPixelShader(Shader->m_pixelShader);
+    m_d3dDevice->SetStreamSource(0, Texture->m_vertexBuffer, 0, 5 * sizeof(float));
+    m_d3dDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 4);
+}
+
+void UIDirect3D9Window::SetRenderTarget(D3D9Texture *Texture)
+{
+    if (!m_d3dDevice)
+        return;
+
+    if (Texture && Texture->m_texture)
+    {
+        IDirect3DSurface9 *surface = NULL;
+        if (SUCCEEDED(Texture->m_texture->GetSurfaceLevel(0, &surface)))
+        {
+            if (m_currentRenderTarget == surface)
+            {
+                surface->Release();
+                return;
+            }
+
+            if (FAILED(m_d3dDevice->SetRenderTarget(0, surface)))
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Failed to set render target");
+                surface->Release();
+            }
+            else
+            {
+                m_currentRenderTarget = surface;
+            }
+        }
+    }
+    else
+    {
+        if (m_currentRenderTarget)
+        {
+            m_currentRenderTarget->Release();
+            m_currentRenderTarget = NULL;
+        }
+
+        if (m_defaultRenderTarget && FAILED(m_d3dDevice->SetRenderTarget(0, m_defaultRenderTarget)))
+            LOG(VB_GENERAL, LOG_ERR, "Failed to set render target");
+    }
+}
+
 void UIDirect3D9Window::DrawTexture(D3D9Texture *Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged)
 {
     static const float studiorange  = 219.0f / 255.0f;
     static const float studiooffset = 16.0f / 255.0f;
 
-    if (!Texture || !Dest || !m_d3dDevice)
+    if (!Texture || !Dest || !m_d3dDevice || !Size)
         return;
 
-    if (PositionChanged)
+    SetBlend(true);
+
+    if (PositionChanged || !Texture->m_verticesUpdated)
     {
         PositionChanged = false;
         UpdateVertices(Texture, Dest, Size);
@@ -649,17 +723,18 @@ void UIDirect3D9Window::DrawTexture(D3D9Texture *Texture, QRectF *Dest, QSizeF *
     // TODO some basic state tracking
     // TODO null pointer checks
 
-    float color[4] = { m_transforms[m_currentTransformIndex].color,
-                       m_studioLevels ? studiorange : 1.0f,
-                       m_studioLevels ? studiooffset : 0.0f,
-                       m_transforms[m_currentTransformIndex].alpha };
-    m_shaders[m_defaultShader]->m_vertexConstants->SetMatrix(m_d3dDevice, "Projection", m_currentProjection);
-    m_shaders[m_defaultShader]->m_vertexConstants->SetMatrix(m_d3dDevice, "Transform", &m_transforms[m_currentTransformIndex].m);
-    m_shaders[m_defaultShader]->m_pixelConstants->SetFloatArray(m_d3dDevice, "Color", color, 4);
-    //uint index = m_shaders[m_defaultShader]->m_pixelConstants->GetSamplerIndex("MySampler");
+    D3DXVECTOR4 color;
+    color.x = m_transforms[m_currentTransformIndex].color;
+    color.y = m_studioLevels ? studiorange : 1.0f;
+    color.z = m_studioLevels ? studiooffset : 0.0f;
+    color.w = m_transforms[m_currentTransformIndex].alpha;
+    m_defaultShader->m_vertexConstants->SetMatrix(m_d3dDevice, "Projection", m_currentProjection);
+    m_defaultShader->m_vertexConstants->SetMatrix(m_d3dDevice, "Transform", &m_transforms[m_currentTransformIndex].m);
+    m_defaultShader->m_pixelConstants->SetVector(m_d3dDevice, "Color", &color);
+    //uint index = m_defaultShader->m_pixelConstants->GetSamplerIndex("MySampler");
     m_d3dDevice->SetTexture(0, (LPDIRECT3DBASETEXTURE9)Texture->m_texture);
-    m_d3dDevice->SetVertexShader(m_shaders[m_defaultShader]->m_vertexShader);
-    m_d3dDevice->SetPixelShader(m_shaders[m_defaultShader]->m_pixelShader);
+    m_d3dDevice->SetVertexShader(m_defaultShader->m_vertexShader);
+    m_d3dDevice->SetPixelShader(m_defaultShader->m_pixelShader);
     m_d3dDevice->SetStreamSource(0, Texture->m_vertexBuffer, 0, 5 * sizeof(float));
     m_d3dDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 4);
 }
@@ -717,4 +792,9 @@ void UIDirect3D9Window::SetBlend(bool Enable)
 QPaintEngine* UIDirect3D9Window::paintEngine(void) const
 {
     return NULL;
+}
+
+IDirect3DDevice9* UIDirect3D9Window::GetDevice(void) const
+{
+    return m_d3dDevice;
 }

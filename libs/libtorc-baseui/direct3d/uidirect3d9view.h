@@ -21,6 +21,7 @@ class TORC_BASEUI_PUBLIC UID3DMatrix
 
 class TORC_BASEUI_PUBLIC UIDirect3D9View
 {
+  public:
     enum Projection
     {
         ViewPortOnly,

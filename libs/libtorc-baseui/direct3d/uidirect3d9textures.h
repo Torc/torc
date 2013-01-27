@@ -25,6 +25,8 @@ class TORC_BASEUI_PUBLIC D3D9Texture
     QSize                   m_size;
     QSize                   m_usedSize;
     quint64                 m_internalDataSize;
+    bool                    m_fullVertices;
+    bool                    m_verticesUpdated;
 };
 
 class TORC_BASEUI_PUBLIC UIDirect3D9Textures

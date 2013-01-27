@@ -65,7 +65,9 @@ D3D9Texture::D3D9Texture(IDirect3DSurface9 *Surface, IDirect3DTexture9 *Texture,
     m_texture(Texture),
     m_vertexBuffer(VertexBuffer),
     m_size(Size),
-    m_usedSize(UsedSize)
+    m_usedSize(UsedSize),
+    m_fullVertices(false),
+    m_verticesUpdated(false)
 {
     // FIXME
     m_internalDataSize = m_size.width() * m_size.height() * 4;
@@ -109,7 +111,8 @@ bool UIDirect3D9Textures::InitialiseTextures(IDirect3D9 *Object, IDirect3DDevice
 
     m_defaultPool   = D3DPOOL_DEFAULT;
     m_defaultUsage  = D3DUSAGE_DYNAMIC;//0;
-    m_allowRects    = capabilities.TextureCaps & D3DPTEXTURECAPS_POW2;
+    m_allowRects    = !(capabilities.TextureCaps & D3DPTEXTURECAPS_POW2) &&
+                      !(capabilities.TextureCaps & D3DPTEXTURECAPS_NONPOW2CONDITIONAL);
     m_surfaceFormat = m_adaptorFormat;
 
     static const D3DFORMAT formats[] =
@@ -137,6 +140,7 @@ bool UIDirect3D9Textures::InitialiseTextures(IDirect3D9 *Object, IDirect3DDevice
     LOG(VB_GENERAL, LOG_INFO, QString("Texture format   : %2").arg(FormatToString(m_textureFormat)));
     LOG(VB_GENERAL, LOG_INFO, QString("Max texture size : %1x%2")
         .arg(capabilities.MaxTextureWidth).arg(capabilities.MaxTextureHeight));
+    LOG(VB_GENERAL, LOG_INFO, QString("Rect textures    : %1").arg(m_allowRects ? "Yes" : "No"));
 
     m_D3DXLoadSurface = (TORC_D3DXLOADSURFACEFROMMEMORY)UIDirect3D9Window::GetD3DX9ProcAddress("D3DXLoadSurfaceFromMemory");
 
@@ -234,9 +238,9 @@ void UIDirect3D9Textures::UpdateVertices(D3D9Texture *Texture, QRectF *Dest, QSi
         float *v;
         if (SUCCEEDED(Texture->m_vertexBuffer->Lock(0, 0, (void**)(&v), D3DLOCK_DISCARD)))
         {
-            float left    = 0.0;//Dest->left();
+            float left    = Texture->m_fullVertices ? Dest->left() : 0.0;
             float right   = left + Dest->width();
-            float top     = 0.0;//Dest->top();
+            float top     = Texture->m_fullVertices ? Dest->top() : 0.0;
             float bottom  = top + Dest->height();
             float tright  = Size->width();
             float tbottom = Size->height();
@@ -269,6 +273,7 @@ void UIDirect3D9Textures::UpdateVertices(D3D9Texture *Texture, QRectF *Dest, QSi
             v[19] = tbottom;
 
             Texture->m_vertexBuffer->Unlock();
+            Texture->m_verticesUpdated = true;
         }
     }
 }

@@ -114,7 +114,7 @@ bool D3D9Shader::IsComplete(void)
 
 UIDirect3D9Shaders::UIDirect3D9Shaders()
   : m_shadersValid(false),
-    m_defaultShader(0),
+    m_defaultShader(NULL),
     m_vertexDeclaration(NULL),
     m_D3DXCompileShader(NULL)
 {
@@ -156,9 +156,9 @@ bool UIDirect3D9Shaders::CreateDefaultShaders(IDirect3DDevice9 *Device)
     m_defaultShader = CreateShader(Device, DefaultVertexShader, vertexsize,
                                    DefaultPixelShader, pixelsize);
 
-    if (m_defaultShader > 0)
+    if (m_defaultShader)
     {
-        LOG(VB_GENERAL, LOG_INFO, "Created default shaders");
+        LOG(VB_GENERAL, LOG_INFO, "Created default shader");
         return true;
     }
 
@@ -171,12 +171,12 @@ void UIDirect3D9Shaders::DeleteDefaultShaders(void)
     m_defaultShader = 0;
 }
 
-unsigned int UIDirect3D9Shaders::CreateShader(IDirect3DDevice9 *Device,
-                                              const char *Vertex, unsigned int VertexSize,
-                                              const char *Pixel, unsigned int PixelSize)
+D3D9Shader* UIDirect3D9Shaders::CreateShader(IDirect3DDevice9 *Device,
+                                             const char *Vertex, unsigned int VertexSize,
+                                             const char *Pixel, unsigned int PixelSize)
 {
     if (!m_shadersValid)
-        return 0;
+        return NULL;
 
     bool errored = false;
     D3D9Shader *shader = new D3D9Shader();
@@ -217,7 +217,7 @@ unsigned int UIDirect3D9Shaders::CreateShader(IDirect3DDevice9 *Device,
     ID3DXBuffer *pixelbuffer = NULL;
     ID3DXBuffer *pixelerror  = NULL;
 
-    ok = m_D3DXCompileShader(Pixel, PixelSize, NULL, NULL, "main", "ps_2_0",
+    ok = m_D3DXCompileShader(Pixel, PixelSize, NULL, NULL, "main", "ps_2_a",
                              0, &pixelbuffer, &pixelerror, &shader->m_pixelConstants);
 
     if (pixelerror)
@@ -248,30 +248,23 @@ unsigned int UIDirect3D9Shaders::CreateShader(IDirect3DDevice9 *Device,
     // if everything checks out, add it to our map
     if (!errored && shader->IsComplete())
     {
-        unsigned int result = 0;
-        while (m_shaders.contains(++result)) {}
-        m_shaders.insert(result, shader);
-        return result;
+        m_shaders.append(shader);
+        return shader;
     }
 
     delete shader;
-    return 0;
+    return NULL;
 }
 
-void UIDirect3D9Shaders::DeleteShader(unsigned int Shader)
+void UIDirect3D9Shaders::DeleteShader(D3D9Shader *Shader)
 {
-    QHash<unsigned int,D3D9Shader*>::iterator it = m_shaders.find(Shader);
-    if (it != m_shaders.end())
-    {
-        delete it.value();
-        m_shaders.erase(it);
-    }
+    if (Shader && m_shaders.removeAll(Shader))
+        delete Shader;
 }
 
 void UIDirect3D9Shaders::DeleteShaders(void)
 {
-    QHash<unsigned int,D3D9Shader*>::iterator it = m_shaders.begin();
-    for ( ; it != m_shaders.end(); ++it)
-        delete *it;
+    foreach (D3D9Shader* shader, m_shaders)
+        delete shader;
     m_shaders.clear();
 }
