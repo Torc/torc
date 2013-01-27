@@ -10,9 +10,9 @@ INSTALLS = target
 
 QT += opengl
 
-DEPENDPATH  += ./platforms ./opengl ../libtorc-av ../libtorc-audio ../libtorc-video
+DEPENDPATH  += ./platforms ./opengl ./direct3d ../libtorc-av ../libtorc-audio ../libtorc-video
 INCLUDEPATH += ../libtorc-core ../libtorc-core/platforms ../libtorc-baseui
-INCLUDEPATH += ../libtorc-baseui/opengl
+INCLUDEPATH += ../libtorc-baseui/opengl ../libtorc-baseui/direct3d
 INCLUDEPATH += ../.. ../
 INCLUDEPATH += $$DEPENDPATH
 
@@ -36,7 +36,11 @@ SOURCES += videocolourspace.cpp
 SOURCES += videouiplayer.cpp
 SOURCES += videorenderer.cpp
 
-!win32 {
+win32 {
+    HEADERS += direct3d/videorenderdirect3d9.h
+    SOURCES += direct3d/videorenderdirect3d9.cpp
+}
+else {
     HEADERS += opengl/videorendereropengl.h
     SOURCES += opengl/videorendereropengl.cpp
 }
