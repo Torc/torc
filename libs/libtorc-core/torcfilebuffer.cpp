@@ -230,13 +230,16 @@ static class TorcFileBufferFactory : public TorcBufferFactory
 {
     void Score(const QString &URI, const QUrl &URL, int &Score, const bool &Media)
     {
-        if (URL.isRelative() && URL.port() < 0 && Score <= 10)
+        if ((URL.scheme().size() < 2) && URL.port() < 0 && Score <= 10)
             Score = 10;
     }
 
     TorcBuffer* Create(const QString &URI, const QUrl &URL, const int &Score, const bool &Media)
     {
-        if (URL.isRelative() && URL.port() < 0 && Score <= 10)
+        LOG(VB_GENERAL, LOG_INFO, QString("url %1 relative %2 scheme %3")
+            .arg(URI).arg(URL.isRelative()).arg(URL.scheme()));
+
+        if ((URL.scheme().size() < 2) && URL.port() < 0 && Score <= 10)
         {
             TorcFileBuffer* result = new TorcFileBuffer(URI);
             if (result->Open())
