@@ -30,7 +30,6 @@ class VideoRenderDirect3D9 : public VideoRenderer
     UIDirect3D9Window *m_direct3D9Window;
     D3D9Texture       *m_rawVideoTexture;
     D3D9Texture       *m_rgbVideoTexture;
-    SwsContext        *m_conversionContext;
     D3D9Shader        *m_yuvShader;
 };
 

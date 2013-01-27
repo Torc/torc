@@ -29,7 +29,6 @@ class VideoRendererOpenGL : public VideoRenderer
     uint               m_yuvShader;
     uint               m_rgbShader;
     uint               m_bicubicShader;
-    SwsContext        *m_conversionContext;
 };
 
 #endif // VIDEORENDEREROPENGL_H

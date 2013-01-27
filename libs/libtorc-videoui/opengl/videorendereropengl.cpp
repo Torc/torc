@@ -101,8 +101,7 @@ VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGL
     m_rgbVideoBuffer(0),
     m_yuvShader(0),
     m_rgbShader(0),
-    m_bicubicShader(0),
-    m_conversionContext(NULL)
+    m_bicubicShader(0)
 {
     m_allowHighQualityScaling = m_openglWindow->IsRectTexture(m_openglWindow->GetRectTextureType());
 }
@@ -110,7 +109,6 @@ VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGL
 VideoRendererOpenGL::~VideoRendererOpenGL()
 {
     ResetOutput();
-    sws_freeContext(m_conversionContext);
 }
 
 void VideoRendererOpenGL::ResetOutput(void)

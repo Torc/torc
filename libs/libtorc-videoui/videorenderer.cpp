@@ -50,7 +50,8 @@ VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
     m_updateFrameVertices(true),
     m_wantHighQualityScaling(false),
     m_allowHighQualityScaling(false),
-    m_usingHighQualityScaling(false)
+    m_usingHighQualityScaling(false),
+    m_conversionContext(NULL)
 {
     m_display = dynamic_cast<UIDisplay*>(Window);
 
@@ -62,6 +63,7 @@ VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
 
 VideoRenderer::~VideoRenderer()
 {
+    sws_freeContext(m_conversionContext);
 }
 
 PixelFormat VideoRenderer::PreferredPixelFormat(void)

@@ -74,7 +74,6 @@ VideoRenderDirect3D9::VideoRenderDirect3D9(VideoColourSpace *ColourSpace, UIDire
     m_direct3D9Window(Window),
     m_rawVideoTexture(NULL),
     m_rgbVideoTexture(NULL),
-    m_conversionContext(NULL),
     m_yuvShader(NULL)
 {
 }
@@ -82,7 +81,6 @@ VideoRenderDirect3D9::VideoRenderDirect3D9(VideoColourSpace *ColourSpace, UIDire
 VideoRenderDirect3D9::~VideoRenderDirect3D9()
 {
     ResetOutput();
-    sws_freeContext(m_conversionContext);
 }
 
 void VideoRenderDirect3D9::ResetOutput(void)

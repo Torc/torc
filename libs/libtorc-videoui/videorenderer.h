@@ -55,6 +55,7 @@ class VideoRenderer
     bool                    m_wantHighQualityScaling;
     bool                    m_allowHighQualityScaling;
     bool                    m_usingHighQualityScaling;
+    SwsContext             *m_conversionContext;
 };
 
 class RenderFactory
