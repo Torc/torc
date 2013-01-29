@@ -99,7 +99,7 @@ UIDirect3D9Textures::UIDirect3D9Textures()
 
 UIDirect3D9Textures::~UIDirect3D9Textures()
 {
-    DeleteTexures();
+    DeleteTextures();
 }
 
 bool UIDirect3D9Textures::InitialiseTextures(IDirect3D9 *Object, IDirect3DDevice9 *Device,
@@ -295,7 +295,7 @@ void UIDirect3D9Textures::DeleteTexture(D3D9Texture *Texture)
     }
 }
 
-void UIDirect3D9Textures::DeleteTexures(void)
+void UIDirect3D9Textures::DeleteTextures(void)
 {
     if (m_texturesValid)
     {

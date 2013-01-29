@@ -46,7 +46,7 @@ class TORC_BASEUI_PUBLIC UIDirect3D9Textures
     QSize        GetTextureSize      (QSize Size);
 
   private:
-    void         DeleteTexures       (void);
+    void         DeleteTextures      (void);
 
   protected:
     bool         m_texturesValid;
