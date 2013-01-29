@@ -125,6 +125,12 @@ bool UIText::DrawSelf(UIWindow* Window, qreal XOffset, qreal YOffset)
     if (!Window || !m_font)
         return false;
 
+    if (m_fallback && m_fallback->GetState() == UIImage::ImageReleasedFromGPU)
+    {
+        m_fallback->DownRef();
+        m_fallback = NULL;
+    }
+
     UIImage* oldfallback = m_fallback;
 
     m_fallback = Window->DrawText(m_effect, &m_scaledRect, m_positionChanged, m_text,
