@@ -124,6 +124,9 @@ UIDirect3D9Shaders::~UIDirect3D9Shaders()
 {
     DeleteDefaultShaders();
     DeleteShaders();
+
+    if (m_vertexDeclaration)
+        m_vertexDeclaration->Release();
 }
 
 bool UIDirect3D9Shaders::InitialiseShaders(IDirect3DDevice9 *Device)
