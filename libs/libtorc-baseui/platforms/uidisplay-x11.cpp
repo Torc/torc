@@ -203,6 +203,8 @@ void UIDisplay::SwitchToMode(int Index)
                 LOG(VB_GENERAL, LOG_INFO, QString("Trying %1Hz (%2Hz Index %3)").arg(moderate).arg(intrate).arg(index));
                 if (!UIXRandr.m_setScreenConfigAndRate(display, config, RootWindow(display, screen), original, rotation, intrate, CurrentTime))
                     LOG(VB_GENERAL, LOG_ERR, "Failed to set video mode");
+                else
+                    m_refreshRate = moderate;
 
                 UIXRandr.m_freeScreenResources(resources);
                 XSync(display, false);
