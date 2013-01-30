@@ -70,14 +70,24 @@ qint16 TorcEDID::PhysicalAddress(void)
     return gTorcEDID->m_physicalAddress;
 }
 
-int TorcEDID::GetAVLatency(bool Interlaced)
+int TorcEDID::GetAudioLatency(bool Interlaced)
 {
     QMutexLocker locker(gTorcEDIDLock);
 
-    if (Interlaced && gTorcEDID->m_interlacedAudioLatency >=0 && gTorcEDID->m_interlacedVideoLatency >= 0)
-        return gTorcEDID->m_interlacedAudioLatency - gTorcEDID->m_interlacedVideoLatency;
+    if (Interlaced && gTorcEDID->m_interlacedAudioLatency >=0 )
+        return gTorcEDID->m_interlacedAudioLatency;
 
-    return gTorcEDID->m_audioLatency - gTorcEDID->m_videoLatency;;
+    return gTorcEDID->m_audioLatency;
+}
+
+int TorcEDID::GetVideoLatency(bool Interlaced)
+{
+    QMutexLocker locker(gTorcEDIDLock);
+
+    if (Interlaced && gTorcEDID->m_interlacedVideoLatency >= 0)
+        return gTorcEDID->m_interlacedVideoLatency;
+
+    return gTorcEDID->m_videoLatency;;
 }
 
 void TorcEDID::Process(void)
@@ -103,7 +113,7 @@ void TorcEDID::Process(void)
         return;
     }
 
-    LOG(VB_GENERAL, LOG_INFO, "Processing EDID");
+    LOG(VB_GENERAL, LOG_INFO, QString("Processing EDID (%1 bytes)").arg(m_edidData.size()));
 
     // reset
     m_physicalAddress        = 0x0000;

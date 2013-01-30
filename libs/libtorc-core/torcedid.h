@@ -14,7 +14,8 @@ class TORC_CORE_PUBLIC TorcEDID
   public:
     static void      RegisterEDID    (QByteArray Data);
     static qint16    PhysicalAddress (void);
-    static int       GetAVLatency    (bool Interlaced);
+    static int       GetAudioLatency (bool Interlaced);
+    static int       GetVideoLatency (bool Interlaced);
 
   protected:
     TorcEDID();
