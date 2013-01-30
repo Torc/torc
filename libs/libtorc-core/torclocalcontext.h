@@ -90,6 +90,7 @@ class TORC_CORE_PUBLIC Torc
         MakeHDMISourceInactive,
         HDMISourceActivated,
         HDMISourceDeactivated,
+        DisplayDeviceReset,
         // General UI
         Pushed = 2000,
         Released,
