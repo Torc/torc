@@ -101,6 +101,13 @@ bool VideoRenderer::SetHighQualityScaling(bool Enable)
     return true;
 }
 
+bool VideoRenderer::DisplayReset(void)
+{
+    m_colourSpace->SetChanged();
+    m_validVideoFrame = false;
+    return true;
+}
+
 void VideoRenderer::ResetOutput(void)
 {
     m_colourSpace->SetChanged();
@@ -160,7 +167,7 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame, const QSizeF &Size)
 
     if (changed)
     {
-        LOG(VB_GENERAL, LOG_INFO, QString("Display rect: %1x%2+%3+%4 %5")
+        LOG(VB_GENERAL, LOG_INFO, QString("Display rect: %1x%2+%3+%4 (DAR %5)")
             .arg(width).arg(height).arg(left).arg(top).arg(displayPAR));
     }
 

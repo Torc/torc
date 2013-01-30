@@ -118,9 +118,13 @@ bool VideoUIPlayer::HandleAction(int Action)
 {
     if (m_render)
     {
-        if (Action == Torc::EnableHighQualityScaling ||
-            Action == Torc::DisableHighQualityScaling ||
-            Action == Torc::ToggleHighQualityScaling)
+        if (Action == Torc::DisplayDeviceReset)
+        {
+            return m_render->DisplayReset();
+        }
+        else if (Action == Torc::EnableHighQualityScaling ||
+                 Action == Torc::DisableHighQualityScaling ||
+                 Action == Torc::ToggleHighQualityScaling)
         {
             if (m_render->HighQualityScalingAllowed())
             {

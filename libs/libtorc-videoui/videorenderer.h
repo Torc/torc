@@ -28,6 +28,7 @@ class VideoRenderer
 
     virtual void           RefreshFrame         (VideoFrame* Frame, const QSizeF &Size) = 0;
     virtual void           RenderFrame          (void) = 0;
+    virtual bool           DisplayReset         (void);
     PixelFormat            PreferredPixelFormat (void);
     void                   PlaybackFinished     (void);
 

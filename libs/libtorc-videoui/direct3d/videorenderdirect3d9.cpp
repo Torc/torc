@@ -76,11 +76,30 @@ VideoRenderDirect3D9::VideoRenderDirect3D9(VideoColourSpace *ColourSpace, UIDire
     m_rgbVideoTexture(NULL),
     m_yuvShader(NULL)
 {
+    m_allowHighQualityScaling = false;
 }
 
 VideoRenderDirect3D9::~VideoRenderDirect3D9()
 {
     ResetOutput();
+}
+
+bool VideoRenderDirect3D9::DisplayReset(void)
+{
+    LOG(VB_GENERAL, LOG_INFO, "Resetting video rendering");
+
+    if (m_direct3D9Window)
+    {
+        if (m_rawVideoTexture)
+            m_direct3D9Window->DeleteTexture(m_rawVideoTexture);
+        m_rawVideoTexture = NULL;
+
+        if (m_rgbVideoTexture)
+            m_direct3D9Window->DeleteTexture(m_rgbVideoTexture);
+        m_rgbVideoTexture = NULL;
+    }
+
+    return VideoRenderer::DisplayReset();
 }
 
 void VideoRenderDirect3D9::ResetOutput(void)

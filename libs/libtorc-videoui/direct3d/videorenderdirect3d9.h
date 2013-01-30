@@ -22,6 +22,7 @@ class VideoRenderDirect3D9 : public VideoRenderer
 
     void               RefreshFrame         (VideoFrame *Frame, const QSizeF &Size);
     void               RenderFrame          (void);
+    bool               DisplayReset         (void);
 
   protected:
     void               ResetOutput          (void);

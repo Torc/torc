@@ -678,6 +678,9 @@ bool TorcPlayerInterface::HandleEvent(QEvent *Event)
                 PlayMedia(paused);
             }
             break;
+         case Torc::DisplayDeviceReset:
+            HandlePlayerAction(event);
+            break;
         default: break;
     }
 
