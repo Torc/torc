@@ -44,55 +44,62 @@ class TORC_BASEUI_PUBLIC UIDirect3D9Window
 
     static  void* GetD3DX9ProcAddress (const QString &Proc);
 
-    QSize       GetSize             (void);
-    void        SetRefreshRate      (double Rate, int ModeIndex = -1);
-    void        SetRenderTarget     (D3D9Texture* Texture);
-    void        DrawTexture         (D3D9Texture* Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged);
-    void        DrawTexture         (D3D9Shader* Shader, D3D9Texture* Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged);
-    void        DrawImage           (UIEffect *Effect, QRectF *Dest, bool &PositionChanged, UIImage *Image);
-    UIImage*    DrawText            (UIEffect *Effect, QRectF *Dest, bool &PositionChanged,
-                                     const QString &Text, UIFont *Font, int Flags, int Blur,
-                                     UIImage  *Fallback = NULL);
-    void        DrawShape           (UIEffect *Effect, QRectF *Dest, bool &PositionChanged, UIShapePath *Path);
-    bool        PushEffect          (const UIEffect *Effect, const QRectF *Dest);
-    void        PopEffect           (void);
-    void        PushClip            (const QRect &Rect);
-    void        PopClip             (void);
-    void        SetBlend            (bool Enable);
+    QSize       GetSize               (void);
+    void        SetRefreshRate        (double Rate, int ModeIndex = -1);
+    void        SetRenderTarget       (D3D9Texture* Texture);
+    void        DrawTexture           (D3D9Texture* Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged);
+    void        DrawTexture           (D3D9Shader* Shader, D3D9Texture* Texture, QRectF *Dest, QSizeF *Size, bool &PositionChanged);
+    void        DrawImage             (UIEffect *Effect, QRectF *Dest, bool &PositionChanged, UIImage *Image);
+    UIImage*    DrawText              (UIEffect *Effect, QRectF *Dest, bool &PositionChanged,
+                                       const QString &Text, UIFont *Font, int Flags, int Blur,
+                                       UIImage  *Fallback = NULL);
+    void        DrawShape             (UIEffect *Effect, QRectF *Dest, bool &PositionChanged, UIShapePath *Path);
+    bool        PushEffect            (const UIEffect *Effect, const QRectF *Dest);
+    void        PopEffect             (void);
+    void        PushClip              (const QRect &Rect);
+    void        PopClip               (void);
+    void        SetBlend              (bool Enable);
 
-    QPaintEngine* paintEngine() const;
-    IDirect3DDevice9* GetDevice() const;
+    QPaintEngine* paintEngine         (void) const;
+    IDirect3DDevice9* GetDevice       (void) const;
 
   public slots:
-    void         MainLoop           (void);
-    QVariantMap  GetDisplayDetails  (void);
-    QVariantMap  GetThemeDetails    (void);
+    void         MainLoop             (void);
+    QVariantMap  GetDisplayDetails    (void);
+    QVariantMap  GetThemeDetails      (void);
 
   protected:
     UIDirect3D9Window();
-    bool         Initialise         (void);
+    bool         Initialise           (void);
 
     // QWidget
-    void         customEvent        (QEvent      *Event);
-    void         closeEvent         (QCloseEvent *Event);
-    bool         event              (QEvent      *Event);
+    void         customEvent          (QEvent      *Event);
+    void         closeEvent           (QCloseEvent *Event);
+    bool         event                (QEvent      *Event);
 
-    bool         InitialiseWindow   (void);
-    void         Destroy            (void);
-    D3D9Texture* AllocateTexture    (UIImage *Image);
-    void         ReleaseTexture     (UIImage *Image);
-    void         ReleaseAllTextures (void);
+    bool         InitialiseDirect3D9  (void);
+    void         Destroy              (void);
+    D3D9Texture* AllocateTexture      (UIImage *Image);
+    void         ReleaseTexture       (UIImage *Image);
+    void         ReleaseAllTextures   (void);
 
   private:
-    UITimer                     *m_timer;
-    IDirect3D9                  *m_d3dObject;
-    IDirect3DDevice9            *m_d3dDevice;
-    IDirect3DSurface9           *m_defaultRenderTarget;
-    IDirect3DSurface9           *m_currentRenderTarget;
-    QHash<UIImage*,D3D9Texture*> m_textureHash;
-    QList<UIImage*>              m_textureExpireList;
-    bool                         m_blend;
-    UIActions                    m_actions;
+    bool         Initialise2DState    (void);
+    void         HandleDeviceReset    (void);
+    void         GetPresentParameters (D3DPRESENT_PARAMETERS &Parameters);
+    unsigned int GetAdapterNumber     (void);
+
+  private:
+    UITimer                           *m_timer;
+    IDirect3D9                        *m_d3dObject;
+    IDirect3DDevice9                  *m_d3dDevice;
+    LONG                               m_deviceState;
+    IDirect3DSurface9                 *m_defaultRenderTarget;
+    IDirect3DSurface9                 *m_currentRenderTarget;
+    QHash<UIImage*,D3D9Texture*>       m_textureHash;
+    QList<UIImage*>                    m_textureExpireList;
+    bool                               m_blend;
+    UIActions                          m_actions;
 
   private:
     Q_DISABLE_COPY(UIDirect3D9Window);

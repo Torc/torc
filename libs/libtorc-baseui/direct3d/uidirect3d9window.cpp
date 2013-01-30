@@ -21,6 +21,7 @@
 */
 
 // Qt
+#include <QApplication>
 #include <QLibrary>
 #include <QKeyEvent>
 
@@ -69,6 +70,7 @@ UIDirect3D9Window::UIDirect3D9Window()
     m_timer(NULL),
     m_d3dObject(NULL),
     m_d3dDevice(NULL),
+    m_deviceState(D3D_OK),
     m_defaultRenderTarget(NULL),
     m_currentRenderTarget(NULL),
     m_blend(false)
@@ -77,13 +79,6 @@ UIDirect3D9Window::UIDirect3D9Window()
 
 UIDirect3D9Window::~UIDirect3D9Window()
 {
-    // release framebuffers
-    if (m_currentRenderTarget)
-        m_currentRenderTarget->Release();
-
-    if (m_defaultRenderTarget)
-        m_defaultRenderTarget->Release();
-
     // ensure QObjects are deleted immediately
     TorcReferenceCounter::EventLoopEnding(true);
 
@@ -134,7 +129,7 @@ bool UIDirect3D9Window::Initialise(void)
     SetRefreshRate(m_refreshRate);
     m_mainTimer = startTimer(0);
 
-    return InitialiseWindow();
+    return InitialiseDirect3D9();
 }
 
 void* UIDirect3D9Window::GetD3DX9ProcAddress(const QString &Proc)
@@ -179,7 +174,7 @@ void* UIDirect3D9Window::GetD3DX9ProcAddress(const QString &Proc)
     return NULL;
 }
 
-bool UIDirect3D9Window::InitialiseWindow(void)
+bool UIDirect3D9Window::InitialiseDirect3D9(void)
 {
     static LPFND3DC direct3Dcreate9 = NULL;
 
@@ -206,20 +201,7 @@ bool UIDirect3D9Window::InitialiseWindow(void)
     LOG(VB_GENERAL, LOG_INFO, "Created D3D9 object");
 
     // determine the adaptor
-    unsigned int adaptor = D3DADAPTER_DEFAULT;
-    HMONITOR monitor = MonitorFromWindow(winId(), MONITOR_DEFAULTTONULL);
-    if (monitor)
-    {
-        for (unsigned int i = 0; i < m_d3dObject->GetAdapterCount(); ++i)
-        {
-            HMONITOR mon = m_d3dObject->GetAdapterMonitor(i);
-            if (mon == monitor)
-            {
-                adaptor = i;
-                break;
-            }
-        }
-    }
+    unsigned int adaptor = GetAdapterNumber();
 
     // retrieve the device capabilities
     D3DCAPS9 capabilities;
@@ -237,17 +219,7 @@ bool UIDirect3D9Window::InitialiseWindow(void)
 
     // determine presentation parameters
     D3DPRESENT_PARAMETERS parameters;
-    memset(&parameters, 0, sizeof(parameters));
-    parameters.BackBufferFormat     = m_adaptorFormat;
-    parameters.hDeviceWindow        = winId();
-    parameters.Windowed             = true;
-    parameters.BackBufferWidth      = m_pixelSize.width();
-    parameters.BackBufferHeight     = m_pixelSize.height();
-    parameters.BackBufferCount      = 1;
-    parameters.MultiSampleType      = D3DMULTISAMPLE_NONE;
-    parameters.SwapEffect           = D3DSWAPEFFECT_DISCARD;
-    parameters.Flags                = D3DPRESENTFLAG_VIDEO;
-    parameters.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+    GetPresentParameters(parameters);
 
     // create the device
     HRESULT result = m_d3dObject->CreateDevice(adaptor, D3DDEVTYPE_HAL, winId(),
@@ -276,6 +248,16 @@ bool UIDirect3D9Window::InitialiseWindow(void)
 
     LOG(VB_GENERAL, LOG_INFO, "Created D3D9 device");
 
+    return Initialise2DState() &&
+           InitialiseView(m_d3dDevice, geometry()) &&
+           InitialiseTextures(m_d3dObject, m_d3dDevice, adaptor, m_adaptorFormat) &&
+           InitialiseShaders(m_d3dDevice);
+}
+
+bool UIDirect3D9Window::Initialise2DState(void)
+{
+    LOG(VB_GENERAL, LOG_INFO, "Initialising 2D state");
+
     m_d3dDevice->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
     m_d3dDevice->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
     m_d3dDevice->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
@@ -293,16 +275,23 @@ bool UIDirect3D9Window::InitialiseWindow(void)
     SetBlend(true);
 
     if (FAILED(m_d3dDevice->GetRenderTarget(0, &m_defaultRenderTarget)))
+    {
         LOG(VB_GENERAL, LOG_ERR, "Failed to get default render target");
+        return false;
+    }
 
-    return InitialiseView(m_d3dDevice, geometry()) &&
-           InitialiseTextures(m_d3dObject, m_d3dDevice, adaptor, m_adaptorFormat) &&
-           InitialiseShaders(m_d3dDevice);
+    return true;
 }
 
 void UIDirect3D9Window::Destroy(void)
 {
     LOG(VB_GENERAL, LOG_INFO, "Destroying D3D9 objects");
+
+    if (m_currentRenderTarget)
+        m_currentRenderTarget->Release();
+
+    if (m_defaultRenderTarget)
+        m_defaultRenderTarget->Release();
 
     ReleaseAllTextures();
 
@@ -478,16 +467,46 @@ void UIDirect3D9Window::MainLoop(void)
     UpdateImages();
 
     if (m_d3dDevice)
-        m_d3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.0f, 0);
-
-    if (m_theme && m_d3dDevice && SUCCEEDED(m_d3dDevice->BeginScene()))
     {
-        m_theme->Refresh(timestamp);
-        m_theme->Draw(timestamp, this, 0.0, 0.0);
+        HRESULT result = m_d3dDevice->TestCooperativeLevel();
 
-        m_d3dDevice->EndScene();
-        m_d3dDevice->Present(NULL, NULL, NULL, NULL);
-        SetThreadExecutionState(ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED);
+        if (SUCCEEDED(result))
+        {
+            m_d3dDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.0f, 0);
+
+            if (m_theme && m_d3dDevice && SUCCEEDED(m_d3dDevice->BeginScene()))
+            {
+                m_theme->Refresh(timestamp);
+                m_theme->Draw(timestamp, this, 0.0, 0.0);
+
+                m_d3dDevice->EndScene();
+                m_d3dDevice->Present(NULL, NULL, NULL, NULL);
+                SetThreadExecutionState(ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED);
+            }
+        }
+        else
+        {
+            switch (result)
+            {
+                case D3DERR_DEVICELOST:
+                    if (D3DERR_DEVICELOST != m_deviceState)
+                        LOG(VB_GENERAL, LOG_ERR, "Device lost");
+                    m_deviceState = D3DERR_DEVICELOST;
+                    break;
+                case D3DERR_DRIVERINTERNALERROR:
+                    LOG(VB_GENERAL, LOG_ERR, "Driver error - quiting");
+                    m_deviceState = D3DERR_DRIVERINTERNALERROR;
+                    qApp->exit();
+                    break;
+                case D3DERR_DEVICENOTRESET:
+                    if (D3DERR_DEVICENOTRESET != m_deviceState)
+                        LOG(VB_GENERAL, LOG_ERR, "Device needs reset");
+                     m_deviceState = D3DERR_DEVICENOTRESET;
+                     HandleDeviceReset();
+                default:
+                    break;
+            }
+        }
     }
 
     FinishDrawing();
@@ -496,6 +515,119 @@ void UIDirect3D9Window::MainLoop(void)
     {
         m_timer->Wait();
         m_timer->Start();
+    }
+}
+
+void UIDirect3D9Window::GetPresentParameters(D3DPRESENT_PARAMETERS &Parameters)
+{
+    memset(&Parameters, 0, sizeof(D3DPRESENT_PARAMETERS));
+    Parameters.BackBufferFormat     = m_adaptorFormat;
+    Parameters.hDeviceWindow        = winId();
+    Parameters.Windowed             = true;
+    Parameters.BackBufferWidth      = m_pixelSize.width();
+    Parameters.BackBufferHeight     = m_pixelSize.height();
+    Parameters.BackBufferCount      = 1;
+    Parameters.MultiSampleType      = D3DMULTISAMPLE_NONE;
+    Parameters.SwapEffect           = D3DSWAPEFFECT_DISCARD;
+    Parameters.Flags                = D3DPRESENTFLAG_VIDEO;
+    Parameters.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+}
+
+unsigned int UIDirect3D9Window::GetAdapterNumber(void)
+{
+    unsigned int adapter = D3DADAPTER_DEFAULT;
+    HMONITOR monitor = MonitorFromWindow(winId(), MONITOR_DEFAULTTONULL);
+    if (monitor)
+    {
+        for (unsigned int i = 0; i < m_d3dObject->GetAdapterCount(); ++i)
+        {
+            HMONITOR mon = m_d3dObject->GetAdapterMonitor(i);
+            if (mon == monitor)
+            {
+                adapter = i;
+                break;
+            }
+        }
+    }
+
+    return adapter;
+}
+
+void UIDirect3D9Window::HandleDeviceReset(void)
+{
+    D3DPRESENT_PARAMETERS parameters;
+    GetPresentParameters(parameters);
+
+    {
+        HRESULT reset = m_d3dDevice->Reset(&parameters);
+        switch (reset)
+        {
+            case D3D_OK:
+                LOG(VB_GENERAL, LOG_INFO, "Device successfully reset");
+
+                m_deviceState = D3D_OK;
+
+                // force some state changes
+                m_blend = !m_blend;
+                if (m_defaultRenderTarget)
+                {
+                    m_defaultRenderTarget->Release();
+                    m_defaultRenderTarget = NULL;
+                }
+
+                Initialise2DState();
+                InitialiseTextures(m_d3dObject, m_d3dDevice, GetAdapterNumber(), m_adaptorFormat);
+                InitialiseView(m_d3dDevice, geometry());
+                InitialiseShaders(m_d3dDevice);
+                break;
+            case D3DERR_DEVICENOTRESET:
+                LOG(VB_GUI, LOG_INFO, "Device still not reset");
+                break;
+            case D3DERR_DEVICELOST:
+                LOG(VB_GUI, LOG_INFO, "Device lost");
+                break;
+            case D3DERR_DRIVERINTERNALERROR:
+                LOG(VB_GUI, LOG_INFO, "Driver error");
+                break;
+            case D3DERR_OUTOFVIDEOMEMORY:
+                LOG(VB_GUI, LOG_INFO, "Out of video memory");
+                break;
+            case D3DERR_INVALIDDEVICE:
+                LOG(VB_GUI, LOG_INFO, "Invalid device");
+                break;
+            case D3DERR_INVALIDCALL:
+                LOG(VB_GUI, LOG_INFO, "Invalid call");
+                break;
+            case D3DERR_DRIVERINVALIDCALL:
+                LOG(VB_GUI, LOG_INFO, "Driver invalid call");
+                break;
+            case D3DERR_NOTAVAILABLE:
+                LOG(VB_GUI, LOG_INFO, "Not available");
+                break;
+            default:
+                LOG(VB_GUI, LOG_INFO, QString("Unknown Reset result %1").arg(reset));
+        }
+
+        if (FAILED(reset))
+        {
+            LOG(VB_GENERAL, LOG_INFO, "Releasing all direct3d resources");
+
+            if (m_defaultRenderTarget)
+            {
+                m_defaultRenderTarget->Release();
+                m_defaultRenderTarget = NULL;
+            }
+
+            if (m_currentRenderTarget)
+            {
+                m_currentRenderTarget->Release();
+                m_currentRenderTarget = NULL;
+            }
+
+            ReleaseAllTextures();
+
+            gLocalContext->NotifyEvent(Torc::DisplayDeviceReset);
+        }
     }
 }
 
@@ -655,6 +787,7 @@ void UIDirect3D9Window::DrawTexture(D3D9Shader *Shader, D3D9Texture *Texture, QR
         UpdateVertices(Texture, Dest, Size);
     }
 
+    SetBlend(true);
     Shader->m_vertexConstants->SetMatrix(m_d3dDevice, "Projection", m_currentProjection);
     Shader->m_vertexConstants->SetMatrix(m_d3dDevice, "Transform", &m_transforms[m_currentTransformIndex].m);
     m_d3dDevice->SetTexture(0, (LPDIRECT3DBASETEXTURE9)Texture->m_texture);
