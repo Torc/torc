@@ -131,6 +131,12 @@ UIDirect3D9Shaders::~UIDirect3D9Shaders()
 
 bool UIDirect3D9Shaders::InitialiseShaders(IDirect3DDevice9 *Device)
 {
+    if (m_vertexDeclaration)
+    {
+        m_vertexDeclaration->Release();
+        m_vertexDeclaration = NULL;
+    }
+
     HRESULT ok = Device->CreateVertexDeclaration(vertexdeclaration, &m_vertexDeclaration);
     if (D3D_OK != ok)
     {
@@ -154,6 +160,12 @@ bool UIDirect3D9Shaders::InitialiseShaders(IDirect3DDevice9 *Device)
 
 bool UIDirect3D9Shaders::CreateDefaultShaders(IDirect3DDevice9 *Device)
 {
+    if (m_defaultShader)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Not recreating default shader");
+        return true;
+    }
+
     unsigned int vertexsize = sizeof(DefaultVertexShader) / sizeof(char);
     unsigned int pixelsize  = sizeof(DefaultPixelShader) / sizeof(char);
     m_defaultShader = CreateShader(Device, DefaultVertexShader, vertexsize,
