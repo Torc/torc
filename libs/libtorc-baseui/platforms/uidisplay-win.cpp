@@ -3,9 +3,103 @@
 #include <QDesktopWidget>
 
 // Torc
+#include "torclocaldefs.h"
 #include "torccompat.h"
+#include "torcedid.h"
 #include "torclogging.h"
 #include "../uidisplay.h"
+
+#ifndef DISPLAY_DEVICE_ACTIVE
+#define DISPLAY_DEVICE_ACTIVE 0x00000001
+#endif
+
+#include <SetupApi.h>
+
+const GUID GUID_MONITOR = {0x4d36e96e, 0xe325, 0x11ce, {0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18}};
+
+static void GetEDID(WId Window)
+{
+    MONITORINFOEX monitor;
+    memset(&monitor, 0, sizeof(MONITORINFOEX));
+    monitor.cbSize = sizeof(MONITORINFOEX);
+
+    HMONITOR monitorid = MonitorFromWindow(Window, MONITOR_DEFAULTTONEAREST);
+    GetMonitorInfo(monitorid, &monitor);
+
+    DISPLAY_DEVICE device;
+    memset(&device, 0, sizeof(DISPLAY_DEVICE));
+    device.cb = sizeof(DISPLAY_DEVICE);
+    DWORD devicenumber = 0;
+
+    QByteArray edid;
+
+    while (EnumDisplayDevices(monitor.szDevice, devicenumber, &device, 0))
+    {
+        if (!(device.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) &&
+             (device.StateFlags & DISPLAY_DEVICE_ACTIVE))
+        {
+            QStringList ids  = QString(device.DeviceID).split("\\");
+            int numberfromid = -1;
+
+            if (ids.size())
+            {
+                int number = ids.last().toInt();
+                if (number > 0 && number < 100)
+                    numberfromid = number - 1;
+            }
+
+            HDEVINFO info = SetupDiGetClassDevsEx(&GUID_MONITOR, NULL, NULL, DIGCF_PRESENT, NULL, NULL, NULL);
+            if (info)
+            {
+                for (int i = 0; ERROR_NO_MORE_ITEMS != GetLastError(); ++i)
+                {
+                    SP_DEVINFO_DATA infodata;
+                    memset(&infodata, 0, sizeof(SP_DEVINFO_DATA));
+                    infodata.cbSize = sizeof(infodata);
+
+                    if (SetupDiEnumDeviceInfo(info, i, &infodata))
+                    {
+                        HKEY devicekey = SetupDiOpenDevRegKey(info, &infodata, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
+                        if(!devicekey || (devicekey == INVALID_HANDLE_VALUE))
+                            continue;
+
+                        for (LONG i = 0, result = ERROR_SUCCESS; result != ERROR_NO_MORE_ITEMS; ++i)
+                        {
+                            DWORD entrylength = 128;
+                            QByteArray entryname(entrylength, 0);
+                            DWORD thisedidsize = 1024;
+                            QByteArray thisedid(thisedidsize, 0);
+                            DWORD dummy;
+                            result = RegEnumValue(devicekey, i, (char*)entryname.data(), &entrylength, NULL, &dummy, (BYTE*)thisedid.data(), &thisedidsize);
+                            if ((result == ERROR_SUCCESS) && entryname.contains("EDID"))
+                            {
+                                if (i == 0 || i == numberfromid)
+                                    edid = thisedid;
+                            }
+                        }
+
+                        RegCloseKey(devicekey);
+                    }
+                }
+
+                SetupDiDestroyDeviceInfoList(info);
+            }
+        }
+
+        devicenumber++;
+        memset(&device, 0, sizeof(DISPLAY_DEVICE));
+        device.cb = sizeof(DISPLAY_DEVICE);
+    }
+
+    if (!edid.isEmpty())
+    {
+        // trim any excess
+        QByteArray blank(128, 0);
+        while ((edid.size() > 128) && edid.endsWith(blank))
+            edid.chop(128);
+        TorcEDID::RegisterEDID(edid);
+    }
+}
 
 UIDisplay::UIDisplay(QWidget *Widget)
   : UIDisplayBase(Widget)
@@ -98,6 +192,9 @@ double UIDisplay::GetRefreshRatePriv(void)
             m_variableRefreshRate = true;
         res = RealRateFromInt(currentmode.dmDisplayFrequency);
     }
+
+    // check for EDID
+    GetEDID(m_widget->winId());
 
     // other available rates
     m_modes.clear();

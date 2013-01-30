@@ -119,7 +119,7 @@ else:win32 {
     HEADERS += direct3d/d3dx9math.h
     HEADERS += direct3d/d3dx9math.inl
     HEADERS += direct3d/d3dx9shader.h
-    HEADERS += direct3d/d3dxtex.h
+    HEADERS += direct3d/d3dx9tex.h
     HEADERS += direct3d/uidirect3d9window.h
     HEADERS += direct3d/uidirect3d9view.h
     HEADERS += direct3d/uidirect3d9textures.h
@@ -129,7 +129,7 @@ else:win32 {
     SOURCES += direct3d/uidirect3d9textures.cpp
     SOURCES += direct3d/uidirect3d9shaders.cpp
 
-    LIBS += -lgdi32
+    LIBS += -lgdi32 -lsetupapi
 }
 else:greaterThan(QT_MAJOR_VERSION, 4) {
     SOURCES += platforms/uidisplay-qt5.cpp
