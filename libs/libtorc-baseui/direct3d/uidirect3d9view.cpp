@@ -55,6 +55,8 @@ UIDirect3D9View::~UIDirect3D9View()
 
 bool UIDirect3D9View::InitialiseView(IDirect3DDevice9 *Device, const QRect &Rect)
 {
+    m_viewport = QRect(0, 0, 1, 1);
+
     m_D3DXMatrixMultiply               = (TORC_D3DXMATRIXMULTIPLY)UIDirect3D9Window::GetD3DX9ProcAddress("D3DXMatrixMultiply");
     m_D3DXMatrixPerspectiveOffCenterLH = (TORC_D3DXMATRIXPERSPECTIVEOFFCENTERLH)UIDirect3D9Window::GetD3DX9ProcAddress("D3DXMatrixPerspectiveOffCenterLH");
     m_D3DXMatrixOrthoOffCenterLH       = (TORC_D3DXMATRIXORTHOOFFCENTERLH)UIDirect3D9Window::GetD3DX9ProcAddress("D3DXMatrixOrthoOffCenterLH");
