@@ -459,6 +459,60 @@ bool UIDirect3D9Window::event(QEvent *Event)
     return QWidget::event(Event);
 }
 
+bool UIDirect3D9Window::winEvent(MSG *Message, long *Result)
+{
+    // TODO other messages worth handling
+    // WM_MEDIA_CHANGE
+    // WM_DEVICECHANGE
+    // WM_PAINT
+    // WM_QUERYENDSESSION
+    // WM_SYSCOMMAND
+    if (Message)
+    {
+        // see comments in libs/libtorc-core/platforms/torcpowerwin.cpp
+        if (Message->message == WM_POWERBROADCAST)
+        {
+            // we really only want to handle this once and these two events
+            // should cover all eventualities - hence we do not explicitly
+            // handle PBT_APMRESUMESUSPEND or PBT_APMRESUMESTANDBY
+            if (Message->wParam == PBT_APMRESUMEAUTOMATIC ||
+                Message->wParam == PBT_APMRESUMECRITICAL)
+            {
+                gPower->WokeUp();
+            }
+            else if (Message->wParam == PBT_APMSUSPEND ||
+                     Message->wParam == PBT_APMSTANDBY)
+            {
+                gPower->Suspending();
+            }
+            else if (Message->wParam == PBT_APMQUERYSTANDBYFAILED ||
+                     Message->wParam == PBT_APMQUERYSUSPENDFAILED)
+            {
+                // TODO this may need to be handled properly
+                LOG(VB_GENERAL, LOG_WARNING, "System suspension failed");
+            }
+            else if (Message->wParam == PBT_APMQUERYSTANDBY ||
+                     Message->wParam == PBT_APMQUERYSUSPEND)
+            {
+                LOG(VB_GENERAL, LOG_INFO, "Received suspend/standby query");
+            }
+        }
+        else if (Message->message == WM_ENDSESSION)
+        {
+            // TODO not received
+            LOG(VB_GENERAL, LOG_INFO, "Received 'ENDSESSION' event");
+            close();
+        }
+        else if (Message->message == WM_QUERYENDSESSION)
+        {
+            // TODO not received
+            LOG(VB_GENERAL, LOG_INFO, "Received 'QUERYENDSESSION' event");
+        }
+    }
+
+    return false;
+}
+
 void UIDirect3D9Window::MainLoop(void)
 {
     quint64 timestamp = StartFrame();

@@ -76,6 +76,7 @@ class TORC_BASEUI_PUBLIC UIDirect3D9Window
     void         customEvent          (QEvent      *Event);
     void         closeEvent           (QCloseEvent *Event);
     bool         event                (QEvent      *Event);
+    bool         winEvent             (MSG *Message, long *Result);
 
     bool         InitialiseDirect3D9  (void);
     void         Destroy              (void);
