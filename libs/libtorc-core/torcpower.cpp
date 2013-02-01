@@ -29,6 +29,8 @@
 #include "torcpower.h"
 #ifdef Q_OS_MAC
 #include "torcpowerosx.h"
+#elif defined(Q_OS_WIN)
+#include "torcpowerwin.h"
 #elif CONFIG_QTDBUS
 #include "torcpowerunixdbus.h"
 #endif
@@ -49,6 +51,10 @@ TorcPowerPriv::TorcPowerPriv(TorcPower *Parent)
     m_canHibernate(false),
     m_canRestart(false),
     m_batteryLevel(TORC_UNKNOWN_POWER)
+{
+}
+
+TorcPowerPriv::~TorcPowerPriv()
 {
 }
 
@@ -159,6 +165,8 @@ TorcPower::TorcPower()
 {
 #ifdef Q_OS_MAC
     m_priv = new TorcPowerOSX(this);
+#elif defined(Q_OS_WIN)
+    m_priv = new TorcPowerWin(this);
 #elif CONFIG_QTDBUS
     if (TorcPowerUnixDBus::Available())
         m_priv = new TorcPowerUnixDBus(this);

@@ -135,6 +135,12 @@ unix:contains(CONFIG_QTDBUS, yes) {
     SOURCES += platforms/torcstorageunixdbus.cpp
 }
 
+win32 {
+    HEADERS += platforms/torcpowerwin.h
+    SOURCES += platforms/torcpowerwin.cpp
+    LIBS += -lPowrProf
+}
+
 macx {
     QMAKE_OBJECTIVE_CXXFLAGS += $$QMAKE_CXXFLAGS
     LIBS += -framework Cocoa -framework IOkit -framework DiskArbitration

@@ -21,6 +21,8 @@ class TorcPowerPriv : public QObject
 
   public:
     TorcPowerPriv(TorcPower *Parent);
+    virtual ~TorcPowerPriv();
+
     virtual bool Shutdown        (void) = 0;
     virtual bool Suspend         (void) = 0;
     virtual bool Hibernate       (void) = 0;
