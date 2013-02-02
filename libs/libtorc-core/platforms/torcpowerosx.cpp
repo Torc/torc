@@ -300,3 +300,22 @@ OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend)
     return error;
 }
 
+class PowerFactoryOSX : public PowerFactory
+{
+    void Score(int &Score)
+    {
+        if (Score <= 10)
+            Score = 10;
+    }
+
+    TorcPowerPriv* Create(int Score, TorcPower *Parent)
+    {
+        (void)Parent;
+
+        if (Score <= 10)
+            return new TorcPowerOSX(Parent);
+
+        return NULL;
+    }
+} PowerFactoryOSX;
+

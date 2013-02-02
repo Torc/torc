@@ -20,6 +20,8 @@ class TorcPowerPriv : public QObject
     Q_OBJECT
 
   public:
+    static TorcPowerPriv* Create(TorcPower *Parent);
+
     TorcPowerPriv(TorcPower *Parent);
     virtual ~TorcPowerPriv();
 
@@ -42,6 +44,22 @@ class TorcPowerPriv : public QObject
     bool         m_canHibernate;
     bool         m_canRestart;
     int          m_batteryLevel;
+};
+
+class TORC_CORE_PUBLIC PowerFactory
+{
+  public:
+    PowerFactory();
+    virtual ~PowerFactory();
+
+    static PowerFactory*   GetPowerFactory   (void);
+    PowerFactory*          NextFactory       (void) const;
+    virtual void           Score             (int &Score) = 0;
+    virtual TorcPowerPriv* Create            (int Score, TorcPower *Parent) = 0;
+
+  protected:
+    static PowerFactory* gPowerFactory;
+    PowerFactory*        nextPowerFactory;
 };
 
 class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService

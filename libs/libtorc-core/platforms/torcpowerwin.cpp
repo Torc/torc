@@ -175,3 +175,23 @@ void TorcPowerWin::UpdateStatus(void)
         m_batteryLevel = TORC_UNKNOWN_POWER;
     }
 }
+
+class PowerFactoryWin : public PowerFactory
+{
+    void Score(int &Score)
+    {
+        if (Score <= 10)
+            Score = 10;
+    }
+
+    TorcPowerPriv* Create(int Score, TorcPower *Parent)
+    {
+        (void)Parent;
+
+        if (Score <= 10)
+            return new TorcPowerWin(Parent);
+
+        return NULL;
+    }
+} PowerFactoryWin;
+

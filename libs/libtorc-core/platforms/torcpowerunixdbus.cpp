@@ -36,22 +36,29 @@
 
 bool TorcPowerUnixDBus::Available(void)
 {
-    QDBusInterface upower("org.freedesktop.UPower",
-                          "/org/freedesktop/UPower",
-                          "org.freedesktop.UPower",
-                          QDBusConnection::systemBus());
-    QDBusInterface consolekit("org.freedesktop.ConsoleKit",
-                              "/org/freedesktop/ConsoleKit/Manager",
-                              "org.freedesktop.ConsoleKit.Manager",
-                              QDBusConnection::systemBus());
+    static bool available = false;
+    static bool checked   = false;
 
-    if (upower.isValid() && consolekit.isValid())
+    if (!checked)
     {
-        LOG(VB_GENERAL, LOG_INFO, "UPower and ConsoleKit available");
-        return true;
+        checked = true;
+
+        QDBusInterface upower("org.freedesktop.UPower",
+                              "/org/freedesktop/UPower",
+                              "org.freedesktop.UPower",
+                              QDBusConnection::systemBus());
+        QDBusInterface consolekit("org.freedesktop.ConsoleKit",
+                                  "/org/freedesktop/ConsoleKit/Manager",
+                                  "org.freedesktop.ConsoleKit.Manager",
+                                  QDBusConnection::systemBus());
+
+        available = upower.isValid() && consolekit.isValid();
+
+        if (!available)
+            LOG(VB_GENERAL, LOG_WARNING, "UPower and ConsoleKit not available");
     }
 
-    return false;
+    return available;
 }
 
 TorcPowerUnixDBus::TorcPowerUnixDBus(TorcPower *Parent)
@@ -384,3 +391,23 @@ void TorcPowerUnixDBus::UpdateProperties(void)
             m_onBattery = true;
     }
 }
+
+class PowerFactoryUnixDBus : public PowerFactory
+{
+    void Score(int &Score)
+    {
+        if (Score <= 10 && TorcPowerUnixDBus::Available())
+            Score = 10;
+    }
+
+    TorcPowerPriv* Create(int Score, TorcPower *Parent)
+    {
+        (void)Parent;
+
+        if (Score <= 10 && TorcPowerUnixDBus::Available())
+            return new TorcPowerUnixDBus(Parent);
+
+        return NULL;
+    }
+} PowerFactoryUnixDBus;
+

@@ -27,13 +27,6 @@
 #include "torclocalcontext.h"
 #include "torcadminthread.h"
 #include "torcpower.h"
-#ifdef Q_OS_MAC
-#include "torcpowerosx.h"
-#elif defined(Q_OS_WIN)
-#include "torcpowerwin.h"
-#elif CONFIG_QTDBUS
-#include "torcpowerunixdbus.h"
-#endif
 
 TorcPower *gPower = NULL;
 QMutex* TorcPower::gPowerLock = new QMutex(QMutex::Recursive);
@@ -43,6 +36,29 @@ QMutex* TorcPower::gPowerLock = new QMutex(QMutex::Recursive);
  *
  *  \sa TorcPower
 */
+
+TorcPowerPriv* TorcPowerPriv::Create(TorcPower *Parent)
+{
+    TorcPowerPriv *power = NULL;
+
+    int score = 0;
+    PowerFactory* factory = PowerFactory::GetPowerFactory();
+    for ( ; factory; factory = factory->NextFactory())
+        (void)factory->Score(score);
+
+    factory = PowerFactory::GetPowerFactory();
+    for ( ; factory; factory = factory->NextFactory())
+    {
+        power = factory->Create(score, Parent);
+        if (power)
+            break;
+    }
+
+    if (!power)
+        LOG(VB_GENERAL, LOG_ERR, "Failed to create power implementation");
+
+    return power;
+}
 
 TorcPowerPriv::TorcPowerPriv(TorcPower *Parent)
   : QObject(static_cast<QObject*>(Parent)),
@@ -122,6 +138,47 @@ class TorcPowerNull : public TorcPowerPriv
     bool CanRestart      (void) { return false; }
 };
 
+class PowerFactoryNull : public PowerFactory
+{
+    void Score(int &Score)
+    {
+        if (Score <= 1)
+            Score = 1;
+    }
+
+    TorcPowerPriv* Create(int Score, TorcPower *Parent)
+    {
+        (void)Parent;
+
+        if (Score <= 1)
+            return new TorcPowerNull();
+
+        return NULL;
+    }
+} PowerFactoryNull;
+
+PowerFactory* PowerFactory::gPowerFactory = NULL;
+
+PowerFactory::PowerFactory()
+{
+    nextPowerFactory = gPowerFactory;
+    gPowerFactory = this;
+}
+
+PowerFactory::~PowerFactory()
+{
+}
+
+PowerFactory* PowerFactory::GetPowerFactory(void)
+{
+    return gPowerFactory;
+}
+
+PowerFactory* PowerFactory::NextFactory(void) const
+{
+    return nextPowerFactory;
+}
+
 /*! \class TorcPower
  *  \brief A generic power status class.
  *
@@ -161,20 +218,8 @@ TorcPower::TorcPower()
     m_allowSuspend(false),
     m_allowHibernate(false),
     m_allowRestart(false),
-    m_priv(NULL)
+    m_priv(TorcPowerPriv::Create(this))
 {
-#ifdef Q_OS_MAC
-    m_priv = new TorcPowerOSX(this);
-#elif defined(Q_OS_WIN)
-    m_priv = new TorcPowerWin(this);
-#elif CONFIG_QTDBUS
-    if (TorcPowerUnixDBus::Available())
-        m_priv = new TorcPowerUnixDBus(this);
-#endif
-
-    if (!m_priv)
-        m_priv = new TorcPowerNull();
-
     m_allowShutdown  = gLocalContext->GetSetting(TORC_CORE + "AllowShutdown", true);
     m_allowSuspend   = gLocalContext->GetSetting(TORC_CORE + "AllowSuspend", true);
     m_allowHibernate = gLocalContext->GetSetting(TORC_CORE + "AllowHibernate", true);
