@@ -11,9 +11,7 @@
 #include "torccoreexport.h"
 #include "http/torchttpservice.h"
 
-class TorcUSBPriv;
-
-class TorcUSBDevice
+class TORC_CORE_PUBLIC TorcUSBDevice
 {
   public:
     enum Classes
@@ -80,7 +78,9 @@ class TORC_CORE_PUBLIC TorcUSBDeviceHandler
     TorcUSBDeviceHandler *m_nextUSBDeviceHandler;
 };
 
-class TorcUSB : public QObject, public TorcHTTPService
+class TorcUSBPriv;
+
+class TORC_CORE_PUBLIC TorcUSB : public QObject, public TorcHTTPService
 {
     Q_OBJECT
 
@@ -100,5 +100,29 @@ class TorcUSB : public QObject, public TorcHTTPService
     QMap<QString,TorcUSBDevice> m_managedDevices;
     QMutex      *m_managedDevicesLock;
 };
+
+class TORC_CORE_PUBLIC TorcUSBPriv
+{
+  public:
+    static TorcUSBPriv* Create  (TorcUSB *Parent);
+    virtual void        Destroy (void) = 0;
+};
+
+class TORC_CORE_PUBLIC USBFactory
+{
+  public:
+    USBFactory();
+    virtual ~USBFactory();
+
+    static USBFactory*   GetUSBFactory   (void);
+    USBFactory*          NextFactory     (void) const;
+    virtual void         Score           (int &Score) = 0;
+    virtual TorcUSBPriv* Create          (int Score, TorcUSB *Parent) = 0;
+
+  protected:
+    static USBFactory*   gUSBFactory;
+    USBFactory*          nextUSBFactory;
+};
+
 
 #endif // TORCUSB_H

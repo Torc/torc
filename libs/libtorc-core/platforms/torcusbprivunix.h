@@ -13,13 +13,14 @@ extern "C" {
 // Torc
 #include "torcusb.h"
 
-class TorcUSBPriv :public QObject
+class TorcUSBPrivUnix : public QObject, public TorcUSBPriv
 {
     Q_OBJECT
 
   public:
-    TorcUSBPriv(TorcUSB *Parent);
-    virtual ~TorcUSBPriv();
+    TorcUSBPrivUnix(TorcUSB *Parent);
+    virtual ~TorcUSBPrivUnix();
+    void Destroy         (void);
 
   public slots:
     void SocketReadyRead (int Device);

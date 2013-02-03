@@ -12,13 +12,14 @@
 // Torc
 #include "torcusb.h"
 
-class TorcUSBPriv : public QObject
+class TorcUSBPrivOSX : public QObject, public TorcUSBPriv
 {
     Q_OBJECT
 
   public:
-    TorcUSBPriv(TorcUSB *Parent);
-    virtual ~TorcUSBPriv();
+    TorcUSBPrivOSX(TorcUSB *Parent);
+    virtual ~TorcUSBPrivOSX();
+    void                  Destroy             (void);
 
     void                  AddDevice           (TorcUSBDevice &Device, io_service_t Service, io_object_t Notification);
     void                  RemoveDevice        (io_service_t Service);

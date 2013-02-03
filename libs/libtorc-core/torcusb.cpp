@@ -29,17 +29,28 @@
 #include "torcadminthread.h"
 #include "torcusb.h"
 
-#ifdef Q_OS_MAC
-#include "torcusbprivosx.h"
-#elif CONFIG_LIBUDEV
-#include "torcusbprivunix.h"
-#else
-class TorcUSBPriv
+TorcUSBPriv* TorcUSBPriv::Create(TorcUSB *Parent)
 {
-  public:
-    void deleteLater() {}
-};
-#endif
+    TorcUSBPriv *usb = NULL;
+
+    int score = 0;
+    USBFactory* factory = USBFactory::GetUSBFactory();
+    for ( ; factory; factory = factory->NextFactory())
+        (void)factory->Score(score);
+
+    factory = USBFactory::GetUSBFactory();
+    for ( ; factory; factory = factory->NextFactory())
+    {
+        usb = factory->Create(score, Parent);
+        if (usb)
+            break;
+    }
+
+    if (!usb)
+        LOG(VB_GENERAL, LOG_ERR, "Failed to create usb implementation");
+
+    return usb;
+}
 
 TorcUSBDevice::TorcUSBDevice()
     : m_path(QString("")),
@@ -170,21 +181,16 @@ TorcUSBDeviceHandler* TorcUSBDeviceHandler::GetNextHandler(void)
 TorcUSB::TorcUSB()
   : QObject(NULL),
     TorcHTTPService(this, "/usb", tr("USB"), TorcUSB::staticMetaObject),
-    m_priv(NULL),
+    m_priv(TorcUSBPriv::Create(this)),
     m_managedDevicesLock(new QMutex())
 {
-#ifdef Q_OS_MAC
-    m_priv = new TorcUSBPriv(this);
-#elif CONFIG_LIBUDEV
-    m_priv = new TorcUSBPriv(this);
-#endif
 }
 
 TorcUSB::~TorcUSB()
 {
     // delete implementation
     if (m_priv)
-        m_priv->deleteLater();
+        m_priv->Destroy();
 
     // cleanup device handlers
     {
@@ -275,4 +281,51 @@ static class TorcUSBObject : public TorcAdminObject
     TorcUSB *m_usb;
 
 } TorcUSBObject;
+
+class TorcUSBNull : public TorcUSBPriv
+{
+  public:
+    void Destroy (void) {}
+};
+
+class USBFactoryNull : public USBFactory
+{
+    void Score(int &Score)
+    {
+        if (Score <= 1)
+            Score = 1;
+    }
+
+    TorcUSBPriv* Create(int Score, TorcUSB *Parent)
+    {
+        (void)Parent;
+
+        if (Score <= 1)
+            return new TorcUSBNull();
+
+        return NULL;
+    }
+} USBFactoryNull;
+
+USBFactory* USBFactory::gUSBFactory = NULL;
+
+USBFactory::USBFactory()
+{
+    nextUSBFactory = gUSBFactory;
+    gUSBFactory = this;
+}
+
+USBFactory::~USBFactory()
+{
+}
+
+USBFactory* USBFactory::GetUSBFactory(void)
+{
+    return gUSBFactory;
+}
+
+USBFactory* USBFactory::NextFactory(void) const
+{
+    return nextUSBFactory;
+}
 

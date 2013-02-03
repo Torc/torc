@@ -1,4 +1,4 @@
-/* Class TorcUSBPriv
+/* Class TorcUSBPrivUnix
 *
 * This file is part of the Torc project.
 *
@@ -24,7 +24,7 @@
 #include "torclogging.h"
 #include "torcusbprivunix.h"
 
-TorcUSBPriv::TorcUSBPriv(TorcUSB *Parent)
+TorcUSBPrivUnix::TorcUSBPrivUnix(TorcUSB *Parent)
   : QObject(Parent),
     m_udev(NULL),
     m_udevMonitor(NULL),
@@ -79,7 +79,7 @@ TorcUSBPriv::TorcUSBPriv(TorcUSB *Parent)
     }
 }
 
-TorcUSBPriv::~TorcUSBPriv()
+TorcUSBPrivUnix::~TorcUSBPrivUnix()
 {
     // stop updates
     if (m_socketNotifier)
@@ -101,7 +101,12 @@ TorcUSBPriv::~TorcUSBPriv()
     m_socketNotifier = NULL;
 }
 
-TorcUSBDevice TorcUSBPriv::GetDevice(udev_device *Device, bool Remove)
+void TorcUSBPrivUnix::Destroy(void)
+{
+    deleteLater();
+}
+
+TorcUSBDevice TorcUSBPrivUnix::GetDevice(udev_device *Device, bool Remove)
 {
     if (Device && udev_device_get_subsystem(Device))
     {
@@ -157,7 +162,7 @@ TorcUSBDevice TorcUSBPriv::GetDevice(udev_device *Device, bool Remove)
     return dummy;
 }
 
-void TorcUSBPriv::AddDevice(udev_device *Device)
+void TorcUSBPrivUnix::AddDevice(udev_device *Device)
 {
     if (!Device)
         return;
@@ -168,7 +173,7 @@ void TorcUSBPriv::AddDevice(udev_device *Device)
         ((TorcUSB*)parent())->DeviceAdded(device);
 }
 
-void TorcUSBPriv::RemoveDevice(udev_device *Device)
+void TorcUSBPrivUnix::RemoveDevice(udev_device *Device)
 {
     if (!Device)
         return;
@@ -179,17 +184,17 @@ void TorcUSBPriv::RemoveDevice(udev_device *Device)
         ((TorcUSB*)parent())->DeviceRemoved(device);
 }
 
-void TorcUSBPriv::ChangeDevice(udev_device *Device)
+void TorcUSBPrivUnix::ChangeDevice(udev_device *Device)
 {
     LOG(VB_GENERAL, LOG_NOTICE, "libudev device changed");
 }
 
-void TorcUSBPriv::MoveDevice(udev_device *Device)
+void TorcUSBPrivUnix::MoveDevice(udev_device *Device)
 {
     LOG(VB_GENERAL, LOG_NOTICE, "libudev device moved");
 }
 
-void TorcUSBPriv::SocketReadyRead(int Device)
+void TorcUSBPrivUnix::SocketReadyRead(int Device)
 {
     if (Device == m_udevFD)
     {
@@ -213,7 +218,7 @@ void TorcUSBPriv::SocketReadyRead(int Device)
     }
 }
 
-enum TorcUSBDevice::Classes TorcUSBPriv::ToTorcClass(int UdevClass)
+enum TorcUSBDevice::Classes TorcUSBPrivUnix::ToTorcClass(int UdevClass)
 {
     // these should be a straight mapping...
     switch (UdevClass)

@@ -1,4 +1,4 @@
-/* Class TorcUSBPriv
+/* Class TorcUSBPrivOSX
 *
 * This file is part of the Torc project.
 *
@@ -31,7 +31,7 @@
 #include "torcrunlooposx.h"
 #include "torcusbprivosx.h"
 
-TorcUSBPriv::TorcUSBPriv(TorcUSB *Parent)
+TorcUSBPrivOSX::TorcUSBPrivOSX(TorcUSB *Parent)
   : QObject(Parent),
     m_usbRef(NULL),
     m_usbNotifyPort(NULL),
@@ -59,7 +59,7 @@ TorcUSBPriv::TorcUSBPriv(TorcUSB *Parent)
         LOG(VB_GENERAL, LOG_ERR, "Failed to register for attachment notifications");
 }
 
-TorcUSBPriv::~TorcUSBPriv()
+TorcUSBPrivOSX::~TorcUSBPrivOSX()
 {
     // free outstanding notifications
     LOG(VB_GENERAL, LOG_DEBUG, QString("%1 outstanding notifications").arg(m_notifications.size()));
@@ -100,7 +100,12 @@ TorcUSBPriv::~TorcUSBPriv()
     m_notificationsLock = NULL;
 }
 
-TorcUSBDevice::Classes TorcUSBPriv::ToTorcClass(int ClassType)
+void TorcUSBPrivOSX::Destroy(void)
+{
+    deleteLater();
+}
+
+TorcUSBDevice::Classes TorcUSBPrivOSX::ToTorcClass(int ClassType)
 {
     switch (ClassType)
     {
@@ -119,7 +124,7 @@ TorcUSBDevice::Classes TorcUSBPriv::ToTorcClass(int ClassType)
     return TorcUSBDevice::Unknown;
 }
 
-void TorcUSBPriv::AddDevice(TorcUSBDevice &Device, io_service_t Service,
+void TorcUSBPrivOSX::AddDevice(TorcUSBDevice &Device, io_service_t Service,
                             io_object_t Notification)
 {
     bool found = false;
@@ -147,12 +152,12 @@ void TorcUSBPriv::AddDevice(TorcUSBDevice &Device, io_service_t Service,
     }
 }
 
-IONotificationPortRef TorcUSBPriv::GetNotificationPort(void)
+IONotificationPortRef TorcUSBPrivOSX::GetNotificationPort(void)
 {
     return m_usbNotifyPort;
 }
 
-TorcUSBDevice TorcUSBPriv::GetDevice(io_service_t Device)
+TorcUSBDevice TorcUSBPrivOSX::GetDevice(io_service_t Device)
 {
     TorcUSBDevice usbdevice;
 
@@ -248,7 +253,7 @@ TorcUSBDevice TorcUSBPriv::GetDevice(io_service_t Device)
     return usbdevice;
 }
 
-void TorcUSBPriv::DeviceAddedCallback(void *Context, io_iterator_t Iterator)
+void TorcUSBPrivOSX::DeviceAddedCallback(void *Context, io_iterator_t Iterator)
 {
     if (!Context)
         return;
@@ -258,7 +263,7 @@ void TorcUSBPriv::DeviceAddedCallback(void *Context, io_iterator_t Iterator)
     while ((device = IOIteratorNext(Iterator)))
     {
         TorcUSBDevice usbdevice = GetDevice(device);
-        TorcUSBPriv*    context = static_cast<TorcUSBPriv*>(Context);
+        TorcUSBPrivOSX*    context = static_cast<TorcUSBPrivOSX*>(Context);
 
         if (!usbdevice.m_product.isEmpty() && context)
         {
@@ -277,14 +282,14 @@ void TorcUSBPriv::DeviceAddedCallback(void *Context, io_iterator_t Iterator)
     }
 }
 
-void TorcUSBPriv::DeviceRemovedCallback(void *Context, io_service_t Service, natural_t Type, void *Argument)
+void TorcUSBPrivOSX::DeviceRemovedCallback(void *Context, io_service_t Service, natural_t Type, void *Argument)
 {
-    TorcUSBPriv* context = static_cast<TorcUSBPriv*>(Context);
+    TorcUSBPrivOSX* context = static_cast<TorcUSBPrivOSX*>(Context);
     if (context && Type == kIOMessageServiceIsTerminated)
         context->RemoveDevice(Service);
 }
 
-void TorcUSBPriv::RemoveDevice(io_service_t Service)
+void TorcUSBPrivOSX::RemoveDevice(io_service_t Service)
 {
     bool found = false;
 
@@ -311,3 +316,22 @@ void TorcUSBPriv::RemoveDevice(io_service_t Service)
 
     LOG(VB_GENERAL, LOG_ERR, "Unknown device removed");
 }
+
+class USBFactoryOSX : public USBFactory
+{
+    void Score(int &Score)
+    {
+        if (Score <= 1)
+            Score = 1;
+    }
+
+    TorcUSBPriv* Create(int Score, TorcUSB *Parent)
+    {
+        (void)Parent;
+
+        if (Score <= 1)
+            return new TorcUSBPrivOSX(Parent);
+
+        return NULL;
+    }
+} USBFactoryOSX;
