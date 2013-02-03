@@ -239,3 +239,22 @@ enum TorcUSBDevice::Classes TorcUSBPrivUnix::ToTorcClass(int UdevClass)
 
     return TorcUSBDevice::Unknown;
 }
+
+class USBFactoryUnix : public USBFactory
+{
+    void Score(int &Score)
+    {
+        if (Score <= 10)
+            Score = 10;
+    }
+
+    TorcUSBPriv* Create(int Score, TorcUSB *Parent)
+    {
+        (void)Parent;
+
+        if (Score <= 10)
+            return new TorcUSBPrivUnix(Parent);
+
+        return NULL;
+    }
+} USBFactoryUnix;

@@ -321,15 +321,15 @@ class USBFactoryOSX : public USBFactory
 {
     void Score(int &Score)
     {
-        if (Score <= 1)
-            Score = 1;
+        if (Score <= 10)
+            Score = 10;
     }
 
     TorcUSBPriv* Create(int Score, TorcUSB *Parent)
     {
         (void)Parent;
 
-        if (Score <= 1)
+        if (Score <= 10)
             return new TorcUSBPrivOSX(Parent);
 
         return NULL;
