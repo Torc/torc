@@ -212,7 +212,7 @@ void TorcPowerOSX::Refresh(void)
     CFRelease(list);
     CFRelease(info);
 
-    (TorcPower*)parent->BatteryUpdated(m_batteryLevel);
+    ((TorcPower*)parent())->BatteryUpdated(m_batteryLevel);
 }
 
 void TorcPowerOSX::PowerCallBack(void *Reference, io_service_t Service,

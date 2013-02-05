@@ -112,7 +112,7 @@ int UIActions::GetActionFromKey(QKeyEvent *Event)
         case Qt::Key_O:
             return Torc::Play;
         case Qt::Key_Space:
-            return Torc::TogglePause;
+            return Torc::TogglePlayPause;
         case Qt::Key_Q:
             return Torc::Stop;
         case Qt::Key_Comma:
