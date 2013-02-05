@@ -89,6 +89,8 @@ class TORC_BASEUI_PUBLIC UIDirect3D9Window
     void         HandleDeviceReset    (void);
     void         GetPresentParameters (D3DPRESENT_PARAMETERS &Parameters);
     unsigned int GetAdapterNumber     (void);
+    bool         HandleRawInput       (MSG* Message, long *Result);
+    bool         HandleAppCommand     (MSG* Message, long *Result);
 
   private:
     UITimer                           *m_timer;

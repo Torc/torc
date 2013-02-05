@@ -26,7 +26,6 @@
 #include <QKeyEvent>
 
 // Torc
-
 #include "torclocalcontext.h"
 #include "torcevent.h"
 #include "torcpower.h"
@@ -40,11 +39,152 @@
 #include "../uitimer.h"
 #include "uidirect3d9window.h"
 
+#include "winuser.h"
+
+#ifndef WM_APPCOMMAND
+#define WM_APPCOMMAND 0x0319
+#endif
+#define WM_APPCOMMAND_MASK  0xF000
+#define WM_APPCOMMAND_MOUSE 0x8000
+#define WM_APPCOMMAND_KEY   0
+#define WM_APPCOMMAND_OEM   0x1000
+
+#define GET_APPCOMMAND(lParam) ((short)(HIWORD(lParam) & ~WM_APPCOMMAND_MASK))
+#define GET_DEVICE(lParam)     ((WORD)(HIWORD(lParam) & WM_APPCOMMAND_MASK))
+#define GET_KEYSTATE(lParam)   (LOWORD(lParam))
+
+#define WM_APPCOMMAND_BROWSER_BACKWARD                  1
+#define WM_APPCOMMAND_BROWSER_FORWARD                   2
+#define WM_APPCOMMAND_BROWSER_REFRESH                   3
+#define WM_APPCOMMAND_BROWSER_STOP                      4
+#define WM_APPCOMMAND_BROWSER_SEARCH                    5
+#define WM_APPCOMMAND_BROWSER_FAVORITES                 6
+#define WM_APPCOMMAND_BROWSER_HOME                      7
+#define WM_APPCOMMAND_VOLUME_MUTE                       8
+#define WM_APPCOMMAND_VOLUME_DOWN                       9
+#define WM_APPCOMMAND_VOLUME_UP                         10
+#define WM_APPCOMMAND_MEDIA_NEXTTRACK                   11
+#define WM_APPCOMMAND_MEDIA_PREVIOUSTRACK               12
+#define WM_APPCOMMAND_MEDIA_STOP                        13
+#define WM_APPCOMMAND_MEDIA_PLAY_PAUSE                  14
+#define WM_APPCOMMAND_LAUNCH_MEDIA_SELECT               16
+#define WM_APPCOMMAND_LAUNCH_APP1                       17
+#define WM_APPCOMMAND_LAUNCH_APP2                       18
+#define WM_APPCOMMAND_BASS_DOWN                         19
+#define WM_APPCOMMAND_BASS_BOOST                        20
+#define WM_APPCOMMAND_BASS_UP                           21
+#define WM_APPCOMMAND_TREBLE_DOWN                       22
+#define WM_APPCOMMAND_TREBLE_UP                         23
+#define WM_APPCOMMAND_MICROPHONE_VOLUME_MUTE            24
+#define WM_APPCOMMAND_MICROPHONE_VOLUME_DOWN            25
+#define WM_APPCOMMAND_MICROPHONE_VOLUME_UP              26
+#define WM_APPCOMMAND_HELP                              27
+#define WM_APPCOMMAND_FIND                              28
+#define WM_APPCOMMAND_NEW                               29
+#define WM_APPCOMMAND_OPEN                              30
+#define WM_APPCOMMAND_CLOSE                             31
+#define WM_APPCOMMAND_SAVE                              32
+#define WM_APPCOMMAND_PRINT                             33
+#define WM_APPCOMMAND_UNDO                              34
+#define WM_APPCOMMAND_REDO                              35
+#define WM_APPCOMMAND_COPY                              36
+#define WM_APPCOMMAND_CUT                               37
+#define WM_APPCOMMAND_PASTE                             38
+#define WM_APPCOMMAND_REPLY_TO_MAIL                     39
+#define WM_APPCOMMAND_FORWARD_MAIL                      40
+#define WM_APPCOMMAND_SEND_MAIL                         41
+#define WM_APPCOMMAND_SPELL_CHECK                       42
+#define WM_APPCOMMAND_DICTATE_OR_COMMAND_CONTROL_TOGGLE 43
+#define WM_APPCOMMAND_MIC_ON_OFF_TOGGLE                 44
+#define WM_APPCOMMAND_CORRECTION_LIST                   45
+#define WM_APPCOMMAND_MEDIA_PLAY                        46
+#define WM_APPCOMMAND_MEDIA_PAUSE                       47
+#define WM_APPCOMMAND_MEDIA_RECORD                      48
+#define WM_APPCOMMAND_MEDIA_FAST_FORWARD                49
+#define WM_APPCOMMAND_MEDIA_REWIND                      50
+#define WM_APPCOMMAND_MEDIA_CHANNEL_UP                  51
+#define WM_APPCOMMAND_MEDIA_CHANNEL_DOWN                52
+#define WM_APPCOMMAND_MAX                               52
+
+#define MS_GREENBUTTON     0x0D
+#define MS_DVDMENU         0x24
+#define MS_LIVETV          0x25
+#define MS_ZOOM            0x27
+#define MS_EJECT           0x28
+#define MS_CLOSEDCAPTION   0x2B
+#define MS_RESERVED3       0x2C
+#define MS_SUBAUDIO        0x2D
+#define MS_EXT0            0x32
+#define MS_EXT1            0x33
+#define MS_EXT2            0x34
+#define MS_EXT3            0x35
+#define MS_EXT4            0x36
+#define MS_EXT5            0x37
+#define MS_EXT6            0x38
+#define MS_EXT7            0x39
+#define MS_EXT8            0x3A
+#define MS_EXTRAS          0x3C
+#define MS_EXTRASAPP       0x3D
+#define MS_10              0x3E
+#define MS_11              0x3F
+#define MS_12              0x40
+#define MS_RESERVED5       0x41
+#define MS_CHANNELINPUT    0x42
+#define MS_DVDTOPMENU      0x43
+#define MS_MUSIC           0x47
+#define MS_RECORDEDTV      0x48
+#define MS_PICTURES        0x49
+#define MS_VIDEOS          0x4A
+#define MS_DVDANGLE        0x4B
+#define MS_DVDAUDIO        0x4C
+#define MS_DVDSUBTITLE     0x4D
+#define MS_RESERVED1       0x4F
+#define MS_FMRADIO         0x50
+#define MS_TELETEXT        0x5A
+#define MS_TELETEXT_RED    0x5B
+#define MS_TELETEXT_GREEN  0x5C
+#define MS_TELETEXT_YELLOW 0x5D
+#define MS_TELETEXT_BLUE   0x5E
+#define MS_RESERVED2       0x6A
+#define MS_EXT11           0x6F
+#define MS_RESERVED4       0x78
+#define MS_EXT9            0x80
+#define MS_EXT10           0x81
+
+#define AC_PRINT           0x0208
+#define AC_PROPERTIES      0x0209
+#define AC_PROGRAM_GUIDE   0x008D
+
 typedef LPDIRECT3D9 (WINAPI *LPFND3DC)(UINT SDKVersion);
 
 #define BLACKLIST QString("MainLoop,close,hide,lower,raise,repaint,setDisabled,setEnabled,setFocus,"\
                           "setHidden,setShown,setStyleSheet,setVisible,setWindowModified,setWindowTitle,"\
                           "show,showFullScreen,showMaximized,showMinimized,showNormal,update")
+
+/*! \class UIDirect3D9Window
+ *  \brief The main window class on windows (Windows XP SP2 and later)
+ *
+ * UIDirect3D9Window uses Direct3D9 and HLSL shaders to render the UI and associated
+ * media and is feature equivalent with UIOpenGLWindow.
+ *
+ * Various windows events are handled and UIDirect3D9 also registers and listens for
+ * events generated by MCE remotes.
+ *
+ * Due to the way MCE remotes are implemented however (via multiple
+ * HID devices and usage pages) a single remote keypress may generate up to 3 events
+ * - a WM_APPCOMMAND event
+ * - either: a raw HID event (using then MS vendor specific usage page)
+ * - or:     a raw HID event (using the consumer control usage page)
+ * - a regular keypress event
+ *
+ * To avoid multiple actions being generated, WM_APPCOMMAND and raw HID events that are known
+ * to generate separate keypress events are filtered out. This may vary by driver and/or device
+ * and hence may need additional work.
+ *
+ * \attention There is no default Qt paint engine implemenation. Rendering via WebKit will fail.
+ *
+ * \sa UIOpenGLWIndow
+*/
 
 UIDirect3D9Window* UIDirect3D9Window::Create(void)
 {
@@ -107,6 +247,25 @@ UIDirect3D9Window::~UIDirect3D9Window()
 
 bool UIDirect3D9Window::Initialise(void)
 {
+    // register for raw input
+    RAWINPUTDEVICE rid[2];
+
+    // media centre buttons (DVD, Music, Pictures, TV)
+    rid[0].usUsagePage = 0xFFBC;
+    rid[0].usUsage = 0x88;
+    rid[0].dwFlags = RIDEV_INPUTSINK;
+    rid[0].hwndTarget = winId();
+
+    // consumer controls (Guide, Details)
+    // but may also double up various buttons via WM_INPUT and WM_APPCOMMAND
+    rid[1].usUsagePage = 0x0C;
+    rid[1].usUsage = 0x01;
+    rid[1].dwFlags = RIDEV_INPUTSINK;
+    rid[1].hwndTarget = winId();
+
+    if (!RegisterRawInputDevices(rid, 2, sizeof(rid[0])))
+       LOG(VB_GENERAL, LOG_ERR, "Failed to register raw input devices.");
+
     setObjectName("MainWindow");
 
     TorcReferenceCounter::EventLoopEnding(false);
@@ -461,17 +620,17 @@ bool UIDirect3D9Window::event(QEvent *Event)
 
 bool UIDirect3D9Window::winEvent(MSG *Message, long *Result)
 {
-    // TODO other messages worth handling
-    // WM_MEDIA_CHANGE
-    // WM_DEVICECHANGE
-    // WM_PAINT
-    // WM_QUERYENDSESSION
-    // WM_SYSCOMMAND
-    if (Message)
+    // certain events are filtered out by Qt and are never passed on
+    // (e.g. WM_QUERYENDSESSION/ENDSESSION)
+    // TODO WM_MEDIA_CHANGE
+
+    if (!Message || !Result)
+        return false;
+
+    switch (Message->message)
     {
         // see comments in libs/libtorc-core/platforms/torcpowerwin.cpp
-        if (Message->message == WM_POWERBROADCAST)
-        {
+        case WM_POWERBROADCAST:
             // we really only want to handle this once and these two events
             // should cover all eventualities - hence we do not explicitly
             // handle PBT_APMRESUMESUSPEND or PBT_APMRESUMESTANDBY
@@ -496,18 +655,260 @@ bool UIDirect3D9Window::winEvent(MSG *Message, long *Result)
             {
                 LOG(VB_GENERAL, LOG_INFO, "Received suspend/standby query");
             }
-        }
-        else if (Message->message == WM_ENDSESSION)
+            else if (Message->wParam == PBT_APMPOWERSTATUSCHANGE)
+            {
+                gPower->Refresh();
+            }
+            break;
+        case WM_INPUT:
+           return HandleRawInput(Message, Result);
+           break;
+        case WM_APPCOMMAND:
+            return HandleAppCommand(Message, Result);
+            break;
+        case WM_DEVICECHANGE:
+        default:
+            break;
+    }
+
+    return false;
+}
+
+bool UIDirect3D9Window::HandleRawInput(MSG *Message, long *Result)
+{
+    // check the raw data size
+    UINT size = 0;
+    GetRawInputData((HRAWINPUT)Message->lParam, RID_INPUT, NULL, &size, sizeof(RAWINPUTHEADER));
+
+    if (size < 2)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to get raw input data");
+        return false;
+    }
+
+    // retrieve the raw data
+    QByteArray buffer(size, 0);
+    if (size == GetRawInputData((HRAWINPUT)Message->lParam, RID_INPUT, buffer.data(), &size, sizeof(RAWINPUTHEADER)))
+    {
+        RAWINPUT* rawinput = (RAWINPUT*)buffer.data();
+        // HID and valid data size
+        if (rawinput->header.dwType == RIM_TYPEHID && rawinput->data.hid.dwCount > 0)
         {
-            // TODO not received
-            LOG(VB_GENERAL, LOG_INFO, "Received 'ENDSESSION' event");
-            close();
+            // retrieve the device info to filter on usage page
+            RID_DEVICE_INFO deviceinfo;
+            memset(&deviceinfo, 0, sizeof(RID_DEVICE_INFO));
+            uint devsize = sizeof(RID_DEVICE_INFO);
+            deviceinfo.cbSize = devsize;
+            if (GetRawInputDeviceInfo(rawinput->header.hDevice, RIDI_DEVICEINFO, (void*)&deviceinfo, &devsize) > 0 &&
+                deviceinfo.dwType == RIM_TYPEHID)
+            {
+                bool mcebutton = deviceinfo.hid.usUsagePage == 0xFFBC && deviceinfo.hid.usUsage == 0x88;
+                bool consumer  = deviceinfo.hid.usUsagePage == 0x000C && deviceinfo.hid.usUsage == 0x01;
+
+                if (mcebutton || consumer)
+                {
+                    LOG(VB_GUI, LOG_DEBUG, QString("HID device: vendor %1 product %2 version %3 page 0x%4 usage 0x%5")
+                        .arg(deviceinfo.hid.dwVendorId).arg(deviceinfo.hid.dwProductId).arg(deviceinfo.hid.dwVersionNumber)
+                        .arg(deviceinfo.hid.usUsagePage, 0, 16).arg(deviceinfo.hid.usUsage, 0,16));
+
+                    QByteArray rawdata((const char*)&rawinput->data.hid.bRawData, (int)rawinput->data.hid.dwSizeHid);
+                    int button = 0;
+                    // first byte contains other info
+                    for (int i = 1; i < rawdata.size(); ++i)
+                        button += ((quint8)rawdata[i]) << ((i -1) * 8);
+
+                    if (button && consumer && (button != AC_PROGRAM_GUIDE && button != AC_PROPERTIES))
+                    {
+                        LOG(VB_GENERAL, LOG_INFO, QString("Ignoring consumer control button 0x%1")
+                            .arg(button, 0, 16));
+                        button = 0;
+                    }
+
+                    int key = 0;
+                    QString context;
+                    if (button && mcebutton)
+                    {
+                        context = "HID Vendor Control";
+
+                        switch (button)
+                        {
+                            case MS_GREENBUTTON:    key = Qt::Key_OfficeHome; break;
+                            case MS_DVDMENU:        key = Qt::Key_Menu; break;
+                            case MS_LIVETV:         key = Qt::Key_Messenger; break;
+                            case MS_ZOOM:           key = Qt::Key_Zoom; break;
+                            case MS_EJECT:          key = Qt::Key_Eject; break;
+                            case MS_CLOSEDCAPTION:  key = Qt::Key_Subtitle; break;
+                            case MS_RESERVED3:      key = Qt::Key_F27; break;
+                            case MS_SUBAUDIO:       key = Qt::Key_AudioCycleTrack; break;
+                            case MS_EXT0:           key = Qt::Key_Launch5; break;
+                            case MS_EXT1:           key = Qt::Key_Launch6; break;
+                            case MS_EXT2:           key = Qt::Key_Launch7; break;
+                            case MS_EXT3:           key = Qt::Key_Launch8; break;
+                            case MS_EXT4:           key = Qt::Key_Launch9; break;
+                            case MS_EXT5:           key = Qt::Key_LaunchA; break;
+                            case MS_EXT6:           key = Qt::Key_LaunchB; break;
+                            case MS_EXT7:           key = Qt::Key_LaunchC; break;
+                            case MS_EXT8:           key = Qt::Key_LaunchD; break;
+                            case MS_EXTRAS:         key = Qt::Key_AudioForward; break;
+                            case MS_EXTRASAPP:      key = Qt::Key_AudioRepeat; break;
+                            case MS_10:             key = Qt::Key_Flip; break;
+                            case MS_11:             key = Qt::Key_Hangup; break;
+                            case MS_12:             key = Qt::Key_VoiceDial; break;
+                            case MS_RESERVED5:      key = Qt::Key_F29; break;
+                            case MS_CHANNELINPUT:   key = Qt::Key_C; break; // see TorcCECDevice for consistency
+                            case MS_DVDTOPMENU:     key = Qt::Key_TopMenu; break;
+                            case MS_MUSIC:          key = Qt::Key_Music; break;
+                            case MS_RECORDEDTV:     key = Qt::Key_Execute; break;
+                            case MS_PICTURES:       key = Qt::Key_Pictures; break;
+                            case MS_VIDEOS:         key = Qt::Key_Video; break;
+                            case MS_DVDANGLE:       key = Qt::Key_F24; break; // see TorcCECDevice for consistency
+                            case MS_DVDAUDIO:       key = Qt::Key_Plus; break; // see TorcCECDevice for consistency
+                            case MS_DVDSUBTITLE:    key = Qt::Key_Time; break;
+                            case MS_RESERVED1:      key = Qt::Key_F25; break;
+                            case MS_FMRADIO:        key = Qt::Key_LastNumberRedial; break;
+                            case MS_TELETEXT:       key = Qt::Key_F7; break;
+                            case MS_TELETEXT_RED:   key = Qt::Key_F2; break; // see TorcCECDevice for consistency
+                            case MS_TELETEXT_GREEN: key = Qt::Key_F3; break;
+                            case MS_TELETEXT_YELLOW: key = Qt::Key_F4; break;
+                            case MS_TELETEXT_BLUE:  key = Qt::Key_F5; break;
+                            case MS_RESERVED2:      key = Qt::Key_F26; break;
+                            case MS_EXT11:          key = Qt::Key_LaunchG; break;
+                            case MS_RESERVED4:      key = Qt::Key_F28; break;
+                            case MS_EXT9:           key = Qt::Key_LaunchE; break;
+                            case MS_EXT10:          key = Qt::Key_LaunchF; break;
+                        }
+                    }
+                    else if (button && consumer)
+                    {
+                        context = "HID Consumer Control";
+
+                        switch (button)
+                        {
+                            case AC_PROPERTIES:     key = Qt::Key_I; break;
+                            case AC_PROGRAM_GUIDE:  key = Qt::Key_S; break;
+                        }
+                    }
+
+                    if (key)
+                    {
+                        QKeyEvent *keyevent = new QKeyEvent(QEvent::KeyPress, key, TORC_KEYEVENT_MODIFIERS, context);
+
+                        if (gLocalContext->GetUIObject())
+                            QApplication::postEvent(gLocalContext->GetUIObject(), keyevent);
+
+                        *Result = 0;
+                        LOG(VB_GENERAL, LOG_INFO, QString("WM_INPUT: button 0x%1").arg(button, 0, 16));
+                        return true;
+                    }
+                }
+            }
+            else
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Failed to get device info");
+            }
         }
-        else if (Message->message == WM_QUERYENDSESSION)
-        {
-            // TODO not received
-            LOG(VB_GENERAL, LOG_INFO, "Received 'QUERYENDSESSION' event");
-        }
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to retrieve raw input data");
+    }
+
+    return false;
+}
+
+bool UIDirect3D9Window::HandleAppCommand(MSG *Message, long *Result)
+{
+    if (!Message || !Result)
+        return false;
+
+    static const QString keycontext    = "HID Keyboard";
+    static const QString mousecontext  = "HID Mouse";
+    static const QString remotecontext = "HID Remote";
+
+    short command = GET_APPCOMMAND(Message->lParam);
+    WORD device   = GET_DEVICE(Message->lParam);
+
+    QString context = device == WM_APPCOMMAND_KEY ? keycontext :
+                      device == WM_APPCOMMAND_OEM ? remotecontext :
+                      device == WM_APPCOMMAND_MOUSE ? mousecontext : QString();
+
+    if (command < 0 || command > WM_APPCOMMAND_MAX || context.isEmpty())
+    {
+        LOG(VB_GENERAL, LOG_WARNING, QString("Unrecognised APPCOMMAND %1 (device %2)")
+            .arg(command).arg(context));
+        return false;
+    }
+
+    int key = 0;
+    switch (command)
+    {
+        // filter out commands that will also trigger a regular keypress
+        case WM_APPCOMMAND_VOLUME_MUTE:
+        case WM_APPCOMMAND_VOLUME_DOWN:
+        case WM_APPCOMMAND_VOLUME_UP:
+            LOG(VB_GENERAL, LOG_INFO, QString("Ignoring WM_APPCOMMAND: %1 device: %2").arg(command).arg(context));
+            break;
+        // and allow the rest
+        case WM_APPCOMMAND_BROWSER_BACKWARD:                    key = Qt::Key_Back; break;
+        case WM_APPCOMMAND_BROWSER_FORWARD:                     key = Qt::Key_Forward; break;
+        case WM_APPCOMMAND_BROWSER_REFRESH:                     key = Qt::Key_Refresh; break;
+        case WM_APPCOMMAND_BROWSER_STOP:                        key = Qt::Key_Stop; break;
+        case WM_APPCOMMAND_BROWSER_SEARCH:                      key = Qt::Key_Search; break;
+        case WM_APPCOMMAND_BROWSER_FAVORITES:                   key = Qt::Key_Favorites; break;
+        case WM_APPCOMMAND_BROWSER_HOME:                        key = Qt::Key_HomePage; break;
+        case WM_APPCOMMAND_MEDIA_NEXTTRACK:                     key = Qt::Key_MediaNext; break;
+        case WM_APPCOMMAND_MEDIA_PREVIOUSTRACK:                 key = Qt::Key_MediaPrevious; break;
+        case WM_APPCOMMAND_MEDIA_STOP:                          key = Qt::Key_MediaStop; break;
+        case WM_APPCOMMAND_MEDIA_PLAY_PAUSE:                    key = Qt::Key_MediaTogglePlayPause; break;
+        case WM_APPCOMMAND_LAUNCH_MEDIA_SELECT:                 key = Qt::Key_LaunchMedia; break;
+        case WM_APPCOMMAND_LAUNCH_APP1:                         key = Qt::Key_Launch0; break;
+        case WM_APPCOMMAND_LAUNCH_APP2:                         key = Qt::Key_Launch1; break;
+        case WM_APPCOMMAND_BASS_DOWN:                           key = Qt::Key_BassDown; break;
+        case WM_APPCOMMAND_BASS_BOOST:                          key = Qt::Key_BassBoost; break;
+        case WM_APPCOMMAND_BASS_UP:                             key = Qt::Key_BassUp; break;
+        case WM_APPCOMMAND_TREBLE_DOWN:                         key = Qt::Key_TrebleDown; break;
+        case WM_APPCOMMAND_TREBLE_UP:                           key = Qt::Key_TrebleUp; break;
+        case WM_APPCOMMAND_MICROPHONE_VOLUME_MUTE:              key = Qt::Key_Launch2; break;
+        case WM_APPCOMMAND_MICROPHONE_VOLUME_DOWN:              key = Qt::Key_Launch3; break;
+        case WM_APPCOMMAND_MICROPHONE_VOLUME_UP:                key = Qt::Key_Launch4; break;
+        case WM_APPCOMMAND_HELP:                                key = Qt::Key_Help; break;
+        case WM_APPCOMMAND_FIND:                                key = Qt::Key_F; break;
+        case WM_APPCOMMAND_NEW:                                 key = Qt::Key_N; break;
+        case WM_APPCOMMAND_OPEN:                                key = Qt::Key_O; break;
+        case WM_APPCOMMAND_CLOSE:                               key = Qt::Key_Close; break;
+        case WM_APPCOMMAND_SAVE:                                key = Qt::Key_Save; break;
+        case WM_APPCOMMAND_PRINT:                               key = Qt::Key_Print; break;
+        case WM_APPCOMMAND_UNDO:                                key = Qt::Key_Context1; break;
+        case WM_APPCOMMAND_REDO:                                key = Qt::Key_Context2; break;
+        case WM_APPCOMMAND_COPY:                                key = Qt::Key_Copy; break;
+        case WM_APPCOMMAND_CUT:                                 key = Qt::Key_Cut; break;
+        case WM_APPCOMMAND_PASTE:                               key = Qt::Key_Paste; break;
+        case WM_APPCOMMAND_REPLY_TO_MAIL:                       key = Qt::Key_Reply; break;
+        case WM_APPCOMMAND_FORWARD_MAIL:                        key = Qt::Key_MailForward; break;
+        case WM_APPCOMMAND_SEND_MAIL:                           key = Qt::Key_Send; break;
+        case WM_APPCOMMAND_SPELL_CHECK:                         key = Qt::Key_Spell; break;
+        case WM_APPCOMMAND_DICTATE_OR_COMMAND_CONTROL_TOGGLE:   key = Qt::Key_Context3; break;
+        case WM_APPCOMMAND_MIC_ON_OFF_TOGGLE:                   key = Qt::Key_WebCam; break;
+        case WM_APPCOMMAND_CORRECTION_LIST:                     key = Qt::Key_ToDoList; break;
+        case WM_APPCOMMAND_MEDIA_PLAY:                          key = Qt::Key_MediaPlay; break;
+        case WM_APPCOMMAND_MEDIA_PAUSE:                         key = Qt::Key_MediaPause; break;
+        case WM_APPCOMMAND_MEDIA_RECORD:                        key = Qt::Key_MediaRecord; break;
+        case WM_APPCOMMAND_MEDIA_FAST_FORWARD:                  key = Qt::Key_F22; break; // see TorcCECDevice for consistency
+        case WM_APPCOMMAND_MEDIA_REWIND:                        key = Qt::Key_F23; break;
+        case WM_APPCOMMAND_MEDIA_CHANNEL_UP:                    key = Qt::Key_F21; break;
+        case WM_APPCOMMAND_MEDIA_CHANNEL_DOWN:                  key = Qt::Key_F20; break;
+    }
+
+    if (key)
+    {
+        QKeyEvent *keyevent = new QKeyEvent(QEvent::KeyPress, key, TORC_KEYEVENT_MODIFIERS, context);
+
+        if (gLocalContext->GetUIObject())
+            QApplication::postEvent(gLocalContext->GetUIObject(), keyevent);
+
+        LOG(VB_GENERAL, LOG_DEBUG, QString("APPCOMMAND: %1 device: %2").arg(command).arg(context));
+        *Result = TRUE;
+        return true;
     }
 
     return false;
