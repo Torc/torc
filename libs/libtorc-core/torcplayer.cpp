@@ -629,7 +629,7 @@ bool TorcPlayerInterface::HandlePlayerAction(int Action)
         m_player->Unpause();
         return true;
     }
-    else if (Action == Torc::TogglePause)
+    else if (Action == Torc::TogglePlayPause)
     {
         m_player->TogglePause();
         return true;
