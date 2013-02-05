@@ -451,19 +451,19 @@ class TorcCECDevicePriv
                 code   = "MUTE";
                 break;
             case CEC_USER_CONTROL_CODE_PLAY:
-                action = Qt::Key_P;
+                action = Qt::Key_MediaPlay;
                 code   = "PLAY";
                 break;
             case CEC_USER_CONTROL_CODE_PAUSE:
-                action = Qt::Key_P; // same as play
+                action = Qt::Key_MediaPause; // same as play
                 code   = "PAUSE";
                 break;
             case CEC_USER_CONTROL_CODE_STOP:
-                action = Qt::Key_Stop;
+                action = Qt::Key_MediaStop;
                 code   = "STOP";
                 break;
             case CEC_USER_CONTROL_CODE_RECORD:
-                action = Qt::Key_R;
+                action = Qt::Key_MediaRecord;
                 code   = "RECORD";
                 break;
             case CEC_USER_CONTROL_CODE_CLEAR:
@@ -540,11 +540,11 @@ class TorcCECDevicePriv
                 code   = "HELP";
                 break;
             case CEC_USER_CONTROL_CODE_STOP_RECORD:
-                action = Qt::Key_R; // Duplicate of Record
+                action = Qt::Key_MediaRecord; // Duplicate of Record
                 code = "STOP_RECORD";
                 break;
             case CEC_USER_CONTROL_CODE_SUB_PICTURE:
-                action = Qt::Key_V;
+                action = Qt::Key_Subtitle;
                 code   = "SUB_PICTURE";
                 break;
             case CEC_USER_CONTROL_CODE_ELECTRONIC_PROGRAM_GUIDE:
@@ -552,7 +552,7 @@ class TorcCECDevicePriv
                 code   = "ELECTRONIC_PROGRAM_GUIDE";
                 break;
             case CEC_USER_CONTROL_CODE_POWER:
-                action = Qt::Key_PowerOff;
+                action = Qt::Key_Standby;
                 code = "POWER";
                 break;
 
@@ -585,71 +585,93 @@ class TorcCECDevicePriv
 
             // codes with no obvious MythTV action
             case CEC_USER_CONTROL_CODE_INITIAL_CONFIGURATION:
+                action = Qt::Key_Launch0;
                 code = "INITIAL_CONFIGURATION";
                 break;
             case CEC_USER_CONTROL_CODE_PAUSE_RECORD:
+                action = Qt::Key_Launch1;
                 code = "PAUSE_RECORD";
                 break;
             case CEC_USER_CONTROL_CODE_VIDEO_ON_DEMAND:
+                action = Qt::Key_Launch2;
                 code = "VIDEO_ON_DEMAND";
                 break;
             case CEC_USER_CONTROL_CODE_TIMER_PROGRAMMING:
+                action = Qt::Key_Launch3;
                 code = "TIMER_PROGRAMMING";
                 break;
             case CEC_USER_CONTROL_CODE_UNKNOWN:
+                action = Qt::Key_Launch4;
                 code = "UNKOWN";
                 break;
             case CEC_USER_CONTROL_CODE_DATA:
+                action = Qt::Key_Launch5;
                 code = "DATA";
                 break;
 
             // Functions aren't implemented (similar to macros?)
             case CEC_USER_CONTROL_CODE_POWER_ON_FUNCTION:
+                action = Qt::Key_Launch6;
                 code = "POWER_ON_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_PLAY_FUNCTION:
+                action = Qt::Key_Launch7;
                 code = "PLAY_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_PAUSE_PLAY_FUNCTION:
+                action = Qt::Key_Launch8;
                 code = "PAUSE_PLAY_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_RECORD_FUNCTION:
+               action = Qt::Key_Launch9;
                 code = "RECORD_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_PAUSE_RECORD_FUNCTION:
+                action = Qt::Key_LaunchA;
                 code = "PAUSE_RECORD_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_STOP_FUNCTION:
+                action = Qt::Key_LaunchB;
                 code = "STOP_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_MUTE_FUNCTION:
+                action = Qt::Key_LaunchC;
                 code = "MUTE_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_RESTORE_VOLUME_FUNCTION:
+                action = Qt::Key_LaunchD;
                 code = "RESTORE_VOLUME_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_TUNE_FUNCTION:
+                action = Qt::Key_LaunchE;
                 code = "TUNE_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_SELECT_MEDIA_FUNCTION:
+                action = Qt::Key_LaunchF;
                 code = "SELECT_MEDIA_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_SELECT_AV_INPUT_FUNCTION:
+                action = Qt::Key_LaunchG;
                 code = "SELECT_AV_INPUT_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_SELECT_AUDIO_INPUT_FUNCTION:
+                action = Qt::Key_LaunchH;
                 code = "SELECT_AUDIO_INPUT_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_POWER_TOGGLE_FUNCTION:
+                action = Qt::Key_MonBrightnessUp;
                 code = "POWER_TOGGLE_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_POWER_OFF_FUNCTION:
+                action = Qt::Key_MonBrightnessDown;
                 code = "POWER_OFF_FUNCTION";
                 break;
             case CEC_USER_CONTROL_CODE_AN_RETURN:
+                action = Qt::Key_KeyboardLightOnOff;
                 code = "AN_RETURN";
                 break;
             case CEC_USER_CONTROL_CODE_AN_CHANNELS_LIST:
+                action = Qt::Key_KeyboardBrightnessUp;
                 code = "AN_CHANNELS_LIST";
                 break;
         }
