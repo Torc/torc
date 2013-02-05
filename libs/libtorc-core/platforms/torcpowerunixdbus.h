@@ -22,6 +22,7 @@ class TorcPowerUnixDBus : public TorcPowerPriv
     bool Suspend          (void);
     bool Hibernate        (void);
     bool Restart          (void);
+    void Refresh          (void);
 
   public slots:
     void DeviceAdded      (QDBusObjectPath Device);

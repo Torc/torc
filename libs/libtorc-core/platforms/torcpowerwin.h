@@ -19,9 +19,7 @@ class TorcPowerWin : public TorcPowerPriv
     bool     Suspend         (void);
     bool     Hibernate       (void);
     bool     Restart         (void);
-
-  public slots:
-    void     UpdateStatus    (void);
+    void     Refresh         (void);
 
   private:
     QTimer  *m_timer;

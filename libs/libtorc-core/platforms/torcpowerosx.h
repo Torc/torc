@@ -21,12 +21,12 @@ class TorcPowerOSX : public TorcPowerPriv
     bool Suspend         (void);
     bool Hibernate       (void);
     bool Restart         (void);
+    void Refresh         (void);
 
   protected:
     static void PowerCallBack       (void *Reference, io_service_t Service,
                                      natural_t Type, void *Data);
     static void PowerSourceCallBack (void *Reference);
-    void        GetPowerStatus      (void);
 
   private:
     CFRunLoopSourceRef    m_powerRef;

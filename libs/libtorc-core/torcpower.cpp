@@ -132,6 +132,7 @@ class TorcPowerNull : public TorcPowerPriv
     bool Suspend         (void) { return false; }
     bool Hibernate       (void) { return false; }
     bool Restart         (void) { return false; }
+    void Refresh         (void) {               }
     bool CanShutdown     (void) { return false; }
     bool CanSuspend      (void) { return false; }
     bool CanHibernate    (void) { return false; }
@@ -218,6 +219,7 @@ TorcPower::TorcPower()
     m_allowSuspend(false),
     m_allowHibernate(false),
     m_allowRestart(false),
+    m_lastBatteryLevel(TORC_UNKNOWN_POWER),
     m_priv(TorcPowerPriv::Create(this))
 {
     m_allowShutdown  = gLocalContext->GetSetting(TORC_CORE + "AllowShutdown", true);
@@ -234,6 +236,26 @@ TorcPower::~TorcPower()
     if (m_priv)
         m_priv->deleteLater();
     m_priv = NULL;
+}
+
+void TorcPower::BatteryUpdated(int Level)
+{
+    if (m_lastBatteryLevel == Level)
+        return;
+
+    bool wasalreadylow = m_lastBatteryLevel >= 0 && m_lastBatteryLevel <= TORC_LOWBATTERY_LEVEL;
+    m_lastBatteryLevel = Level;
+
+    if (m_lastBatteryLevel == TORC_AC_POWER)
+        LOG(VB_GENERAL, LOG_INFO, "On AC power");
+    else if (m_lastBatteryLevel == TORC_UNKNOWN_POWER)
+        LOG(VB_GENERAL, LOG_INFO, "Unknown power status");
+    else
+        LOG(VB_GENERAL, LOG_INFO, QString("Battery level %1%").arg(m_lastBatteryLevel));
+
+
+    if (!wasalreadylow && (m_lastBatteryLevel >= 0 && m_lastBatteryLevel <= TORC_LOWBATTERY_LEVEL))
+        LowBattery();
 }
 
 bool TorcPower::Shutdown(void)
@@ -315,6 +337,12 @@ void TorcPower::LowBattery(void)
 {
     LOG(VB_GENERAL, LOG_INFO, "Sending low battery warning");
     TorcLocalContext::NotifyEvent(Torc::LowBattery);
+}
+
+void TorcPower::Refresh(void)
+{
+    if (m_priv)
+        m_priv->Refresh();
 }
 
 /*! \class TorcPowerObject

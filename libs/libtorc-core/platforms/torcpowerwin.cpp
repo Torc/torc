@@ -91,9 +91,9 @@ TorcPowerWin::TorcPowerWin(TorcPower *Parent)
     m_canShutdown  = privileged;
 
     // start the battery state timer - update once a minute
-    UpdateStatus();
+    Refresh();
 
-    connect(m_timer, SIGNAL(timeout()), this, SLOT(UpdateStatus()));
+    connect(m_timer, SIGNAL(timeout()), this, SLOT(Refresh()));
     m_timer->start(60 * 1000);
 }
 
@@ -144,7 +144,7 @@ bool TorcPowerWin::Hibernate(void)
     return false;
 }
 
-void TorcPowerWin::UpdateStatus(void)
+void TorcPowerWin::Refresh(void)
 {
     SYSTEM_POWER_STATUS status;
     memset(&status, 0, sizeof(SYSTEM_POWER_STATUS));
@@ -152,28 +152,18 @@ void TorcPowerWin::UpdateStatus(void)
     if (GetSystemPowerStatus(&status))
     {
         if (status.ACLineStatus)
-        {
             m_batteryLevel = TORC_AC_POWER;
-            LOG(VB_GENERAL, LOG_INFO, "On AC power");
-        }
         else if (status.BatteryLifePercent != 255)
-        {
-            bool wasalreadylow = m_batteryLevel >= 0 && m_batteryLevel <= TORC_LOWBATTERY_LEVEL;
             m_batteryLevel = status.BatteryLifePercent;
-            LOG(VB_GENERAL, LOG_INFO, QString("Battery level %1%").arg(m_batteryLevel));
-
-            if (!wasalreadylow && (m_batteryLevel >= 0 && m_batteryLevel <= TORC_LOWBATTERY_LEVEL))
-                ((TorcPower*)parent())->LowBattery();
-        }
         else
-        {
             m_batteryLevel = TORC_UNKNOWN_POWER;
-        }
     }
     else
     {
         m_batteryLevel = TORC_UNKNOWN_POWER;
     }
+
+    ((TorcPower*)parent())->BatteryUpdated(m_batteryLevel);
 }
 
 class PowerFactoryWin : public PowerFactory

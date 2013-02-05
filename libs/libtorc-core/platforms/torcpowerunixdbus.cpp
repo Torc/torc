@@ -239,6 +239,10 @@ bool TorcPowerUnixDBus::Restart(void)
     return false;
 }
 
+void TorcPowerUnixDBus::Refresh(void)
+{
+}
+
 void TorcPowerUnixDBus::DeviceAdded(QDBusObjectPath Device)
 {
     {
@@ -305,8 +309,6 @@ void TorcPowerUnixDBus::Changed(void)
 
 void TorcPowerUnixDBus::UpdateBattery(void)
 {
-    bool lowbattery = m_batteryLevel >= 0 && m_batteryLevel <= TORC_LOWBATTERY_LEVEL;
-
     if (m_onBattery)
     {
         QMutexLocker locker(m_deviceLock);
@@ -327,7 +329,6 @@ void TorcPowerUnixDBus::UpdateBattery(void)
         if (count > 0)
         {
             m_batteryLevel = (int)((total / count) + 0.5);
-            LOG(VB_GENERAL, LOG_INFO, QString("Battery level %1%").arg(m_batteryLevel));
         }
         else
         {
@@ -339,8 +340,7 @@ void TorcPowerUnixDBus::UpdateBattery(void)
         m_batteryLevel = TORC_AC_POWER;
     }
 
-    if (!lowbattery && (m_batteryLevel >= 0 && m_batteryLevel <= TORC_LOWBATTERY_LEVEL))
-        ((TorcPower*)parent())->LowBattery();
+    (TorcPower*)parent->BatteryUpdated(m_batteryLevel);
 }
 
 int TorcPowerUnixDBus::GetBatteryLevel(const QString &Path)

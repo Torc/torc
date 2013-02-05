@@ -29,6 +29,7 @@ class TorcPowerPriv : public QObject
     virtual bool Suspend         (void) = 0;
     virtual bool Hibernate       (void) = 0;
     virtual bool Restart         (void) = 0;
+    virtual void Refresh         (void) = 0;
 
     bool         CanShutdown     (void);
     bool         CanSuspend      (void);
@@ -66,9 +67,6 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
 {
     Q_OBJECT
 
-    friend class TorcPowerOSX;
-    friend class TorcPowerUnixDBus;
-
   public:
     static QMutex *gPowerLock;
     static void    Create(void);
@@ -76,6 +74,7 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
 
   public:
     virtual ~TorcPower();
+    void BatteryUpdated  (int Level);
 
   public slots:
     bool CanShutdown     (void);
@@ -95,6 +94,7 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
     void Restarting      (void);
     void WokeUp          (void);
     void LowBattery      (void);
+    void Refresh         (void);
 
   protected:
     TorcPower();
@@ -104,6 +104,7 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
     bool           m_allowSuspend;
     bool           m_allowHibernate;
     bool           m_allowRestart;
+    int            m_lastBatteryLevel;
     TorcPowerPriv *m_priv;
 };
 

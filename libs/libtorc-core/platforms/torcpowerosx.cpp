@@ -82,7 +82,7 @@ TorcPowerOSX::TorcPowerOSX(TorcPower *Parent)
         if (m_powerRef)
         {
             CFRunLoopAddSource(gAdminRunLoop, m_powerRef, kCFRunLoopDefaultMode);
-            GetPowerStatus();
+            Refresh();
         }
         else
         {
@@ -168,7 +168,7 @@ bool TorcPowerOSX::Restart(void)
     return false;
 }
 
-void TorcPowerOSX::GetPowerStatus(void)
+void TorcPowerOSX::Refresh(void)
 {
     if (!m_powerRef)
         return;
@@ -191,11 +191,9 @@ void TorcPowerOSX::GetPowerStatus(void)
             if (state && CFStringCompare(state, CFSTR(kIOPSACPowerValue), 0) == kCFCompareEqualTo)
             {
                 m_batteryLevel = TORC_AC_POWER;
-                LOG(VB_GENERAL, LOG_INFO, "On AC Power");
             }
             else if (state && CFStringCompare(state, CFSTR(kIOPSBatteryPowerValue), 0) == kCFCompareEqualTo)
             {
-                bool lowbattery = m_batteryLevel >= 0 && m_batteryLevel <= TORC_LOWBATTERY_LEVEL;
                 int32_t current;
                 int32_t max;
                 CFNumberRef capacity = (CFNumberRef)CFDictionaryGetValue(description, CFSTR(kIOPSCurrentCapacityKey));
@@ -203,10 +201,6 @@ void TorcPowerOSX::GetPowerStatus(void)
                 capacity = (CFNumberRef)CFDictionaryGetValue(description, CFSTR(kIOPSMaxCapacityKey));
                 CFNumberGetValue(capacity, kCFNumberSInt32Type, &max);
                 m_batteryLevel = (int)(((qreal)current / ((qreal)max)) * 100.0);
-                LOG(VB_GENERAL, LOG_INFO, QString("Battery level %1%").arg(m_batteryLevel));
-
-                if (!lowbattery && (m_batteryLevel >= 0 && m_batteryLevel <= TORC_LOWBATTERY_LEVEL))
-                    ((TorcPower*)parent())->LowBattery();
             }
             else
             {
@@ -217,6 +211,8 @@ void TorcPowerOSX::GetPowerStatus(void)
 
     CFRelease(list);
     CFRelease(info);
+
+    (TorcPower*)parent->BatteryUpdated(m_batteryLevel);
 }
 
 void TorcPowerOSX::PowerCallBack(void *Reference, io_service_t Service,
@@ -262,7 +258,7 @@ void TorcPowerOSX::PowerSourceCallBack(void *Reference)
     TorcPowerOSX* power = static_cast<TorcPowerOSX*>(Reference);
 
     if (power)
-        power->GetPowerStatus();
+        power->Refresh();
 }
 
 // see Technical Q&A QA1134
