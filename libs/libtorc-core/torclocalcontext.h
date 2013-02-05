@@ -122,7 +122,7 @@ class TORC_CORE_PUBLIC Torc
         Play,
         Pause,
         Unpause,
-        TogglePause,
+        TogglePlayPause,
         VolumeUp,
         VolumeDown,
         Mute,
@@ -130,7 +130,7 @@ class TORC_CORE_PUBLIC Torc
         ToggleMute,
         SetVolume,
         JumpForwardSmall,
-        JumpForwardBig,
+        JumpForwardLarge,
         JumpForwardTrack,
         JumpToEnd,
         JumpBackwardSmall,
@@ -160,6 +160,8 @@ class TORC_CORE_PUBLIC Torc
         EnableStudioLevels = 7000,
         DisableStudioLevels,
         ToggleStudioLevels,
+        // USB
+        USBRescan = 8000,
         // end of predefined
         MaxTorc = 60000,
         // plugins etc
