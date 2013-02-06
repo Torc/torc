@@ -158,6 +158,11 @@ class PowerFactoryNull : public PowerFactory
     }
 } PowerFactoryNull;
 
+/*! \class PowerFactory
+ *
+ *  \sa TorcPower
+*/
+
 PowerFactory* PowerFactory::gPowerFactory = NULL;
 
 PowerFactory::PowerFactory()
@@ -185,12 +190,19 @@ PowerFactory* PowerFactory::NextFactory(void) const
  *
  * TorcPower uses underlying platform implementations to monitor the system's power status
  * and emits appropriate notifications (via TorcLocalContext) when the status changes.
+ * Additional implementations can be added by sub-classing PowerFactory and TorcPowerPriv.
  *
  * The current power status (battery charge level or on mains power) can be queried directly via
- * GetBatteryLevel and the systems ability to Suspend/Shutdown etc can be queried via CanSuspend, CanShutdown,
+ * GetBatteryLevel and the system's ability to Suspend/Shutdown etc can be queried via CanSuspend, CanShutdown,
  * CanHibernate and CanRestart.
  *
+ * A singleton power object is created by TorcPowerObject from within the administration thread
+ * - though TorcPower may be accessed from multiple threads and hence implementations must
+ * guard against concurrent access if necessary.
+ *
+ * \sa PowerFactory
  * \sa TorcPowerPriv
+ * \sa TorcPowerObject
 */
 
 void TorcPower::Create(void)
