@@ -21,6 +21,7 @@ class TorcUSBPrivUnix : public QObject, public TorcUSBPriv
     TorcUSBPrivUnix(TorcUSB *Parent);
     virtual ~TorcUSBPrivUnix();
     void Destroy         (void);
+    void Refresh         (void);
 
   public slots:
     void SocketReadyRead (int Device);

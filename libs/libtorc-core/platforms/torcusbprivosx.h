@@ -20,6 +20,7 @@ class TorcUSBPrivOSX : public QObject, public TorcUSBPriv
     TorcUSBPrivOSX(TorcUSB *Parent);
     virtual ~TorcUSBPrivOSX();
     void                  Destroy             (void);
+    void                  Refresh             (void);
 
     void                  AddDevice           (TorcUSBDevice &Device, io_service_t Service, io_object_t Notification);
     void                  RemoveDevice        (io_service_t Service);

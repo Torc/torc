@@ -95,6 +95,9 @@ class TORC_CORE_PUBLIC TorcUSB : public QObject, public TorcHTTPService
     void         DeviceAdded    (const TorcUSBDevice &Device);
     void         DeviceRemoved  (const TorcUSBDevice &Device);
 
+  protected:
+    bool         event          (QEvent *Event);
+
   private:
     TorcUSBPriv *m_priv;
     QMap<QString,TorcUSBDevice> m_managedDevices;
@@ -106,6 +109,7 @@ class TORC_CORE_PUBLIC TorcUSBPriv
   public:
     static TorcUSBPriv* Create  (TorcUSB *Parent);
     virtual void        Destroy (void) = 0;
+    virtual void        Refresh (void) = 0;
 };
 
 class TORC_CORE_PUBLIC USBFactory

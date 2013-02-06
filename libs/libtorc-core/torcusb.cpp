@@ -175,7 +175,11 @@ TorcUSBDeviceHandler* TorcUSBDeviceHandler::GetNextHandler(void)
  * TorcUSB uses underlying platform implementations to monitor for USB devices
  * and calls the appropriate handler for each recognised device.
  *
+ * A singleton is created in the administration thread by TorcUSBObject. All
+ * interaction with this object is via Qt events (see TorcLocalContext::NotifyEvent)
+ *
  * \sa TorcUSBPriv
+ * \sa TorcUSBObject
 */
 
 TorcUSB::TorcUSB()
@@ -184,10 +188,15 @@ TorcUSB::TorcUSB()
     m_priv(TorcUSBPriv::Create(this)),
     m_managedDevicesLock(new QMutex())
 {
+    // listen for refresh events
+    gLocalContext->AddObserver(this);
 }
 
 TorcUSB::~TorcUSB()
 {
+    // stop listening for refresh events
+    gLocalContext->RemoveObserver(this);
+
     // delete implementation
     if (m_priv)
         m_priv->Destroy();
@@ -204,6 +213,21 @@ TorcUSB::~TorcUSB()
 
     // delete lock
     delete m_managedDevicesLock;
+}
+
+bool TorcUSB::event(QEvent *Event)
+{
+    if (Event && Event->type() == TorcEvent::TorcEventType)
+    {
+        TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
+        if (torcevent && torcevent->Event() == Torc::USBRescan && m_priv)
+        {
+            m_priv->Refresh();
+            return true;
+        }
+    }
+
+    return false;
 }
 
 QVariantMap TorcUSB::GetDevices(void)
@@ -286,6 +310,7 @@ class TorcUSBNull : public TorcUSBPriv
 {
   public:
     void Destroy (void) {}
+    void Refresh (void) {}
 };
 
 class USBFactoryNull : public USBFactory

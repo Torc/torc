@@ -105,6 +105,10 @@ void TorcUSBPrivOSX::Destroy(void)
     deleteLater();
 }
 
+void TorcUSBPrivOSX::Refresh(void)
+{
+}
+
 TorcUSBDevice::Classes TorcUSBPrivOSX::ToTorcClass(int ClassType)
 {
     switch (ClassType)
@@ -263,7 +267,7 @@ void TorcUSBPrivOSX::DeviceAddedCallback(void *Context, io_iterator_t Iterator)
     while ((device = IOIteratorNext(Iterator)))
     {
         TorcUSBDevice usbdevice = GetDevice(device);
-        TorcUSBPrivOSX*    context = static_cast<TorcUSBPrivOSX*>(Context);
+        TorcUSBPrivOSX* context = static_cast<TorcUSBPrivOSX*>(Context);
 
         if (!usbdevice.m_product.isEmpty() && context)
         {

@@ -667,6 +667,8 @@ bool UIDirect3D9Window::winEvent(MSG *Message, long *Result)
             return HandleAppCommand(Message, Result);
             break;
         case WM_DEVICECHANGE:
+            gLocalContext->NotifyEvent(Torc::USBRescan);
+            break;
         default:
             break;
     }

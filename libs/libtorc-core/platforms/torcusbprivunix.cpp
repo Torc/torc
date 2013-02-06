@@ -54,7 +54,12 @@ TorcUSBPrivUnix::TorcUSBPrivUnix(TorcUSB *Parent)
         LOG(VB_GENERAL, LOG_ERR, "Failed to initialise libudev");
     }
 
-    // enumerate existing devices
+    // perform initial scan
+    Refresh();
+}
+
+void TorcUSBPrivUnix::Refresh(void)
+{
     if (m_udev)
     {
         udev_enumerate *enumerator = udev_enumerate_new(m_udev);
