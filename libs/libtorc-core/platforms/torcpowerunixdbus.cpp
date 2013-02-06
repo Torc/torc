@@ -340,7 +340,7 @@ void TorcPowerUnixDBus::UpdateBattery(void)
         m_batteryLevel = TORC_AC_POWER;
     }
 
-    (TorcPower*)parent->BatteryUpdated(m_batteryLevel);
+    ((TorcPower*)parent())->BatteryUpdated(m_batteryLevel);
 }
 
 int TorcPowerUnixDBus::GetBatteryLevel(const QString &Path)
