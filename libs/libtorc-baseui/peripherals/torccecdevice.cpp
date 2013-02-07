@@ -101,14 +101,14 @@ class TorcCECDevicePriv
 
     bool Open(void)
     {
-        QLibrary libcec("libcec");
+        QLibrary libcec("libcec", 2);
 
         LibCecInitialise cecinitialise = (LibCecInitialise)libcec.resolve("CECInitialise");
         DestroyLibCec  destroylibcec   = (DestroyLibCec)libcec.resolve("CECDestroy");
 
         if (!cecinitialise || !destroylibcec)
         {
-            LOG(VB_GENERAL, LOG_WARNING, "Failed to load libcec");
+            LOG(VB_GENERAL, LOG_WARNING, "Failed to load libcec (need at least version 2.0.0)");
             return false;
         }
 
@@ -261,7 +261,7 @@ class TorcCECDevicePriv
 
     void Close(bool Reinitialising, bool Suspending)
     {
-        QLibrary libcec("libcec");
+        QLibrary libcec("libcec", 2);
         DestroyLibCec  destroylibcec   = (DestroyLibCec)libcec.resolve("CECDestroy");
 
         if (!Reinitialising)
