@@ -185,9 +185,10 @@ TorcUSBDeviceHandler* TorcUSBDeviceHandler::GetNextHandler(void)
 TorcUSB::TorcUSB()
   : QObject(NULL),
     TorcHTTPService(this, "/usb", tr("USB"), TorcUSB::staticMetaObject),
-    m_priv(TorcUSBPriv::Create(this)),
+    m_priv(NULL),
     m_managedDevicesLock(new QMutex())
 {
+    m_priv = TorcUSBPriv::Create(this);
     // listen for refresh events
     gLocalContext->AddObserver(this);
 }
