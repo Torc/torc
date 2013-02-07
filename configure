@@ -292,16 +292,12 @@ Torc:
   --qmake=QMAKE            use specified qmake [$qmake_default]
 
 Torc external library support:
-  --disable-libcec         disable CEC via libcec [autodetect]
   --disable-libdns_sd      disable Bonjour via libdns_sd [autodetect]
   --disable-libudev        disable udev via libudev [autodetect]
   --disable-qtdbus         disable DBus via QtDbus [autodetect]
   --disable-x11base        disable default X11 support [autodetect]
   --disable-libcrypto      disable use of the OpenSSL cryptographic library
 
-Torc paths:
-  --libcec-path            location of directory containing
-                           'libcec/cec.h' (not cec.h) [$libcec_path_default]
 EOF
   exit 0
 }
@@ -1095,7 +1091,6 @@ CONFIG_LIST="
     xmm_clobber_test
     x11grab
     zlib
-    libcec
     libcrypto
     libdns_sd
     libudev
@@ -1367,7 +1362,6 @@ PATHS_LIST='
     bindir
     datadir
     incdir
-    libcec_path
     libdir
     mandir
     prefix
@@ -1861,12 +1855,10 @@ enable shared
 enable x11base
 
 # Torc configurable options
-enable libcec
 enable libcrypto
 enable libdns_sd
 enable libudev
 enable qtdbus
-libcec_path_default="${sysroot}/usr/include"
 qmake_default="qmake"
 
 # build settings
@@ -3819,23 +3811,6 @@ fi
 # udev support for linux disk detection
 enabled libudev && check_lib2 libudev.h udev_new -ludev || disable libudev
 
-# CEC support
-if enabled libcec ; then
-    check_cxx -I"$libcec_path" <<EOF || { disable libcec; }
-#include <libcec/cec.h>
-#include <iostream>
-using namespace std;
-using namespace CEC;
-#include <libcec/cecloader.h>
-int main(void) {
-    if (CEC_LIB_VERSION_MAJOR < 1 || (CEC_LIB_VERSION_MAJOR == 1 &&
-                                      CEC_LIB_VERSION_MINOR < 7))
-        return 0;
-    return (long) LibCecInitialise;
-}
-EOF
-fi
-
 # libcrypto for RAOP
 enabled libcrypto && check_lib openssl/rsa.h RSA_new -lcrypto || disable libcrypto
 
@@ -3899,12 +3874,13 @@ echo "Torc:"
 
 echo "C++ compiler                 $(which $cxx)"
 echo "qmake                        $(which $qmake) [$($qmake -query QT_VERSION)]"
-echo "libcec enabled               ${libcec-no} [$libcec_path]"
 echo "libcrypto enabled            ${libcrypto-no}"
 echo "libdns_sd (Bonjour) enabled  ${libdns_sd-no}"
-echo "libudev enabled              ${libudev-no}"
-echo "QtDbus enabled               ${qtdbus-no}"
-echo "X11 enabled                  ${x11base-no}"
+if test $target_os = "linux"; then
+    echo "libudev enabled              ${libudev-no}"
+    echo "QtDbus enabled               ${qtdbus-no}"
+    echo "X11 enabled                  ${x11base-no}"
+fi
 echo
 #end Torc
 

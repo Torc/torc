@@ -10,7 +10,7 @@ INSTALLS = target
 
 QT += xml script
 
-DEPENDPATH  += ./opengl ./platforms ./peripherals ./direct3d
+DEPENDPATH  += ./opengl ./platforms ./peripherals ./peripherals/cec ./direct3d
 
 INCLUDEPATH += ../libtorc-core ../libtorc-core/platforms
 INCLUDEPATH += ../.. ../
@@ -74,6 +74,12 @@ SOURCES += uishaperenderer.cpp
 SOURCES += uimessenger.cpp
 SOURCES += uitexteditor.cpp
 
+#libCEC
+HEADERS += peripherals/cec/cec.h
+HEADERS += peripherals/cec/cectypes.h
+HEADERS += peripherals/torccecdevice.h
+SOURCES += peripherals/torccecdevice.cpp
+
 !win32 {
     QT += opengl
     HEADERS += opengl/uiopenglwindow.h
@@ -136,12 +142,6 @@ else:greaterThan(QT_MAJOR_VERSION, 4) {
 }
 else: {
     error(No valid display class. Aborting)
-}
-
-contains(CONFIG_LIBCEC, yes) {
-    HEADERS += peripherals/torccecdevice.h
-    SOURCES += peripherals/torccecdevice.cpp
-    LIBS += -lcec
 }
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/

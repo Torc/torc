@@ -22,6 +22,7 @@
 
 // Qt
 #include <QApplication>
+#include <QLibrary>
 #include <QKeyEvent>
 
 // Torc
@@ -35,13 +36,15 @@
 #include "torccecdevice.h"
 
 // libCEC
-#include <libcec/cec.h>
+#include "cec/cec.h"
 #include <iostream>
 using namespace CEC;
 using namespace std;
-#include <libcec/cecloader.h>
 
-#define USING_LIBCEC_VERSION CEC_CLIENT_VERSION_1_7_2
+typedef ICECAdapter* (CEC_CDECL *LibCecInitialise) (CEC::libcec_configuration*);
+typedef void*        (CEC_CDECL *DestroyLibCec)    (CEC::ICECAdapter*);
+
+#define USING_LIBCEC_VERSION CEC_CLIENT_VERSION_2_0_0
 #define MAX_CEC_DEVICES 10
 #define OSDNAME "Torc"
 
@@ -98,6 +101,17 @@ class TorcCECDevicePriv
 
     bool Open(void)
     {
+        QLibrary libcec("libcec");
+
+        LibCecInitialise cecinitialise = (LibCecInitialise)libcec.resolve("CECInitialise");
+        DestroyLibCec  destroylibcec   = (DestroyLibCec)libcec.resolve("CECDestroy");
+
+        if (!cecinitialise || !destroylibcec)
+        {
+            LOG(VB_GENERAL, LOG_WARNING, "Failed to load libcec");
+            return false;
+        }
+
         if (m_adapter)
             return true;
 
@@ -142,9 +156,11 @@ class TorcCECDevicePriv
         //config.iFirmwareBuildDate
         //config.bMonitorOnly
         //config.cecVersion
+        //config.adapterType
+        //config.iDoubleTapTimeoutMs;
 
         // open library
-        m_adapter = LibCecInitialise(&config);
+        m_adapter = cecinitialise(&config);
 
         if (!m_adapter)
         {
@@ -161,7 +177,7 @@ class TorcCECDevicePriv
                 .arg(config.serverVersion, 0, 16)
                 .arg(USING_LIBCEC_VERSION, 0, 16));
             m_adapter->EnableCallbacks(NULL, NULL);
-            UnloadLibCec(m_adapter);
+            destroylibcec(m_adapter);
             m_adapter = NULL;
             return false;
         }
@@ -173,7 +189,7 @@ class TorcCECDevicePriv
         {
             LOG(VB_GENERAL, LOG_ERR, "Failed to find any CEC devices.");
             m_adapter->EnableCallbacks(NULL, NULL);
-            UnloadLibCec(m_adapter);
+            destroylibcec(m_adapter);
             m_adapter = NULL;
             delete [] devices;
             return false;
@@ -209,7 +225,7 @@ class TorcCECDevicePriv
         {
             LOG(VB_GENERAL, LOG_ERR, "Failed to open device.");
             m_adapter->EnableCallbacks(NULL, NULL);
-            UnloadLibCec(m_adapter);
+            destroylibcec(m_adapter);
             m_adapter = NULL;
             delete [] devices;
             return false;
@@ -245,6 +261,9 @@ class TorcCECDevicePriv
 
     void Close(bool Reinitialising, bool Suspending)
     {
+        QLibrary libcec("libcec");
+        DestroyLibCec  destroylibcec   = (DestroyLibCec)libcec.resolve("CECDestroy");
+
         if (!Reinitialising)
         {
             // make inactive (if configured)
@@ -260,7 +279,8 @@ class TorcCECDevicePriv
             LOG(VB_GENERAL, LOG_INFO, "Destroying libCEC device");
             m_adapter->EnableCallbacks(NULL, NULL);
             m_adapter->Close();
-            UnloadLibCec(m_adapter);
+            if (destroylibcec)
+                destroylibcec(m_adapter);
             m_adapter = NULL;
         }
     }
@@ -309,7 +329,7 @@ class TorcCECDevicePriv
         m_sendInactiveSource = false;
     }
 
-    static int CEC_CDECL LogMessageCallback(void *Object, const cec_log_message &Message)
+    static int CEC_CDECL LogMessageCallback(void *Object, const cec_log_message Message)
     {
         QString message(Message.message);
         int level = LOG_INFO;
@@ -325,7 +345,7 @@ class TorcCECDevicePriv
         return 1;
     }
 
-    static int CEC_CDECL KeyPressCallback(void *Object, const cec_keypress &Key)
+    static int CEC_CDECL KeyPressCallback(void *Object, const cec_keypress Key)
     {
         QString code;
         int action = 0;
@@ -693,7 +713,7 @@ class TorcCECDevicePriv
         return 1;
     }
 
-    static int CEC_CDECL CommandCallback(void *Object, const cec_command &Command)
+    static int CEC_CDECL CommandCallback(void *Object, const cec_command Command)
     {
         LOG(VB_GENERAL, LOG_DEBUG, QString("Command opcode 0x%1").arg(Command.opcode,0,16));
 
@@ -707,13 +727,13 @@ class TorcCECDevicePriv
         return 1;
     }
 
-    static int CEC_CDECL ConfigCallback(void *Object, const libcec_configuration &Config)
+    static int CEC_CDECL ConfigCallback(void *Object, const libcec_configuration Config)
     {
         LOG(VB_GENERAL, LOG_INFO, "Adapter configuration changed.");
         return 1;
     }
 
-    static int CEC_CDECL AlertCallback(void *Object, const libcec_alert Alert, const libcec_parameter &CECParam)
+    static int CEC_CDECL AlertCallback(void *Object, const libcec_alert Alert, const libcec_parameter CECParam)
     {
         switch (Alert)
         {
