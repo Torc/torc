@@ -12,14 +12,18 @@ class QMutex;
 class TORC_CORE_PUBLIC TorcEDID
 {
   public:
+    TorcEDID                         (const QByteArray &Data);
+   ~TorcEDID();
+
     static void      RegisterEDID    (QByteArray Data);
     static qint16    PhysicalAddress (void);
     static int       GetAudioLatency (bool Interlaced);
     static int       GetVideoLatency (bool Interlaced);
 
+    QString          GetMSString     (void);
+
   protected:
     TorcEDID();
-   ~TorcEDID();
 
   protected:
     static TorcEDID* gTorcEDID;
@@ -27,7 +31,7 @@ class TORC_CORE_PUBLIC TorcEDID
     QByteArray       m_edidData;
 
   private:
-    void             Process         (void);
+    void             Process         (bool Quiet = false);
 
   private:
     qint16           m_physicalAddress;
@@ -35,6 +39,7 @@ class TORC_CORE_PUBLIC TorcEDID
     int              m_videoLatency;
     int              m_interlacedAudioLatency;
     int              m_interlacedVideoLatency;
+    QString          m_productString;
 };
 
 #endif // TORCEDID_H
