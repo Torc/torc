@@ -27,8 +27,13 @@
 // Torc
 #include "torclogging.h"
 #include "torcedid.h"
-#include "adl_sdk.h"
 #include "uiadl.h"
+
+#ifndef Q_OS_WIN
+#define LINUX 1
+#endif
+
+#include "adl_sdk.h"
 
 typedef int (__stdcall * TORC_ADLMAINCONTROLCREATE)          (ADL_MAIN_MALLOC_CALLBACK, int);
 typedef int (__stdcall * TORC_ADLMAINCONTROLDESTROY)         (void);
