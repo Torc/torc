@@ -31,13 +31,22 @@
 static const GUID GUID_USB_RAW =  {0xA5DCBF10, 0x6530, 0x11D2, {0x90, 0x1F, 0x00, 0xC0, 0x4F, 0xB9, 0x51, 0xED}};
 
 TorcUSBPrivWin::TorcUSBPrivWin(TorcUSB *Parent)
-  : QObject(Parent)
+  : QObject(Parent),
+    m_timer(new QTimer())
 {
     Refresh();
+
+    // WM_DEVICECHANGED events can be missed if the main window isn't visible or
+    // if this is just a command line tool - so refresh the device list every
+    // 5 seconds
+
+    connect(m_timer, SIGNAL(timeout()), this, SLOT(Update()));
+    m_timer->start(5 * 1000);
 }
 
 TorcUSBPrivWin::~TorcUSBPrivWin()
 {
+    delete m_timer;
 }
 
 void TorcUSBPrivWin::Destroy(void)
@@ -139,6 +148,11 @@ void TorcUSBPrivWin::Refresh(void)
         m_devicePaths.removeAll(path);
         ((TorcUSB*)parent())->DeviceRemoved(DeviceFromPath(path));
     }
+}
+
+void TorcUSBPrivWin::Update(void)
+{
+    Refresh();
 }
 
 class USBFactoryWin : public USBFactory
