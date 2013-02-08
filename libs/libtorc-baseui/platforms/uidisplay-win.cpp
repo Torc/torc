@@ -7,6 +7,7 @@
 #include "torccompat.h"
 #include "torcedid.h"
 #include "torclogging.h"
+#include "adl/uiadl.h"
 #include "../uidisplay.h"
 
 #ifndef DISPLAY_DEVICE_ACTIVE
@@ -17,87 +18,81 @@
 
 const GUID GUID_MONITOR = {0x4d36e96e, 0xe325, 0x11ce, {0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18}};
 
-static void GetEDID(WId Window)
+static void GetEDID(const QString &Hint)
 {
-    MONITORINFOEX monitor;
-    memset(&monitor, 0, sizeof(MONITORINFOEX));
-    monitor.cbSize = sizeof(MONITORINFOEX);
+    // There is no way to guarantee that this code will return the correct EDID when multiple monitors
+    // are connected. The registry contains EDIDs for all known monitors. We filter out unconnected monitors
+    // in SetupDiGetClassDevsEx but there is otherwise no linkage between actual physical monitors and the
+    // inidividual EDIDs.
+    // As an aid, we use the MONITORINFOEX.sdDevice display string to enumerate the relevant DISPLAY_DEVICEs.
+    // DISPLAY_DEVICE.deviceId is of the form MONITOR\DELA019\GUID\ANUMBER. DELA019 is the manufacturer
+    // string and product code taken from the EDID.
+    // So we grab all EDIDs, process them and filter on the basis of this string - which is all very circular
+    // and may break if MS changes the registry setup.
+    // This may still fail if multiple monitors of the same model are attached...
 
-    HMONITOR monitorid = MonitorFromWindow(Window, MONITOR_DEFAULTTONEAREST);
-    GetMonitorInfo(monitorid, &monitor);
+    QList<QByteArray> edids;
 
-    DISPLAY_DEVICE device;
-    memset(&device, 0, sizeof(DISPLAY_DEVICE));
-    device.cb = sizeof(DISPLAY_DEVICE);
-    DWORD devicenumber = 0;
-
-    QByteArray edid;
-
-    while (EnumDisplayDevices(monitor.szDevice, devicenumber, &device, 0))
+    HDEVINFO info = SetupDiGetClassDevsEx(&GUID_MONITOR, NULL, NULL, DIGCF_PRESENT, NULL, NULL, NULL);
+    if (info)
     {
-        if (!(device.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) &&
-             (device.StateFlags & DISPLAY_DEVICE_ACTIVE))
+        for (int i = 0; ERROR_NO_MORE_ITEMS != GetLastError(); ++i)
         {
-            QStringList ids  = QString(device.DeviceID).split("\\");
-            int numberfromid = -1;
+            SP_DEVINFO_DATA infodata;
+            memset(&infodata, 0, sizeof(SP_DEVINFO_DATA));
+            infodata.cbSize = sizeof(infodata);
 
-            if (ids.size())
+            if (SetupDiEnumDeviceInfo(info, i, &infodata))
             {
-                int number = ids.last().toInt();
-                if (number > 0 && number < 100)
-                    numberfromid = number - 1;
-            }
+                HKEY devicekey = SetupDiOpenDevRegKey(info, &infodata, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
+                if (!devicekey || (devicekey == INVALID_HANDLE_VALUE))
+                    continue;
 
-            HDEVINFO info = SetupDiGetClassDevsEx(&GUID_MONITOR, NULL, NULL, DIGCF_PRESENT, NULL, NULL, NULL);
-            if (info)
-            {
-                for (int i = 0; ERROR_NO_MORE_ITEMS != GetLastError(); ++i)
+                for (LONG i = 0, result = ERROR_SUCCESS; result != ERROR_NO_MORE_ITEMS; ++i)
                 {
-                    SP_DEVINFO_DATA infodata;
-                    memset(&infodata, 0, sizeof(SP_DEVINFO_DATA));
-                    infodata.cbSize = sizeof(infodata);
-
-                    if (SetupDiEnumDeviceInfo(info, i, &infodata))
+                    DWORD entrylength = 128;
+                    QByteArray entryname(entrylength, 0);
+                    DWORD thisedidsize = 1024;
+                    QByteArray thisedid(thisedidsize, 0);
+                    DWORD dummy;
+                    result = RegEnumValue(devicekey, i, (char*)entryname.data(), &entrylength, NULL, &dummy, (BYTE*)thisedid.data(), &thisedidsize);
+                    if ((result == ERROR_SUCCESS) && entryname.contains("EDID"))
                     {
-                        HKEY devicekey = SetupDiOpenDevRegKey(info, &infodata, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
-                        if(!devicekey || (devicekey == INVALID_HANDLE_VALUE))
-                            continue;
-
-                        for (LONG i = 0, result = ERROR_SUCCESS; result != ERROR_NO_MORE_ITEMS; ++i)
-                        {
-                            DWORD entrylength = 128;
-                            QByteArray entryname(entrylength, 0);
-                            DWORD thisedidsize = 1024;
-                            QByteArray thisedid(thisedidsize, 0);
-                            DWORD dummy;
-                            result = RegEnumValue(devicekey, i, (char*)entryname.data(), &entrylength, NULL, &dummy, (BYTE*)thisedid.data(), &thisedidsize);
-                            if ((result == ERROR_SUCCESS) && entryname.contains("EDID"))
-                            {
-                                if (i == 0 || i == numberfromid)
-                                    edid = thisedid;
-                            }
-                        }
-
-                        RegCloseKey(devicekey);
+                        // trim excess
+                        QByteArray blank(128, 0);
+                        while ((thisedid.size() > 128) && thisedid.endsWith(blank))
+                            thisedid.chop(128);
+                        edids.append(thisedid);
                     }
                 }
 
-                SetupDiDestroyDeviceInfoList(info);
+                RegCloseKey(devicekey);
             }
         }
 
-        devicenumber++;
-        memset(&device, 0, sizeof(DISPLAY_DEVICE));
-        device.cb = sizeof(DISPLAY_DEVICE);
+        SetupDiDestroyDeviceInfoList(info);
     }
 
-    if (!edid.isEmpty())
+
+    if (!edids.isEmpty())
     {
-        // trim any excess
-        QByteArray blank(128, 0);
-        while ((edid.size() > 128) && edid.endsWith(blank))
-            edid.chop(128);
-        TorcEDID::RegisterEDID(edid);
+        int best = 0;
+        if (!Hint.isEmpty())
+        {
+            for (int i = 0; i < edids.size(); ++i)
+            {
+                TorcEDID edid(edids[i]);
+                if (Hint == edid.GetMSString())
+                {
+                    LOG(VB_GENERAL, LOG_INFO, QString("Selected edid %1 of %2 with product code '%3'")
+                        .arg(i + 1).arg(edids.size()).arg(Hint));
+                    best = i;
+                    break;
+                }
+            }
+        }
+
+        TorcEDID::RegisterEDID(edids.at(best));
     }
 }
 
@@ -112,13 +107,57 @@ UIDisplay::~UIDisplay()
 
 bool UIDisplay::InitialiseDisplay(void)
 {
+    m_screen       = GetScreenPriv();
+    m_screenCount  = GetScreenCountPriv();
     m_pixelSize    = GetGeometryPriv();
     m_physicalSize = GetPhysicalSizePriv();
     m_refreshRate  = GetRefreshRatePriv();
-    m_screen       = GetScreenPriv();
-    m_screenCount  = GetScreenCountPriv();
 
     Sanitise();
+
+    // check for EDID
+    QString hint;
+
+    // first retrieve the monitor
+    MONITORINFOEX monitor;
+    memset(&monitor, 0, sizeof(MONITORINFOEX));
+    monitor.cbSize = sizeof(MONITORINFOEX);
+
+    HMONITOR monitorid = MonitorFromWindow(m_widget->winId(), MONITOR_DEFAULTTONEAREST);
+    GetMonitorInfo(monitorid, &monitor);
+
+    // and then the display device
+    DISPLAY_DEVICE device;
+    memset(&device, 0, sizeof(DISPLAY_DEVICE));
+    device.cb = sizeof(DISPLAY_DEVICE);
+
+    if (EnumDisplayDevices(monitor.szDevice, 0, &device, 0))
+    {
+        if (!(device.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) &&
+             (device.StateFlags & DISPLAY_DEVICE_ACTIVE))
+        {
+            QStringList ids  = QString(device.DeviceID).split("\\");
+            hint = ids.size() > 1 ? ids[1] : QString();
+        }
+    }
+
+    if (hint.isEmpty() || hint.size() != 7)
+        LOG(VB_GENERAL, LOG_WARNING, "Failed to retrieve valid display hint");
+
+    LOG(VB_GENERAL, LOG_INFO, QString("Looking for EDID data for '%1' on display '%2' (hint '%3')")
+        .arg(device.DeviceString).arg(monitor.szDevice).arg(hint));
+
+    QByteArray edid;
+
+    // try ADL if available - fingers crossed it will get it less wrong...
+    if (UIADL::ADLAvailable())
+        edid = UIADL::GetADLEDID(monitor.szDevice, m_screen, hint);
+
+    // fallback to checking the registry
+    if (edid.isEmpty())
+        GetEDID(hint);
+
+    TorcEDID::RegisterEDID(edid);
 
     return true;
 }
@@ -192,9 +231,6 @@ double UIDisplay::GetRefreshRatePriv(void)
             m_variableRefreshRate = true;
         res = RealRateFromInt(currentmode.dmDisplayFrequency);
     }
-
-    // check for EDID
-    GetEDID(m_widget->winId());
 
     // other available rates
     m_modes.clear();
