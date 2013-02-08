@@ -21,6 +21,9 @@ class TorcPowerWin : public TorcPowerPriv
     bool     Restart         (void);
     void     Refresh         (void);
 
+  public slots:
+    void     Update          (void);
+
   private:
     QTimer  *m_timer;
 };

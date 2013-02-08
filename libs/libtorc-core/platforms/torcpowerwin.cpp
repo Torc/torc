@@ -93,7 +93,7 @@ TorcPowerWin::TorcPowerWin(TorcPower *Parent)
     // start the battery state timer - update once a minute
     Refresh();
 
-    connect(m_timer, SIGNAL(timeout()), this, SLOT(Refresh()));
+    connect(m_timer, SIGNAL(timeout()), this, SLOT(Update()));
     m_timer->start(60 * 1000);
 }
 
@@ -164,6 +164,11 @@ void TorcPowerWin::Refresh(void)
     }
 
     ((TorcPower*)parent())->BatteryUpdated(m_batteryLevel);
+}
+
+void TorcPowerWin::Update(void)
+{
+    Refresh();
 }
 
 class PowerFactoryWin : public PowerFactory
