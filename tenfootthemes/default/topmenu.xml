@@ -29,10 +29,6 @@
         <group name="topmenu_menu" position="0,700,1920,100">
             <layout type="horizontal" selectrange="100,0,1720,100"/>
             <scroll speed="1000" easingcurve="outquad"/>
-            <button name="topmenu_menu_five" from="templates_button">
-                <message>Media</message>
-                <connect signal="Released" slot="SetAsRootWidget" receiver="media"/>
-            </button>
             <button name="topmenu_menu_one" from="templates_button">
                 <message>Grid 1</message>
                 <connect signal="Released" slot="SetAsRootWidget" receiver="gridmenu"/>
@@ -52,18 +48,13 @@
             <button name="topmenu_menu_six" from="templates_button">
                 <message>Six</message>
             </button>
+            <button name="topmenu_menu_five" from="templates_button">
+                <message>Five</message>
+            </button>
             <button name="topmenu_menu_seven" from="templates_button">
                 <message>Seven</message>
             </button>
         </group>
-    </window>
-    <window name="media" from="basewindow">
-        <media name="media_media" position="0,0,1920,1080">
-        </media>
-        <button name="media_close" from="templates_button">
-            <message>Close</message>
-            <connect signal="Released" slot="SetAsRootWidget" receiver="topmenu"/>
-        </button>
     </window>
     <window name="frogger" from="basewindow">
         <group name="frogger_menu" position="0,600,1920,320">
