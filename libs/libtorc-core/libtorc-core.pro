@@ -137,8 +137,10 @@ unix:contains(CONFIG_QTDBUS, yes) {
 
 win32 {
     HEADERS += platforms/torcpowerwin.h
+    HEADERS += platforms/torcusbprivwin.h
     SOURCES += platforms/torcpowerwin.cpp
-    LIBS += -lPowrProf
+    SOURCES += platforms/torcusbprivwin.cpp
+    LIBS += -lPowrProf -lsetupapi
 }
 
 macx {
