@@ -206,7 +206,7 @@ void TorcDB::LoadSettings(QMap<QString, QString> &Settings)
 
     while (query.next())
     {
-        LOG(VB_GENERAL, LOG_DEBUG, query.value(0).toString() + query.value(1).toString());
+        LOG(VB_GENERAL, LOG_DEBUG, QString("'%1' : '%2'").arg(query.value(0).toString()).arg(query.value(1).toString()));
         Settings.insert(query.value(0).toString(), query.value(1).toString());
     }
 }
