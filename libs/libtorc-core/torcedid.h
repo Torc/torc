@@ -40,6 +40,9 @@ class TORC_CORE_PUBLIC TorcEDID
     int              m_interlacedAudioLatency;
     int              m_interlacedVideoLatency;
     QString          m_productString;
+    QString          m_name;
+    QString          m_serialNumberStr;
+    quint32          m_serialNumber;
 };
 
 #endif // TORCEDID_H
