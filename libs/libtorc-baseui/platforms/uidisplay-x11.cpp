@@ -15,6 +15,7 @@ extern "C" {
 #ifndef V_INTERLACE
 #define V_INTERLACE (0x010)
 #endif
+#include "adl/uiadl.h"
 
 typedef XID RROutput;
 typedef XID RRCrtc;
@@ -145,11 +146,15 @@ bool UIDisplay::InitialiseDisplay(void)
 
     if (display)
     {
+        int screen = DefaultScreen(display);
         if (UINVControl::NVControlAvailable(display))
         {
-            int screen = DefaultScreen(display);
             UINVControl::InitialiseMetaModes(display, screen);
             TorcEDID::RegisterEDID(UINVControl::GetNVEDID(display, screen));
+        }
+        else if (UIADL::ADLAvailable())
+        {
+            TorcEDID::RegisterEDID(UIADL::GetADLEDID(XDisplayString(display), screen));
         }
         XCloseDisplay(display);
     }

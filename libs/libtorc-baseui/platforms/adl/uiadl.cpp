@@ -29,6 +29,8 @@
 #include "torcedid.h"
 #include "uiadl.h"
 
+#include <stdlib.h>
+
 #ifndef Q_OS_WIN
 #define LINUX 1
 #endif
@@ -130,6 +132,10 @@ bool UIADL::ADLAvailable(void)
 QByteArray UIADL::GetADLEDID(char *Display, int Screen, const QString Hint)
 {
     (void)Screen;
+    (void)Hint;
+
+    static char dummy[] = "Empty";
+    char* displayname = Display ? Display : dummy;
 
     QMutexLocker locker(gADLLock);
     ADLLibrary* lib = ADLLibrary::Create();
@@ -144,6 +150,9 @@ QByteArray UIADL::GetADLEDID(char *Display, int Screen, const QString Hint)
     // we can use). To sanitise this, check the hint against the EDID if it is valid and only inspect the
     // first display. If we miss the correct one, it should fall back to standard windows registry inspection and find it there.
 
+    LOG(VB_GENERAL, LOG_INFO, QString("Looking for monitor on display '%1', screen #%2 (hint '%3')")
+        .arg(  displayname).arg(Screen).arg(Hint));
+
     int numberofadapters = 0;
     if ((ADL_OK == lib->m_adapterNumberofAdaptersGet(&numberofadapters)) && (numberofadapters > 0))
     {
@@ -155,50 +164,89 @@ QByteArray UIADL::GetADLEDID(char *Display, int Screen, const QString Hint)
         {
             for (int i = 0; i < numberofadapters; ++i)
             {
+                LOG(VB_GENERAL, LOG_INFO, QString("Adapter %1 of %2: %3 on display '%4'")
+                    .arg(i + 1).arg(numberofadapters).arg(adapter[i].strAdapterName).arg(adapter[i].strDisplayName));
+
                 LPADLDisplayInfo display = NULL;
                 int numberofdisplays = 0;
                 int adapterindex = adapter[i].iAdapterIndex;
 
-                if (strcmp(adapter[i].strDisplayName, Display) || !adapter[i].iPresent ||
-                    ADL_OK != lib->m_displayDisplayInfoGet(adapterindex, &numberofdisplays, &display, 0))
+                if (strcmp(adapter[i].strDisplayName,   displayname))
                 {
-                    free(display);
+                    LOG(VB_GENERAL, LOG_INFO, "  Ignoring - Different display");
                     continue;
                 }
 
-                for (int j = 0; j < std::min(1, numberofdisplays); ++j)
+                if (!adapter[i].iPresent)
                 {
-                    if (display[j].iDisplayInfoValue & (ADL_DISPLAY_DISPLAYINFO_DISPLAYCONNECTED | ADL_DISPLAY_DISPLAYINFO_DISPLAYMAPPED))
+                    LOG(VB_GENERAL, LOG_INFO, "  Ignoring - Not present");
+                    continue;
+                }
+
+
+                if (ADL_OK != lib->m_displayDisplayInfoGet(adapterindex, &numberofdisplays, &display, 0))
+                {
+                    LOG(VB_GENERAL, LOG_ERR, "  Failed to retrieve display list");
+                    if (display)
+                        free(display);
+                    continue;
+                }
+
+                for (int j = 0; j < std::min(10, numberofdisplays); ++j)
+                {
+                    int displayindex = display[j].displayID.iDisplayLogicalIndex;
+
+                    LOG(VB_GENERAL, LOG_INFO, QString("  Display %1 of %2: DLI: %3 DPI: %4 DLAI: %5 DPAI: %6 monitor '%7'")
+                        .arg(j + 1).arg(numberofdisplays)
+                        .arg(display[j].displayID.iDisplayLogicalIndex)
+                        .arg(display[j].displayID.iDisplayPhysicalIndex)
+                        .arg(display[j].displayID.iDisplayLogicalAdapterIndex)
+                        .arg(display[j].displayID.iDisplayPhysicalAdapterIndex)
+                        .arg(display[j].strDisplayName));
+
+                    if ((display[j].iDisplayInfoValue & (ADL_DISPLAY_DISPLAYINFO_DISPLAYCONNECTED | ADL_DISPLAY_DISPLAYINFO_DISPLAYMAPPED)) == 0)
                     {
-                        LOG(VB_GENERAL, LOG_INFO, QString("Looking for EDID data for '%1' on display '%2'")
-                            .arg(display[j].strDisplayName).arg(adapter[i].strDisplayName));
+                        LOG(VB_GENERAL, LOG_INFO, "    Ignoring - Not connected or mapped");
+                        continue;
+                    }
 
-                        QByteArray edid;
-                        for (int blockindex = 0; blockindex < 2; ++blockindex)
+#if !defined (Q_OS_WIN)
+                    if (display[j].displayID.iDisplayLogicalAdapterIndex != Screen)
+                    {
+                        LOG(VB_GENERAL, LOG_INFO, "    Ignoring - Wrong screen (DLAI != Screen)");
+                        continue;
+                    }
+#endif
+
+                    LOG(VB_GENERAL, LOG_INFO, QString("    Looking for EDID data for '%1' on display '%2'")
+                        .arg(display[j].strDisplayName).arg(adapter[i].strDisplayName));
+
+                    QByteArray edid;
+                    for (int blockindex = 0; blockindex < 2; ++blockindex)
+                     {
+                        ADLDisplayEDIDData data;
+                        memset(&data, 0, sizeof(ADLDisplayEDIDData));
+                        data.iSize = sizeof(ADLDisplayEDIDData);
+                        data.iBlockIndex = blockindex;
+
+                        if (ADL_OK == lib->m_displayEDIDDataGet(adapterindex, displayindex, &data))
                         {
-                            int displayindex = display[j].displayID.iDisplayLogicalIndex;
-                            ADLDisplayEDIDData data;
-                            memset(&data, 0, sizeof(ADLDisplayEDIDData));
-                            data.iSize = sizeof(ADLDisplayEDIDData);
-                            data.iBlockIndex = blockindex;
-
-                            if (ADL_OK == lib->m_displayEDIDDataGet(adapterindex, displayindex, &data))
-                            {
-                                QByteArray block(data.cEDIDData, data.iEDIDSize);
-                                edid.append(block);
-                            }
-                            else
-                            {
-                                break;
-                            }
+                            QByteArray block(data.cEDIDData, data.iEDIDSize);
+                            edid.append(block);
                         }
-
-                        if (!edid.isEmpty())
+                        else
                         {
-                            TorcEDID check(edid);
-                            if (Hint == check.GetMSString())
-                                return edid;
+                            break;
                         }
+                    }
+
+                    if (!edid.isEmpty())
+                    {
+                        TorcEDID check(edid);
+#if defined (Q_OS_WIN)
+                        if (Hint == check.GetMSString())
+#endif
+                            return edid;
                     }
                 }
 
