@@ -10,6 +10,7 @@
 #include "nvctrl/uinvcontrol.h"
 extern "C" {
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #include <X11/extensions/xf86vmode.h>
 }
 #ifndef V_INTERLACE
@@ -22,7 +23,7 @@ typedef XID RRCrtc;
 typedef XID RRMode;
 typedef unsigned long  XRRModeFlags;
 typedef unsigned short Rotation;
-typedef unsigned short	SizeID;
+typedef unsigned short SizeID;
 
 typedef struct _XRRModeInfo
 {
@@ -37,7 +38,7 @@ typedef struct _XRRModeInfo
     unsigned int  vSyncStart;
     unsigned int  vSyncEnd;
     unsigned int  vTotal;
-    char		 *name;
+    char         *name;
     unsigned int  nameLength;
     XRRModeFlags  modeFlags;
 } XRRModeInfo;
@@ -54,17 +55,39 @@ typedef struct _XRRScreenResources
     XRRModeInfo *modes;
 } XRRScreenResources;
 
+typedef struct _XRRCrtcInfo
+{
+    Time         timestamp;
+    int          x, y;
+    unsigned int width, height;
+    RRMode       mode;
+    Rotation     rotation;
+    int          noutput;
+    RROutput    *outputs;
+    Rotation     rotations;
+    int          npossible;
+    RROutput    *possible;
+} XRRCrtcInfo;
+
 typedef struct _XRRScreenConfiguration XRRScreenConfiguration;
 
 typedef bool                    (*XRandrQueryExtension)             (Display*, int*, int*);
 typedef Status                  (*XRandrQueryVersion)               (Display*, int*, int*);
 typedef XRRScreenResources*     (*XRandrGetScreenResources)         (Display*, Window);
+typedef XRRScreenResources*     (*XRandrGetScreenResourcesCurrent)  (Display*, Window);
 typedef void                    (*XRandrFreeScreenResources)        (XRRScreenResources*);
 typedef XRRScreenConfiguration* (*XRandrGetScreenInfo)              (Display*, Window);
 typedef void                    (*XRandrFreeScreenConfigInfo)       (XRRScreenConfiguration*);
 typedef SizeID                  (*XRandrConfigCurrentConfiguration) (XRRScreenConfiguration*, Rotation*);
 typedef Status                  (*XRandrSetScreenConfigAndRate)     (Display*, XRRScreenConfiguration*,
                                                                      Drawable, int, Rotation, short, Time);
+typedef int                     (*XRandrGetOutputProperty)          (Display*, RROutput output, Atom,
+                                                                     long, long, Bool, Bool, Atom,
+                                                                     Atom*, int*, unsigned long*,
+                                                                     unsigned long*, unsigned char **);
+typedef XRRCrtcInfo*            (*XRandrGetCrtcInfo)                (Display*, XRRScreenResources*, RRCrtc);
+typedef void                    (*XRandrFreeCrtcInfo)               (XRRCrtcInfo*);
+
 static class UIXRandr
 {
   public:
@@ -77,7 +100,11 @@ static class UIXRandr
         m_getScreenInfo(NULL),
         m_freeScreenConfigInfo(NULL),
         m_configCurrentConfiguration(NULL),
-        m_setScreenConfigAndRate(NULL)
+        m_setScreenConfigAndRate(NULL),
+        m_getOutputProperty(NULL),
+        m_getScreenResourcesCurrent(NULL),
+        m_getCRTCInfo(NULL),
+        m_freeCRTCInfo(NULL)
     {
     }
 
@@ -92,10 +119,14 @@ static class UIXRandr
         m_freeScreenConfigInfo       = (XRandrFreeScreenConfigInfo)       QLibrary::resolve("Xrandr", "XRRFreeScreenConfigInfo");
         m_configCurrentConfiguration = (XRandrConfigCurrentConfiguration) QLibrary::resolve("Xrandr", "XRRConfigCurrentConfiguration");
         m_setScreenConfigAndRate     = (XRandrSetScreenConfigAndRate)     QLibrary::resolve("Xrandr", "XRRSetScreenConfigAndRate");
+        m_getOutputProperty          = (XRandrGetOutputProperty)          QLibrary::resolve("Xrandr", "XRRGetOutputProperty");
+        m_getCRTCInfo                = (XRandrGetCrtcInfo)                QLibrary::resolve("Xrandr", "XRRGetCrtcInfo");
+        m_freeCRTCInfo               = (XRandrFreeCrtcInfo)               QLibrary::resolve("Xrandr", "XRRFreeCrtcInfo");
 
         if (m_queryExtension && m_queryVersion && m_getScreenResources &&
             m_freeScreenResources && m_getScreenInfo && m_freeScreenConfigInfo &&
-            m_configCurrentConfiguration && m_setScreenConfigAndRate)
+            m_configCurrentConfiguration && m_setScreenConfigAndRate && m_getOutputProperty &&
+            m_getCRTCInfo && m_freeCRTCInfo)
         {
             int event = 0;
             int error = 0;
@@ -108,9 +139,15 @@ static class UIXRandr
                 {
                     LOG(VB_GENERAL, LOG_INFO, QString("XRandR version: %1.%2").arg(major).arg(minor));
                     if ((major == 1 && minor >= 2) || (major > 1))
+                    {
+                        if (minor > 2)
+                            m_getScreenResourcesCurrent = (XRandrGetScreenResourcesCurrent)QLibrary::resolve("XRandr", "XRRGetScreenResourcesCurrent");
                         m_valid = true;
+                    }
                     else
+                    {
                         LOG(VB_GENERAL, LOG_INFO, "Need at least version 1.2");
+                    }
                 }
             }
         }
@@ -125,6 +162,10 @@ static class UIXRandr
     XRandrFreeScreenConfigInfo       m_freeScreenConfigInfo;
     XRandrConfigCurrentConfiguration m_configCurrentConfiguration;
     XRandrSetScreenConfigAndRate     m_setScreenConfigAndRate;
+    XRandrGetOutputProperty          m_getOutputProperty;
+    XRandrGetScreenResourcesCurrent  m_getScreenResourcesCurrent;
+    XRandrGetCrtcInfo                m_getCRTCInfo;
+    XRandrFreeCrtcInfo               m_freeCRTCInfo;
 
 } UIXRandr;
 
@@ -143,6 +184,69 @@ bool UIDisplay::InitialiseDisplay(void)
     // TODO use display when needed
     const char *displaystring = NULL;
     Display* display = XOpenDisplay(displaystring);
+
+    if (display && UIXRandr.m_valid)
+    {
+        int screen  = DefaultScreen(display);
+
+        XRRScreenResources* screenresources = NULL;
+
+        if (UIXRandr.m_getScreenResourcesCurrent)
+            screenresources = UIXRandr.m_getScreenResourcesCurrent(display, RootWindow(display, screen));
+        else
+            screenresources = UIXRandr.m_getScreenResources(display, RootWindow(display, screen));
+
+        if (screenresources)
+        {
+            Atom atoms[] =
+            {
+                XInternAtom(display, "EDID", False),
+                XInternAtom(display, "EDID_DATA", False),
+                XInternAtom(display, "XFree86_DDC_EDID1_RAWDATA", False),
+                0
+            };
+
+            for (int i = 0; i < screenresources->ncrtc; ++i)
+            {
+                XRRCrtcInfo* crtcinfo = UIXRandr.m_getCRTCInfo(display, screenresources, screenresources->crtcs[i]);
+                if (!crtcinfo)
+                    continue;
+
+                LOG(VB_GENERAL, LOG_INFO, QString("CRTC #%1 has %2 outputs").arg(i).arg(crtcinfo->noutput));
+
+                if (crtcinfo->noutput >= 1)
+                {
+                    unsigned char* data         = NULL;
+                    int actualformat            = 0;
+                    unsigned long numberofitems = 0;
+                    unsigned long bytesafter    = 0;
+                    Atom actualtype             = 0;
+
+                    for (int j = 0; j < 3; ++j)
+                    {
+                        if (UIXRandr.m_getOutputProperty(display, crtcinfo->outputs[0], atoms[j],
+                                                     0, 100, False, False,
+                                                     AnyPropertyType,
+                                                     &actualtype, &actualformat,
+                                                     &numberofitems, &bytesafter, &data) == Success)
+                        {
+                            if (actualtype == XA_INTEGER && actualformat == 8 && numberofitems > 0 &&
+                                (numberofitems % 128 == 0))
+                            {
+                                QByteArray edid((const char*)data, numberofitems);
+                                TorcEDID tedid(edid);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                UIXRandr.m_freeCRTCInfo(crtcinfo);
+            }
+
+            UIXRandr.m_freeScreenResources(screenresources);
+        }
+    }
 
     if (display)
     {
