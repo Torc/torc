@@ -5,8 +5,8 @@
 // Torc
 #include "torclocaldefs.h"
 #include "torccompat.h"
-#include "torclogging.h
-#include "uiedid.h""
+#include "torclogging.h"
+#include "uiedid.h"
 #include "adl/uiadl.h"
 #include "../uidisplay.h"
 
@@ -18,7 +18,7 @@
 
 static const GUID GUID_MONITOR = {0x4d36e96e, 0xe325, 0x11ce, {0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18}};
 
-static void GetEDID(const QString &Hint)
+static QByteArray GetRegistryEDID(const QString &Hint)
 {
     // There is no way to guarantee that this code will return the correct EDID when multiple monitors
     // are connected. The registry contains EDIDs for all known monitors. We filter out unconnected monitors
@@ -92,8 +92,10 @@ static void GetEDID(const QString &Hint)
             }
         }
 
-        UIEDID::RegisterEDID(edids.at(best));
+        return edids.at(best);
     }
+
+    return QByteArray();
 }
 
 UIDisplay::UIDisplay(QWidget *Widget)
@@ -295,7 +297,7 @@ class EDIDFactoryWin : public EDIDFactory
         LOG(VB_GENERAL, LOG_INFO, QString("Looking for EDID data for '%1' on display '%2' (hint '%3')")
             .arg(device.DeviceString).arg(monitor.szDevice).arg(hint));
 
-        QByteArray edid = GetEDID(hint);
+        QByteArray edid = GetRegistryEDID(hint);
         if (!edid.isEmpty())
             EDIDMap.insert(qMakePair(10, QString("Registry")), edid);
     }

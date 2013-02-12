@@ -25,6 +25,8 @@
 #include <QLibrary>
 
 // Torc
+#include "torclocaldefs.h"
+#include "torccompat.h"
 #include "torclogging.h"
 #include "uiedid.h"
 #include "uiadl.h"
