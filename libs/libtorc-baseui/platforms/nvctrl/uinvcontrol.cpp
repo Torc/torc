@@ -26,6 +26,7 @@
 
 // Torc
 #include "torclogging.h"
+#include "uiedid.h"
 #include "uinvcontrol.h"
 
 extern "C" {
@@ -361,3 +362,21 @@ double UINVControl::GetRateForMode(Display *XDisplay, int Mode, bool &Interlaced
 
     return -1.0f;
 }
+
+class EDIDFactoryNVControl : public EDIDFactory
+{
+    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, WId Window, int Screen)
+    {
+        const char *displaystring = NULL;
+        Display* display = XOpenDisplay(displaystring);
+
+        if (display)
+        {
+            QByteArray edid = UINVControl::GetNVEDID(display, DefaultScreen(display));
+            XCloseDisplay(display);
+
+            if (!edid.isEmpty())
+                EDIDMap.insert(qMakePair(90, QString("Nvidia")), edid);
+        }
+    }
+} EDIDFactoryNVControl;

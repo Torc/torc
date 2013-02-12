@@ -39,11 +39,7 @@ bool UIDisplay::InitialiseDisplay(void)
 
     Sanitise();
 
-    {
-        CocoaAutoReleasePool pool;
-        CGDirectDisplayID disp = GetOSXDisplay(m_widget->winId());
-        UIEDID::RegisterEDID(GetOSXEDID(disp));
-    }
+    UIEDID::RegisterEDID(m_widget->winId(), m_screen);
 
     return true;
 }
@@ -205,3 +201,17 @@ int DepthFromStringRef(CFStringRef Format)
         return 8;
     return 0;
 }
+
+class EDIDFactoryOSX : public EDIDFactory
+{
+    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, WId Window, int Screen)
+    {
+        (void)Screen;
+
+        CocoaAutoReleasePool pool;
+        CGDirectDisplayID disp = GetOSXDisplay(Window);
+        QByteArray edid = GetOSXEDID(disp);
+        if (!edid.isEmpty())
+            EDIDMap.insert(qMakePair(100, QString("System")), edid);
+    }
+} EDIDFactoryOSX;

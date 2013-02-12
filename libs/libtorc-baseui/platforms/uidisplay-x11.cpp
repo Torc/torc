@@ -169,24 +169,19 @@ static class UIXRandr
 
 } UIXRandr;
 
-UIDisplay::UIDisplay(QWidget *Widget)
-  : UIDisplayBase(Widget)
+class EDIDFactoryXrandr : public EDIDFactory
 {
-    UIXRandr.Init();
-}
-
-UIDisplay::~UIDisplay()
-{
-}
-
-bool UIDisplay::InitialiseDisplay(void)
-{
-    // TODO use display when needed
-    const char *displaystring = NULL;
-    Display* display = XOpenDisplay(displaystring);
-
-    if (display && UIXRandr.m_valid)
+    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, WId Window, int Screen)
     {
+        if (!UIXRandr.m_valid)
+            return;
+
+        const char *displaystring = NULL;
+        Display* display = XOpenDisplay(displaystring);
+
+        if (!display)
+            return;
+
         int screen  = DefaultScreen(display);
 
         XRRScreenResources* screenresources = NULL;
@@ -234,7 +229,7 @@ bool UIDisplay::InitialiseDisplay(void)
                                 (numberofitems % 128 == 0))
                             {
                                 QByteArray edid((const char*)data, numberofitems);
-                                UIEDID tedid(edid);
+                                EDIDMap.insert(qMakePair(50, QString("Xrandr")), edid);
                                 break;
                             }
                         }
@@ -246,20 +241,30 @@ bool UIDisplay::InitialiseDisplay(void)
 
             UIXRandr.m_freeScreenResources(screenresources);
         }
+
+        XCloseDisplay(display);
     }
+} EDIDFactoryXrandr;
+
+UIDisplay::UIDisplay(QWidget *Widget)
+  : UIDisplayBase(Widget)
+{
+    UIXRandr.Init();
+}
+
+UIDisplay::~UIDisplay()
+{
+}
+
+bool UIDisplay::InitialiseDisplay(void)
+{
+    // TODO use display when needed
+    const char *displaystring = NULL;
+    Display* display = XOpenDisplay(displaystring);
 
     if (display)
     {
-        int screen = DefaultScreen(display);
-        if (UINVControl::NVControlAvailable(display))
-        {
-            UINVControl::InitialiseMetaModes(display, screen);
-            UIEDID::RegisterEDID(UINVControl::GetNVEDID(display, screen));
-        }
-        else if (UIADL::ADLAvailable())
-        {
-            UIEDID::RegisterEDID(UIADL::GetADLEDID(XDisplayString(display), screen));
-        }
+        UINVControl::InitialiseMetaModes(display, DefaultScreen(display));
         XCloseDisplay(display);
     }
 
@@ -270,6 +275,8 @@ bool UIDisplay::InitialiseDisplay(void)
     m_screenCount  = GetScreenCountPriv();
 
     Sanitise();
+
+    UIEDID::RegisterEDID(m_widget->winId(), m_screen);
 
     return true;
 }

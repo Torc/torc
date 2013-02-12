@@ -115,50 +115,7 @@ bool UIDisplay::InitialiseDisplay(void)
 
     Sanitise();
 
-    // check for EDID
-    QString hint;
-
-    // first retrieve the monitor
-    MONITORINFOEX monitor;
-    memset(&monitor, 0, sizeof(MONITORINFOEX));
-    monitor.cbSize = sizeof(MONITORINFOEX);
-
-    HMONITOR monitorid = MonitorFromWindow(m_widget->winId(), MONITOR_DEFAULTTONEAREST);
-    GetMonitorInfo(monitorid, &monitor);
-
-    // and then the display device
-    DISPLAY_DEVICE device;
-    memset(&device, 0, sizeof(DISPLAY_DEVICE));
-    device.cb = sizeof(DISPLAY_DEVICE);
-
-    if (EnumDisplayDevices(monitor.szDevice, 0, &device, 0))
-    {
-        if (!(device.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) &&
-             (device.StateFlags & DISPLAY_DEVICE_ACTIVE))
-        {
-            QStringList ids  = QString(device.DeviceID).split("\\");
-            hint = ids.size() > 1 ? ids[1] : QString();
-        }
-    }
-
-    if (hint.isEmpty() || hint.size() != 7)
-        LOG(VB_GENERAL, LOG_WARNING, "Failed to retrieve valid display hint");
-
-    LOG(VB_GENERAL, LOG_INFO, QString("Looking for EDID data for '%1' on display '%2' (hint '%3')")
-        .arg(device.DeviceString).arg(monitor.szDevice).arg(hint));
-
-    QByteArray edid;
-
-    // try ADL if available - fingers crossed it will get it less wrong...
-    if (UIADL::ADLAvailable())
-        edid = UIADL::GetADLEDID(monitor.szDevice, m_screen, hint);
-
-    // fallback to checking the registry
-    if (edid.isEmpty())
-        GetEDID(hint);
-
-    UIEDID::RegisterEDID(edid);
-
+    UIEDID::RegisterEDID(m_widget->winId(), m_screen);
     return true;
 }
 
@@ -301,3 +258,45 @@ QSize UIDisplay::GetPhysicalSizePriv(void)
 
     return QSize(-1, -1);
 }
+
+class EDIDFactoryWin : public EDIDFactory
+{
+    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, WId Window, int Screen)
+    {
+        // check for EDID
+        QString hint;
+
+        // first retrieve the monitor
+        MONITORINFOEX monitor;
+        memset(&monitor, 0, sizeof(MONITORINFOEX));
+        monitor.cbSize = sizeof(MONITORINFOEX);
+
+        HMONITOR monitorid = MonitorFromWindow(Window, MONITOR_DEFAULTTONEAREST);
+        GetMonitorInfo(monitorid, &monitor);
+
+        // and then the display device
+        DISPLAY_DEVICE device;
+        memset(&device, 0, sizeof(DISPLAY_DEVICE));
+        device.cb = sizeof(DISPLAY_DEVICE);
+
+        if (EnumDisplayDevices(monitor.szDevice, 0, &device, 0))
+        {
+            if (!(device.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) &&
+                 (device.StateFlags & DISPLAY_DEVICE_ACTIVE))
+            {
+                QStringList ids  = QString(device.DeviceID).split("\\");
+                hint = ids.size() > 1 ? ids[1] : QString();
+            }
+        }
+
+        if (hint.isEmpty() || hint.size() != 7)
+            LOG(VB_GENERAL, LOG_WARNING, "Failed to retrieve valid display hint");
+
+        LOG(VB_GENERAL, LOG_INFO, QString("Looking for EDID data for '%1' on display '%2' (hint '%3')")
+            .arg(device.DeviceString).arg(monitor.szDevice).arg(hint));
+
+        QByteArray edid = GetEDID(hint);
+        if (!edid.isEmpty())
+            EDIDMap.insert(qMakePair(10, QString("Registry")), edid);
+    }
+} EDIDFactoryWin;

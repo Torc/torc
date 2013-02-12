@@ -103,12 +103,14 @@ SOURCES += peripherals/torccecdevice.cpp
     SOURCES += opengl/uiopenglframebuffers.cpp
 }
 
-DEPENDPATH += ./platforms/adl
-HEADERS    += platforms/adl/adl_defines.h
-HEADERS    += platforms/adl/adl_sdk.h
-HEADERS    += platforms/adl/adl_structures.h
-HEADERS    += platforms/adl/uiadl.h
-SOURCES    += platforms/adl/uiadl.cpp
+win32|unix {
+    DEPENDPATH += ./platforms/adl
+    HEADERS    += platforms/adl/adl_defines.h
+    HEADERS    += platforms/adl/adl_sdk.h
+    HEADERS    += platforms/adl/adl_structures.h
+    HEADERS    += platforms/adl/uiadl.h
+    SOURCES    += platforms/adl/uiadl.cpp
+}
 
 contains(CONFIG_X11BASE, yes) {
     DEPENDPATH += ./platforms/nvctrl

@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -66,13 +66,41 @@ UIEDID::~UIEDID()
 {
 }
 
-void UIEDID::RegisterEDID(QByteArray Data)
+void UIEDID::RegisterEDID(WId Window, int Screen)
 {
     QMutexLocker locker(gUIEDIDLock);
 
-    if (!Data.isEmpty())
+    // source edid
+    QMap<QPair<int,QString>,QByteArray> edids;
+
+    EDIDFactory* factory = EDIDFactory::GetEDIDFactory();
+    for ( ; factory; factory = factory->NextFactory())
+        factory->GetEDID(edids, Window, Screen);
+
+    if (edids.isEmpty())
     {
-        gUIEDID->m_edidData = Data;
+        LOG(VB_GENERAL, LOG_INFO, "Failed to find EDID for monitor");
+        return;
+    }
+
+    // pick the best
+    int score = -1;
+    QMap<QPair<int,QString>,QByteArray>::iterator best = edids.end();
+    QMap<QPair<int,QString>,QByteArray>::iterator it = edids.begin();
+    for ( ; it != edids.end(); ++it)
+    {
+        LOG(VB_GENERAL, LOG_DEBUG, QString("EDID from '%1': score %2").arg(it.key().second).arg(it.key().first));
+        if (it.key().first > score)
+        {
+            score = it.key().first;
+            best = it;
+        }
+    }
+
+    // and use it
+    if (best != edids.end())
+    {
+        gUIEDID->m_edidData = best.value();
         gUIEDID->Process();
     }
 }
@@ -243,4 +271,26 @@ void UIEDID::Process(bool Quiet /*=false*/)
 
         LOG(VB_GENERAL, LOG_DEBUG, output + "\n");
     }
+}
+
+EDIDFactory* EDIDFactory::gEDIDFactory = NULL;
+
+EDIDFactory::EDIDFactory()
+{
+    nextEDIDFactory = gEDIDFactory;
+    gEDIDFactory = this;
+}
+
+EDIDFactory::~EDIDFactory()
+{
+}
+
+EDIDFactory* EDIDFactory::GetEDIDFactory(void)
+{
+    return gEDIDFactory;
+}
+
+EDIDFactory* EDIDFactory::NextFactory(void) const
+{
+    return nextEDIDFactory;
 }

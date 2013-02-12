@@ -259,3 +259,46 @@ QByteArray UIADL::GetADLEDID(char *Display, int Screen, const QString Hint)
 
     return QByteArray();
 }
+
+#if defined (Q_OS_WIN)
+class EDIDFactoryADLWin : public EDIDFactory
+{
+    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, WId Window, int Screen)
+    {
+        if (UIADL::ADLAvailable())
+        {
+            MONITORINFOEX monitor;
+            memset(&monitor, 0, sizeof(MONITORINFOEX));
+            monitor.cbSize = sizeof(MONITORINFOEX);
+
+            HMONITOR monitorid = MonitorFromWindow(Window, MONITOR_DEFAULTTONEAREST);
+            GetMonitorInfo(monitorid, &monitor);
+
+            QByteArray edid = UIADL::GetADLEDID(monitor.szDevice, Screen);
+
+            if (!edid.isEmpty())
+                EDIDMap.insert(qMakePair(50, QString("ADL")), edid);
+        }
+    }
+} EDIDFactoryADLWin;
+#endif
+
+#if defined (Q_OS_LINUX)
+class EDIDFactoryADLLinux : public EDIDFactory
+{
+    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, WId Window, int Screen)
+    {
+        (void)Window;
+
+        if (UIADL::ADLAvailable())
+        {
+            const char *displaystring = NULL;
+            Display* display = XOpenDisplay(displaystring);
+            QByteArray edid = UIADL::GetADLEDID(XDisplayString(display), Screen));
+
+            if (!edid.isEmpty())
+                EDIDMap.insert(qMakePair(90, QString("ADL")), edid);
+        }
+    }
+} EDIDFactoryADLLinux;
+#endif
