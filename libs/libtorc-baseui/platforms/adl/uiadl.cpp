@@ -32,6 +32,9 @@
 #include <stdlib.h>
 
 #ifndef Q_OS_WIN
+extern "C" {
+#include <X11/Xlib.h>
+}
 #define LINUX 1
 #endif
 
@@ -294,7 +297,7 @@ class EDIDFactoryADLLinux : public EDIDFactory
         {
             const char *displaystring = NULL;
             Display* display = XOpenDisplay(displaystring);
-            QByteArray edid = UIADL::GetADLEDID(XDisplayString(display), Screen));
+            QByteArray edid = UIADL::GetADLEDID(XDisplayString(display), Screen);
 
             if (!edid.isEmpty())
                 EDIDMap.insert(qMakePair(90, QString("ADL")), edid);
