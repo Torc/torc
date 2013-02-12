@@ -62,6 +62,8 @@ QMutex    *gCECDeviceLock = new QMutex(QMutex::Recursive);
  * \todo Add setting for deviceTypes (e.g CEC_DEVICE_TYPE_RECORDING_DEVICE)
  * \todo Add settings for device types to wake and poweroff (e.g. CECDEVICE_AUDIOSYSTEM)
  * \todo Set device language
+ * \todo Sound controls for amplifiers
+ * \todo Fix crash in CBCecConfigurationChanged callback
  *
  * \sa TorcEDID
 */
@@ -87,11 +89,14 @@ class TorcCECDevicePriv
     {
         m_callbacks.CBCecLogMessage           = &LogMessageCallback;
         m_callbacks.CBCecKeyPress             = &KeyPressCallback;
-        m_callbacks.CBCecConfigurationChanged = &ConfigCallback;
         m_callbacks.CBCecCommand              = &CommandCallback;
         m_callbacks.CBCecAlert                = &AlertCallback;
         m_callbacks.CBCecSourceActivated      = &SourceActivatedCallback;
         m_callbacks.CBCecMenuStateChanged     = &MenuStateCallback;
+
+        // this is causing crashes on windows and osx during the call to CECInitialise
+        // we don't actually use it, so just ignore for now
+        m_callbacks.CBCecConfigurationChanged = NULL;//&ConfigCallback;
     }
 
     ~TorcCECDevicePriv()
@@ -108,6 +113,7 @@ class TorcCECDevicePriv
 
         if (!cecinitialise || !destroylibcec)
         {
+            LOG(VB_GENERAL, LOG_INFO, QString("Qt: '%1'").arg(libcec.errorString()));
             LOG(VB_GENERAL, LOG_WARNING, "Failed to load libcec (need at least version 2.0.0)");
             return false;
         }
@@ -262,7 +268,7 @@ class TorcCECDevicePriv
     void Close(bool Reinitialising, bool Suspending)
     {
         QLibrary libcec("libcec", 2);
-        DestroyLibCec  destroylibcec   = (DestroyLibCec)libcec.resolve("CECDestroy");
+        DestroyLibCec destroylibcec = (DestroyLibCec)libcec.resolve("CECDestroy");
 
         if (!Reinitialising)
         {
@@ -737,14 +743,10 @@ class TorcCECDevicePriv
     {
         switch (Alert)
         {
-            case CEC_ALERT_CONNECTION_LOST:
-            case CEC_ALERT_PERMISSION_ERROR:
-            case CEC_ALERT_PORT_BUSY:
-                LOG(VB_GENERAL, LOG_WARNING, (const char*)CECParam.paramData);
-                break;
             case CEC_ALERT_SERVICE_DEVICE: // already logged
                 break;
             default:
+                LOG(VB_GENERAL, LOG_WARNING, (const char*)CECParam.paramData);
                 break;
         }
 
