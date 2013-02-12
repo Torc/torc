@@ -47,6 +47,7 @@ HEADERS += uishaperenderer.h
 HEADERS += uimedia.h
 HEADERS += uimessenger.h
 HEADERS += uitexteditor.h
+HEADERS += uiedid.h
 
 SOURCES += uiimage.cpp
 SOURCES += uiimagetracker.cpp
@@ -73,6 +74,7 @@ SOURCES += uiactions.cpp
 SOURCES += uishaperenderer.cpp
 SOURCES += uimessenger.cpp
 SOURCES += uitexteditor.cpp
+SOURCES += uiedid.cpp
 
 #libCEC
 HEADERS += peripherals/cec/cec.h
@@ -160,6 +162,7 @@ inc.files += uishape.h        uiimagewidget.h
 inc.files += uigroup.h        uibutton.h
 inc.files += uidisplay.h      uidisplaybase.h
 inc.files += uitexteditor.h
+inc.files += uiedid.h
 
 inc2.path  = $${PREFIX}/include/$${PROJECTNAME}/lib$${THIS_LIB}
 inc2.files = $${inc.files}

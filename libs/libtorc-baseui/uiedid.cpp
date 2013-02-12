@@ -1,4 +1,4 @@
-/* Class TorcEDID
+/* Class UIEDID
 *
 * This file is part of the Torc project.
 *
@@ -26,12 +26,12 @@
 
 // Torc
 #include "torclogging.h"
-#include "torcedid.h"
+#include "uiedid.h"
 
-TorcEDID* TorcEDID::gTorcEDID   = new TorcEDID();
-QMutex* TorcEDID::gTorcEDIDLock = new QMutex(QMutex::Recursive);
+UIEDID* UIEDID::gUIEDID   = new UIEDID();
+QMutex* UIEDID::gUIEDIDLock = new QMutex(QMutex::Recursive);
 
-/*! \class TorcEDID
+/*! \class UIEDID
  *  \brief A parser for Extended Display Identification Data (EDID)
  *
  * EDID provides details about the capability of a connected monitor or TV. Torc
@@ -40,7 +40,7 @@ QMutex* TorcEDID::gTorcEDIDLock = new QMutex(QMutex::Recursive);
  * to detect supported video and audio (over HDMI) modes.
 */
 
-TorcEDID::TorcEDID(const QByteArray &Data)
+UIEDID::UIEDID(const QByteArray &Data)
   : m_edidData(Data),
     m_physicalAddress(0x0000),
     m_audioLatency(0),
@@ -52,7 +52,7 @@ TorcEDID::TorcEDID(const QByteArray &Data)
     Process(true);
 }
 
-TorcEDID::TorcEDID()
+UIEDID::UIEDID()
   : m_physicalAddress(0x0000),
     m_audioLatency(0),
     m_videoLatency(0),
@@ -62,54 +62,54 @@ TorcEDID::TorcEDID()
 {
 }
 
-TorcEDID::~TorcEDID()
+UIEDID::~UIEDID()
 {
 }
 
-void TorcEDID::RegisterEDID(QByteArray Data)
+void UIEDID::RegisterEDID(QByteArray Data)
 {
-    QMutexLocker locker(gTorcEDIDLock);
+    QMutexLocker locker(gUIEDIDLock);
 
     if (!Data.isEmpty())
     {
-        gTorcEDID->m_edidData = Data;
-        gTorcEDID->Process();
+        gUIEDID->m_edidData = Data;
+        gUIEDID->Process();
     }
 }
 
-qint16 TorcEDID::PhysicalAddress(void)
+qint16 UIEDID::PhysicalAddress(void)
 {
-    QMutexLocker locker(gTorcEDIDLock);
+    QMutexLocker locker(gUIEDIDLock);
 
-    return gTorcEDID->m_physicalAddress;
+    return gUIEDID->m_physicalAddress;
 }
 
-int TorcEDID::GetAudioLatency(bool Interlaced)
+int UIEDID::GetAudioLatency(bool Interlaced)
 {
-    QMutexLocker locker(gTorcEDIDLock);
+    QMutexLocker locker(gUIEDIDLock);
 
-    if (Interlaced && gTorcEDID->m_interlacedAudioLatency >=0 )
-        return gTorcEDID->m_interlacedAudioLatency;
+    if (Interlaced && gUIEDID->m_interlacedAudioLatency >=0 )
+        return gUIEDID->m_interlacedAudioLatency;
 
-    return gTorcEDID->m_audioLatency;
+    return gUIEDID->m_audioLatency;
 }
 
-int TorcEDID::GetVideoLatency(bool Interlaced)
+int UIEDID::GetVideoLatency(bool Interlaced)
 {
-    QMutexLocker locker(gTorcEDIDLock);
+    QMutexLocker locker(gUIEDIDLock);
 
-    if (Interlaced && gTorcEDID->m_interlacedVideoLatency >= 0)
-        return gTorcEDID->m_interlacedVideoLatency;
+    if (Interlaced && gUIEDID->m_interlacedVideoLatency >= 0)
+        return gUIEDID->m_interlacedVideoLatency;
 
-    return gTorcEDID->m_videoLatency;;
+    return gUIEDID->m_videoLatency;;
 }
 
-QString TorcEDID::GetMSString(void)
+QString UIEDID::GetMSString(void)
 {
     return m_productString;
 }
 
-void TorcEDID::Process(bool Quiet /*=false*/)
+void UIEDID::Process(bool Quiet /*=false*/)
 {
     // EDID data should be in 128 byte blocks
     if ((m_edidData.size() < 128) || (m_edidData.size() & 0x7f))

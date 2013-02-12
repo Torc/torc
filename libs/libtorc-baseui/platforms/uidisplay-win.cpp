@@ -5,8 +5,8 @@
 // Torc
 #include "torclocaldefs.h"
 #include "torccompat.h"
-#include "torcedid.h"
-#include "torclogging.h"
+#include "torclogging.h
+#include "uiedid.h""
 #include "adl/uiadl.h"
 #include "../uidisplay.h"
 
@@ -81,7 +81,7 @@ static void GetEDID(const QString &Hint)
         {
             for (int i = 0; i < edids.size(); ++i)
             {
-                TorcEDID edid(edids[i]);
+                UIEDID edid(edids[i]);
                 if (Hint == edid.GetMSString())
                 {
                     LOG(VB_GENERAL, LOG_INFO, QString("Selected edid %1 of %2 with product code '%3'")
@@ -92,7 +92,7 @@ static void GetEDID(const QString &Hint)
             }
         }
 
-        TorcEDID::RegisterEDID(edids.at(best));
+        UIEDID::RegisterEDID(edids.at(best));
     }
 }
 
@@ -157,7 +157,7 @@ bool UIDisplay::InitialiseDisplay(void)
     if (edid.isEmpty())
         GetEDID(hint);
 
-    TorcEDID::RegisterEDID(edid);
+    UIEDID::RegisterEDID(edid);
 
     return true;
 }

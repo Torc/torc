@@ -3,7 +3,7 @@
 
 // Torc
 #include "torclogging.h"
-#include "torcedid.h"
+#include "uiedid.h"
 #include "uidisplay.h"
 
 // X11
@@ -234,7 +234,7 @@ bool UIDisplay::InitialiseDisplay(void)
                                 (numberofitems % 128 == 0))
                             {
                                 QByteArray edid((const char*)data, numberofitems);
-                                TorcEDID tedid(edid);
+                                UIEDID tedid(edid);
                                 break;
                             }
                         }
@@ -254,11 +254,11 @@ bool UIDisplay::InitialiseDisplay(void)
         if (UINVControl::NVControlAvailable(display))
         {
             UINVControl::InitialiseMetaModes(display, screen);
-            TorcEDID::RegisterEDID(UINVControl::GetNVEDID(display, screen));
+            UIEDID::RegisterEDID(UINVControl::GetNVEDID(display, screen));
         }
         else if (UIADL::ADLAvailable())
         {
-            TorcEDID::RegisterEDID(UIADL::GetADLEDID(XDisplayString(display), screen));
+            UIEDID::RegisterEDID(UIADL::GetADLEDID(XDisplayString(display), screen));
         }
         XCloseDisplay(display);
     }

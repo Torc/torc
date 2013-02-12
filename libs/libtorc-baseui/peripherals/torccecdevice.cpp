@@ -32,7 +32,7 @@
 #include "torcthread.h"
 #include "torcadminthread.h"
 #include "torcusb.h"
-#include "torcedid.h"
+#include "uiedid.h"
 #include "torccecdevice.h"
 
 // libCEC
@@ -65,7 +65,7 @@ QMutex    *gCECDeviceLock = new QMutex(QMutex::Recursive);
  * \todo Sound controls for amplifiers
  * \todo Fix crash in CBCecConfigurationChanged callback
  *
- * \sa TorcEDID
+ * \sa UIEDID
 */
 
 class TorcCECDevicePriv
@@ -124,7 +124,7 @@ class TorcCECDevicePriv
         LOG(VB_GENERAL, LOG_INFO, QString("Creating libCEC device (compiled with version %1)")
             .arg(LIBCEC_VERSION_CURRENT, 0, 16));
 
-        qint16 detectedphysicaladdress = TorcEDID::PhysicalAddress();
+        qint16 detectedphysicaladdress = UIEDID::PhysicalAddress();
 
         // create adapter interface
         libcec_configuration config;
@@ -798,7 +798,7 @@ class TorcCECDevicePriv
   *
   * \todo Extend to handle settings management
   *
-  * \sa TorcEDID
+  * \sa UIEDID
   * \sa TorcCECDevicePriv
 */
 
@@ -928,7 +928,7 @@ void TorcCECDevice::Open(void)
     // this may be launched during gLocalContext creation and before the main
     // UI is available. Wait a little and see if we can retrieve a valid
     // physical address
-    if (TorcEDID::PhysicalAddress() == 0x000/*invalid*/ && m_retryCount++ < 5)
+    if (UIEDID::PhysicalAddress() == 0x000/*invalid*/ && m_retryCount++ < 5)
     {
         LOG(VB_GENERAL, LOG_INFO, "No valid physical address detected - deferring CEC startup");
         m_retryTimer = startTimer(200);

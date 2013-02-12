@@ -1,5 +1,5 @@
-#ifndef TORCEDID_H
-#define TORCEDID_H
+#ifndef UIEDID_H
+#define UIEDID_H
 
 // Qt
 #include <QByteArray>
@@ -9,11 +9,11 @@
 
 class QMutex;
 
-class TORC_CORE_PUBLIC TorcEDID
+class TORC_CORE_PUBLIC UIEDID
 {
   public:
-    TorcEDID                         (const QByteArray &Data);
-   ~TorcEDID();
+    UIEDID                           (const QByteArray &Data);
+   ~UIEDID();
 
     static void      RegisterEDID    (QByteArray Data);
     static qint16    PhysicalAddress (void);
@@ -23,11 +23,11 @@ class TORC_CORE_PUBLIC TorcEDID
     QString          GetMSString     (void);
 
   protected:
-    TorcEDID();
+    UIEDID();
 
   protected:
-    static TorcEDID* gTorcEDID;
-    static QMutex*   gTorcEDIDLock;
+    static UIEDID*   gUIEDID;
+    static QMutex*   gUIEDIDLock;
     QByteArray       m_edidData;
 
   private:
@@ -45,4 +45,4 @@ class TORC_CORE_PUBLIC TorcEDID
     quint32          m_serialNumber;
 };
 
-#endif // TORCEDID_H
+#endif // UIEDID_H

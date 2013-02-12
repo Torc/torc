@@ -26,7 +26,7 @@
 
 // Torc
 #include "torclogging.h"
-#include "torcedid.h"
+#include "uiedid.h"
 #include "uiadl.h"
 
 #include <stdlib.h>
@@ -242,7 +242,7 @@ QByteArray UIADL::GetADLEDID(char *Display, int Screen, const QString Hint)
 
                     if (!edid.isEmpty())
                     {
-                        TorcEDID check(edid);
+                        UIEDID check(edid);
 #if defined (Q_OS_WIN)
                         if (Hint == check.GetMSString())
 #endif

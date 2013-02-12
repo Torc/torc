@@ -8,7 +8,7 @@
 
 // Torc
 #include "torclogging.h"
-#include "torcedid.h"
+#include "uiedid.h"
 #include "torcosxutils.h"
 #include "torccocoa.h"
 #include "uidisplay.h"
@@ -42,7 +42,7 @@ bool UIDisplay::InitialiseDisplay(void)
     {
         CocoaAutoReleasePool pool;
         CGDirectDisplayID disp = GetOSXDisplay(m_widget->winId());
-        TorcEDID::RegisterEDID(GetOSXEDID(disp));
+        UIEDID::RegisterEDID(GetOSXEDID(disp));
     }
 
     return true;
