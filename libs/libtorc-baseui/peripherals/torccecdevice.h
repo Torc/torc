@@ -54,6 +54,8 @@ class TorcCECDevice : public QObject
 
   private:
     TorcCECDevicePriv *m_priv;
+    int                m_retryCount;
+    int                m_retryTimer;
 };
 
 extern TORC_BASEUI_PUBLIC TorcCECDevice *gCECDevice;
