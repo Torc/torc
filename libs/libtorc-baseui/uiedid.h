@@ -15,15 +15,15 @@ class QMutex;
 class TORC_BASEUI_PUBLIC UIEDID
 {
   public:
-    UIEDID                           (const QByteArray &Data);
+    UIEDID                            (const QByteArray &Data);
    ~UIEDID();
 
-    static void      RegisterEDID    (WId Window, int Screen);
-    static qint16    PhysicalAddress (void);
-    static int       GetAudioLatency (bool Interlaced);
-    static int       GetVideoLatency (bool Interlaced);
-
-    QString          GetMSString     (void);
+    static void       RegisterEDID    (WId Window, int Screen);
+    static QByteArray TrimEDID        (const QByteArray &EDID);
+    static qint16     PhysicalAddress (void);
+    static int        GetAudioLatency (bool Interlaced);
+    static int        GetVideoLatency (bool Interlaced);
+    QString           GetMSString     (void);
 
   protected:
     UIEDID();
@@ -34,7 +34,7 @@ class TORC_BASEUI_PUBLIC UIEDID
     QByteArray       m_edidData;
 
   private:
-    void             Process         (bool Quiet = false);
+    void             Process          (bool Quiet = false);
 
   private:
     qint16           m_physicalAddress;

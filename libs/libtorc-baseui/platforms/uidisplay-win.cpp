@@ -56,13 +56,7 @@ static QByteArray GetRegistryEDID(const QString &Hint)
                     DWORD dummy;
                     result = RegEnumValue(devicekey, i, (char*)entryname.data(), &entrylength, NULL, &dummy, (BYTE*)thisedid.data(), &thisedidsize);
                     if ((result == ERROR_SUCCESS) && entryname.contains("EDID"))
-                    {
-                        // trim excess
-                        QByteArray blank(128, 0);
-                        while ((thisedid.size() > 128) && thisedid.endsWith(blank))
-                            thisedid.chop(128);
-                        edids.append(thisedid);
-                    }
+                        edids.append(UIEDID::TrimEDID(thisedid));
                 }
 
                 RegCloseKey(devicekey);

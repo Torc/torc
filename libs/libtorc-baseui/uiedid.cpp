@@ -105,6 +105,17 @@ void UIEDID::RegisterEDID(WId Window, int Screen)
     }
 }
 
+QByteArray UIEDID::TrimEDID(const QByteArray &EDID)
+{
+    QByteArray result = EDID;
+
+    QByteArray blank(128, 0);
+    while ((result.size() > 128) && result.endsWith(blank))
+        result.chop(128);
+
+    return result;
+}
+
 qint16 UIEDID::PhysicalAddress(void)
 {
     QMutexLocker locker(gUIEDIDLock);

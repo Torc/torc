@@ -175,7 +175,7 @@ class EDIDFactoryNVApi : public EDIDFactory
                 }
             }
 
-            EDIDMap.insert(qMakePair(90, QString("Nvidia API")), edid);
+            EDIDMap.insert(qMakePair(90, QString("Nvidia API")), UIEDID::TrimEDID(edid));
             return;
         }
     }
