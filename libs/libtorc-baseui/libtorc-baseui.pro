@@ -130,6 +130,10 @@ else:macx {
 else:win32 {
     SOURCES += platforms/uidisplay-win.cpp
 
+    HEADERS += platforms/nvapi/nvapi.h
+    HEADERS += platforms/nvapi/uinvapi.h
+    SOURCES += platforms/nvapi/uinvapi.cpp
+
     HEADERS += direct3d/_mingw_unicode.h
     HEADERS += direct3d/d3dx9.h
     HEADERS += direct3d/d3dx9core.h

@@ -7,7 +7,6 @@
 #include "torccompat.h"
 #include "torclogging.h"
 #include "uiedid.h"
-#include "adl/uiadl.h"
 #include "../uidisplay.h"
 
 #ifndef DISPLAY_DEVICE_ACTIVE
