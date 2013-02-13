@@ -103,7 +103,7 @@ SOURCES += peripherals/torccecdevice.cpp
     SOURCES += opengl/uiopenglframebuffers.cpp
 }
 
-win32|unix {
+win32|contains(CONFIG_X11BASE, yes) {
     DEPENDPATH += ./platforms/adl
     HEADERS    += platforms/adl/adl_defines.h
     HEADERS    += platforms/adl/adl_sdk.h
