@@ -179,9 +179,9 @@ void UIEDID::Process(bool Quiet /*=false*/)
 
     m_productString = QString("%1%2%3%4").arg(QLatin1Char(64 + one)).arg(QLatin1Char(64 + two)).arg(QLatin1Char(64 + three)).arg(codestr);
 
-    static const char nameblock[4]   = {0x0, 0x0, 0x0, 0xfc};
-    static const char serialblock[4] = {0x0, 0x0, 0x0, 0xff};
-    static const int offsets[4]      = {54, 72, 90, 8};
+    static const char nameblock[4]   = {0, 0, 0, (char)252};
+    static const char serialblock[4] = {0, 0, 0, (char)255};
+    static const int  offsets[4]     = {54, 72, 90, 8};
 
     for (int i = 0; i < 4; ++i)
     {
