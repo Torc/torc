@@ -181,7 +181,7 @@ void UIEDID::Process(bool Quiet /*=false*/)
 
     static const char nameblock[4]   = {0, 0, 0, (char)252};
     static const char serialblock[4] = {0, 0, 0, (char)255};
-    static const int  offsets[4]     = {54, 72, 90, 8};
+    static const int  offsets[4]     = {54, 72, 90, 108};
 
     for (int i = 0; i < 4; ++i)
     {
