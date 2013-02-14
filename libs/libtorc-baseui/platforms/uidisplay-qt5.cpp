@@ -3,6 +3,7 @@
 #include <QScreen>
 
 // Torc
+#include "uiedid.h"
 #include "uidisplay.h"
 
 UIDisplay::UIDisplay(QWidget *Widget)
@@ -23,6 +24,8 @@ bool UIDisplay::InitialiseDisplay(void)
     m_screenCount  = GetScreenCountPriv();
 
     Sanitise();
+
+    UIEDID::RegisterEDID(m_widget->winId(), m_screen);
 
     return true;
 }
