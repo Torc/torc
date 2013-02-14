@@ -103,6 +103,11 @@ SOURCES += peripherals/torccecdevice.cpp
     SOURCES += opengl/uiopenglframebuffers.cpp
 }
 
+linux-rasp-pi-g++ {
+    HEADERS += platforms/torcraspberrypi.h
+    SOURCES += platforms/torcraspberrypi.cpp
+}
+
 win32|contains(CONFIG_X11BASE, yes) {
     DEPENDPATH += ./platforms/adl
     HEADERS    += platforms/adl/adl_defines.h
