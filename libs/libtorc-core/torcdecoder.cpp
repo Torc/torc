@@ -32,10 +32,15 @@ TorcDecoder* TorcDecoder::Create(int DecodeFlags, const QString &URI, TorcPlayer
 {
     TorcDecoder *decoder = NULL;
 
+    int score = 0;
     DecoderFactory* factory = DecoderFactory::GetDecoderFactory();
     for ( ; factory; factory = factory->NextFactory())
+        (void)factory->Score(DecodeFlags, URI, score, Parent);
+
+    factory = DecoderFactory::GetDecoderFactory();
+    for ( ; factory; factory = factory->NextFactory())
     {
-        decoder = factory->Create(DecodeFlags, URI, Parent);
+        decoder = factory->Create(DecodeFlags, URI, score, Parent);
         if (decoder)
             break;
     }

@@ -498,9 +498,15 @@ void VideoDecoder::SetFormat(PixelFormat Format, int Width, int Height, int Refe
 
 class VideoDecoderFactory : public DecoderFactory
 {
-    TorcDecoder* Create(int DecodeFlags, const QString &URI, TorcPlayer *Parent)
+    void Score(int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent)
     {
-        if (DecodeFlags & TorcDecoder::DecodeVideo)
+        if ((DecodeFlags & TorcDecoder::DecodeVideo) && Score <= 50)
+            Score = 50;
+    }
+
+    TorcDecoder* Create(int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent)
+    {
+        if ((DecodeFlags & TorcDecoder::DecodeVideo) && Score <= 50)
             return new VideoDecoder(URI, Parent, DecodeFlags);
 
         return NULL;

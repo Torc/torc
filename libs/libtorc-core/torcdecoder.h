@@ -53,7 +53,8 @@ class TORC_CORE_PUBLIC DecoderFactory
     virtual ~DecoderFactory();
     static DecoderFactory* GetDecoderFactory (void);
     DecoderFactory*        NextFactory       (void) const;
-    virtual TorcDecoder*   Create            (int DecodeFlags, const QString &URI, TorcPlayer *Parent) = 0;
+    virtual void           Score             (int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent) = 0;
+    virtual TorcDecoder*   Create            (int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent) = 0;
 
   protected:
     static DecoderFactory* gDecoderFactory;

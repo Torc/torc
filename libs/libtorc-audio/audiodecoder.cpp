@@ -2308,9 +2308,21 @@ void AudioDecoder::DebugStreams(const QList<TorcStreamData*> &Streams)
 
 class AudioDecoderFactory : public DecoderFactory
 {
-    TorcDecoder* Create(int DecodeFlags, const QString &URI, TorcPlayer *Parent)
+    void Score(int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent)
     {
         if (DecodeFlags & TorcDecoder::DecodeVideo)
+            return;
+
+        if (Score <= 50)
+            Score = 50;
+    }
+
+    TorcDecoder* Create(int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent)
+    {
+        if (DecodeFlags & TorcDecoder::DecodeVideo)
+            return NULL;
+
+        if (Score > 50)
             return NULL;
 
         return new AudioDecoder(URI, Parent, DecodeFlags);
