@@ -5,8 +5,8 @@
 #include <QLibrary>
 
 // OpenMaxIL
-#include "OMX_Types.h"
-#include "OMX_Core.h"
+#include "IL/OMX_Types.h"
+#include "IL/OMX_Core.h"
 
 #ifndef OMX_VERSION_MAJOR
 #define OMX_VERSION_MAJOR 1

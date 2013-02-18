@@ -9,8 +9,8 @@
 #include "torcomxcore.h"
 
 // OpenMaxIL
-#include "OMX_Core.h"
-#include "OMX_Component.h"
+#include "IL/OMX_Core.h"
+#include "IL/OMX_Component.h"
 
 class TorcOMXBuffer;
 
