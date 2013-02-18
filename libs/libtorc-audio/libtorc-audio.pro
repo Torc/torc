@@ -157,6 +157,23 @@ inc.files += audiosettings.h audiooutput.h audiooutputsettings.h
 inc.files += audiowrapper.h  audioplayer.h audiointerface.h
 inc.files += torcavutils.h   audiodecoder.h
 
+#openmax
+linux-rasp-pi-g++ {
+    DEPENDPATH += ./openmax
+    HEADERS    += openmax/torcomxcore.h
+    HEADERS    += openmax/torcomxbuffer.h
+    HEADERS    += openmax/torcomxtunnel.h
+    HEADERS    += openmax/torcomxcomponent.h
+    SOURCES    += openmax/torcomxcore.cpp
+    SOURCES    += openmax/torcomxbuffer.cpp
+    SOURCES    += openmax/torcomxtunnel.cpp
+    SOURCES    += openmax/torcomxcomponent.cpp
+    inc.files  += openmax/torcomxcore.h
+    inc.files  += openmax/torcomxbuffer.h
+    inc.files  += openamx/torcomxtunnel.h
+    inc.files  += openmax/torcomxcomponent.h
+}
+
 inc2.path  = $${PREFIX}/include/$${PROJECTNAME}/lib$${THIS_LIB}
 inc2.files = $${inc.files}
 
