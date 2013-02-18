@@ -106,6 +106,20 @@ SOURCES += peripherals/torccecdevice.cpp
 linux-rasp-pi-g++ {
     HEADERS += platforms/torcraspberrypi.h
     SOURCES += platforms/torcraspberrypi.cpp
+
+    DEPENDPATH += ./openmax
+    HEADERS    += openmax/torcomxcore.h
+    HEADERS    += openmax/torcomxbuffer.h
+    HEADERS    += openmax/torcomxtunnel.h
+    HEADERS    += openmax/torcomxcomponent.h
+    SOURCES    += openmax/torcomxcore.cpp
+    SOURCES    += openmax/torcomxbuffer.cpp
+    SOURCES    += openmax/torcomxtunnel.cpp
+    SOURCES    += openmax/torcomxcomponent.cpp
+    inc.files  += openmax/torcomxcore.h
+    inc.files  += openmax/torcomxbuffer.h
+    inc.files  += openamx/torcomxtunnel.h
+    inc.files  += openmax/torcomxcomponent.h
 }
 
 win32|contains(CONFIG_X11BASE, yes) {
