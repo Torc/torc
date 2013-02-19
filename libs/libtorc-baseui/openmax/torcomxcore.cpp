@@ -34,7 +34,6 @@ TorcOMXCore::TorcOMXCore(const QString &Library)
     m_omxGetHandle           = (TORC_OMXGETHANDLE)          resolve("OMX_GetHandle");
     m_omxFreeHandle          = (TORC_OMXFREEHANDLE)         resolve("OMX_FreeHandle");
     m_omxSetupTunnel         = (TORC_OMXSETUPTUNNEL)        resolve("OMX_SetupTunnel");
-    m_omxGetContentPipe      = (TORC_OMXGETCONTENTPIPE)     resolve("OMX_GetContentPipe");
     m_omxGetComponentsOfRole = (TORC_OMXGETCOMPONENTSOFROLE)resolve("OMX_GetComponentsOfRole");
     m_omxGetRolesOfComponent = (TORC_OMXGETROLESOFCOMPONENT)resolve("OMX_GetRolesOfComponent");
 
@@ -73,6 +72,5 @@ TorcOMXCore::~TorcOMXCore()
 bool TorcOMXCore::IsValid(void)
 {
     return isLoaded() && m_initialised && m_omxInit && m_omxDeinit && m_omxComponentNameEnum &&
-           m_omxGetHandle && m_omxFreeHandle && m_omxSetupTunnel && m_omxGetContentPipe &&
-           m_omxGetComponentsOfRole && m_omxGetRolesOfComponent;
+           m_omxGetHandle && m_omxFreeHandle && m_omxSetupTunnel && m_omxGetComponentsOfRole && m_omxGetRolesOfComponent;
 }

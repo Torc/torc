@@ -187,7 +187,6 @@ OMX_ERRORTYPE TorcOMXComponent::SetState(OMX_STATETYPE State)
         return error;
     }
 
-    LOG(VB_GENERAL, LOG_INFO, "3");
     LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to set state").arg(m_componentName));
     return error;
 }
