@@ -44,7 +44,7 @@ QString ErrorToString   (OMX_ERRORTYPE Error);
 QString CommandToString (OMX_COMMANDTYPE Command);
 
 #define OMX_ERROR(Error, Component, Message) \
-    LOG(VB_GENERAL, LOG_ERR, QString("%1: %2 (Error '%3'").arg(Component).arg(Message).arg(ErrorToString(Error)));
+    LOG(VB_GENERAL, LOG_ERR, QString("%1: %2 (Error '%3')").arg(Component).arg(Message).arg(ErrorToString(Error)));
 #define OMX_CHECK(Error, Component, Message) \
     if (OMX_ErrorNone != Error) { OMX_ERROR(Error, Component, Message); return Error; }
 #define OMX_CHECKX(Error, Component, Message) \
