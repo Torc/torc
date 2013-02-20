@@ -19,10 +19,12 @@ class TorcOMXTunnel
     TorcOMXTunnel(TorcOMXCore *Core, TorcOMXComponent *Source, TorcOMXComponent *Destination);
    ~TorcOMXTunnel();
 
-    OMX_ERRORTYPE     Flush      (void);
-    OMX_ERRORTYPE     Create     (void);
-    OMX_ERRORTYPE     Destroy    (void);
+    bool              IsConnected (void);
+    OMX_ERRORTYPE     Flush       (void);
+    OMX_ERRORTYPE     Create      (void);
+    OMX_ERRORTYPE     Destroy     (void);
 
+  private:
     bool              m_connected;
     TorcOMXCore      *m_core;
     QMutex           *m_lock;

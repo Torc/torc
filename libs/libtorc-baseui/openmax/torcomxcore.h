@@ -38,6 +38,18 @@ typedef OMX_ERRORTYPE ( * TORC_OMXSETUPTUNNEL)         (OMX_HANDLETYPE, OMX_U32,
 typedef OMX_ERRORTYPE ( * TORC_OMXGETCOMPONENTSOFROLE) (OMX_STRING, OMX_U32, OMX_U8);
 typedef OMX_ERRORTYPE ( * TORC_OMXGETROLESOFCOMPONENT) (OMX_STRING, OMX_U32, OMX_U8);
 
+QString EventToString   (OMX_EVENTTYPE Event);
+QString StateToString   (OMX_STATETYPE State);
+QString ErrorToString   (OMX_ERRORTYPE Error);
+QString CommandToString (OMX_COMMANDTYPE Command);
+
+#define OMX_ERROR(Error, Component, Message) \
+    LOG(VB_GENERAL, LOG_ERR, QString("%1: %2 (Error '%3'").arg(Component).arg(Message).arg(ErrorToString(Error)));
+#define OMX_CHECK(Error, Component, Message) \
+    if (OMX_ErrorNone != Error) { OMX_ERROR(Error, Component, Message); return Error; }
+#define OMX_CHECKX(Error, Component, Message) \
+    if (OMX_ErrorNone != Error) { OMX_ERROR(Error, Component, Message); }
+
 class TorcOMXCore : public QLibrary
 {
   public:

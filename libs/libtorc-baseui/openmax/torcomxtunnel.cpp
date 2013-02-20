@@ -42,6 +42,11 @@ TorcOMXTunnel::~TorcOMXTunnel()
     delete m_lock;
 }
 
+bool TorcOMXTunnel::IsConnected(void)
+{
+    return m_connected;
+}
+
 OMX_ERRORTYPE TorcOMXTunnel::Flush(void)
 {
     if (!m_connected)
@@ -49,22 +54,10 @@ OMX_ERRORTYPE TorcOMXTunnel::Flush(void)
 
     QMutexLocker locker(m_lock);
 
-    OMX_ERRORTYPE error = m_source->SendCommand(OMX_CommandFlush, m_sourcePort, NULL);
-    if (OMX_ErrorNone != error && OMX_ErrorSameState != error)
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("%1 tunneling: Failed to send flush command").arg(m_source->GetName()));
-        return error;
-    }
-
-    error = m_destination->SendCommand(OMX_CommandFlush, m_destinationPort, NULL);
-    if (OMX_ErrorNone != error && OMX_ErrorSameState != error)
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("%1 tunneling: Failed to send flush command").arg(m_destination->GetName()));
-        return error;
-    }
-
-    m_source->WaitForResponse(OMX_CommandFlush, m_sourcePort, 200);
-    m_destination->WaitForResponse(OMX_CommandFlush, m_destinationPort, 200);
+    OMX_CHECK(m_source->FlushBuffers(false, true), m_source->GetName(), "Tunnel failed to flush source");
+    OMX_CHECK(m_destination->FlushBuffers(true, false), m_destination->GetName(), "Tunnel failed to flush destination");
+    OMX_CHECK(m_source->WaitForResponse(OMX_CommandFlush, m_sourcePort, 200), m_source->GetName(), "Tunnel failed to flush source");
+    OMX_CHECK(m_destination->WaitForResponse(OMX_CommandFlush, m_destinationPort, 200), m_destination->GetName(), "Tunnel failed to flush destination");
 
     return OMX_ErrorNone;
 }
@@ -89,41 +82,23 @@ OMX_ERRORTYPE TorcOMXTunnel::Create(void)
     m_destinationPort = m_destination->GetInputPort();
     m_connected       = false;
 
-    OMX_ERRORTYPE error;
-
     if (m_source->GetState() == OMX_StateLoaded)
     {
-        error = m_source->SetState(OMX_StateIdle);
-        if (OMX_ErrorNone != error)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("%1 tunneling: Failed to set source state").arg(m_source->GetName()));
-            return error;
-        }
+        OMX_CHECK(m_source->SetState(OMX_StateIdle), m_source->GetName(), "Tunnel failed to set source state");
     }
 
     m_source->GetOutputBuffers()->EnablePort(false);
     m_destination->GetInputBuffers()->EnablePort(false);
 
-    error = m_core->m_omxSetupTunnel(m_source->GetHandle(), m_sourcePort, m_destination->GetHandle(), m_destinationPort);
-
-    if (OMX_ErrorNone != error)
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("Failed to create tunnel between %1 and %2")
-            .arg(m_source->GetName()).arg(m_destination->GetName()));
-        return error;
-    }
+    OMX_CHECK(m_core->m_omxSetupTunnel(m_source->GetHandle(), m_sourcePort, m_destination->GetHandle(), m_destinationPort), "",
+              QString("Failed to create tunnel between %1 and %2").arg(m_source->GetName()).arg(m_destination->GetName()));
 
     m_destination->GetInputBuffers()->EnablePort(true);
     m_source->GetOutputBuffers()->EnablePort(true);
 
     if (m_destination->GetState() == OMX_StateLoaded)
     {
-        error = m_destination->SetState(OMX_StateIdle);
-        if (OMX_ErrorNone != error)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("%1 tunneling: Failed to set destination state").arg(m_source->GetName()));
-            return error;
-        }
+        OMX_CHECK(m_destination->SetState(OMX_StateIdle), m_destination->GetName(), "Tunnel failed to set destination state");
     }
 
     LOG(VB_GENERAL, LOG_INFO, QString("Created tunnel: %1:%2->%3:%4")
@@ -151,11 +126,11 @@ OMX_ERRORTYPE TorcOMXTunnel::Destroy(void)
 
     OMX_ERRORTYPE error = m_core->m_omxSetupTunnel(m_source->GetHandle(), m_sourcePort, NULL, 0);
     if (OMX_ErrorNone != error)
-        LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to destroy tunnel input").arg(m_source->GetName()));
+        OMX_ERROR(error, m_source->GetName(), "Failed to destroy tunnel input");
 
     error = m_core->m_omxSetupTunnel(m_destination->GetHandle(), m_destinationPort, NULL, 0);
     if (OMX_ErrorNone != error)
-        LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to destroy tunnel output").arg(m_destination->GetName()));
+        OMX_ERROR(error, m_destination->GetName(), "Failed to destroy tunnel output");
 
     m_connected = false;
     return OMX_ErrorNone;

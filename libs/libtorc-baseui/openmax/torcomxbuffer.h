@@ -25,7 +25,7 @@ class TorcOMXBuffer
     OMX_ERRORTYPE                 Destroy       (void);
     OMX_ERRORTYPE                 Flush         (void);
     OMX_ERRORTYPE                 MakeAvailable (OMX_BUFFERHEADERTYPE* Buffer);
-    OMX_BUFFERHEADERTYPE*         GetBuffer     (OMX_U32 Timeout);
+    OMX_BUFFERHEADERTYPE*         GetBuffer     (OMX_S32 Timeout);
 
     TorcOMXComponent             *m_parent;
     OMX_HANDLETYPE                m_handle;

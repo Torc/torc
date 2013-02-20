@@ -47,7 +47,7 @@ class TorcOMXComponent
     OMX_U32                 GetInputPort            (void);
     OMX_U32                 GetOutputPort           (void);
     OMX_ERRORTYPE           EnablePort              (bool Enable, bool Input);
-    bool                    DisablePorts            (OMX_INDEXTYPE Index);
+    OMX_ERRORTYPE           DisablePorts            (OMX_INDEXTYPE Index);
     OMX_ERRORTYPE           EmptyThisBuffer         (OMX_BUFFERHEADERTYPE *Buffer);
     OMX_ERRORTYPE           FillThisBuffer          (OMX_BUFFERHEADERTYPE *Buffer);
     OMX_ERRORTYPE           SetupInputBuffers       (bool Create);
@@ -62,7 +62,7 @@ class TorcOMXComponent
     OMX_ERRORTYPE           EmptyBufferDone         (OMX_HANDLETYPE Component, OMX_BUFFERHEADERTYPE *Buffer);
     OMX_ERRORTYPE           FillBufferDone          (OMX_HANDLETYPE Component, OMX_BUFFERHEADERTYPE *Buffer);
     OMX_ERRORTYPE           SendCommand             (OMX_COMMANDTYPE Command, OMX_U32 Parameter, OMX_PTR Data);
-    OMX_ERRORTYPE           WaitForResponse         (OMX_U32 Command, OMX_U32 Data2, OMX_U32 Timeout);
+    OMX_ERRORTYPE           WaitForResponse         (OMX_U32 Command, OMX_U32 Data2, OMX_S32 Timeout);
 
   protected:
     bool                    m_valid;

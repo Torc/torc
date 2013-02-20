@@ -56,36 +56,20 @@ OMX_ERRORTYPE TorcOMXBuffer::EnablePort(bool Enable)
     portdefinition.nPortIndex = m_port;
 
     OMX_ERRORTYPE error = OMX_GetParameter(m_handle, OMX_IndexParamPortDefinition, &portdefinition);
-    if (OMX_ErrorNone != error)
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to get port definition").arg(m_parent->GetName()));
-        return error;
-    }
+    OMX_CHECK(error, m_parent->GetName(), "Failed to get port definition");
 
     if (portdefinition.bEnabled == OMX_FALSE && Enable)
     {
         LOG(VB_GENERAL, LOG_INFO, QString("%1: Enabling port %2").arg(m_parent->GetName()).arg(m_port));
-
         error = OMX_SendCommand(m_handle, OMX_CommandPortEnable, m_port, NULL);
-        if (OMX_ErrorNone != error)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to send command").arg(m_parent->GetName()));
-            return error;
-        }
-
+        OMX_CHECK(error, m_parent->GetName(), "Failed to send command");
         return m_parent->WaitForResponse(OMX_CommandPortEnable, m_port, 1000);
     }
     else if (portdefinition.bEnabled == OMX_TRUE && !Enable)
     {
         LOG(VB_GENERAL, LOG_INFO, QString("%1: Disabling port %2").arg(m_parent->GetName()).arg(m_port));
-
         error = OMX_SendCommand(m_handle, OMX_CommandPortDisable, m_port, NULL);
-        if (OMX_ErrorNone != error)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to send command").arg(m_parent->GetName()));
-            return error;
-        }
-
+        OMX_CHECK(error, m_parent->GetName(), "Failed to send command");
         return m_parent->WaitForResponse(OMX_CommandPortDisable, m_port, 1000);
     }
 
@@ -110,11 +94,7 @@ OMX_ERRORTYPE TorcOMXBuffer::Create(bool Allocate)
         portdefinition.nPortIndex = m_port;
 
         error = OMX_GetParameter(m_handle, OMX_IndexParamPortDefinition, &portdefinition);
-        if (OMX_ErrorNone != error)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to get port definition").arg(m_parent->GetName()));
-            return error;
-        }
+        OMX_CHECK(error, m_parent->GetName(), "Failed to get port definition");
 
         m_alignment = portdefinition.nBufferAlignment;
 
@@ -137,8 +117,7 @@ OMX_ERRORTYPE TorcOMXBuffer::Create(bool Allocate)
             {
                 if (m_createdBuffers && data)
                     free(data);
-
-                LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to allocate buffer").arg(m_parent->GetName()));
+                OMX_ERROR(error, m_parent->GetName(), "Failed to allocate buffer");
                 return error;
             }
 
@@ -171,8 +150,8 @@ OMX_ERRORTYPE TorcOMXBuffer::Destroy(void)
         {
             OMX_U8 *buffer = m_buffers.at(i)->pBuffer;
 
-            if (OMX_FreeBuffer(m_handle, m_port, m_buffers.at(i)) != OMX_ErrorNone)
-                LOG(VB_GENERAL, LOG_ERR, QString("%1: Error freeing buffer").arg(m_parent->GetName()));
+            OMX_ERRORTYPE error = OMX_FreeBuffer(m_handle, m_port, m_buffers.at(i));
+            OMX_CHECKX(error, m_parent->GetName(), "Failed to free buffer");
 
             if (m_createdBuffers)
                 free(buffer);
@@ -195,12 +174,7 @@ OMX_ERRORTYPE TorcOMXBuffer::Flush(void)
     QMutexLocker locker(m_lock);
 
     OMX_ERRORTYPE error = OMX_SendCommand(m_handle, OMX_CommandFlush, m_port, NULL);
-
-    if (OMX_ErrorNone != error)
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to send command").arg(m_parent->GetName()));
-        return error;
-    }
+    OMX_CHECK(error, m_parent->GetName(), "Failed to send command");
 
     return OMX_ErrorNone;
 }
@@ -217,7 +191,7 @@ OMX_ERRORTYPE TorcOMXBuffer::MakeAvailable(OMX_BUFFERHEADERTYPE *Buffer)
     return OMX_ErrorNone;
 }
 
-OMX_BUFFERHEADERTYPE* TorcOMXBuffer::GetBuffer(OMX_U32 Timeout)
+OMX_BUFFERHEADERTYPE* TorcOMXBuffer::GetBuffer(OMX_S32 Timeout)
 {
     OMX_BUFFERHEADERTYPE* result = NULL;
 

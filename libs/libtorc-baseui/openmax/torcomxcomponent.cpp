@@ -37,24 +37,6 @@ TorcOMXEvent::TorcOMXEvent(OMX_EVENTTYPE Type, OMX_U32 Data1, OMX_U32 Data2)
 
 static OMX_CALLBACKTYPE gCallbacks;
 
-QString EventToString(OMX_EVENTTYPE Event)
-{
-    switch (Event)
-    {
-        case OMX_EventCmdComplete:               return QString("CmdComplete");
-        case OMX_EventError:                     return QString("Error");
-        case OMX_EventMark:                      return QString("Mark");
-        case OMX_EventPortSettingsChanged:       return QString("PortSettingsChanged");
-        case OMX_EventBufferFlag:                return QString("BufferFlag");
-        case OMX_EventResourcesAcquired:         return QString("ResourcesAcquired");
-        case OMX_EventComponentResumed:          return QString("ComponentResumed");
-        case OMX_EventDynamicResourcesAvailable: return QString("DynamicResourcesAvailable");
-        case OMX_EventPortFormatDetected:        return QString("PortFormatDetected");
-        default: break;
-    }
-    return QString("Unknown");
-}
-
 TorcOMXComponent::TorcOMXComponent(TorcOMXCore *Core, OMX_STRING Component, OMX_INDEXTYPE Index)
   : m_valid(false),
     m_core(Core),
@@ -182,12 +164,14 @@ OMX_ERRORTYPE TorcOMXComponent::SetState(OMX_STATETYPE State)
     else if (OMX_ErrorNone == error)
     {
         error = WaitForResponse(OMX_CommandStateSet, State, 1000);
-        if (OMX_ErrorSameState == error)
-            error = OMX_ErrorNone;
-        return error;
+        if (OMX_ErrorSameState == error || OMX_ErrorNone == error)
+        {
+            LOG(VB_GENERAL, LOG_INFO, QString("%1: Set state to %2").arg(m_componentName).arg(StateToString(State)));
+            return OMX_ErrorNone;
+        }
     }
 
-    LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to set state").arg(m_componentName));
+    OMX_ERROR(error, m_componentName, "Failed to set state");
     return error;
 }
 
@@ -199,10 +183,11 @@ OMX_STATETYPE TorcOMXComponent::GetState(void)
     QMutexLocker locker(m_lock);
 
     OMX_STATETYPE state;
-    if (OMX_GetState(m_handle, &state) == OMX_ErrorNone)
+    OMX_ERRORTYPE error = OMX_GetState(m_handle, &state);
+    if (OMX_ErrorNone == error)
         return state;
 
-    LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to get state").arg(m_componentName));
+    OMX_ERROR(error, m_componentName, "Failed to get state");
     return OMX_StateInvalid;
 }
 
@@ -213,12 +198,8 @@ OMX_ERRORTYPE TorcOMXComponent::SetParameter(OMX_INDEXTYPE Index, OMX_PTR Struct
 
     QMutexLocker locker(m_lock);
 
-    OMX_ERRORTYPE error = OMX_SetParameter(m_handle, Index, Structure);
-    if (OMX_ErrorNone == error)
-        return OMX_ErrorNone;
-
-    LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to set parameter").arg(m_componentName));
-    return error;
+    OMX_CHECK(OMX_SetParameter(m_handle, Index, Structure), m_componentName, "Failed to set parameter");
+    return OMX_ErrorNone;
 }
 
 OMX_ERRORTYPE TorcOMXComponent::GetParameter(OMX_INDEXTYPE Index, OMX_PTR Structure)
@@ -228,12 +209,8 @@ OMX_ERRORTYPE TorcOMXComponent::GetParameter(OMX_INDEXTYPE Index, OMX_PTR Struct
 
     QMutexLocker locker(m_lock);
 
-    OMX_ERRORTYPE error = OMX_GetParameter(m_handle, Index, Structure);
-    if (OMX_ErrorNone == error)
-        return OMX_ErrorNone;
-
-    LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to get parameter").arg(m_componentName));
-    return error;
+    OMX_CHECK(OMX_GetParameter(m_handle, Index, Structure), m_componentName, "Failed to get parameter");
+    return OMX_ErrorNone;
 }
 
 OMX_ERRORTYPE TorcOMXComponent::SetConfig(OMX_INDEXTYPE Index, OMX_PTR Structure)
@@ -243,12 +220,8 @@ OMX_ERRORTYPE TorcOMXComponent::SetConfig(OMX_INDEXTYPE Index, OMX_PTR Structure
 
     QMutexLocker locker(m_lock);
 
-    OMX_ERRORTYPE error = OMX_SetConfig(m_handle, Index, Structure);
-    if (OMX_ErrorNone == error)
-        return OMX_ErrorNone;
-
-    LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to set config").arg(m_componentName));
-    return error;
+    OMX_CHECK(OMX_SetConfig(m_handle, Index, Structure), m_componentName, "Failed to set config");
+    return OMX_ErrorNone;
 }
 
 OMX_ERRORTYPE TorcOMXComponent::GetConfig(OMX_INDEXTYPE Index, OMX_PTR Structure)
@@ -258,12 +231,8 @@ OMX_ERRORTYPE TorcOMXComponent::GetConfig(OMX_INDEXTYPE Index, OMX_PTR Structure
 
     QMutexLocker locker(m_lock);
 
-    OMX_ERRORTYPE error = OMX_GetConfig(m_handle, Index, Structure);
-    if (OMX_ErrorNone == error)
-        return OMX_ErrorNone;
-
-    LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to get config").arg(m_componentName));
-    return error;
+    OMX_CHECK(OMX_GetConfig(m_handle, Index, Structure), m_componentName, "Failed to get config");
+    return OMX_ErrorNone;
 }
 
 OMX_U32 TorcOMXComponent::GetInputPort(void)
@@ -297,12 +266,8 @@ OMX_ERRORTYPE TorcOMXComponent::EmptyThisBuffer(OMX_BUFFERHEADERTYPE *Buffer)
     if (!m_valid || !Buffer)
         return OMX_ErrorUndefined;
 
-    OMX_ERRORTYPE error = OMX_EmptyThisBuffer(m_handle, Buffer);
-    if (OMX_ErrorNone == error)
-        return OMX_ErrorNone;
-
-    LOG(VB_GENERAL, LOG_ERR, QString("%1: EmptyThisBuffer failed").arg(m_componentName));
-    return error;
+    OMX_CHECK(OMX_EmptyThisBuffer(m_handle, Buffer), m_componentName, "EmptyThisBuffer failed");
+    return OMX_ErrorNone;
 }
 
 OMX_ERRORTYPE TorcOMXComponent::FillThisBuffer(OMX_BUFFERHEADERTYPE *Buffer)
@@ -310,12 +275,8 @@ OMX_ERRORTYPE TorcOMXComponent::FillThisBuffer(OMX_BUFFERHEADERTYPE *Buffer)
     if (!m_valid || !Buffer)
         return OMX_ErrorUndefined;
 
-    OMX_ERRORTYPE error = OMX_FillThisBuffer(m_handle, Buffer);
-    if (OMX_ErrorNone == error)
-        return OMX_ErrorNone;
-
-    LOG(VB_GENERAL, LOG_ERR, QString("%1: FillThisBuffer failed").arg(m_componentName));
-    return error;
+    OMX_CHECK(OMX_FillThisBuffer(m_handle, Buffer), m_componentName, "FillThisBuffer failed");
+    return OMX_ErrorNone;
 }
 
 OMX_ERRORTYPE TorcOMXComponent::SetupInputBuffers(bool Create)
@@ -385,26 +346,14 @@ TorcOMXBuffer* TorcOMXComponent::GetOutputBuffers(void)
 
 OMX_ERRORTYPE TorcOMXComponent::FlushBuffers(bool Input, bool Output)
 {
-    OMX_ERRORTYPE error;
-
     if (Input && m_inputBuffer)
     {
-        error = m_inputBuffer->Flush();
-        if (OMX_ErrorNone != error)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to flush input buffers").arg(m_componentName));
-            return error;
-        }
+        OMX_CHECK(m_inputBuffer->Flush(), m_componentName, "Failed to flush input buffers");
     }
 
     if (Output && m_outputBuffer)
     {
-        error = m_outputBuffer->Flush();
-        if (OMX_ErrorNone != error)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to flush output buffers").arg(m_componentName));
-            return error;
-        }
+        OMX_CHECK(m_outputBuffer->Flush(), m_componentName, "Failed to flush output buffers");
     }
 
     return OMX_ErrorNone;
@@ -415,12 +364,10 @@ OMX_ERRORTYPE TorcOMXComponent::EventHandler(OMX_HANDLETYPE Component, OMX_EVENT
     if (m_handle != Component)
         return OMX_ErrorBadParameter;
 
-    {
-        m_eventQueueLock->lock();
-        m_eventQueue.append(TorcOMXEvent(Event, Data1, Data2));
-        LOG(VB_GENERAL, LOG_DEBUG, QString("Event: %1 %2 %3").arg(EventToString(Event)).arg(Data1).arg(Data2));
-        m_eventQueueLock->unlock();
-    }
+    m_eventQueueLock->lock();
+    m_eventQueue.append(TorcOMXEvent(Event, Data1, Data2));
+    m_eventQueueLock->unlock();
+    LOG(VB_GENERAL, LOG_DEBUG, QString("Event: %1 %2 %3").arg(EventToString(Event)).arg(Data1).arg(Data2));
 
     m_eventQueueWait.wakeAll();
 
@@ -456,25 +403,22 @@ OMX_ERRORTYPE TorcOMXComponent::SendCommand(OMX_COMMANDTYPE Command, OMX_U32 Par
 
     QMutexLocker locker(m_lock);
 
-    OMX_ERRORTYPE error = OMX_SendCommand(m_handle, Command, Parameter, Data);
-    if (OMX_ErrorNone == error)
-        return OMX_ErrorNone;
-
-    LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to send command").arg(m_componentName));
-    return error;
+    OMX_CHECK(OMX_SendCommand(m_handle, Command, Parameter, Data), m_componentName, "Failed to send command");
+    return OMX_ErrorNone;
 }
 
-OMX_ERRORTYPE TorcOMXComponent::WaitForResponse(OMX_U32 Command, OMX_U32 Data2, OMX_U32 Timeout)
+OMX_ERRORTYPE TorcOMXComponent::WaitForResponse(OMX_U32 Command, OMX_U32 Data2, OMX_S32 Timeout)
 {
-    m_eventQueueLock->lock();
-
     QElapsedTimer timer;
     timer.start();
 
-    LOG(VB_GENERAL, LOG_DEBUG, QString("%1: Waiting for %2 %3").arg(m_componentName).arg(Command).arg(Data2));
+    LOG(VB_GENERAL, LOG_DEBUG, QString("%1: Waiting for %2 %3")
+        .arg(m_componentName).arg(CommandToString((OMX_COMMANDTYPE)Command)).arg(Data2));
 
     while (timer.elapsed() < Timeout)
     {
+        m_eventQueueLock->lock();
+
         QList<TorcOMXEvent>::iterator it = m_eventQueue.begin();
 
         for ( ; it != m_eventQueue.end(); ++it)
@@ -494,8 +438,8 @@ OMX_ERRORTYPE TorcOMXComponent::WaitForResponse(OMX_U32 Command, OMX_U32 Data2, 
                     return OMX_ErrorNone;
                 }
 
-                LOG(VB_GENERAL, LOG_ERR, QString("%1: Error event, data1 %2 data2 %3")
-                    .arg(m_componentName).arg((*it).m_data1).arg((*it).m_data2));
+                LOG(VB_GENERAL, LOG_ERR, QString("%1: Error event '%2' data2 %3")
+                    .arg(m_componentName).arg(ErrorToString((OMX_ERRORTYPE)(*it).m_data1)).arg((*it).m_data2));
                 OMX_ERRORTYPE error = (OMX_ERRORTYPE)(*it).m_data1;
                 m_eventQueue.erase(it);
                 m_eventQueueLock->unlock();
@@ -504,51 +448,56 @@ OMX_ERRORTYPE TorcOMXComponent::WaitForResponse(OMX_U32 Command, OMX_U32 Data2, 
         }
 
         m_eventQueueWait.wait(m_eventQueueLock, 50);
+        m_eventQueueLock->unlock();
     }
 
-    m_eventQueueLock->unlock();
-    LOG(VB_GENERAL, LOG_INFO, QString("%1: Response never received").arg(m_componentName));
+    LOG(VB_GENERAL, LOG_INFO, QString("%1: Response never received for command %2")
+        .arg(m_componentName).arg(CommandToString((OMX_COMMANDTYPE)Command)));
     return OMX_ErrorMax;
 }
 
-bool TorcOMXComponent::DisablePorts(OMX_INDEXTYPE Index)
+OMX_ERRORTYPE TorcOMXComponent::DisablePorts(OMX_INDEXTYPE Index)
 {
     if (!m_valid)
-        return false;
+        return OMX_ErrorUndefined;
 
     QMutexLocker locker(m_lock);
 
     OMX_PORT_PARAM_TYPE portparameters;
     OMX_INITSTRUCTURE(portparameters);
 
-    if (OMX_GetParameter(m_handle, Index, &portparameters) == OMX_ErrorNone)
-    {
-        for (OMX_U32 i = 0; i < portparameters.nPorts; ++i)
-        {
-            OMX_PARAM_PORTDEFINITIONTYPE portdefinition;
-            OMX_INITSTRUCTURE(portdefinition);
-            OMX_U32 portnumber = portparameters.nStartPortNumber + i;
-            portdefinition.nPortIndex = portnumber;
+    OMX_CHECK(OMX_GetParameter(m_handle, Index, &portparameters), m_componentName, "Failed to get port parameters");
 
-            if (OMX_GetParameter(m_handle, OMX_IndexParamPortDefinition, &portdefinition) == OMX_ErrorNone)
+    for (OMX_U32 i = 0; i < portparameters.nPorts; ++i)
+    {
+        OMX_PARAM_PORTDEFINITIONTYPE portdefinition;
+        OMX_INITSTRUCTURE(portdefinition);
+        OMX_U32 portnumber = portparameters.nStartPortNumber + i;
+        portdefinition.nPortIndex = portnumber;
+
+        if (OMX_GetParameter(m_handle, OMX_IndexParamPortDefinition, &portdefinition) == OMX_ErrorNone)
+        {
+            OMX_ERRORTYPE error = OMX_SendCommand(m_handle, OMX_CommandPortDisable, portnumber, NULL);
+            if (OMX_ErrorNone == error)
             {
-                if (OMX_SendCommand(m_handle, OMX_CommandPortDisable, portnumber, NULL) == OMX_ErrorNone)
-                    if (WaitForResponse(OMX_CommandPortDisable, portnumber, 100) != OMX_ErrorNone)
-                        LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to disable port").arg(m_componentName));
+                error = WaitForResponse(OMX_CommandPortDisable, portnumber, 100);
+                if (OMX_ErrorNone != error)
+                {
+                    OMX_ERROR(error, m_componentName, "Failed to disable port");
+                }
             }
             else
             {
-                portdefinition.bEnabled = OMX_FALSE;
+                OMX_ERROR(error, m_componentName, "Failed to send command");
             }
         }
-    }
-    else
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to get port parameters").arg(m_componentName));
-        return false;
+        else
+        {
+            portdefinition.bEnabled = OMX_FALSE;
+        }
     }
 
-    return true;
+    return OMX_ErrorNone;
 }
 
 
