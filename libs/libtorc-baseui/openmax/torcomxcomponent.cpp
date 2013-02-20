@@ -72,8 +72,8 @@ TorcOMXComponent::TorcOMXComponent(TorcOMXCore *Core, OMX_STRING Component, OMX_
     }
 
     m_valid = true;
-    if (!DisablePorts(OMX_IndexParamVideoInit) || !DisablePorts(OMX_IndexParamAudioInit) ||
-        !DisablePorts(OMX_IndexParamImageInit) || !DisablePorts(OMX_IndexParamOtherInit))
+    if ((DisablePorts(OMX_IndexParamVideoInit) != OMX_ErrorNone) || (DisablePorts(OMX_IndexParamAudioInit) != OMX_ErrorNone) ||
+        (DisablePorts(OMX_IndexParamImageInit) != OMX_ErrorNone) || (DisablePorts(OMX_IndexParamOtherInit) != OMX_ErrorNone))
     {
         m_valid = false;
         return;
