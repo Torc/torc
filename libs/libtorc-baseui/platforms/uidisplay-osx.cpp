@@ -4,7 +4,11 @@
 // Qt
 #include <QApplication>
 #include <QDesktopWidget>
+#if (QT_VERSION >= 0x050000)
+#include <QProxyStyle>
+#else
 #include <QWindowsStyle>
+#endif
 
 // Torc
 #include "torclogging.h"
@@ -163,7 +167,7 @@ CGDirectDisplayID GetOSXDisplay(WId win)
     if (!win)
         return NULL;
 
-#ifdef QT_MAC_USE_COCOA
+#if defined(QT_MAC_USE_COCOA) || (QT_VERSION >= 0x050000)
     return GetOSXCocoaDisplay((void*)win);
 #else
     CGDirectDisplayID disp = NULL;
