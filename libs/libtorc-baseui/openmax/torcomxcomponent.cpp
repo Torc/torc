@@ -85,8 +85,9 @@ TorcOMXComponent::TorcOMXComponent(TorcOMXCore *Core, OMX_STRING Component, OMX_
     {
         OMX_PARAM_PORTDEFINITIONTYPE portdefinition;
         OMX_INITSTRUCTURE(portdefinition);
+        portdefinition.nPortIndex = port;
 
-        OMX_ERRORTYPE error = OMX_GetParameter(m_handle, Index, &portdefinition);
+        OMX_ERRORTYPE error = OMX_GetParameter(m_handle, OMX_IndexParamPortDefinition, &portdefinition);
         if (OMX_ErrorNone == error)
         {
             if (OMX_DirInput == portdefinition.eDir)
