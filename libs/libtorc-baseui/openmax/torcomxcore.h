@@ -42,6 +42,7 @@ QString EventToString   (OMX_EVENTTYPE Event);
 QString StateToString   (OMX_STATETYPE State);
 QString ErrorToString   (OMX_ERRORTYPE Error);
 QString CommandToString (OMX_COMMANDTYPE Command);
+QString DomainToString  (OMX_INDEXTYPE Domain);
 
 #define OMX_ERROR(Error, Component, Message) \
     LOG(VB_GENERAL, LOG_ERR, QString("%1: %2 (Error '%3')").arg(Component).arg(Message).arg(ErrorToString(Error)));

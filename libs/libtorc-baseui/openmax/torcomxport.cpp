@@ -27,10 +27,11 @@
 #include "torclogging.h"
 #include "torcomxport.h"
 
-TorcOMXPort::TorcOMXPort(TorcOMXComponent *Parent, OMX_HANDLETYPE Handle, OMX_U32 Port)
+TorcOMXPort::TorcOMXPort(TorcOMXComponent *Parent, OMX_HANDLETYPE Handle, OMX_U32 Port, OMX_INDEXTYPE Domain)
   : m_parent(Parent),
     m_handle(Handle),
     m_port(Port),
+    m_domain(Domain),
     m_lock(new QMutex()),
     m_wait(new QWaitCondition()),
     m_alignment(16)
@@ -48,6 +49,11 @@ TorcOMXPort::~TorcOMXPort()
 OMX_U32 TorcOMXPort::GetPort(void)
 {
     return m_port;
+}
+
+OMX_INDEXTYPE TorcOMXPort::GetDomain(void)
+{
+    return m_domain;
 }
 
 OMX_ERRORTYPE TorcOMXPort::EnablePort(bool Enable)
@@ -111,7 +117,7 @@ OMX_ERRORTYPE TorcOMXPort::CreateBuffers(void)
                 return error;
             }
 
-            buffer->pAppPrivate     = (void*)i;
+            buffer->pAppPrivate     = (void*)this;
             buffer->nFilledLen      = 0;
             buffer->nOffset         = 0;
             buffer->nInputPortIndex = m_port;

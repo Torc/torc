@@ -16,8 +16,8 @@
 class TorcOMXTunnel
 {
   public:
-    TorcOMXTunnel(TorcOMXCore *Core, TorcOMXComponent *Source, OMX_U32 SourceIndex,
-                  TorcOMXComponent *Destination, OMX_U32 DestinationIndex);
+    TorcOMXTunnel(TorcOMXCore *Core, TorcOMXComponent *Source, OMX_U32 SourceIndex, OMX_INDEXTYPE SourceDomain,
+                  TorcOMXComponent *Destination, OMX_U32 DestinationIndex, OMX_INDEXTYPE DestinationDomain);
    ~TorcOMXTunnel();
 
     bool              IsConnected (void);
@@ -31,8 +31,12 @@ class TorcOMXTunnel
     QMutex           *m_lock;
     TorcOMXComponent *m_source;
     OMX_U32           m_sourceIndex;
+    OMX_INDEXTYPE     m_sourceDomain;
+    OMX_U32           m_sourcePort;
     TorcOMXComponent *m_destination;
     OMX_U32           m_destinationIndex;
+    OMX_INDEXTYPE     m_destinationDomain;
+    OMX_U32           m_destinationPort;
 };
 
 #endif // TORCOMXTUNNEL_H

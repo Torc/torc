@@ -123,6 +123,20 @@ QString CommandToString(OMX_COMMANDTYPE Command)
     return QString("Unknown %1").arg(Command);
 }
 
+QString DomainToString(OMX_INDEXTYPE Domain)
+{
+    switch (Domain)
+    {
+        case OMX_IndexParamAudioInit: return QString("Audio");
+        case OMX_IndexParamImageInit: return QString("Image");
+        case OMX_IndexParamVideoInit: return QString("Video");
+        case OMX_IndexParamOtherInit: return QString("Other");
+        default: break;
+    }
+
+    return QString("Unknown");
+}
+
 TorcOMXCore::TorcOMXCore(const QString &Library)
   : QLibrary(Library),
     m_initialised(false)

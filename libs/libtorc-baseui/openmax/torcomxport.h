@@ -17,10 +17,11 @@
 class TorcOMXPort
 {
   public:
-    TorcOMXPort(TorcOMXComponent *Parent, OMX_HANDLETYPE Handle, OMX_U32 Port);
+    TorcOMXPort(TorcOMXComponent *Parent, OMX_HANDLETYPE Handle, OMX_U32 Port, OMX_INDEXTYPE Domain);
    ~TorcOMXPort();
 
     OMX_U32                       GetPort        (void);
+    OMX_INDEXTYPE                 GetDomain      (void);
     OMX_ERRORTYPE                 EnablePort     (bool Enable);
     OMX_ERRORTYPE                 CreateBuffers  (void);
     OMX_ERRORTYPE                 DestroyBuffers (void);
@@ -32,6 +33,7 @@ class TorcOMXPort
     TorcOMXComponent             *m_parent;
     OMX_HANDLETYPE                m_handle;
     OMX_U32                       m_port;
+    OMX_INDEXTYPE                 m_domain;
     QMutex                       *m_lock;
     QWaitCondition               *m_wait;
     QList<OMX_BUFFERHEADERTYPE*>  m_buffers;

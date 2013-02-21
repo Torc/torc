@@ -37,17 +37,15 @@ TorcOMXEvent::TorcOMXEvent(OMX_EVENTTYPE Type, OMX_U32 Data1, OMX_U32 Data2)
 
 static OMX_CALLBACKTYPE gCallbacks;
 
-TorcOMXComponent::TorcOMXComponent(TorcOMXCore *Core, OMX_STRING Component, OMX_INDEXTYPE Index)
+TorcOMXComponent::TorcOMXComponent(TorcOMXCore *Core, OMX_STRING Component)
   : m_valid(false),
     m_core(Core),
     m_handle(NULL),
     m_lock(new QMutex(QMutex::Recursive)),
     m_componentName(Component),
-    m_indexType(Index),
-    m_bufferedInput(-1),
-    m_bufferedOutput(-1),
     m_eventQueueLock(new QMutex())
 {
+    // set the global callbacks
     gCallbacks.EventHandler    = &EventHandlerCallback;
     gCallbacks.EmptyBufferDone = &EmptyBufferDoneCallback;
     gCallbacks.FillBufferDone  = &FillBufferDoneCallback;
@@ -55,6 +53,7 @@ TorcOMXComponent::TorcOMXComponent(TorcOMXCore *Core, OMX_STRING Component, OMX_
     if (!m_core)
         return;
 
+    // get handle
     OMX_ERRORTYPE status = m_core->m_omxGetHandle(&m_handle, Component, this, &gCallbacks);
     if (status != OMX_ErrorNone || !m_handle)
     {
@@ -62,24 +61,39 @@ TorcOMXComponent::TorcOMXComponent(TorcOMXCore *Core, OMX_STRING Component, OMX_
         return;
     }
 
-    OMX_PORT_PARAM_TYPE portparameters;
-    OMX_INITSTRUCTURE(portparameters);
-
-    if (OMX_GetParameter(m_handle, Index, &portparameters) != OMX_ErrorNone)
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to get port parameters").arg(m_componentName));
-        return;
-    }
-
+    // disable all ports in all domains
     m_valid = true;
-    if (DisablePorts(Index) != OMX_ErrorNone)
+    if ((DisablePorts(OMX_IndexParamAudioInit) != OMX_ErrorNone) ||
+        (DisablePorts(OMX_IndexParamImageInit) != OMX_ErrorNone) ||
+        (DisablePorts(OMX_IndexParamVideoInit) != OMX_ErrorNone) ||
+        (DisablePorts(OMX_IndexParamOtherInit) != OMX_ErrorNone))
     {
         m_valid = false;
         return;
     }
 
+    // retrieve ports for each domain
+    AnalysePorts(OMX_IndexParamAudioInit);
+    AnalysePorts(OMX_IndexParamImageInit);
+    AnalysePorts(OMX_IndexParamVideoInit);
+    AnalysePorts(OMX_IndexParamOtherInit);
+}
+
+void TorcOMXComponent::AnalysePorts(OMX_INDEXTYPE Domain)
+{
+    OMX_PORT_PARAM_TYPE portparameters;
+    OMX_INITSTRUCTURE(portparameters);
+
+    if (OMX_GetParameter(m_handle, Domain, &portparameters) != OMX_ErrorNone)
+    {
+        LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to get port parameters").arg(m_componentName));
+        return;
+    }
+
     QString inports;
     QString outports;
+    int input  = 0;
+    int output = 0;
 
     for (OMX_U32 port = portparameters.nStartPortNumber; port < (portparameters.nStartPortNumber + portparameters.nPorts); ++port)
     {
@@ -92,13 +106,15 @@ TorcOMXComponent::TorcOMXComponent(TorcOMXCore *Core, OMX_STRING Component, OMX_
         {
             if (OMX_DirInput == portdefinition.eDir)
             {
+                input++;
                 inports += QString("%1 ").arg(port);
-                m_inputPorts.append(new TorcOMXPort(this, m_handle, port));
+                m_inputPorts.append(new TorcOMXPort(this, m_handle, port, Domain));
             }
             else if (OMX_DirOutput == portdefinition.eDir)
             {
+                output++;
                 outports += QString("%1 ").arg(port);
-                m_outputPorts.append(new TorcOMXPort(this, m_handle, port));
+                m_outputPorts.append(new TorcOMXPort(this, m_handle, port, Domain));
             }
         }
         else
@@ -107,8 +123,45 @@ TorcOMXComponent::TorcOMXComponent(TorcOMXCore *Core, OMX_STRING Component, OMX_
         }
     }
 
-    LOG(VB_GENERAL, LOG_INFO, QString("%1: %2 input ports (%3), %4 output ports (%5)")
-        .arg(m_componentName).arg(m_inputPorts.size()).arg(inports).arg(m_outputPorts.size()).arg(outports));
+    if (input || output)
+    {
+        LOG(VB_GENERAL, LOG_INFO, QString("%1, %2: %3 input ports (%4), %5 output ports (%6)")
+            .arg(m_componentName).arg(DomainToString(Domain)).arg(input)
+            .arg(inports).arg(output).arg(outports));
+    }
+}
+
+TorcOMXPort* TorcOMXComponent::FindPort(OMX_DIRTYPE Direction, OMX_U32 Index, OMX_INDEXTYPE Domain)
+{
+    OMX_U32 count = 0;
+    if (OMX_DirInput == Direction && (Index < (OMX_U32)m_inputPorts.size()))
+    {
+        for (int i = 0; i < m_inputPorts.size(); ++i)
+        {
+            if (m_inputPorts.at(i)->GetDomain() == Domain)
+            {
+                if (count == Index)
+                    return m_inputPorts.at(Index);
+                count++;
+            }
+        }
+    }
+    else if (OMX_DirOutput == Direction && (Index < (OMX_U32)m_outputPorts.size()))
+    {
+        for (int i = 0; i < m_outputPorts.size(); ++i)
+        {
+            if (m_inputPorts.at(i)->GetDomain() == Domain)
+            {
+                if (count == Index)
+                    return m_inputPorts.at(Index);
+                count++;
+            }
+        }
+    }
+
+    LOG(VB_GENERAL, LOG_ERR, QString("%1: Failed to find port (Dir: %1, Index %2, Domain %3)")
+        .arg(m_componentName).arg(Index).arg(DomainToString(Domain)));
+    return NULL;
 }
 
 TorcOMXComponent::~TorcOMXComponent()
@@ -258,36 +311,24 @@ OMX_ERRORTYPE TorcOMXComponent::GetConfig(OMX_INDEXTYPE Index, OMX_PTR Structure
     return OMX_ErrorNone;
 }
 
-OMX_U32 TorcOMXComponent::GetInputPort(OMX_U32 Index)
+OMX_U32 TorcOMXComponent::GetPort(OMX_DIRTYPE Direction, OMX_U32 Index, OMX_INDEXTYPE Domain)
 {
     QMutexLocker locker(m_lock);
 
-    if (Index < (OMX_U32)m_inputPorts.size())
-        return m_inputPorts.at(Index)->GetPort();
+    TorcOMXPort* port = FindPort(Direction, Index, Domain);
+    if (port)
+        return port->GetPort();
+
     return 0;
 }
 
-OMX_U32 TorcOMXComponent::GetOutputPort(OMX_U32 Index)
+OMX_ERRORTYPE TorcOMXComponent::EnablePort(OMX_DIRTYPE Direction, OMX_U32 Index, bool Enable, OMX_INDEXTYPE Domain)
 {
     QMutexLocker locker(m_lock);
 
-    if (Index < (OMX_U32)m_outputPorts.size())
-        return m_outputPorts.at(Index)->GetPort();
-    return 0;
-}
-
-OMX_ERRORTYPE TorcOMXComponent::EnablePort(OMX_DIRTYPE InOut, OMX_U32 Index, bool Enable)
-{
-    QMutexLocker locker(m_lock);
-
-    if (OMX_DirInput == InOut && (Index < (OMX_U32)m_inputPorts.size()))
-    {
-        return m_inputPorts.at(Index)->EnablePort(Enable);
-    }
-    else if (OMX_DirOutput == InOut && (Index < (OMX_U32)m_outputPorts.size()))
-    {
-        return m_outputPorts.at(Index)->EnablePort(Enable);
-    }
+    TorcOMXPort* port = FindPort(Direction, Index, Domain);
+    if (port)
+        return port->EnablePort(Enable);
 
     return OMX_ErrorUndefined;
 }
@@ -310,74 +351,49 @@ OMX_ERRORTYPE TorcOMXComponent::FillThisBuffer(OMX_BUFFERHEADERTYPE *Buffer)
     return OMX_ErrorNone;
 }
 
-OMX_ERRORTYPE TorcOMXComponent::CreateBuffers(OMX_DIRTYPE InOut, OMX_U32 Index)
-{
-    OMX_STATETYPE state = GetState();
-    if(state != OMX_StateIdle)
-    {
-        if(state != OMX_StateLoaded)
-            SetState(OMX_StateLoaded);
-        SetState(OMX_StateIdle);
-    }
-
-    if (OMX_DirInput == InOut && (Index < (OMX_U32)m_inputPorts.size()))
-    {
-        if (m_bufferedInput > -1)
-            LOG(VB_GENERAL, LOG_WARNING, "Allocating buffers for more than one input");
-        m_bufferedInput = (OMX_S32)Index;
-        return m_inputPorts.at(Index)->CreateBuffers();
-    }
-    else if (OMX_DirOutput == InOut && (Index < (OMX_U32)m_outputPorts.size()))
-    {
-        if (m_bufferedOutput > -1)
-            LOG(VB_GENERAL, LOG_WARNING, "Allocating buffers for more than one input");
-        m_bufferedOutput = (OMX_S32)Index;
-        return m_outputPorts.at(Index)->CreateBuffers();
-    }
-
-    return OMX_ErrorUndefined;
-}
-
-OMX_ERRORTYPE TorcOMXComponent::DestroyBuffers(OMX_DIRTYPE InOut, OMX_U32 Index)
-{
-    OMX_STATETYPE state = GetState();
-    if(state != OMX_StateIdle)
-    {
-        if(state != OMX_StateLoaded)
-            SetState(OMX_StateLoaded);
-        SetState(OMX_StateIdle);
-    }
-
-    if (OMX_DirInput == InOut && (Index < (OMX_U32)m_inputPorts.size()))
-        return m_inputPorts.at(Index)->DestroyBuffers();
-    else if (OMX_DirOutput == InOut && (Index < (OMX_U32)m_outputPorts.size()))
-        return m_outputPorts.at(Index)->DestroyBuffers();
-
-    return OMX_ErrorUndefined;
-}
-
-OMX_BUFFERHEADERTYPE* TorcOMXComponent::GetInputBuffer(OMX_U32 Index, OMX_U32 Timeout)
-{
-    // TODO not locked
-    if (Index < (OMX_U32)m_inputPorts.size())
-        return m_inputPorts.at(Index)->GetBuffer(Timeout);
-    return NULL;
-}
-
-OMX_ERRORTYPE TorcOMXComponent::FlushBuffer(OMX_DIRTYPE InOut, OMX_U32 Index)
+OMX_ERRORTYPE TorcOMXComponent::CreateBuffers(OMX_DIRTYPE Direction, OMX_U32 Index, OMX_INDEXTYPE Domain)
 {
     QMutexLocker locker(m_lock);
 
-    if (OMX_DirInput == InOut && (Index < (OMX_U32)m_inputPorts.size()))
+    TorcOMXPort *port = FindPort(Direction, Index, Domain);
+    if (port)
+        return port->CreateBuffers();
+
+    return OMX_ErrorUndefined;
+}
+
+OMX_ERRORTYPE TorcOMXComponent::DestroyBuffers(OMX_DIRTYPE Direction, OMX_U32 Index, OMX_INDEXTYPE Domain)
+{
+    QMutexLocker locker(m_lock);
+
+    TorcOMXPort *port = FindPort(Direction, Index, Domain);
+    if (port)
+        return port->DestroyBuffers();
+
+    return OMX_ErrorUndefined;
+}
+
+OMX_BUFFERHEADERTYPE* TorcOMXComponent::GetInputBuffer(OMX_U32 Index, OMX_U32 Timeout, OMX_INDEXTYPE Domain)
+{
+    TorcOMXPort *port = FindPort(OMX_DirInput, Index, Domain);
+    if (port)
+        return port->GetBuffer(Timeout);
+
+    return NULL;
+}
+
+OMX_ERRORTYPE TorcOMXComponent::FlushBuffer(OMX_DIRTYPE Direction, OMX_U32 Index, OMX_INDEXTYPE Domain)
+{
+    QMutexLocker locker(m_lock);
+
+    TorcOMXPort* port = FindPort(Direction, Index, Domain);
+    if (port)
     {
-        OMX_CHECK(m_inputPorts.at(Index)->Flush(), m_componentName, "Failed to flush input buffers");
-    }
-    else if (OMX_DirOutput == InOut && (Index < (OMX_U32)m_outputPorts.size()))
-    {
-        OMX_CHECK(m_outputPorts.at(Index)->Flush(), m_componentName, "Failed to flush output buffers");
+        OMX_CHECK(port->Flush(), m_componentName, "Failed to flush buffers");
+        return OMX_ErrorNone;
     }
 
-    return OMX_ErrorNone;
+    return OMX_ErrorUndefined;
 }
 
 OMX_ERRORTYPE TorcOMXComponent::EventHandler(OMX_HANDLETYPE Component, OMX_EVENTTYPE Event, OMX_U32 Data1, OMX_U32 Data2, OMX_PTR EventData)
@@ -397,13 +413,13 @@ OMX_ERRORTYPE TorcOMXComponent::EventHandler(OMX_HANDLETYPE Component, OMX_EVENT
 
 OMX_ERRORTYPE TorcOMXComponent::EmptyBufferDone(OMX_HANDLETYPE Component, OMX_BUFFERHEADERTYPE *Buffer)
 {
-    if (m_handle != Component)
+    if (m_handle != Component || !Buffer)
         return OMX_ErrorBadParameter;
 
-    if (m_bufferedInput > -1)
-        return m_inputPorts.at(m_bufferedInput)->MakeAvailable(Buffer);
+    TorcOMXPort *port = static_cast<TorcOMXPort*>(Buffer->pAppPrivate);
+    if (port)
+        return port->MakeAvailable(Buffer);
 
-    LOG(VB_GENERAL, LOG_ERR, "No buffers allocated for input");
     return OMX_ErrorUndefined;
 }
 
@@ -412,8 +428,9 @@ OMX_ERRORTYPE TorcOMXComponent::FillBufferDone(OMX_HANDLETYPE Component, OMX_BUF
     if (m_handle != Component)
         return OMX_ErrorBadParameter;
 
-    if (m_bufferedOutput > -1)
-        return m_outputPorts.at(m_bufferedOutput)->MakeAvailable(Buffer);
+    TorcOMXPort *port = static_cast<TorcOMXPort*>(Buffer->pAppPrivate);
+    if (port)
+        return port->MakeAvailable(Buffer);
 
     LOG(VB_GENERAL, LOG_ERR, "No buffers allocated for output");
     return OMX_ErrorUndefined;
@@ -479,7 +496,7 @@ OMX_ERRORTYPE TorcOMXComponent::WaitForResponse(OMX_U32 Command, OMX_U32 Data2, 
     return OMX_ErrorMax;
 }
 
-OMX_ERRORTYPE TorcOMXComponent::DisablePorts(OMX_INDEXTYPE Index)
+OMX_ERRORTYPE TorcOMXComponent::DisablePorts(OMX_INDEXTYPE Domain)
 {
     if (!m_valid)
         return OMX_ErrorUndefined;
@@ -489,7 +506,7 @@ OMX_ERRORTYPE TorcOMXComponent::DisablePorts(OMX_INDEXTYPE Index)
     OMX_PORT_PARAM_TYPE portparameters;
     OMX_INITSTRUCTURE(portparameters);
 
-    OMX_CHECK(OMX_GetParameter(m_handle, Index, &portparameters), m_componentName, "Failed to get port parameters");
+    OMX_CHECK(OMX_GetParameter(m_handle, Domain, &portparameters), m_componentName, "Failed to get port parameters");
 
     for (OMX_U32 i = 0; i < portparameters.nPorts; ++i)
     {
