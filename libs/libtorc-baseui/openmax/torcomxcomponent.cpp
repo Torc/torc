@@ -150,10 +150,10 @@ TorcOMXPort* TorcOMXComponent::FindPort(OMX_DIRTYPE Direction, OMX_U32 Index, OM
     {
         for (int i = 0; i < m_outputPorts.size(); ++i)
         {
-            if (m_inputPorts.at(i)->GetDomain() == Domain)
+            if (m_outputPorts.at(i)->GetDomain() == Domain)
             {
                 if (count == Index)
-                    return m_inputPorts.at(Index);
+                    return m_outputPorts.at(Index);
                 count++;
             }
         }
