@@ -88,7 +88,7 @@ OMX_ERRORTYPE TorcOMXTunnel::Create(void)
     m_destination->EnablePort(OMX_DirInput, m_destinationIndex, false);
 
     OMX_CHECK(m_core->m_omxSetupTunnel(m_source->GetHandle(), sourceport, m_destination->GetHandle(), destinationport), "",
-              QString("Failed to create tunnel between %1 and %2").arg(m_source->GetName()).arg(m_destination->GetName()));
+              QString("Failed to create tunnel: %1:%2->%3%4").arg(m_source->GetName()).arg(sourceport).arg(m_destination->GetName()).arg(destinationport));
 
     m_source->EnablePort(OMX_DirOutput, m_sourceIndex, true);
     m_destination->EnablePort(OMX_DirInput, m_destinationIndex, true);

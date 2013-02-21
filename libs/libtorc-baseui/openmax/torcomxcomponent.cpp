@@ -388,7 +388,7 @@ OMX_ERRORTYPE TorcOMXComponent::EventHandler(OMX_HANDLETYPE Component, OMX_EVENT
     m_eventQueueLock->lock();
     m_eventQueue.append(TorcOMXEvent(Event, Data1, Data2));
     m_eventQueueLock->unlock();
-    LOG(VB_GENERAL, LOG_DEBUG, QString("Event: %1 %2 %3").arg(EventToString(Event)).arg(Data1).arg(Data2));
+    LOG(VB_GENERAL, LOG_DEBUG, QString("%1: Event %2 %3 %4").arg(m_componentName).arg(EventToString(Event)).arg(Data1).arg(Data2));
 
     m_eventQueueWait.wakeAll();
 
@@ -474,8 +474,8 @@ OMX_ERRORTYPE TorcOMXComponent::WaitForResponse(OMX_U32 Command, OMX_U32 Data2, 
         m_eventQueueLock->unlock();
     }
 
-    LOG(VB_GENERAL, LOG_INFO, QString("%1: Response never received for command %2")
-        .arg(m_componentName).arg(CommandToString((OMX_COMMANDTYPE)Command)));
+    LOG(VB_GENERAL, LOG_INFO, QString("%1: Response never received for command %2 %3")
+        .arg(m_componentName).arg(CommandToString((OMX_COMMANDTYPE)Command)).arg(Data2));
     return OMX_ErrorMax;
 }
 
