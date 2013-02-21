@@ -6,7 +6,7 @@
 
 // Torc
 #include "torcomxcore.h"
-#include "torcomxbuffer.h"
+#include "torcomxport.h"
 #include "torcomxcomponent.h"
 
 // OpenMaxIL
@@ -16,7 +16,8 @@
 class TorcOMXTunnel
 {
   public:
-    TorcOMXTunnel(TorcOMXCore *Core, TorcOMXComponent *Source, TorcOMXComponent *Destination);
+    TorcOMXTunnel(TorcOMXCore *Core, TorcOMXComponent *Source, OMX_U32 SourceIndex,
+                  TorcOMXComponent *Destination, OMX_U32 DestinationIndex);
    ~TorcOMXTunnel();
 
     bool              IsConnected (void);
@@ -29,9 +30,9 @@ class TorcOMXTunnel
     TorcOMXCore      *m_core;
     QMutex           *m_lock;
     TorcOMXComponent *m_source;
-    OMX_U32           m_sourcePort;
+    OMX_U32           m_sourceIndex;
     TorcOMXComponent *m_destination;
-    OMX_U32           m_destinationPort;
+    OMX_U32           m_destinationIndex;
 };
 
 #endif // TORCOMXTUNNEL_H

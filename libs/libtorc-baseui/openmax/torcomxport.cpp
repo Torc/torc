@@ -1,4 +1,4 @@
-/* Class TorcOMXBuffer
+/* Class TorcOMXPort
 *
 * This file is part of the Torc project.
 *
@@ -25,28 +25,32 @@
 
 // Torc
 #include "torclogging.h"
-#include "torcomxbuffer.h"
+#include "torcomxport.h"
 
-TorcOMXBuffer::TorcOMXBuffer(TorcOMXComponent *Parent, OMX_HANDLETYPE Handle, OMX_U32 Port)
+TorcOMXPort::TorcOMXPort(TorcOMXComponent *Parent, OMX_HANDLETYPE Handle, OMX_U32 Port)
   : m_parent(Parent),
     m_handle(Handle),
     m_port(Port),
     m_lock(new QMutex()),
     m_wait(new QWaitCondition()),
-    m_createdBuffers(false),
     m_alignment(16)
 {
 }
 
-TorcOMXBuffer::~TorcOMXBuffer()
+TorcOMXPort::~TorcOMXPort()
 {
-    Destroy();
+    DestroyBuffers();
 
     delete m_lock;
     delete m_wait;
 }
 
-OMX_ERRORTYPE TorcOMXBuffer::EnablePort(bool Enable)
+OMX_U32 TorcOMXPort::GetPort(void)
+{
+    return m_port;
+}
+
+OMX_ERRORTYPE TorcOMXPort::EnablePort(bool Enable)
 {
     if (!m_handle || !m_parent)
         return OMX_ErrorUndefined;
@@ -76,7 +80,7 @@ OMX_ERRORTYPE TorcOMXBuffer::EnablePort(bool Enable)
     return OMX_ErrorNone;
 }
 
-OMX_ERRORTYPE TorcOMXBuffer::Create(bool Allocate)
+OMX_ERRORTYPE TorcOMXPort::CreateBuffers(void)
 {
     if (!m_handle)
         return OMX_ErrorUndefined;
@@ -88,7 +92,6 @@ OMX_ERRORTYPE TorcOMXBuffer::Create(bool Allocate)
     {
         QMutexLocker locker(m_lock);
 
-        m_createdBuffers = Allocate;
         OMX_PARAM_PORTDEFINITIONTYPE portdefinition;
         OMX_INITSTRUCTURE(portdefinition);
         portdefinition.nPortIndex = m_port;
@@ -101,22 +104,9 @@ OMX_ERRORTYPE TorcOMXBuffer::Create(bool Allocate)
         for (OMX_U32 i = 0; i < portdefinition.nBufferCountActual; ++i)
         {
             OMX_BUFFERHEADERTYPE *buffer = NULL;
-            OMX_U8               *data   = NULL;
-
-            if (m_createdBuffers)
-            {
-                posix_memalign((void**)&data, m_alignment, portdefinition.nBufferSize);
-                error = OMX_UseBuffer(m_handle, &buffer, m_port, NULL, portdefinition.nBufferSize, data);
-            }
-            else
-            {
-                error = OMX_AllocateBuffer(m_handle, &buffer, m_port, NULL, portdefinition.nBufferSize);
-            }
-
+            error = OMX_AllocateBuffer(m_handle, &buffer, m_port, NULL, portdefinition.nBufferSize);
             if (OMX_ErrorNone != error)
             {
-                if (m_createdBuffers && data)
-                    free(data);
                 OMX_ERROR(error, m_parent->GetName(), "Failed to allocate buffer");
                 return error;
             }
@@ -137,7 +127,7 @@ OMX_ERRORTYPE TorcOMXBuffer::Create(bool Allocate)
     return OMX_ErrorNone;
 }
 
-OMX_ERRORTYPE TorcOMXBuffer::Destroy(void)
+OMX_ERRORTYPE TorcOMXPort::DestroyBuffers(void)
 {
     if (!m_handle || !m_parent)
         return OMX_ErrorUndefined;
@@ -148,25 +138,19 @@ OMX_ERRORTYPE TorcOMXBuffer::Destroy(void)
         QMutexLocker locker(m_lock);
         for (int i = 0; i < m_buffers.size(); ++i)
         {
-            OMX_U8 *buffer = m_buffers.at(i)->pBuffer;
-
             OMX_ERRORTYPE error = OMX_FreeBuffer(m_handle, m_port, m_buffers.at(i));
             OMX_CHECKX(error, m_parent->GetName(), "Failed to free buffer");
-
-            if (m_createdBuffers)
-                free(buffer);
         }
 
         m_buffers.clear();
         m_availableBuffers.clear();
         m_alignment      = 0;
-        m_createdBuffers = false;
     }
 
     return OMX_ErrorNone;
 }
 
-OMX_ERRORTYPE TorcOMXBuffer::Flush(void)
+OMX_ERRORTYPE TorcOMXPort::Flush(void)
 {
     if (!m_handle || !m_parent)
         return OMX_ErrorUndefined;
@@ -179,7 +163,7 @@ OMX_ERRORTYPE TorcOMXBuffer::Flush(void)
     return OMX_ErrorNone;
 }
 
-OMX_ERRORTYPE TorcOMXBuffer::MakeAvailable(OMX_BUFFERHEADERTYPE *Buffer)
+OMX_ERRORTYPE TorcOMXPort::MakeAvailable(OMX_BUFFERHEADERTYPE *Buffer)
 {
     m_lock->lock();
     if (!m_buffers.contains(Buffer))
@@ -191,7 +175,7 @@ OMX_ERRORTYPE TorcOMXBuffer::MakeAvailable(OMX_BUFFERHEADERTYPE *Buffer)
     return OMX_ErrorNone;
 }
 
-OMX_BUFFERHEADERTYPE* TorcOMXBuffer::GetBuffer(OMX_S32 Timeout)
+OMX_BUFFERHEADERTYPE* TorcOMXPort::GetBuffer(OMX_S32 Timeout)
 {
     OMX_BUFFERHEADERTYPE* result = NULL;
 

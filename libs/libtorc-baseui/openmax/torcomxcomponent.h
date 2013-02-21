@@ -12,7 +12,7 @@
 #include "IL/OMX_Core.h"
 #include "IL/OMX_Component.h"
 
-class TorcOMXBuffer;
+class TorcOMXPort;
 
 class TorcOMXEvent
 {
@@ -44,20 +44,16 @@ class TorcOMXComponent
     OMX_ERRORTYPE           GetParameter            (OMX_INDEXTYPE Index, OMX_PTR Structure);
     OMX_ERRORTYPE           SetConfig               (OMX_INDEXTYPE Index, OMX_PTR Structure);
     OMX_ERRORTYPE           GetConfig               (OMX_INDEXTYPE Index, OMX_PTR Structure);
-    OMX_U32                 GetInputPort            (void);
-    OMX_U32                 GetOutputPort           (void);
-    OMX_ERRORTYPE           EnablePort              (bool Enable, bool Input);
+    OMX_U32                 GetInputPort            (OMX_U32 Index);
+    OMX_U32                 GetOutputPort           (OMX_U32 Index);
+    OMX_ERRORTYPE           EnablePort              (OMX_DIRTYPE InOut, OMX_U32 Index, bool Enable);
     OMX_ERRORTYPE           DisablePorts            (OMX_INDEXTYPE Index);
     OMX_ERRORTYPE           EmptyThisBuffer         (OMX_BUFFERHEADERTYPE *Buffer);
     OMX_ERRORTYPE           FillThisBuffer          (OMX_BUFFERHEADERTYPE *Buffer);
-    OMX_ERRORTYPE           SetupInputBuffers       (bool Create);
-    OMX_ERRORTYPE           SetupOutputBuffers      (bool Create);
-    OMX_ERRORTYPE           DestroyInputBuffers     (void);
-    OMX_ERRORTYPE           DestroyOutputBuffers    (void);
-    OMX_BUFFERHEADERTYPE*   GetInputBuffer          (OMX_U32 Timeout);
-    TorcOMXBuffer*          GetInputBuffers         (void);
-    TorcOMXBuffer*          GetOutputBuffers        (void);
-    OMX_ERRORTYPE           FlushBuffers            (bool Input, bool Output);
+    OMX_ERRORTYPE           CreateBuffers           (OMX_DIRTYPE InOut, OMX_U32 Index);
+    OMX_ERRORTYPE           DestroyBuffers          (OMX_DIRTYPE InOut, OMX_U32 Index);
+    OMX_BUFFERHEADERTYPE*   GetInputBuffer          (OMX_U32 Index, OMX_U32 Timeout);
+    OMX_ERRORTYPE           FlushBuffer             (OMX_DIRTYPE InOut, OMX_U32 Index);
     OMX_ERRORTYPE           EventHandler            (OMX_HANDLETYPE Component, OMX_EVENTTYPE Event, OMX_U32 Data1, OMX_U32 Data2, OMX_PTR EventData);
     OMX_ERRORTYPE           EmptyBufferDone         (OMX_HANDLETYPE Component, OMX_BUFFERHEADERTYPE *Buffer);
     OMX_ERRORTYPE           FillBufferDone          (OMX_HANDLETYPE Component, OMX_BUFFERHEADERTYPE *Buffer);
@@ -71,8 +67,10 @@ class TorcOMXComponent
     QMutex                 *m_lock;
     QString                 m_componentName;
     OMX_INDEXTYPE           m_indexType;
-    TorcOMXBuffer          *m_inputBuffer;
-    TorcOMXBuffer          *m_outputBuffer;
+    OMX_S32                 m_bufferedInput;
+    OMX_S32                 m_bufferedOutput;
+    QList<TorcOMXPort*>     m_inputPorts;
+    QList<TorcOMXPort*>     m_outputPorts;
     QList<TorcOMXEvent>     m_eventQueue;
     QMutex                 *m_eventQueueLock;
     QWaitCondition          m_eventQueueWait;
