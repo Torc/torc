@@ -24,7 +24,7 @@ config.mak:
 PWD := $(shell pwd)
 
 libs/libtorc-core/version.h:	version.sh force
-	sh version.sh $(PWD)
+	sh version.sh "$(PWD)"
 
 # explicit subdir dependencies
 programs: libs
