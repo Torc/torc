@@ -24,7 +24,6 @@
 #include "torclogging.h"
 #include "torccocoa.h"
 #include "torcadminthread.h"
-#include "torcedid.h"
 #include "torcrunlooposx.h"
 
 CFRunLoopRef gAdminRunLoop = 0;
