@@ -239,7 +239,7 @@ OMX_ERRORTYPE TorcOMXComponent::SetState(OMX_STATETYPE State, bool Wait/*=true*/
     }
     else if (OMX_ErrorNone == error)
     {
-        if (wait)
+        if (Wait)
             error = WaitForResponse(OMX_CommandStateSet, State, 1000);
         if (OMX_ErrorSameState == error || OMX_ErrorNone == error)
         {

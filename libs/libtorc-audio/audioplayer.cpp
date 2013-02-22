@@ -80,11 +80,17 @@ void* AudioPlayer::GetAudio(void)
 
 class AudioPlayerFactory : public PlayerFactory
 {
-    TorcPlayer* Create(QObject *Parent, int PlaybackFlags, int DecoderFlags)
+    void Score(QObject *Parent, int PlaybackFlags, int DecoderFlags, int &Score)
     {
-        if (DecoderFlags & TorcDecoder::DecodeVideo)
-            return NULL;
+        if (!(DecoderFlags & TorcDecoder::DecodeVideo) && Score <= 10)
+            Score = 10;
+    }
 
-        return new AudioPlayer(Parent, PlaybackFlags, DecoderFlags);
+    TorcPlayer* Create(QObject *Parent, int PlaybackFlags, int DecoderFlags, int &Score)
+    {
+        if (!(DecoderFlags & TorcDecoder::DecodeVideo) && Score <= 10)
+            return new AudioPlayer(Parent, PlaybackFlags, DecoderFlags);
+
+        return NULL;
     }
 } AudioPlayerFactory;
