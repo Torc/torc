@@ -158,9 +158,15 @@ bool VideoUIPlayer::HandleAction(int Action)
 
 class VideoUIPlayerFactory : public PlayerFactory
 {
-    TorcPlayer* Create(QObject *Parent, int PlaybackFlags, int DecoderFlags)
+    void Score(QObject *Parent, int PlaybackFlags, int DecoderFlags, int &Score)
     {
-        if ((DecoderFlags & TorcDecoder::DecodeVideo) && (PlaybackFlags & TorcPlayer::UserFacing))
+        if ((DecoderFlags & TorcDecoder::DecodeVideo) && (PlaybackFlags & TorcPlayer::UserFacing) && Score <= 20)
+            Score = 20;
+    }
+
+    TorcPlayer* Create(QObject *Parent, int PlaybackFlags, int DecoderFlags, int &Score)
+    {
+        if ((DecoderFlags & TorcDecoder::DecodeVideo) && (PlaybackFlags & TorcPlayer::UserFacing) && Score <= 20)
             return new VideoUIPlayer(Parent, PlaybackFlags, DecoderFlags);
 
         return NULL;

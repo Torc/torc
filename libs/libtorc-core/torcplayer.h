@@ -115,7 +115,8 @@ class TORC_CORE_PUBLIC PlayerFactory
     virtual ~PlayerFactory();
     static PlayerFactory* GetPlayerFactory  (void);
     PlayerFactory*        NextFactory       (void) const;
-    virtual TorcPlayer*   Create            (QObject *Parent, int PlaybackFlags, int DecoderFlags) = 0;
+    virtual void          Score             (QObject *Parent, int PlaybackFlags, int DecoderFlags, int &Score) = 0;
+    virtual TorcPlayer*   Create            (QObject *Parent, int PlaybackFlags, int DecoderFlags, int &Score) = 0;
 
   protected:
     static PlayerFactory* gPlayerFactory;

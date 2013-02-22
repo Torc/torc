@@ -48,10 +48,15 @@ TorcPlayer* TorcPlayer::Create(QObject* Parent, int PlaybackFlags, int DecoderFl
 {
     TorcPlayer *player = NULL;
 
+    int score = 0;
     PlayerFactory* factory = PlayerFactory::GetPlayerFactory();
     for ( ; factory; factory = factory->NextFactory())
+        (void)factory->Score(Parent, PlaybackFlags, DecoderFlags, score);
+
+    factory = PlayerFactory::GetPlayerFactory();
+    for ( ; factory; factory = factory->NextFactory())
     {
-        player = factory->Create(Parent, PlaybackFlags, DecoderFlags);
+        player = factory->Create(Parent, PlaybackFlags, DecoderFlags, score);
         if (player)
             break;
     }

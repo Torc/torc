@@ -81,9 +81,15 @@ VideoBuffers* VideoPlayer::Buffers(void)
 
 class VideoPlayerFactory : public PlayerFactory
 {
-    TorcPlayer* Create(QObject *Parent, int PlaybackFlags, int DecoderFlags)
+    void Score(QObject *Parent, int PlaybackFlags, int DecoderFlags, int &Score)
     {
-        if ((DecoderFlags & TorcDecoder::DecodeVideo) && !(PlaybackFlags & TorcPlayer::UserFacing))
+        if ((DecoderFlags & TorcDecoder::DecodeVideo) && !(PlaybackFlags & TorcPlayer::UserFacing) && Score <= 10)
+            Score = 10;
+    }
+
+    TorcPlayer* Create(QObject *Parent, int PlaybackFlags, int DecoderFlags, int &Score)
+    {
+        if ((DecoderFlags & TorcDecoder::DecodeVideo) && !(PlaybackFlags & TorcPlayer::UserFacing) && Score <= 10)
             return new VideoPlayer(Parent, PlaybackFlags, DecoderFlags);
 
         return NULL;
