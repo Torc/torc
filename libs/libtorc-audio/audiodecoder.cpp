@@ -772,8 +772,9 @@ void AudioDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     (void)Packet;
 }
 
-void AudioDecoder::SetupVideoDecoder(AVStream *Stream)
+void AudioDecoder::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stream)
 {
+    (void)Context;
     (void)Stream;
 }
 
@@ -1611,7 +1612,7 @@ bool AudioDecoder::OpenDecoders(const QList<TorcStreamData*> &Streams)
         }
 
         if (context->codec_type == AVMEDIA_TYPE_VIDEO)
-            SetupVideoDecoder(stream);
+            SetupVideoDecoder(m_priv->m_avFormatContext, stream);
 
         int error;
         if ((error = avcodec_open2(context, avcodec, NULL)) < 0)

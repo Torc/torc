@@ -34,7 +34,7 @@ class VideoDecoder : public AudioDecoder
 
     bool         VideoBufferStatus   (int &Unused, int &Inuse, int &Held);
     void         ProcessVideoPacket  (AVFormatContext *Context, AVStream *Stream, AVPacket *Packet);
-    void         SetupVideoDecoder   (AVStream *Stream);
+    void         SetupVideoDecoder   (AVFormatContext *Context, AVStream *Stream);
     void         CleanupVideoDecoder (AVStream *Stream);
     void         FlushVideoBuffers   (bool Stopped);
 

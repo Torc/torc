@@ -419,8 +419,10 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     m_videoParent->Buffers()->ReleaseFrameFromDecoding(frame);
 }
 
-void VideoDecoder::SetupVideoDecoder(AVStream *Stream)
+void VideoDecoder::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stream)
 {
+    (void)Context;
+
     if (!Stream || (Stream && !Stream->codec))
         return;
 
