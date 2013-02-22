@@ -38,7 +38,7 @@ class TorcOMXComponent
     bool                    IsValid                 (void);
     QString                 GetName                 (void);
     OMX_HANDLETYPE          GetHandle               (void);
-    OMX_ERRORTYPE           SetState                (OMX_STATETYPE State);
+    OMX_ERRORTYPE           SetState                (OMX_STATETYPE State, bool Wait = true);
     OMX_STATETYPE           GetState                (void);
     OMX_ERRORTYPE           SetParameter            (OMX_INDEXTYPE Index, OMX_PTR Structure);
     OMX_ERRORTYPE           GetParameter            (OMX_INDEXTYPE Index, OMX_PTR Structure);

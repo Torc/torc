@@ -225,7 +225,7 @@ OMX_HANDLETYPE TorcOMXComponent::GetHandle(void)
     return m_handle;
 }
 
-OMX_ERRORTYPE TorcOMXComponent::SetState(OMX_STATETYPE State)
+OMX_ERRORTYPE TorcOMXComponent::SetState(OMX_STATETYPE State, bool Wait/*=true*/)
 {
     if (!m_valid)
         return OMX_ErrorUndefined;
@@ -239,7 +239,8 @@ OMX_ERRORTYPE TorcOMXComponent::SetState(OMX_STATETYPE State)
     }
     else if (OMX_ErrorNone == error)
     {
-        error = WaitForResponse(OMX_CommandStateSet, State, 1000);
+        if (wait)
+            error = WaitForResponse(OMX_CommandStateSet, State, 1000);
         if (OMX_ErrorSameState == error || OMX_ErrorNone == error)
         {
             LOG(VB_GENERAL, LOG_INFO, QString("%1: Set state to %2").arg(m_componentName).arg(StateToString(State)));
