@@ -39,7 +39,7 @@ extern "C" {
 
 static PixelFormat GetFormatDefault(AVCodecContext *Context, const PixelFormat *Formats);
 
-static inline double GetFrameAspectRatio(AVStream *Stream, AVFrame &Frame)
+double VideoDecoder::GetFrameAspectRatio(AVStream *Stream, AVFrame &Frame)
 {
     qreal result = 0.0f;
 
@@ -64,7 +64,7 @@ static inline double GetFrameAspectRatio(AVStream *Stream, AVFrame &Frame)
     return result;
 }
 
-static inline double GetPixelAspectRatio(AVStream *Stream, AVFrame &Frame)
+double VideoDecoder::GetPixelAspectRatio(AVStream *Stream, AVFrame &Frame)
 {
     if (Frame.sample_aspect_ratio.num)
         return av_q2d(Frame.sample_aspect_ratio);
@@ -75,7 +75,7 @@ static inline double GetPixelAspectRatio(AVStream *Stream, AVFrame &Frame)
     return 1.0f;
 }
 
-static inline double GetFrameRate(AVFormatContext *Context, AVStream *Stream)
+double VideoDecoder::GetFrameRate(AVFormatContext *Context, AVStream *Stream)
 {
     if (!Stream)
         return 30000.0f / 1001.0f;

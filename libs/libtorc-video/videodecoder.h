@@ -19,6 +19,11 @@ class VideoDecoder : public AudioDecoder
     friend class VideoDecoderFactory;
 
   public:
+    static double  GetFrameAspectRatio (AVStream *Stream, AVFrame &Frame);
+    static double  GetPixelAspectRatio (AVStream *Stream, AVFrame &Frame);
+    static double  GetFrameRate        (AVFormatContext *Context, AVStream *Stream);
+
+  public:
     ~VideoDecoder();
     PixelFormat  AgreePixelFormat    (AVCodecContext *Context, const PixelFormat *Formats);
     int          GetAVBuffer         (AVCodecContext *Context, AVFrame* Frame);
