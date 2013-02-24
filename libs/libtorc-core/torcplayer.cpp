@@ -34,7 +34,7 @@
 #include "torcdecoder.h"
 #include "torcplayer.h"
 
-#define DECODER_START_TIMEOUT 10000
+#define DECODER_START_TIMEOUT 20000
 #define DECODER_STOP_TIMEOUT  3000
 #define DECODER_PAUSE_TIMEOUT 1000
 
