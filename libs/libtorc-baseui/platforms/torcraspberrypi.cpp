@@ -58,7 +58,9 @@ bool InitialiseRaspberryPi(void)
             if (vc_vchi_tv_init(instance, &connections, 1) == VCHIQ_SUCCESS)
             {
                 valid = true;
-                LOG(VB_GENERAL, LOG_INFO, "Initialised RaspberryPi hardware");
+                char version[128];
+                vc_gencmd(version, sizeof(version), "version");
+                LOG(VB_GENERAL, LOG_INFO, QString("Initialised RaspberryPi, firmware version: %1").arg(version));
             }
             else
             {
