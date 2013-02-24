@@ -86,6 +86,14 @@ OMX_ERRORTYPE TorcOMXPort::EnablePort(bool Enable)
     return OMX_ErrorNone;
 }
 
+OMX_U32 TorcOMXPort::GetAvailableBuffers(void)
+{
+    m_lock->lock();
+    OMX_U32 result = m_availableBuffers.size();
+    m_lock->unlock();
+    return result;
+}
+
 OMX_ERRORTYPE TorcOMXPort::CreateBuffers(void)
 {
     if (!m_handle)

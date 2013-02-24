@@ -334,6 +334,15 @@ OMX_ERRORTYPE TorcOMXComponent::EnablePort(OMX_DIRTYPE Direction, OMX_U32 Index,
     return OMX_ErrorUndefined;
 }
 
+OMX_U32 TorcOMXComponent::GetAvailableBuffers(OMX_DIRTYPE Direction, OMX_U32 Index, OMX_INDEXTYPE Domain)
+{
+    TorcOMXPort* port = FindPort(Direction, Index, Domain);
+    if (port)
+        return port->GetAvailableBuffers();
+
+    return 0;
+}
+
 OMX_ERRORTYPE TorcOMXComponent::EmptyThisBuffer(OMX_BUFFERHEADERTYPE *Buffer)
 {
     if (!m_valid || !Buffer)
