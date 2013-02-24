@@ -5,6 +5,10 @@
 #include <QLibrary>
 
 // OpenMaxIL
+#ifndef OMX_SKIP64BIT
+#define OMX_SKIP64BIT
+#endif
+
 #include "IL/OMX_Types.h"
 #include "IL/OMX_Core.h"
 
