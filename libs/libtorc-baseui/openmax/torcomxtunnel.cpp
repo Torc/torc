@@ -79,28 +79,12 @@ OMX_ERRORTYPE TorcOMXTunnel::Create(void)
 
     QMutexLocker locker(m_lock);
     m_connected = false;
+    QString description = QString("Failed to create tunnel: %1:%2->%3:%4").arg(m_source->GetName()).arg(m_sourcePort).arg(m_destination->GetName()).arg(m_destinationPort);
 
-    if (m_source->GetState() == OMX_StateLoaded)
-    {
-        OMX_CHECK(m_source->SetState(OMX_StateIdle), m_source->GetName(), "Tunnel failed to set source state");
-    }
+    OMX_CHECK(m_core->m_omxSetupTunnel(m_source->GetHandle(), m_sourcePort, m_destination->GetHandle(), m_destinationPort), "", description);
 
-    m_source->EnablePort(OMX_DirOutput, m_sourceIndex, false, m_sourceDomain);
-    m_destination->EnablePort(OMX_DirInput, m_destinationIndex, false, m_destinationDomain);
+    LOG(VB_GENERAL, LOG_INFO, QString("Created tunnel: %1").arg(description));
 
-    OMX_CHECK(m_core->m_omxSetupTunnel(m_source->GetHandle(), m_sourcePort, m_destination->GetHandle(), m_destinationPort), "",
-              QString("Failed to create tunnel: %1:%2->%3:%4").arg(m_source->GetName()).arg(m_sourcePort).arg(m_destination->GetName()).arg(m_destinationPort));
-
-    m_source->EnablePort(OMX_DirOutput, m_sourceIndex, true, m_sourceDomain);
-    m_destination->EnablePort(OMX_DirInput, m_destinationIndex, true, m_destinationDomain);
-
-    if (m_destination->GetState() == OMX_StateLoaded)
-    {
-        OMX_CHECK(m_destination->SetState(OMX_StateIdle), m_destination->GetName(), "Tunnel failed to set destination state");
-    }
-
-    LOG(VB_GENERAL, LOG_INFO, QString("Created tunnel: %1:%2->%3:%4")
-        .arg(m_source->GetName()).arg(m_sourcePort).arg(m_destination->GetName()).arg(m_destinationPort));
     m_connected = true;
     return OMX_ErrorNone;
 }
