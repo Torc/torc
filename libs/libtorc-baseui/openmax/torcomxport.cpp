@@ -99,44 +99,38 @@ OMX_ERRORTYPE TorcOMXPort::CreateBuffers(void)
     if (!m_handle)
         return OMX_ErrorUndefined;
 
-    OMX_ERRORTYPE error = EnablePort(true);
-    if (OMX_ErrorNone != error)
-        return error;
+    QMutexLocker locker(m_lock);
 
+    OMX_PARAM_PORTDEFINITIONTYPE portdefinition;
+    OMX_INITSTRUCTURE(portdefinition);
+    portdefinition.nPortIndex = m_port;
+
+    OMX_ERRORTYPE error = OMX_GetParameter(m_handle, OMX_IndexParamPortDefinition, &portdefinition);
+    OMX_CHECK(error, m_parent->GetName(), "Failed to get port definition");
+
+    m_alignment = portdefinition.nBufferAlignment;
+
+    for (OMX_U32 i = 0; i < portdefinition.nBufferCountActual; ++i)
     {
-        QMutexLocker locker(m_lock);
-
-        OMX_PARAM_PORTDEFINITIONTYPE portdefinition;
-        OMX_INITSTRUCTURE(portdefinition);
-        portdefinition.nPortIndex = m_port;
-
-        error = OMX_GetParameter(m_handle, OMX_IndexParamPortDefinition, &portdefinition);
-        OMX_CHECK(error, m_parent->GetName(), "Failed to get port definition");
-
-        m_alignment = portdefinition.nBufferAlignment;
-
-        for (OMX_U32 i = 0; i < portdefinition.nBufferCountActual; ++i)
+        OMX_BUFFERHEADERTYPE *buffer = NULL;
+        error = OMX_AllocateBuffer(m_handle, &buffer, m_port, NULL, portdefinition.nBufferSize);
+        if (OMX_ErrorNone != error)
         {
-            OMX_BUFFERHEADERTYPE *buffer = NULL;
-            error = OMX_AllocateBuffer(m_handle, &buffer, m_port, NULL, portdefinition.nBufferSize);
-            if (OMX_ErrorNone != error)
-            {
-                OMX_ERROR(error, m_parent->GetName(), "Failed to allocate buffer");
-                return error;
-            }
-
-            buffer->pAppPrivate     = (void*)this;
-            buffer->nFilledLen      = 0;
-            buffer->nOffset         = 0;
-            buffer->nInputPortIndex = m_port;
-
-            m_buffers.append(buffer);
-            m_availableBuffers.enqueue(buffer);
+            OMX_ERROR(error, m_parent->GetName(), "Failed to allocate buffer");
+            return error;
         }
 
-        LOG(VB_GENERAL, LOG_INFO, QString("%1: Created %2 %3byte buffers")
-            .arg(m_parent->GetName()).arg(portdefinition.nBufferCountActual).arg(portdefinition.nBufferSize));
+        buffer->pAppPrivate     = (void*)this;
+        buffer->nFilledLen      = 0;
+        buffer->nOffset         = 0;
+        buffer->nInputPortIndex = m_port;
+
+        m_buffers.append(buffer);
+        m_availableBuffers.enqueue(buffer);
     }
+
+    LOG(VB_GENERAL, LOG_INFO, QString("%1: Created %2 %3byte buffers")
+        .arg(m_parent->GetName()).arg(portdefinition.nBufferCountActual).arg(portdefinition.nBufferSize));
 
     return OMX_ErrorNone;
 }
