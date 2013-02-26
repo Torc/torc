@@ -6,7 +6,7 @@
 #define CHANNELS_MAX 8
 
 AudioOutputNULL::AudioOutputNULL(const AudioSettings &Settings)
-  : AudioOutputBase(Settings),
+  : AudioOutput(Settings),
     m_pcmBufferLock(QMutex::NonRecursive),
     m_currentBufferSize(0)
 {
@@ -102,7 +102,7 @@ void AudioOutputNULL::Reset(void)
         m_pcmBufferLock.unlock();
     }
 
-    AudioOutputBase::Reset();
+    AudioOutput::Reset();
 }
 
 int AudioOutputNULL::GetVolumeChannel(int Channel) const

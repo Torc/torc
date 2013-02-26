@@ -909,7 +909,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                     {
                         // for passthrough of codecs for which the decoder won't downmix
                         // let the decoder set the number of channels. For other codecs
-                        // we downmix if necessary in audiooutputbase
+                        // we downmix if necessary in AudioOutput
                         context->request_channels = 0;
                     }
                     else // No passthru, the decoder will downmix

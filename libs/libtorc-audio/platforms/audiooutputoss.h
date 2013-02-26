@@ -2,9 +2,9 @@
 #define AUDIOOUTPUTOSS_H
 
 // Torc
-#include "audiooutputbase.h"
+#include "audiooutput.h"
 
-class AudioOutputOSS : public AudioOutputBase
+class AudioOutputOSS : public AudioOutput
 {
   public:
     AudioOutputOSS(const AudioSettings &settings);

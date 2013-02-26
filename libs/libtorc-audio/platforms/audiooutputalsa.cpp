@@ -23,7 +23,7 @@
 #define CHECKERR(str) { if (err < 0) { AERROR(str); return err; } }
 
 AudioOutputALSA::AudioOutputALSA(const AudioSettings &Settings) :
-    AudioOutputBase(Settings),
+    AudioOutput(Settings),
     m_pcmHandle(NULL),
     m_preallocBufferSize(-1),
     m_card(-1),

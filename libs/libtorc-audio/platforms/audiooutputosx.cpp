@@ -1248,7 +1248,7 @@ class AudioOutputOSXPriv
  */
 
 AudioOutputOSX::AudioOutputOSX(const AudioSettings &Settings)
-  : AudioOutputBase(Settings),
+  : AudioOutput(Settings),
     m_bufferedBytes(0)
 {
     m_mainDevice.remove(0, 10);
@@ -1438,7 +1438,7 @@ int64_t AudioOutputOSX::GetAudiotime(void)
     if (!audbuf_timecode)
         return 0;
 
-    int totalbuffer = audioready() + GetBufferedOnSoundcard();
+    int totalbuffer = AudioReady() + GetBufferedOnSoundcard();
     return audbuf_timecode - (int)(totalbuffer * 100000.0 / (m_outputBytesPerFrame * m_effectiveDSPRate * m_stretchFactor));
 }
 

@@ -100,7 +100,7 @@ class AudioOutputWinPrivate
 };
 
 AudioOutputWin::AudioOutputWin(const AudioSettings &Settings) :
-    AudioOutputBase(Settings),
+    AudioOutput(Settings),
     m_priv(new AudioOutputWinPrivate()),
     m_packetCount(0),
     m_currentPacket(0),

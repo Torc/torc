@@ -331,7 +331,7 @@ class AudioOutputDXPrivate
 
 
 AudioOutputDX::AudioOutputDX(const AudioSettings &Settings)
-  : AudioOutputBase(Settings),
+  : AudioOutput(Settings),
     m_priv(new AudioOutputDXPrivate(this)),
     m_useSPDIF(Settings.m_usePassthrough)
 {

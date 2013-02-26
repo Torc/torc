@@ -18,7 +18,7 @@
 #include <fcntl.h>
 
 AudioOutputOSS::AudioOutputOSS(const AudioSettings &Settings)
-  : AudioOutputBase(Settings),
+  : AudioOutput(Settings),
     m_audioFd(-1),
     m_mixerFd(-1),
     m_control(SOUND_MIXER_VOLUME)

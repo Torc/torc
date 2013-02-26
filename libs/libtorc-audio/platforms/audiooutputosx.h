@@ -2,14 +2,14 @@
 #define AUDIOOUTPUTOSX_H
 
 // Torc
-#include "audiooutputbase.h"
+#include "audiooutput.h"
 
 #undef  AUDBUFSIZE
 #define AUDBUFSIZE 512000
 
 class AudioOutputOSXPriv;
 
-class AudioOutputOSX : public AudioOutputBase
+class AudioOutputOSX : public AudioOutput
 {
     friend class AudioOutputOSXPriv;
 

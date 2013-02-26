@@ -2,11 +2,11 @@
 #define AUDIOOUTPUTWIN_H
 
 // Torc
-#include "audiooutputbase.h"
+#include "audiooutput.h"
 
 class AudioOutputWinPrivate;
 
-class AudioOutputWin : public AudioOutputBase
+class AudioOutputWin : public AudioOutput
 {
     friend class AudioOutputWinPrivate;
 

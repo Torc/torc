@@ -2,11 +2,11 @@
 #define AUDIOOUTPUTNULL_H
 
 // Torc
-#include "audiooutputbase.h"
+#include "audiooutput.h"
 
 #define NULL_BUFFER_SIZE 32768
 
-class AudioOutputNULL : public AudioOutputBase
+class AudioOutputNULL : public AudioOutput
 {
   public:
     AudioOutputNULL(const AudioSettings &Settings);
