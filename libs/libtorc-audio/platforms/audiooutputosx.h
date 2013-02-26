@@ -17,8 +17,6 @@ class AudioOutputOSX : public AudioOutputBase
     AudioOutputOSX(const AudioSettings &Settings);
     virtual ~AudioOutputOSX();
 
-    static QMap<QString, QString> GetDevices   (const char *Type = NULL);
-
     AudioOutputSettings* GetOutputSettings      (bool Digital);
     int64_t              GetAudiotime           (void);
     bool                 RenderAudio            (unsigned char *Buffer, int Size, unsigned long long Timestamp);

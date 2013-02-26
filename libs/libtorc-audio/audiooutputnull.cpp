@@ -123,3 +123,29 @@ int AudioOutputNULL::GetBufferedOnSoundcard(void) const
         return m_currentBufferSize;
     return 0;
 }
+
+class AudioFactoryNULL : public AudioFactory
+{
+    void Score(const AudioSettings &Settings, int &Score)
+    {
+        bool match = Settings.m_mainDevice.startsWith("null", Qt::CaseInsensitive);
+        int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOWEST;
+        if (Score <= score)
+            Score = score;
+    }
+
+    AudioOutput* Create(const AudioSettings &Settings, int &Score)
+    {
+        bool match = Settings.m_mainDevice.startsWith("null", Qt::CaseInsensitive);
+        int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOWEST;
+        if (Score <= score)
+            return new AudioOutputNULL(Settings);
+        return NULL;
+    }
+
+    void GetDevices(QList<AudioDeviceConfig> &DeviceList)
+    {
+        AudioDeviceConfig config(QString("NULL"), QString("Null device"));
+        DeviceList.append(config);
+    }
+} AudioFactoryNULL;

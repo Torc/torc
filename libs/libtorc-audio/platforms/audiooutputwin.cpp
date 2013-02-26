@@ -304,3 +304,33 @@ void AudioOutputWin::SetVolumeChannel(int Channel, int Volume)
 
     waveOutSetVolume((HWAVEOUT)WAVE_MAPPER, winvolume);
 }
+
+class AudioFactoryWin : public AudioFactory
+{
+    void Score(const AudioSettings &Settings, int &Score)
+    {
+        bool match = Settings.m_mainDevice.startsWith("windows", Qt::CaseInsensitive);
+        int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOW;
+        if (Score <= score)
+            Score = score;
+    }
+
+    AudioOutput* Create(const AudioSettings &Settings, int &Score)
+    {
+        bool match = Settings.m_mainDevice.startsWith("windows", Qt::CaseInsensitive);
+        int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOW;
+        if (Score <= score)
+            return new AudioOutputWin(Settings);
+        return NULL;
+    }
+
+    void GetDevices(QList<AudioDeviceConfig> &DeviceList)
+    {
+        AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(QString("Windows:Default"), QString("Default windows device"));
+        if (config)
+        {
+            DeviceList.append(*config);
+            delete config;
+        }
+    }
+} AudioFactoryWin;

@@ -587,11 +587,42 @@ void AudioOutputDX::SetVolumeChannel(int Channel, int Volume)
     LOG(VB_AUDIO, LOG_INFO, QString("Set volume %1").arg(dxVolume));
 }
 
-QMap<int, QString> *AudioOutputDX::GetDXDevices(void)
+class AudioFactoryDX : public AudioFactory
 {
-    AudioOutputDXPrivate *tmp_priv = new AudioOutputDXPrivate(NULL);
-    tmp_priv->InitDirectSound(false);
-    QMap<int, QString> *dxdevs = new QMap<int, QString>(tmp_priv->m_deviceList);
-    delete tmp_priv;
-    return dxdevs;
-}
+    void Score(const AudioSettings &Settings, int &Score)
+    {
+        bool match = Settings.m_mainDevice.startsWith("directx", Qt::CaseInsensitive);
+        int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_MEDIUM;
+        if (Score <= score)
+            Score = score;
+    }
+
+    AudioOutput* Create(const AudioSettings &Settings, int &Score)
+    {
+        bool match = Settings.m_mainDevice.startsWith("directx", Qt::CaseInsensitive);
+        int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_MEDIUM;
+        if (Score <= score)
+            return new AudioOutputDX(Settings);
+        return NULL;
+    }
+
+    void GetDevices(QList<AudioDeviceConfig> &DeviceList)
+    {
+        AudioOutputDXPrivate *priv = new AudioOutputDXPrivate(NULL);
+        priv->InitDirectSound(false);
+        QMap<int, QString> devices(tmp_priv->m_deviceList);
+        delete tmp_priv;
+
+        QMap<int, QString>::iterator it = devices.begin();
+        for ( ; it != devices.end(); ++it)
+        {
+            AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(QString("DirectX:%1").arg(it.value()), QString());
+            if (config)
+            {
+                DeviceList.append(*config);
+                delete config;
+            }
+        }
+    }
+} AudioFactoryDX;
+

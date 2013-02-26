@@ -16,7 +16,6 @@ class AudioOutputDX : public AudioOutputBase
 
     int                        GetVolumeChannel       (int Channel) const;
     void                       SetVolumeChannel       (int Channel, int Volume);
-    static QMap<int, QString> *GetDXDevices           (void);
 
   protected:
     bool                       OpenDevice             (void);

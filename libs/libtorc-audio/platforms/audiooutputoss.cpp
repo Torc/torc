@@ -362,3 +362,52 @@ void AudioOutputOSS::SetVolumeChannel(int channel, int volume)
     }
 }
 
+static void FillSelectionFromDir(const QDir &dir, QList<AudioDeviceConfig> &DeviceList)
+{
+    QFileInfoList il = dir.entryInfoList();
+    for (QFileInfoList::Iterator it = il.begin(); it != il.end(); ++it )
+    {
+        QString name = (*it).absoluteFilePath();
+        AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(name, QObject::tr("OSS device"));
+        if (!config)
+            continue;
+
+        DeviceList.append(*config);
+        delete config;
+    }
+}
+
+class AudioFactoryOSS : public AudioFactory
+{
+    void Score(const AudioSettings &Settings, int &Score)
+    {
+        if (Score <= AUDIO_PRIORITY_LOW)
+            Score = AUDIO_PRIORITY_LOW;
+    }
+
+    AudioOutput* Create(const AudioSettings &Settings, int &Score)
+    {
+        if (Score <= AUDIO_PRIORITY_LOW)
+            return new AudioOutputOSS(Settings);
+        return NULL;
+    }
+
+    void GetDevices(QList<AudioDeviceConfig> &DeviceList)
+    {
+        QDir dev("/dev", "dsp*", QDir::Name, QDir::System);
+        FillSelectionFromDir(dev, &DeviceList);
+        dev.setNameFilters(QStringList("adsp*"));
+        FillSelectionFromDir(dev, &DeviceList);
+
+        dev.setPath("/dev/sound");
+        if (dev.exists())
+        {
+            dev.setNameFilters(QStringList("dsp*"));
+            FillSelectionFromDir(dev, &DeviceList);
+            dev.setNameFilters(QStringList("adsp*"));
+            FillSelectionFromDir(dev, &DeviceList);
+        }
+    }
+} AudioFactoryOSS;
+
+

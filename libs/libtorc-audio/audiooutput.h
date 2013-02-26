@@ -28,29 +28,12 @@ class TORC_AUDIO_PUBLIC AudioDeviceConfig
 class TORC_AUDIO_PUBLIC AudioOutput : public AudioVolume, public AudioOutputListeners
 {
   public:
-    static void                     Cleanup              (void);
-    static QList<AudioDeviceConfig> GetOutputList        (void);
-    static AudioDeviceConfig*       GetAudioDeviceConfig (QString &Name,
-                                                          QString &Description,
-                                                          bool WillSuspendPulse = false);
+    static QList<AudioDeviceConfig>  GetOutputList        (void);
+    static AudioDeviceConfig*        GetAudioDeviceConfig (const QString &Name, const QString &Description);
+    static AudioOutput*              OpenAudio            (const QString &Name);
+    static AudioOutput*              OpenAudio            (const AudioSettings &Settings);
 
-    static AudioOutput *OpenAudio        (const QString &MainDevice,
-                                          const QString &PassthroughDevice,
-                                          AudioFormat Format,
-                                          int Channels,
-                                          int Codec,
-                                          int Samplerate,
-                                          AudioOutputSource Source,
-                                          bool SetInitialVolume,
-                                          bool Passthrough,
-                                          int UpmixerStartup = 0,
-                                          AudioOutputSettings *Custom = NULL);
-    static AudioOutput *OpenAudio        (AudioSettings &Settings, bool WillSuspendPulse = true);
-    static AudioOutput *OpenAudio        (const QString &MainDevice,
-                                          const QString &PassthroughDevice = QString(),
-                                          bool WillSuspendPulse = true);
-
-    AudioOutput();
+  public:
     virtual ~AudioOutput();
 
     virtual void   Reconfigure           (const AudioSettings &Settings) = 0;
@@ -89,12 +72,35 @@ class TORC_AUDIO_PUBLIC AudioOutput : public AudioVolume, public AudioOutputList
     virtual bool    ToggleUpmix          (void) = 0;
     virtual bool    CanUpmix             (void) = 0;
     static bool     IsPulseAudioRunning  (void);
-    bool            PulseStatus          (void);
     bool            IsErrored            (void);
 
   protected:
-    bool            m_pulseWasSuspended;
+    AudioOutput();
+
+  protected:
     bool            m_configError;
+};
+
+#define AUDIO_PRIORITY_LOWEST 10
+#define AUDIO_PRIORITY_LOW    20
+#define AUDIO_PRIORITY_MEDIUM 30
+#define AUDIO_PRIORITY_HIGH   40
+#define AUDIO_PRIORITY_MATCH  100
+
+class TORC_AUDIO_PUBLIC AudioFactory
+{
+  public:
+    AudioFactory();
+    virtual ~AudioFactory();
+    static AudioFactory*   GetAudioFactory  (void);
+    AudioFactory*          NextFactory      (void) const;
+    virtual void           Score            (const AudioSettings &Settings, int &Score) = 0;
+    virtual AudioOutput*   Create           (const AudioSettings &Settings, int &Score) = 0;
+    virtual void           GetDevices       (QList<AudioDeviceConfig> &DeviceList) = 0;
+
+  protected:
+    static AudioFactory* gAudioFactory;
+    AudioFactory*        nextAudioFactory;
 };
 
 #endif

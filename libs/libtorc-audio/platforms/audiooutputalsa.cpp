@@ -1048,3 +1048,38 @@ QMap<QString, QString> AudioOutputALSA::GetDevices(const char* Type)
 #endif
     return alsadevs;
 }
+
+class AudioFactoryALSA : public AudioFactory
+{
+    void Score(const AudioSettings &Settings, int &Score)
+    {
+        bool match = Settings.m_mainDevice.startsWith("alsa", Qt::CaseInsensitive);
+        int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_MEDIUM;
+        if (Score <= score)
+            Score = score;
+    }
+
+    AudioOutput* Create(const AudioSettings &Settings, int &Score)
+    {
+        bool match = Settings.m_mainDevice.startsWith("alsa", Qt::CaseInsensitive);
+        int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_MEDIUM;
+        if (Score <= score)
+            return new AudioOutputALSA(Settings);
+        return NULL;
+    }
+
+    void GetDevices(QList<AudioDeviceConfig> &DeviceList)
+    {
+        QMap<QString, QString> devices = AudioOutputALSA::GetDevices("pcm");
+        for (QMap<QString, QString>::const_iterator it = devices.begin(); it != devices.end(); ++it)
+        {
+            AudioDeviceConfig* config = AudioOutput::GetAudioDeviceConfig(QString("ALSA:%1").arg(it.key()), it.value());
+            if (config)
+            {
+                DeviceList.append(*config);
+                delete config;
+            }
+        }
+    }
+} AudioFactoryALSA;
+

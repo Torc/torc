@@ -18,23 +18,6 @@
 #include "audiooutputnull.h"
 #include "audiooutput.h"
 
-#ifdef Q_OS_WIN
-#include "audiooutputdx.h"
-#include "audiooutputwin.h"
-#endif
-#if CONFIG_OSS_OUTDEV
-#include "audiooutputoss.h"
-#endif
-#if CONFIG_ALSA_OUTDEV
-#include "audiooutputalsa.h"
-#endif
-#ifdef Q_OS_MAC
-#include "audiooutputosx.h"
-#endif
-#if CONFIG_LIBPULSE
-#include "audiopulsehandler.h"
-#endif
-
 AudioDeviceConfig::AudioDeviceConfig()
   : m_settings(AudioOutputSettings(true))
 {
@@ -47,185 +30,55 @@ AudioDeviceConfig::AudioDeviceConfig(const QString &Name, const QString &Descrip
 {
 }
 
-void AudioOutput::Cleanup(void)
+AudioOutput* AudioOutput::OpenAudio(const QString &Name)
 {
-#if CONFIG_LIBPULSE
-    PulseHandler::Suspend(PulseHandler::kPulseCleanup);
-#endif
-}
-
-AudioOutput *AudioOutput::OpenAudio(const QString &MainDevice,
-                                    const QString &PassthroughDevice,
-                                    AudioFormat Format,
-                                    int Channels,
-                                    int Codec,
-                                    int Samplerate,
-                                    AudioOutputSource Source,
-                                    bool SetInitialVolume,
-                                    bool Passthrough,
-                                    int UpmixerStartup,
-                                    AudioOutputSettings *Custom)
-{
-    AudioSettings settings(MainDevice, PassthroughDevice, Format, Channels, Codec, Samplerate,
-                           Source, SetInitialVolume, Passthrough, UpmixerStartup, Custom);
+    AudioSettings settings(Name);
     return OpenAudio(settings);
 }
 
-AudioOutput *AudioOutput::OpenAudio(const QString &MainDevice,
-                                    const QString &PassthroughDevice,
-                                    bool WillSuspendPulse)
+AudioOutput *AudioOutput::OpenAudio(const AudioSettings &Settings)
 {
-    AudioSettings settings(MainDevice, PassthroughDevice);
-    return OpenAudio(settings, WillSuspendPulse);
+    AudioOutput *output = NULL;
+
+    int score = 0;
+    AudioFactory* factory = AudioFactory::GetAudioFactory();
+    for ( ; factory; factory = factory->NextFactory())
+        (void)factory->Score(Settings, score);
+
+    factory = AudioFactory::GetAudioFactory();
+    for ( ; factory; factory = factory->NextFactory())
+    {
+        output = factory->Create(Settings, score);
+        if (output)
+            break;
+    }
+
+    if (!output)
+        LOG(VB_GENERAL, LOG_ERR, "Failed to create audio output");
+
+    return output;
 }
 
-AudioOutput *AudioOutput::OpenAudio(AudioSettings &Settings,
-                                    bool WillSuspendPulse)
+QList<AudioDeviceConfig> AudioOutput::GetOutputList(void)
 {
-    QString &device = Settings.m_mainDevice;
-    AudioOutput *ret = NULL;
+    QList<AudioDeviceConfig> list;
 
-#if CONFIG_LIBPULSE
-    bool pulsestatus = false;
-#else
-    {
-        static bool warned = false;
-        if (!warned && IsPulseAudioRunning())
-        {
-            warned = true;
-            LOG(VB_GENERAL, LOG_WARNING,
-                "WARNING: ***Pulse Audio is running***");
-        }
-    }
-#endif
+    AudioFactory* factory = AudioFactory::GetAudioFactory();
+    for ( ; factory; factory = factory->NextFactory())
+        factory->GetDevices(list);
 
-    // try and set meaningful defaults for unconfigured systems
-    Settings.FixPassThrough();
-
-#if CONFIG_ALSA_OUTDEV
-    if (Settings.m_mainDevice.isEmpty())
-        Settings.m_mainDevice = QString("ALSA:default");
-#endif
-
-    // start looking for concrete subclasses
-    if (device.startsWith("PulseAudio:"))
-    {
-#if CONFIG_LIBPULSE_DISABLED_DELIBERATELY
-        return new AudioOutputPulseAudio(Settings);
-#else
-        LOG(VB_GENERAL, LOG_ERR, "Audio output device is set to PulseAudio "
-                                 "but PulseAudio support is not compiled in!");
-        return NULL;
-#endif
-    }
-    else if (device.startsWith("NULL"))
-    {
-        return new AudioOutputNULL(Settings);
-    }
-
-#if CONFIG_LIBPULSE
-    if (WillSuspendPulse)
-    {
-        bool ispulse = false;
-#if CONFIG_ALSA_OUTDEV
-        // Check if using ALSA, that the device doesn't contain the word
-        // "pulse" in its hint
-        if (device.startsWith("ALSA:"))
-        {
-            QString device_name = device;
-
-            device_name.remove(0, 5);
-            QMap<QString, QString> alsadevs = AudioOutputALSA::GetDevices("pcm");
-            if (!alsadevs.empty() && alsadevs.contains(device_name))
-            {
-                if (alsadevs.value(device_name).contains("pulse",
-                                                          Qt::CaseInsensitive))
-                {
-                    ispulse = true;
-                }
-            }
-        }
-#endif
-        if (device.contains("pulse", Qt::CaseInsensitive))
-        {
-            ispulse = true;
-        }
-
-        if (!ispulse)
-        {
-            pulsestatus = PulseHandler::Suspend(PulseHandler::kPulseSuspend);
-        }
-    }
-#endif
-
-    if (device.startsWith("ALSA:"))
-    {
-#if CONFIG_ALSA_OUTDEV
-        Settings.TrimDeviceType();
-        ret = new AudioOutputALSA(Settings);
-#else
-        LOG(VB_GENERAL, LOG_ERR, "Audio output device is set to an ALSA device "
-                                 "but ALSA support is not compiled in!");
-#endif
-    }
-    else if (device.startsWith("DirectX:"))
-    {
-#ifdef USING_MINGW
-        ret = new AudioOutputDX(Settings);
-#else
-        LOG(VB_GENERAL, LOG_ERR, "Audio output device is set to DirectX device "
-                                 "but DirectX support is not compiled in!");
-#endif
-    }
-    else if (device.startsWith("Windows:"))
-    {
-#ifdef USING_MINGW
-        ret = new AudioOutputWin(Settings);
-#else
-        LOG(VB_GENERAL, LOG_ERR, "Audio output device is set to a Windows "
-                                 "device but Windows support is not compiled "
-                                 "in!");
-#endif
-    }
-#if CONFIG_OSS_OUTDEV
-    else
-        ret = new AudioOutputOSS(Settings);
-#elif defined(Q_OS_MAC)
-    else
-        ret = new AudioOutputOSX(Settings);
-#endif
-
-    if (!ret)
-    {
-        LOG(VB_GENERAL, LOG_CRIT, "No useable audio output driver found.");
-        LOG(VB_GENERAL, LOG_ERR, "Don't disable OSS support unless you're "
-                                 "not running on Linux.");
-#if CONFIG_LIBPULSE
-        if (pulsestatus)
-            PulseHandler::Suspend(PulseHandler::kPulseResume);
-#endif
-        return NULL;
-    }
-#if CONFIG_LIBPULSE
-    ret->m_pulseWasSuspended = pulsestatus;
-#endif
-    return ret;
+    return list;
 }
 
 AudioOutput::AudioOutput()
   : AudioVolume(),
     AudioOutputListeners(),
-    m_pulseWasSuspended(false),
     m_configError(false)
 {
 }
 
 AudioOutput::~AudioOutput()
 {
-#if CONFIG_LIBPULSE
-    if (m_pulseWasSuspended)
-        PulseHandler::Suspend(PulseHandler::kPulseResume);
-#endif
 }
 
 void AudioOutput::SetStretchFactor(float Factor)
@@ -334,49 +187,30 @@ bool AudioOutput::IsPulseAudioRunning(void)
     return false;
 }
 
-bool AudioOutput::PulseStatus(void)
-{
-    return m_pulseWasSuspended;
-}
-
 bool AudioOutput::IsErrored(void)
 {
     return m_configError;
 }
 
-AudioDeviceConfig* AudioOutput::GetAudioDeviceConfig(QString &Name, QString &Description, bool WillSuspendPulse)
+AudioDeviceConfig* AudioOutput::GetAudioDeviceConfig(const QString &Name, const QString &Description)
 {
-    AudioOutputSettings aosettings;
-    AudioDeviceConfig *adc;
+    AudioOutput *audio = OpenAudio(Name);
+    AudioOutputSettings settings = *(audio->GetOutputSettingsCleaned());
+    delete audio;
 
-    AudioOutput *ao = OpenAudio(Name, QString(), WillSuspendPulse);
-    aosettings = *(ao->GetOutputSettingsCleaned());
-    delete ao;
-
-    if (aosettings.IsInvalid())
+    if (settings.IsInvalid())
     {
-        if (!WillSuspendPulse)
-        {
-            return NULL;
-        }
-        else
-        {
-            QString msg = QObject::tr("Invalid or unuseable audio device");
-            return new AudioDeviceConfig(Name, msg);
-        }
+        QString msg = QObject::tr("Invalid or unuseable audio device");
+         return new AudioDeviceConfig(Name, msg);
     }
 
     QString capabilities = Description;
 
-    if (aosettings.HasELD())
-    {
-        capabilities += QObject::tr(" (%1 connected to %2)")
-            .arg(aosettings.GetELD().GetProductName())
-            .arg(aosettings.GetELD().GetConnectionName());
-    }
+    if (settings.HasELD())
+        capabilities += QObject::tr(" (%1 connected to %2)").arg(settings.GetELD().GetProductName()).arg(settings.GetELD().GetConnectionName());
 
     QString speakers;
-    int maxchannels = aosettings.BestSupportedChannelsELD();
+    int maxchannels = settings.BestSupportedChannelsELD();
     switch (maxchannels)
     {
         case 6:
@@ -392,18 +226,15 @@ AudioDeviceConfig* AudioOutput::GetAudioDeviceConfig(QString &Name, QString &Des
 
     capabilities += QObject::tr(" Supports up to %1").arg(speakers);
 
-    if (aosettings.CanPassthrough() >= 0)
+    if (settings.CanPassthrough() != PassthroughNo)
     {
-        if (aosettings.HasELD())
+        if (settings.HasELD())
         {
-            capabilities += " (" + aosettings.GetELD().GetCodecsDescription() + ")";
+            capabilities += " (" + settings.GetELD().GetCodecsDescription() + ")";
         }
-        else 
+        else
         {
-            int mask = (aosettings.CanLPCM() << 0) |
-                       (aosettings.CanAC3()  << 1) |
-                       (aosettings.CanDTS()  << 2);
-
+            int mask = (settings.CanLPCM() << 0) | (settings.CanAC3()  << 1) |(settings.CanDTS()  << 2);
             static const QString names[3] = { QObject::tr("LPCM"), QObject::tr("AC3"), QObject::tr("DTS") };
 
             if (mask != 0)
@@ -424,163 +255,31 @@ AudioDeviceConfig* AudioOutput::GetAudioDeviceConfig(QString &Name, QString &Des
             }
         }
     }
-    LOG(VB_AUDIO, LOG_INFO, QString("Found %1 (%2)")
-                                .arg(Name).arg(capabilities));
-    adc = new AudioDeviceConfig(Name, capabilities);
-    adc->m_settings = aosettings;
-    return adc;
+
+    LOG(VB_AUDIO, LOG_INFO, QString("Found %1 (%2)").arg(Name).arg(capabilities));
+    AudioDeviceConfig* config = new AudioDeviceConfig(Name, capabilities);
+    config->m_settings = settings;
+    return config;
 }
 
-#if CONFIG_OSS_OUTDEV
-static void FillSelectionFromDir(const QDir &dir, QList<AudioDeviceConfig> *List)
-{
-    QFileInfoList il = dir.entryInfoList();
-    for (QFileInfoList::Iterator it = il.begin(); it != il.end(); ++it )
-    {
-        QString name = (*it).absoluteFilePath();
-        QString desc = QObject::tr("OSS device");
-        AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(name, desc);
-        if (!config)
-            continue;
+AudioFactory* AudioFactory::gAudioFactory = NULL;
 
-        List->append(*config);
-        delete config;
-    }
+AudioFactory::AudioFactory()
+{
+    nextAudioFactory = gAudioFactory;
+    gAudioFactory = this;
 }
-#endif
 
-QList<AudioDeviceConfig> AudioOutput::GetOutputList(void)
+AudioFactory::~AudioFactory()
 {
-    QList<AudioDeviceConfig> list;
-    AudioDeviceConfig *adc = NULL;
+}
 
-#if CONFIG_PULSE
-    bool pasuspended = PulseHandler::Suspend(PulseHandler::kPulseSuspend);
-#endif
+AudioFactory* AudioFactory::GetAudioFactory(void)
+{
+    return gAudioFactory;
+}
 
-#if CONFIG_ALSA_OUTDEV
-    QMap<QString, QString> alsadevs = AudioOutputALSA::GetDevices("pcm");
-
-    if (!alsadevs.empty())
-    {
-        for (QMap<QString, QString>::const_iterator i = alsadevs.begin(); i != alsadevs.end(); ++i)
-        {
-            QString key = i.key();
-            QString desc = i.value();
-            QString devname = QString("ALSA:%1").arg(key);
-
-            adc = GetAudioDeviceConfig(devname, desc);
-            if (!adc)
-                continue;
-            list.append(*adc);
-            delete adc;
-        }
-    }
-#endif
-
-#if CONFIG_OSS_OUTDEV
-    {
-        QDir dev("/dev", "dsp*", QDir::Name, QDir::System);
-        FillSelectionFromDir(dev, &list);
-        dev.setNameFilters(QStringList("adsp*"));
-        FillSelectionFromDir(dev, &list);
-
-        dev.setPath("/dev/sound");
-        if (dev.exists())
-        {
-            dev.setNameFilters(QStringList("dsp*"));
-            FillSelectionFromDir(dev, &list);
-            dev.setNameFilters(QStringList("adsp*"));
-            FillSelectionFromDir(dev, &list);
-        }
-    }
-#endif
-
-#ifdef Q_OS_MAC
-    {
-        QMap<QString, QString> devs = AudioOutputOSX::GetDevices(NULL);
-        if (!devs.isEmpty())
-        {
-            for (QMap<QString, QString>::const_iterator i = devs.begin(); i != devs.end(); ++i)
-            {
-                QString key = i.key();
-                QString desc = i.value();
-                QString devname = QString("CoreAudio:%1").arg(key);
-
-                adc = GetAudioDeviceConfig(devname, desc);
-                if (!adc)
-                    continue;
-                list.append(*adc);
-                delete adc;
-            }
-        }
-
-        QString name = "CoreAudio:Default Output Device";
-        QString desc = QObject::tr("CoreAudio default output");
-        adc = GetAudioDeviceConfig(name, desc);
-        if (adc)
-        {
-            list.append(*adc);
-            delete adc;
-        }
-    }
-#endif
-#ifdef USING_MINGW
-    {
-        QString name = "Windows:";
-        QString desc = "Windows default output";
-        adc = GetAudioDeviceConfig(name, desc);
-        if (adc)
-        {
-            list.append(*adc);
-            delete adc;
-        }
-
-        QMap<int, QString> *dxdevs = AudioOutputDX::GetDXDevices();
-
-        if (!dxdevs->empty())
-        {
-            for (QMap<int, QString>::const_iterator i = dxdevs->begin();
-                 i != dxdevs->end(); ++i)
-            {
-                QString desc = i.value();
-                QString devname = QString("DirectX:%1").arg(desc);
-
-                adc = GetAudioDeviceConfig(devname, desc);
-                if (!adc)
-                    continue;
-                list.append(*adc);
-                delete adc;
-            }
-        }
-        delete dxdevs;
-    }
-#endif
-
-#if CONFIG_PULSE
-    if (pasuspended)
-        PulseHandler::Suspend(PulseHandler::kPulseResume);
-
-    {
-        QString name = "PulseAudio:default";
-        QString desc =  QObject::tr("PulseAudio default sound server.");
-        adc = GetAudioDeviceConfig(name, desc);
-        if (adc)
-        {
-            list.append(*adc);
-            delete adc;
-        }
-    }
-#endif
-
-    QString name = "NULL";
-    QString desc = "NULL device";
-    adc = GetAudioDeviceConfig(name, desc);
-    if (adc)
-    {
-        list.append(*adc);
-        delete adc;
-    }
-
-    return list;
+AudioFactory* AudioFactory::NextFactory(void) const
+{
+    return nextAudioFactory;
 }

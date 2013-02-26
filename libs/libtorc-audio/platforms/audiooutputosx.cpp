@@ -142,7 +142,7 @@ class AudioOutputOSXPriv
         {
             // Didn't find specified device, use default one
             m_deviceID = GetDefaultOutputDevice();
-            if (DeviceName != "Default Output Device")
+            if (DeviceName != "Default")
             {
                 LOG(VB_GENERAL, LOG_WARNING, QString("'%1' not found, using default device '%2'")
                      .arg(DeviceName).arg(m_deviceID));
@@ -1466,38 +1466,63 @@ void AudioOutputOSX::SetVolumeChannel(int Channel, int Volume)
                           kAudioUnitScope_Global, 0, (Volume * 0.01f), 0);
 }
 
-QMap<QString, QString> AudioOutputOSX::GetDevices(const char *Type)
+class AudioFactoryOSX : public AudioFactory
 {
-    (void)Type;
-
-    QMap<QString, QString> devs;
-
-    // Obtain a list of all available devices
-    UInt32 size = 0;
-    AudioHardwareGetPropertyInfo(kAudioHardwarePropertyDevices, &size, NULL);
-    UInt32 deviceCount = size / sizeof(AudioDeviceID);
-    AudioDeviceID* devices = new AudioDeviceID[deviceCount];
-    OSStatus error = AudioHardwareGetProperty(kAudioHardwarePropertyDevices,
-                                            &size, devices);
-    if (error)
+    void Score(const AudioSettings &Settings, int &Score)
     {
-        LOG(VB_AUDIO, LOG_INFO,
-            QString("Unable to retrieve the list of available devices. Error [%1]").arg(error));
+        bool match = Settings.m_mainDevice.startsWith("coreaudio", Qt::CaseInsensitive);
+        int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOW;
+        if (Score <= score)
+            Score = score;
     }
-    else
+
+    AudioOutput* Create(const AudioSettings &Settings, int &Score)
     {
-        LOG(VB_AUDIO, LOG_INFO,  QString("GetDevices: Number of devices: %1").arg(deviceCount));
+        bool match = Settings.m_mainDevice.startsWith("coreaudio", Qt::CaseInsensitive);
+        int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOW;
+        if (Score <= score)
+            return new AudioOutputOSX(Settings);
+        return NULL;
+    }
 
-        for (UInt32 dev = 0; dev < deviceCount; dev++)
+    void GetDevices(QList<AudioDeviceConfig> &DeviceList)
+    {
+        UInt32 size = 0;
+        AudioHardwareGetPropertyInfo(kAudioHardwarePropertyDevices, &size, NULL);
+        UInt32 deviceCount = size / sizeof(AudioDeviceID);
+        AudioDeviceID* devices = new AudioDeviceID[deviceCount];
+
+        OSStatus error = AudioHardwareGetProperty(kAudioHardwarePropertyDevices, &size, devices);
+        if (error)
         {
-            AudioOutputOSXPriv device(NULL, devices[dev]);
-            if (device.GetTotalOutputChannels() == 0)
-                continue;
+            LOG(VB_AUDIO, LOG_INFO, QString("Unable to retrieve the list of available devices. Error [%1]").arg(error));
+        }
+        else
+        {
+            LOG(VB_AUDIO, LOG_INFO,  QString("GetDevices: Number of devices: %1").arg(deviceCount));
 
-            devs.insert(device.GetName(), QString());
+            for (UInt32 dev = 0; dev < deviceCount; dev++)
+            {
+                AudioOutputOSXPriv device(NULL, devices[dev]);
+                if (device.GetTotalOutputChannels() == 0)
+                    continue;
+
+                AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(QString("CoreAudio:%1").arg(device.GetName()), QString());
+                if (config)
+                {
+                    DeviceList.append(*config);
+                    delete config;
+                }
+            }
+        }
+
+        delete [] devices;
+
+        AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(QString("CoreAudio:Default"), QString("Default device"));
+        if (config)
+        {
+            DeviceList.append(*config);
+            delete config;
         }
     }
-
-    delete [] devices;
-    return devs;
-}
+} AudioFactoryOSX;
