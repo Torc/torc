@@ -1,3 +1,7 @@
+// Qt
+#include <QFile>
+#include <QDir>
+
 // Torc
 #include "torccoreutils.h"
 #include "torclocalcontext.h"
@@ -395,17 +399,17 @@ class AudioFactoryOSS : public AudioFactory
     void GetDevices(QList<AudioDeviceConfig> &DeviceList)
     {
         QDir dev("/dev", "dsp*", QDir::Name, QDir::System);
-        FillSelectionFromDir(dev, &DeviceList);
+        FillSelectionFromDir(dev, DeviceList);
         dev.setNameFilters(QStringList("adsp*"));
-        FillSelectionFromDir(dev, &DeviceList);
+        FillSelectionFromDir(dev, DeviceList);
 
         dev.setPath("/dev/sound");
         if (dev.exists())
         {
             dev.setNameFilters(QStringList("dsp*"));
-            FillSelectionFromDir(dev, &DeviceList);
+            FillSelectionFromDir(dev, DeviceList);
             dev.setNameFilters(QStringList("adsp*"));
-            FillSelectionFromDir(dev, &DeviceList);
+            FillSelectionFromDir(dev, DeviceList);
         }
     }
 } AudioFactoryOSS;
