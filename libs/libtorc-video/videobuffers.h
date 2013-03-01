@@ -22,6 +22,7 @@ class VideoBuffers
     void               Reset                      (bool DeleteFrames);
     bool               GetBufferStatus            (int &Unused, int &Inuse, int &Held);
     void               SetDisplayFormat           (PixelFormat Format);
+    bool               GetNextVideoTimeStamp      (qint64 &TimeStamp, int WaitUSecs = 0);
 
     VideoFrame*        GetFrameForDecoding        (void);
     void               ReleaseFrameFromDecoding   (VideoFrame *Frame);

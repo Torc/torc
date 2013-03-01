@@ -324,10 +324,35 @@ void VideoBuffers::ReleaseFrameFromDecoded(VideoFrame *Frame)
     }
 }
 
+bool VideoBuffers::GetNextVideoTimeStamp(qint64 &TimeStamp, int WaitUSecs /*= 0*/)
+{
+    bool result = false;
+
+    int tries = (std::min(WaitUSecs, MAX_WAIT_FOR_READY_FRAME)) / WAIT_FOR_READY_RETRY;
+
+    while (tries-- >= 0)
+    {
+        m_lock->lock();
+
+        if (m_ready.isEmpty())
+        {
+            m_lock->unlock();
+            TorcUSleep(WAIT_FOR_READY_RETRY);
+            continue;
+        }
+
+        TimeStamp = m_ready.first()->m_pts;
+        result    = true;
+        m_lock->unlock();
+        break;
+    }
+
+    return result;
+}
+
 VideoFrame* VideoBuffers::GetFrameForDisplaying(int WaitUSecs /*= 0*/)
 {
     VideoFrame *frame = NULL;
-
 
     int tries = (std::min(WaitUSecs, MAX_WAIT_FOR_READY_FRAME)) / WAIT_FOR_READY_RETRY;
 
@@ -345,6 +370,7 @@ VideoFrame* VideoBuffers::GetFrameForDisplaying(int WaitUSecs /*= 0*/)
         frame = m_ready.takeFirst();
         m_displaying.append(frame);
         m_lock->unlock();
+        break;
     }
 
     return frame;
