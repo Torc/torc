@@ -11,7 +11,7 @@ class AudioOutputDX : public AudioOutput
     friend class AudioOutputDXPrivate;
 
   public:
-    AudioOutputDX(const AudioSettings &Settings);
+    AudioOutputDX(const AudioSettings &Settings, AudioWrapper *Parent);
     virtual ~AudioOutputDX();
 
     int                        GetVolumeChannel       (int Channel) const;

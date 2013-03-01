@@ -99,25 +99,25 @@ AudioDeviceConfig::AudioDeviceConfig(const QString &Name, const QString &Descrip
 {
 }
 
-AudioOutput* AudioOutput::OpenAudio(const QString &Name)
+AudioOutput* AudioOutput::OpenAudio(const QString &Name, AudioWrapper *Parent)
 {
     AudioSettings settings(Name);
-    return OpenAudio(settings);
+    return OpenAudio(settings, Parent);
 }
 
-AudioOutput *AudioOutput::OpenAudio(const AudioSettings &Settings)
+AudioOutput *AudioOutput::OpenAudio(const AudioSettings &Settings, AudioWrapper *Parent)
 {
     AudioOutput *output = NULL;
 
     int score = 0;
     AudioFactory* factory = AudioFactory::GetAudioFactory();
     for ( ; factory; factory = factory->NextFactory())
-        (void)factory->Score(Settings, score);
+        (void)factory->Score(Settings, Parent, score);
 
     factory = AudioFactory::GetAudioFactory();
     for ( ; factory; factory = factory->NextFactory())
     {
-        output = factory->Create(Settings, score);
+        output = factory->Create(Settings, Parent, score);
         if (output)
             break;
     }
@@ -139,10 +139,11 @@ QList<AudioDeviceConfig> AudioOutput::GetOutputList(void)
     return list;
 }
 
-AudioOutput::AudioOutput(const AudioSettings &Settings)
+AudioOutput::AudioOutput(const AudioSettings &Settings, AudioWrapper *Parent)
   : AudioVolume(),
     AudioOutputListeners(),
     TorcThread("Audio"),
+    m_parent(Parent),
     m_configError(false),
     m_channels(-1),
     m_codec(CODEC_ID_NONE),
@@ -1901,7 +1902,7 @@ void AudioOutput::StopOutputThread(void)
 
 AudioDeviceConfig* AudioOutput::GetAudioDeviceConfig(const QString &Name, const QString &Description)
 {
-    AudioOutput *audio = OpenAudio(Name);
+    AudioOutput *audio = OpenAudio(Name, NULL);
     AudioOutputSettings settings = *(audio->GetOutputSettingsCleaned());
     delete audio;
 

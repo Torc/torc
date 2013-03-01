@@ -22,8 +22,8 @@
 #define AERROR(str)   LOG(VB_GENERAL, LOG_ERR, str + QString(": %1").arg(snd_strerror(err)))
 #define CHECKERR(str) { if (err < 0) { AERROR(str); return err; } }
 
-AudioOutputALSA::AudioOutputALSA(const AudioSettings &Settings) :
-    AudioOutput(Settings),
+AudioOutputALSA::AudioOutputALSA(const AudioSettings &Settings, AudioWrapper *Parent) :
+    AudioOutput(Settings, Parent),
     m_pcmHandle(NULL),
     m_preallocBufferSize(-1),
     m_card(-1),
@@ -1051,20 +1051,21 @@ QMap<QString, QString> AudioOutputALSA::GetDevices(const char* Type)
 
 class AudioFactoryALSA : public AudioFactory
 {
-    void Score(const AudioSettings &Settings, int &Score)
+    void Score(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
+        (void)Parent;
         bool match = Settings.m_mainDevice.startsWith("alsa", Qt::CaseInsensitive);
         int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_MEDIUM;
         if (Score <= score)
             Score = score;
     }
 
-    AudioOutput* Create(const AudioSettings &Settings, int &Score)
+    AudioOutput* Create(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
         bool match = Settings.m_mainDevice.startsWith("alsa", Qt::CaseInsensitive);
         int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_MEDIUM;
         if (Score <= score)
-            return new AudioOutputALSA(Settings);
+            return new AudioOutputALSA(Settings, Parent);
         return NULL;
     }
 

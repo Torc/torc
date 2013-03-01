@@ -14,7 +14,7 @@ class AudioOutputOSX : public AudioOutput
     friend class AudioOutputOSXPriv;
 
   public:
-    AudioOutputOSX(const AudioSettings &Settings);
+    AudioOutputOSX(const AudioSettings &Settings, AudioWrapper *Parent);
     virtual ~AudioOutputOSX();
 
     AudioOutputSettings* GetOutputSettings      (bool Digital);

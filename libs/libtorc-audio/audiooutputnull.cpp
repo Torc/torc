@@ -5,8 +5,8 @@
 #define CHANNELS_MIN 1
 #define CHANNELS_MAX 8
 
-AudioOutputNULL::AudioOutputNULL(const AudioSettings &Settings)
-  : AudioOutput(Settings),
+AudioOutputNULL::AudioOutputNULL(const AudioSettings &Settings, AudioWrapper *Parent)
+  : AudioOutput(Settings, Parent),
     m_pcmBufferLock(QMutex::NonRecursive),
     m_currentBufferSize(0)
 {
@@ -126,20 +126,21 @@ int AudioOutputNULL::GetBufferedOnSoundcard(void) const
 
 class AudioFactoryNULL : public AudioFactory
 {
-    void Score(const AudioSettings &Settings, int &Score)
+    void Score(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
+        (void)Parent;
         bool match = Settings.m_mainDevice.startsWith("null", Qt::CaseInsensitive);
         int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOWEST;
         if (Score <= score)
             Score = score;
     }
 
-    AudioOutput* Create(const AudioSettings &Settings, int &Score)
+    AudioOutput* Create(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
         bool match = Settings.m_mainDevice.startsWith("null", Qt::CaseInsensitive);
         int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOWEST;
         if (Score <= score)
-            return new AudioOutputNULL(Settings);
+            return new AudioOutputNULL(Settings, Parent);
         return NULL;
     }
 

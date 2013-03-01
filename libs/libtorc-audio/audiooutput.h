@@ -16,6 +16,7 @@
 #include "audiosettings.h"
 #include "audiooutputsettings.h"
 #include "audiovolume.h"
+#include "audiowrapper.h"
 #include "audiooutputlisteners.h"
 
 namespace soundtouch
@@ -23,6 +24,7 @@ namespace soundtouch
     class SoundTouch;
 }
 
+class  AudioWrapper;
 class  AudioSPDIFEncoder;
 class  FreeSurround;
 class  AudioOutputDigitalEncoder;
@@ -58,8 +60,8 @@ class TORC_AUDIO_PUBLIC AudioOutput : public AudioVolume, public AudioOutputList
   public:
     static QList<AudioDeviceConfig>  GetOutputList          (void);
     static AudioDeviceConfig*        GetAudioDeviceConfig   (const QString &Name, const QString &Description);
-    static AudioOutput*              OpenAudio              (const QString &Name);
-    static AudioOutput*              OpenAudio              (const AudioSettings &Settings);
+    static AudioOutput*              OpenAudio              (const QString &Name, AudioWrapper *Parent);
+    static AudioOutput*              OpenAudio              (const AudioSettings &Settings, AudioWrapper *Parent);
 
   public:
     virtual ~AudioOutput();
@@ -103,7 +105,7 @@ class TORC_AUDIO_PUBLIC AudioOutput : public AudioVolume, public AudioOutputList
     bool                             IsErrored              (void);
 
   protected:
-    AudioOutput(const AudioSettings &Settings);
+    AudioOutput(const AudioSettings &Settings, AudioWrapper *Parent);
 
     void                             InitSettings           (const AudioSettings &Settings);
     void                             KillAudio              (void);
@@ -131,81 +133,82 @@ class TORC_AUDIO_PUBLIC AudioOutput : public AudioVolume, public AudioOutputList
     void                             SetAudiotime           (int  Frames, qint64 Timecode);
 
   protected:
-    bool                       m_configError;
-    int                        m_channels;
-    int                        m_codec;
-    int                        m_bytesPerFrame;
-    int                        m_outputBytesPerFrame;
-    AudioFormat                m_format;
-    AudioFormat                m_outputFormat;
-    int                        m_samplerate;
-    int                        m_effectiveDSPRate;
-    int                        m_fragmentSize;
-    long                       m_soundcardBufferSize;
-    QString                    m_mainDevice;
-    QString                    m_passthroughDevice;
-    bool                       m_discreteDigital;
-    bool                       m_passthrough;
-    bool                       m_encode;
-    bool                       m_reencode;
-    float                      m_stretchFactor;
-    int                        m_effectiveStretchFactor;
-    AudioOutputSource          m_sourceType;
-    bool                       m_killAudio;
-    bool                       m_pauseAudio;
-    bool                       m_actuallyPaused;
-    bool                       m_wasPaused;
-    bool                       m_unpauseWhenReady;
-    bool                       m_setInitialVolume;
-    bool                       m_bufferOutputDataForUse;
-    int                        m_configuredChannels;
-    int                        m_maxChannels;
-    int                        m_srcQuality;
+    AudioWrapper                    *m_parent;
+    bool                             m_configError;
+    int                              m_channels;
+    int                              m_codec;
+    int                              m_bytesPerFrame;
+    int                              m_outputBytesPerFrame;
+    AudioFormat                      m_format;
+    AudioFormat                      m_outputFormat;
+    int                              m_samplerate;
+    int                              m_effectiveDSPRate;
+    int                              m_fragmentSize;
+    long                             m_soundcardBufferSize;
+    QString                          m_mainDevice;
+    QString                          m_passthroughDevice;
+    bool                             m_discreteDigital;
+    bool                             m_passthrough;
+    bool                             m_encode;
+    bool                             m_reencode;
+    float                            m_stretchFactor;
+    int                              m_effectiveStretchFactor;
+    AudioOutputSource                m_sourceType;
+    bool                             m_killAudio;
+    bool                             m_pauseAudio;
+    bool                             m_actuallyPaused;
+    bool                             m_wasPaused;
+    bool                             m_unpauseWhenReady;
+    bool                             m_setInitialVolume;
+    bool                             m_bufferOutputDataForUse;
+    int                              m_configuredChannels;
+    int                              m_maxChannels;
+    int                              m_srcQuality;
 
   private:
-    AudioOutputSettings       *m_outputSettingsRaw;
-    AudioOutputSettings       *m_outputSettings;
-    AudioOutputSettings       *m_outputSettingsDigitaRaw;
-    AudioOutputSettings       *m_outputSettingsDigital;
-    bool                       m_needResampler;
-    SRC_STATE                 *m_sourceState;
-    soundtouch::SoundTouch    *m_soundStretch;
-    AudioOutputDigitalEncoder *m_digitalEncoder;
-    FreeSurround              *m_upmixer;
-    int                        m_sourceChannels;
-    int                        m_sourceSamplerate;
-    int                        m_sourceBytePerFrame;
-    bool                       m_upmixDefault;
-    bool                       m_needsUpmix;
-    bool                       m_needsDownmix;
-    int                        m_surroundMode;
-    float                      m_oldStretchFactor;
-    int                        m_softwareVolume;
-    QString                    m_softwareVolumeControl;
-    bool                       m_processing;
-    qint64                     m_framesBuffered;
-    bool                       m_haveAudioThread;
-    QMutex                     m_audioBufferLock;
-    QMutex                     m_avSyncLock;
-    qint64                     m_timecode;
-    volatile uint              m_raud;
-    volatile uint              m_waud;
-    qint64                     m_audioBufferTimecode;
-    AsyncLooseLock            *m_resetActive;
-    QMutex                     m_killAudioLock;
-    long                       m_currentSeconds;
-    long                       m_sourceBitrate;
-    float                     *m_sourceInput;
-    SRC_DATA                   m_sourceData;
-    float                      m_sourceInputBuffer[kAudioSRCInputSize + 16];
-    float                     *m_sourceOutput;
-    int                        m_sourceOutputSize;
-    unsigned char              m_audioBuffer[kAudioRingBufferSize];
-    uint                       m_configureSucceeded;
-    qint64                     m_lengthLastData;
-    AudioSPDIFEncoder         *m_spdifEnc;
-    bool                       m_forcedProcessing;
-    int                        m_previousBytesPerFrame;
+    AudioOutputSettings             *m_outputSettingsRaw;
+    AudioOutputSettings             *m_outputSettings;
+    AudioOutputSettings             *m_outputSettingsDigitaRaw;
+    AudioOutputSettings             *m_outputSettingsDigital;
+    bool                             m_needResampler;
+    SRC_STATE                       *m_sourceState;
+    soundtouch::SoundTouch          *m_soundStretch;
+    AudioOutputDigitalEncoder       *m_digitalEncoder;
+    FreeSurround                    *m_upmixer;
+    int                              m_sourceChannels;
+    int                              m_sourceSamplerate;
+    int                              m_sourceBytePerFrame;
+    bool                             m_upmixDefault;
+    bool                             m_needsUpmix;
+    bool                             m_needsDownmix;
+    int                              m_surroundMode;
+    float                            m_oldStretchFactor;
+    int                              m_softwareVolume;
+    QString                          m_softwareVolumeControl;
+    bool                             m_processing;
+    qint64                           m_framesBuffered;
+    bool                             m_haveAudioThread;
+    QMutex                           m_audioBufferLock;
+    QMutex                           m_avSyncLock;
+    qint64                           m_timecode;
+    volatile uint                    m_raud;
+    volatile uint                    m_waud;
+    qint64                           m_audioBufferTimecode;
+    AsyncLooseLock                  *m_resetActive;
+    QMutex                           m_killAudioLock;
+    long                             m_currentSeconds;
+    long                             m_sourceBitrate;
+    float                           *m_sourceInput;
+    SRC_DATA                         m_sourceData;
+    float                            m_sourceInputBuffer[kAudioSRCInputSize + 16];
+    float                           *m_sourceOutput;
+    int                              m_sourceOutputSize;
+    unsigned char                    m_audioBuffer[kAudioRingBufferSize];
+    uint                             m_configureSucceeded;
+    qint64                           m_lengthLastData;
+    AudioSPDIFEncoder               *m_spdifEnc;
+    bool                             m_forcedProcessing;
+    int                              m_previousBytesPerFrame;
 };
 
 #define AUDIO_PRIORITY_LOWEST 10
@@ -221,8 +224,8 @@ class TORC_AUDIO_PUBLIC AudioFactory
     virtual ~AudioFactory();
     static AudioFactory*   GetAudioFactory  (void);
     AudioFactory*          NextFactory      (void) const;
-    virtual void           Score            (const AudioSettings &Settings, int &Score) = 0;
-    virtual AudioOutput*   Create           (const AudioSettings &Settings, int &Score) = 0;
+    virtual void           Score            (const AudioSettings &Settings, AudioWrapper *Parent, int &Score) = 0;
+    virtual AudioOutput*   Create           (const AudioSettings &Settings, AudioWrapper *Parent, int &Score) = 0;
     virtual void           GetDevices       (QList<AudioDeviceConfig> &DeviceList) = 0;
 
   protected:

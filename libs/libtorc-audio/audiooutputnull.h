@@ -9,7 +9,7 @@
 class AudioOutputNULL : public AudioOutput
 {
   public:
-    AudioOutputNULL(const AudioSettings &Settings);
+    AudioOutputNULL(const AudioSettings &Settings, AudioWrapper *Parent);
     virtual ~AudioOutputNULL();
 
     void Reset                  (void);

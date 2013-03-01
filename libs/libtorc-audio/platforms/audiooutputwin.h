@@ -11,7 +11,7 @@ class AudioOutputWin : public AudioOutput
     friend class AudioOutputWinPrivate;
 
   public:
-    AudioOutputWin(const AudioSettings &Settings);
+    AudioOutputWin(const AudioSettings &Settings, AudioWrapper *Parent);
     virtual ~AudioOutputWin();
 
     int                    GetVolumeChannel       (int Channel) const;

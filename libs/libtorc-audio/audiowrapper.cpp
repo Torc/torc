@@ -3,6 +3,7 @@
 
 // Torc
 #include "torclocalcontext.h"
+#include "torccoreutils.h"
 #include "torcdecoder.h"
 #include "audiooutpututil.h"
 #include "audiowrapper.h"
@@ -28,7 +29,9 @@ AudioWrapper::AudioWrapper(TorcPlayer *Parent)
     m_stretchFactor(1.0f),
     m_noAudioIn(false),
     m_noAudioOut(false),
-    m_controlsVolume(true)
+    m_controlsVolume(true),
+    m_lastTimeStamp(AV_NOPTS_VALUE),
+    m_lastTimeStampUpdate(0)
 {
     m_mainDevice        = gLocalContext->GetSetting(TORC_CORE + "AudioOutputDevice", QString(""));
     m_passthroughDevice = gLocalContext->GetSetting(TORC_CORE + "AudioPassthroughDevice", QString(""));
@@ -41,6 +44,23 @@ AudioWrapper::AudioWrapper(TorcPlayer *Parent)
 AudioWrapper::~AudioWrapper()
 {
     DeleteOutput();
+}
+
+qint64 AudioWrapper::GetAudioTime(quint64 &Age)
+{
+    Age = m_lastTimeStampUpdate;
+    return m_lastTimeStamp;
+}
+
+void AudioWrapper::SetAudioTime(qint64 TimeStamp, quint64 Time)
+{
+    m_lastTimeStamp       = TimeStamp;
+    m_lastTimeStampUpdate = Time;
+}
+
+void AudioWrapper::ClearAudioTime(void)
+{
+    SetAudioTime(AV_NOPTS_VALUE, 0);
 }
 
 void AudioWrapper::Reset(void)
@@ -83,7 +103,7 @@ bool AudioWrapper::Initialise(void)
         if (m_noAudioIn)
             aos.m_openOnInit = false;
 
-        m_audioOutput = AudioOutput::OpenAudio(aos);
+        m_audioOutput = AudioOutput::OpenAudio(aos, this);
 
         if (!m_audioOutput)
         {

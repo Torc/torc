@@ -330,8 +330,8 @@ class AudioOutputDXPrivate
 };
 
 
-AudioOutputDX::AudioOutputDX(const AudioSettings &Settings)
-  : AudioOutput(Settings),
+AudioOutputDX::AudioOutputDX(const AudioSettings &Settings, AudioWrapper *Parent)
+  : AudioOutput(Settings, Parent),
     m_priv(new AudioOutputDXPrivate(this)),
     m_useSPDIF(Settings.m_usePassthrough)
 {
@@ -589,20 +589,21 @@ void AudioOutputDX::SetVolumeChannel(int Channel, int Volume)
 
 class AudioFactoryDX : public AudioFactory
 {
-    void Score(const AudioSettings &Settings, int &Score)
+    void Score(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
+        (void)Parent;
         bool match = Settings.m_mainDevice.startsWith("directx", Qt::CaseInsensitive);
         int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_MEDIUM;
         if (Score <= score)
             Score = score;
     }
 
-    AudioOutput* Create(const AudioSettings &Settings, int &Score)
+    AudioOutput* Create(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
         bool match = Settings.m_mainDevice.startsWith("directx", Qt::CaseInsensitive);
         int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_MEDIUM;
         if (Score <= score)
-            return new AudioOutputDX(Settings);
+            return new AudioOutputDX(Settings, Parent);
         return NULL;
     }
 

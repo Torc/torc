@@ -6,6 +6,8 @@
 #include "torcaudioexport.h"
 #include "torcplayer.h"
 
+class AudioOutput;
+
 class TORC_AUDIO_PUBLIC AudioWrapper
 {
     friend class AudioDecoder;
@@ -13,6 +15,12 @@ class TORC_AUDIO_PUBLIC AudioWrapper
   public:
     AudioWrapper(TorcPlayer *Parent);
     ~AudioWrapper();
+
+  public:
+    // these are thread safe
+    qint64       GetAudioTime      (quint64 &Age);
+    void         SetAudioTime      (qint64 TimeStamp, quint64 Time);
+    void         ClearAudioTime    (void);
 
   protected:
     void         Reset             (void);
@@ -91,6 +99,9 @@ class TORC_AUDIO_PUBLIC AudioWrapper
     bool         m_noAudioIn;
     bool         m_noAudioOut;
     bool         m_controlsVolume;
+
+    qint64       m_lastTimeStamp;
+    quint64      m_lastTimeStampUpdate;
 };
 
 #endif // AUDIOWRAPPER_H

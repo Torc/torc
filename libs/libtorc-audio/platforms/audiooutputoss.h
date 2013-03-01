@@ -7,7 +7,7 @@
 class AudioOutputOSS : public AudioOutput
 {
   public:
-    AudioOutputOSS(const AudioSettings &settings);
+    AudioOutputOSS(const AudioSettings &settings, AudioWrapper *Parent);
     virtual ~AudioOutputOSS();
 
     int                  GetVolumeChannel       (int channel) const;

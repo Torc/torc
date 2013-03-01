@@ -99,8 +99,8 @@ class AudioOutputWinPrivate
     HANDLE    m_event;
 };
 
-AudioOutputWin::AudioOutputWin(const AudioSettings &Settings) :
-    AudioOutput(Settings),
+AudioOutputWin::AudioOutputWin(const AudioSettings &Settings, AudioWrapper *Parent) :
+    AudioOutput(Settings, Parent),
     m_priv(new AudioOutputWinPrivate()),
     m_packetCount(0),
     m_currentPacket(0),
@@ -307,20 +307,21 @@ void AudioOutputWin::SetVolumeChannel(int Channel, int Volume)
 
 class AudioFactoryWin : public AudioFactory
 {
-    void Score(const AudioSettings &Settings, int &Score)
+    void Score(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
+        (void)Parent;
         bool match = Settings.m_mainDevice.startsWith("windows", Qt::CaseInsensitive);
         int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOW;
         if (Score <= score)
             Score = score;
     }
 
-    AudioOutput* Create(const AudioSettings &Settings, int &Score)
+    AudioOutput* Create(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
         bool match = Settings.m_mainDevice.startsWith("windows", Qt::CaseInsensitive);
         int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOW;
         if (Score <= score)
-            return new AudioOutputWin(Settings);
+            return new AudioOutputWin(Settings, Parent);
         return NULL;
     }
 

@@ -17,8 +17,8 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 
-AudioOutputOSS::AudioOutputOSS(const AudioSettings &Settings)
-  : AudioOutput(Settings),
+AudioOutputOSS::AudioOutputOSS(const AudioSettings &Settings, AudioWrapper *Parent)
+  : AudioOutput(Settings, Parent),
     m_audioFd(-1),
     m_mixerFd(-1),
     m_control(SOUND_MIXER_VOLUME)
@@ -383,16 +383,17 @@ static void FillSelectionFromDir(const QDir &dir, QList<AudioDeviceConfig> &Devi
 
 class AudioFactoryOSS : public AudioFactory
 {
-    void Score(const AudioSettings &Settings, int &Score)
+    void Score(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
+        (void)Parent;
         if (Score <= AUDIO_PRIORITY_LOW)
             Score = AUDIO_PRIORITY_LOW;
     }
 
-    AudioOutput* Create(const AudioSettings &Settings, int &Score)
+    AudioOutput* Create(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
         if (Score <= AUDIO_PRIORITY_LOW)
-            return new AudioOutputOSS(Settings);
+            return new AudioOutputOSS(Settings, Parent);
         return NULL;
     }
 

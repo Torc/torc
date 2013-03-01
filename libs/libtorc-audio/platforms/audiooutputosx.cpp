@@ -1247,8 +1247,8 @@ class AudioOutputOSXPriv
  *  \brief Implements Core Audio (Mac OS X Hardware Abstraction Layer) output.
  */
 
-AudioOutputOSX::AudioOutputOSX(const AudioSettings &Settings)
-  : AudioOutput(Settings),
+AudioOutputOSX::AudioOutputOSX(const AudioSettings &Settings, AudioWrapper *Parent)
+  : AudioOutput(Settings, Parent),
     m_bufferedBytes(0)
 {
     m_mainDevice.remove(0, 10);
@@ -1315,6 +1315,9 @@ AudioOutputSettings* AudioOutputOSX::GetOutputSettings(bool Digital)
 
 bool AudioOutputOSX::OpenDevice(void)
 {
+    if (m_parent)
+        m_parent->ClearAudioTime();
+
     bool deviceOpened = false;
 
     if (m_passthrough || m_encode)
@@ -1365,6 +1368,9 @@ void AudioOutputOSX::CloseDevice()
 {
     LOG(VB_AUDIO, LOG_INFO,  QString("Closing %1").arg(m_priv->m_digitalInUse ? "SPDIF" : "Analog"));
 
+    if (m_parent)
+        m_parent->ClearAudioTime();
+
     if (m_priv->m_digitalInUse)
         m_priv->CloseSPDIF();
     else
@@ -1379,6 +1385,8 @@ bool AudioOutputOSX::RenderAudio(unsigned char *Buffer, int Size, unsigned long 
         return false;
     }
 
+    bool updateparent = true;
+
     /* This callback is called when the sound system requests
      data.  We don't want to block here, because that would
      just cause dropouts anyway, so we always return whatever
@@ -1389,21 +1397,22 @@ bool AudioOutputOSX::RenderAudio(unsigned char *Buffer, int Size, unsigned long 
     int written_size = GetAudioData(Buffer, Size, false);
     if (written_size && (Size > written_size))
     {
-        // play silence on buffer underrun
+        updateparent = false;
         memset(Buffer + written_size, 0, Size - written_size);
     }
 
     //Audio received is in SMPTE channel order, reorder to CA unless Passthrough
     if (!m_passthrough && m_channels == 8)
-    {
         ReorderSmpteToCA(Buffer, Size / m_outputBytesPerFrame, m_outputFormat);
-    }
 
     // update audiotime (m_bufferedBytes is read by GetBufferedOnSoundcard)
     UInt64 nanos = AudioConvertHostTimeToNanos(Timestamp - AudioGetCurrentHostTime());
-    m_bufferedBytes = (int)((nanos / 1000000000.0) * // secs
-                          (m_effectiveDSPRate / 100.0) *         // frames/sec
-                          m_outputBytesPerFrame);   // bytes/frame
+    m_bufferedBytes = (int)((nanos / 1000000000.0) *        // secs
+                            (m_effectiveDSPRate / 100.0) *  // frames/sec
+                             m_outputBytesPerFrame);        // bytes/frame
+
+    if (updateparent && m_parent)
+        m_parent->SetAudioTime(GetAudiotime(), GetMicrosecondCount());
 
     return (written_size > 0);
 }
@@ -1468,20 +1477,21 @@ void AudioOutputOSX::SetVolumeChannel(int Channel, int Volume)
 
 class AudioFactoryOSX : public AudioFactory
 {
-    void Score(const AudioSettings &Settings, int &Score)
+    void Score(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
+        (void)Parent;
         bool match = Settings.m_mainDevice.startsWith("coreaudio", Qt::CaseInsensitive);
         int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOW;
         if (Score <= score)
             Score = score;
     }
 
-    AudioOutput* Create(const AudioSettings &Settings, int &Score)
+    AudioOutput* Create(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
     {
         bool match = Settings.m_mainDevice.startsWith("coreaudio", Qt::CaseInsensitive);
         int score  =  match ? AUDIO_PRIORITY_MATCH : AUDIO_PRIORITY_LOW;
         if (Score <= score)
-            return new AudioOutputOSX(Settings);
+            return new AudioOutputOSX(Settings, Parent);
         return NULL;
     }
 
