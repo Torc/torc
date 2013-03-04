@@ -136,7 +136,7 @@ bool AudioWrapper::Initialise(void)
         if (m_audioOutput->IsErrored())
         {
             LOG(VB_GENERAL, LOG_ERR, "Audio disabled");
-            m_parent->SendUserMessage(QObject::tr("Audio disavled"));
+            m_parent->SendUserMessage(QObject::tr("Audio disabled"));
             m_noAudioOut = true;
         }
         else
