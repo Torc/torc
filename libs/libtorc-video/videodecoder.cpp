@@ -411,8 +411,8 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     frame->m_pixelAspectRatio = GetPixelAspectRatio(Stream, avframe);
     frame->m_repeatPict       = avframe.repeat_pict;
     frame->m_frameNumber      = avframe.display_picture_number;
-    frame->m_pts              = av_q2d(Stream->time_base) * 1000 * (avframe.pkt_pts - Stream->start_time);
-    frame->m_dts              = av_q2d(Stream->time_base) * 1000 * (avframe.pkt_dts - Stream->start_time);
+    frame->m_pts              = av_q2d(Stream->time_base) * 1000 * avframe.pkt_pts;
+    frame->m_dts              = av_q2d(Stream->time_base) * 1000 * avframe.pkt_dts;
     frame->m_corrupt          = !m_keyframeSeen;
     frame->m_frameRate        = GetFrameRate(Context, Stream);
 
