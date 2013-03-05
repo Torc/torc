@@ -782,8 +782,14 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
         if (stream && stream->codec)
             avcodec_flush_buffers(stream->codec);
         CleanupVideoDecoder(stream);
-        FlushVideoBuffers(true);
-        queue->Flush(true, false);
+    }
+
+    FlushVideoBuffers(true);
+    queue->Flush(true, false);
+
+    {
+        QWriteLocker locker(m_streamLock);
+        m_currentStreams[StreamTypeVideo] = -1;
     }
 
     *state = TorcDecoder::Stopped;
@@ -1098,6 +1104,11 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
         m_audio->SetAudioOutput(NULL);
     av_free(audiosamples);
     queue->Flush(true, false);
+
+    {
+        QWriteLocker locker(m_streamLock);
+        m_currentStreams[StreamTypeAudio] = -1;
+    }
 }
 
 int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
@@ -1251,6 +1262,11 @@ void AudioDecoder::DecodeSubtitles(TorcSubtitleThread *Thread)
 
     *state = TorcDecoder::Stopped;
     queue->Flush(true, false);
+
+    {
+        QWriteLocker locker(m_streamLock);
+        m_currentStreams[StreamTypeSubtitle] = -1;
+    }
 }
 
 void AudioDecoder::SetFlag(TorcDecoder::DecoderFlags Flag)
