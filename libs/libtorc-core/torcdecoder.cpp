@@ -26,6 +26,7 @@
 
 TorcDecoder::~TorcDecoder()
 {
+    LOG(VB_GENERAL, LOG_INFO, "Decoder destroyed");
 }
 
 TorcDecoder* TorcDecoder::Create(int DecodeFlags, const QString &URI, TorcPlayer *Parent)

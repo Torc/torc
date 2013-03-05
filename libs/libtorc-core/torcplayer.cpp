@@ -443,7 +443,11 @@ bool TorcPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
 
     // check for playback completion
     if (m_decoder->GetState() == TorcDecoder::Stopped)
+    {
         SetState(Stopped);
+        delete m_decoder;
+        m_decoder = NULL;
+    }
 
     // update state
     if (m_nextState != None)
