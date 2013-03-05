@@ -578,10 +578,14 @@ AudioDecoder::AudioDecoder(const QString &URI, TorcPlayer *Parent, int Flags)
     m_duration(0.0),
     m_bitrate(0),
     m_bitrateFactor(1),
-    m_currentProgram(-1)
+    m_streamLock(new QReadWriteLock(QReadWriteLock::Recursive)),
+    m_currentProgram(-1),
+    m_chapterLock(new QReadWriteLock(QReadWriteLock::Recursive))
 {
     // Global initialistaion
     InitialiseLibav();
+
+    QReadLocker locker(m_streamLock);
 
     // Reset streams
     for (int i = 0; i < StreamTypeEnd; ++i)
@@ -599,6 +603,8 @@ AudioDecoder::AudioDecoder(const QString &URI, TorcPlayer *Parent, int Flags)
 AudioDecoder::~AudioDecoder()
 {
     TearDown();
+    delete m_chapterLock;
+    delete m_streamLock;
     delete m_priv;
 }
 
@@ -620,7 +626,7 @@ bool AudioDecoder::Open(void)
     return true;
 }
 
-TorcDecoder::DecoderState AudioDecoder::State(void)
+TorcDecoder::DecoderState AudioDecoder::GetState(void)
 {
     return m_priv->m_demuxerThread->m_state;
 }
@@ -647,14 +653,30 @@ void AudioDecoder::Seek(void)
         m_seek = true;
 }
 
+int AudioDecoder::GetCurrentStream(TorcStreamTypes Type)
+{
+    m_streamLock->lockForRead();
+    int result = m_currentStreams[Type];
+    m_streamLock->unlock();
+    return result;
+}
+
+int AudioDecoder::GetStreamCount(TorcStreamTypes Type)
+{
+    m_streamLock->lockForRead();
+    int result = m_programs[m_currentProgram]->m_streams[Type].size();
+    m_streamLock->unlock();
+    return result;
+}
+
 void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
 {
     if (!Thread)
         return;
 
-    TorcDecoder::DecoderState*    state  = &Thread->m_state;
+    TorcDecoder::DecoderState*     state = &Thread->m_state;
     TorcDecoder::DecoderState* nextstate = &Thread->m_requestedState;
-    TorcPacketQueue* queue  = Thread->m_queue;
+    TorcPacketQueue*               queue = Thread->m_queue;
 
     if (!queue)
         return;
@@ -709,15 +731,23 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
             continue;
         }
 
-        int index = m_currentStreams[StreamTypeVideo];
-        AVStream        *stream = index > -1 ? m_priv->m_avFormatContext->streams[index] : NULL;
-        AVCodecContext *context = stream ? stream->codec : NULL;
-        AVPacket* packet = NULL;
+        AVPacket *packet = NULL;
 
         if (queue->Length())
         {
             yield = false;
             packet = queue->Pop();
+        }
+
+        queue->m_lock->unlock();
+
+        if (packet)
+        {
+            m_streamLock->lockForRead();
+
+            int               index = m_currentStreams[StreamTypeVideo];
+            AVStream        *stream = index > -1 ? m_priv->m_avFormatContext->streams[index] : NULL;
+            AVCodecContext *context = stream ? stream->codec : NULL;
 
             if (packet == &gFlushCodec)
             {
@@ -732,20 +762,21 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
                 delete packet;
                 packet = NULL;
             }
-        }
 
-        queue->m_lock->unlock();
+            if (packet)
+            {
+                ProcessVideoPacket(m_priv->m_avFormatContext, stream, packet);
+                av_free_packet(packet);
+                delete packet;
+            }
 
-        if (packet)
-        {
-            ProcessVideoPacket(m_priv->m_avFormatContext, stream, packet);
-            av_free_packet(packet);
-            delete packet;
+            m_streamLock->unlock();
         }
     }
 
     {
-        // NB this may need locking
+        QReadLocker locker(m_streamLock);
+
         int index = m_currentStreams[StreamTypeVideo];
         AVStream *stream = index > -1 ? m_priv->m_avFormatContext->streams[index] : NULL;
         if (stream && stream->codec)
@@ -848,14 +879,23 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
             continue;
         }
 
-        int index = m_currentStreams[StreamTypeAudio];
-        AVStream        *stream = index > -1 ? m_priv->m_avFormatContext->streams[index] : NULL;
-        AVCodecContext *context = stream ? stream->codec : NULL;
         AVPacket* packet = NULL;
 
         if (queue->Length())
         {
+            yield  = false;
             packet = queue->Pop();
+        }
+
+        queue->m_lock->unlock();
+
+        if (packet)
+        {
+            m_streamLock->lockForRead();
+
+            int               index = m_currentStreams[StreamTypeAudio];
+            AVStream        *stream = index > -1 ? m_priv->m_avFormatContext->streams[index] : NULL;
+            AVCodecContext *context = stream ? stream->codec : NULL;
 
             if (packet == &gFlushCodec)
             {
@@ -863,7 +903,6 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                     avcodec_flush_buffers(context);
                 if (m_audio)
                     m_audio->Reset();
-                yield = false;
                 packet = NULL;
             }
             else if (!m_audio || !stream || !context || (m_audio && !m_audio->HasAudioOut()) ||
@@ -873,92 +912,41 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                 delete packet;
                 packet = NULL;
             }
-        }
 
-        queue->m_lock->unlock();
-
-        if (packet)
-        {
-            yield = false;
-
-            AVPacket temp;
-            av_init_packet(&temp);
-            temp.data = packet->data;
-            temp.size = packet->size;
-
-            bool reselectaudiotrack = false;
-
-            while (temp.size > 0)
+            if (packet)
             {
-                int used = 0;
-                int datasize = 0;
-                int decodedsize = -1;
-                bool decoded = false;
+                AVPacket temp;
+                av_init_packet(&temp);
+                temp.data = packet->data;
+                temp.size = packet->size;
 
-                if (!context->channels)
+                bool reselectaudiotrack = false;
+
+                while (temp.size > 0)
                 {
-                    LOG(VB_GENERAL, LOG_INFO, QString("Setting channels to %1")
-                        .arg(m_audioOut->m_channels));
+                    int used = 0;
+                    int datasize = 0;
+                    int decodedsize = -1;
+                    bool decoded = false;
 
-                    bool shouldpassthrough = m_audio->ShouldPassthrough(context->sample_rate,
-                                                                        context->channels,
-                                                                        context->codec_id,
-                                                                        context->profile,
-                                                                        false);
-                    if (shouldpassthrough || !m_audio->DecoderWillDownmix(context->codec_id))
+                    if (!context->channels)
                     {
-                        // for passthrough of codecs for which the decoder won't downmix
-                        // let the decoder set the number of channels. For other codecs
-                        // we downmix if necessary in AudioOutput
-                        context->request_channels = 0;
-                    }
-                    else // No passthru, the decoder will downmix
-                    {
-                        context->request_channels = m_audio->GetMaxChannels();
-                        if (context->codec_id == CODEC_ID_AC3)
-                            context->channels = m_audio->GetMaxChannels();
-                    }
+                        LOG(VB_GENERAL, LOG_INFO, QString("Setting channels to %1")
+                            .arg(m_audioOut->m_channels));
 
-                    used = m_priv->DecodeAudioPacket(context, audiosamples, datasize, &temp);
-                    decodedsize = datasize;
-                    decoded = true;
-                    reselectaudiotrack |= context->channels;
-                }
-
-                if (reselectaudiotrack)
-                {
-                    LOG(VB_GENERAL, LOG_WARNING, "Need to reselect audio track...");
-                    // FIXME
-                    if (SelectStream(StreamTypeAudio))
-                        SetupAudio(Thread);
-                }
-
-                datasize = 0;
-
-                if (m_audioOut->m_passthrough)
-                {
-                    if (!decoded)
-                    {
-                        if (m_audio->NeedDecodingBeforePassthrough())
+                        bool shouldpassthrough = m_audio->ShouldPassthrough(context->sample_rate,
+                                                                            context->channels,
+                                                                            context->codec_id,
+                                                                            context->profile,
+                                                                            false);
+                        if (shouldpassthrough || !m_audio->DecoderWillDownmix(context->codec_id))
                         {
-                            used = m_priv->DecodeAudioPacket(context, audiosamples, datasize, &temp);
-                            decodedsize = datasize;
+                            // for passthrough of codecs for which the decoder won't downmix
+                            // let the decoder set the number of channels. For other codecs
+                            // we downmix if necessary in AudioOutput
+                            context->request_channels = 0;
                         }
-                        else
-                        {
-                            decodedsize = -1;
-                        }
-                    }
-
-                    memcpy(audiosamples, temp.data, temp.size);
-                    datasize = temp.size;
-                    temp.size = 0;
-                }
-                else
-                {
-                    if (!decoded)
-                    {
-                        if (m_audio->DecoderWillDownmix(context->codec_id))
+                        else // No passthru, the decoder will downmix
                         {
                             context->request_channels = m_audio->GetMaxChannels();
                             if (context->codec_id == CODEC_ID_AC3)
@@ -967,53 +955,102 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
 
                         used = m_priv->DecodeAudioPacket(context, audiosamples, datasize, &temp);
                         decodedsize = datasize;
+                        decoded = true;
+                        reselectaudiotrack |= context->channels;
                     }
 
-                    // When decoding some audio streams the number of
-                    // channels, etc isn't known until we try decoding it.
-                    if (context->sample_rate != m_audioOut->m_sampleRate ||
-                        context->channels    != m_audioOut->m_channels)
+                    if (reselectaudiotrack)
                     {
+                        LOG(VB_GENERAL, LOG_WARNING, "Need to reselect audio track...");
                         // FIXME
-                        LOG(VB_GENERAL, LOG_WARNING, QString("Audio stream changed (Samplerate %1->%2 channels %3->%4)")
-                            .arg(m_audioOut->m_sampleRate).arg(context->sample_rate)
-                            .arg(m_audioOut->m_channels).arg(context->channels));
                         if (SelectStream(StreamTypeAudio))
-                            LOG(VB_GENERAL, LOG_INFO, "On same audio stream");
-                        // FIXME - this is probably not wise
-                        // try and let the buffer drain to avoid interruption
-                        m_audio->Drain();
-
-                        SetupAudio(Thread);
-                        datasize = 0;
+                            SetupAudio(Thread);
                     }
-                }
 
-                if (used < 0)
-                {
-                    LOG(VB_GENERAL, LOG_ERR, "Unknown audio decoding error");
-                    break;
-                }
+                    datasize = 0;
 
-                if (datasize <= 0)
-                {
+                    if (m_audioOut->m_passthrough)
+                    {
+                        if (!decoded)
+                        {
+                            if (m_audio->NeedDecodingBeforePassthrough())
+                            {
+                                used = m_priv->DecodeAudioPacket(context, audiosamples, datasize, &temp);
+                                decodedsize = datasize;
+                            }
+                            else
+                            {
+                                decodedsize = -1;
+                            }
+                        }
+
+                        memcpy(audiosamples, temp.data, temp.size);
+                        datasize = temp.size;
+                        temp.size = 0;
+                    }
+                    else
+                    {
+                        if (!decoded)
+                        {
+                            if (m_audio->DecoderWillDownmix(context->codec_id))
+                            {
+                                context->request_channels = m_audio->GetMaxChannels();
+                                if (context->codec_id == CODEC_ID_AC3)
+                                    context->channels = m_audio->GetMaxChannels();
+                            }
+
+                            used = m_priv->DecodeAudioPacket(context, audiosamples, datasize, &temp);
+                            decodedsize = datasize;
+                        }
+
+                        // When decoding some audio streams the number of
+                        // channels, etc isn't known until we try decoding it.
+                        if (context->sample_rate != m_audioOut->m_sampleRate ||
+                            context->channels    != m_audioOut->m_channels)
+                        {
+                            // FIXME
+                            LOG(VB_GENERAL, LOG_WARNING, QString("Audio stream changed (Samplerate %1->%2 channels %3->%4)")
+                                .arg(m_audioOut->m_sampleRate).arg(context->sample_rate)
+                                .arg(m_audioOut->m_channels).arg(context->channels));
+                            if (SelectStream(StreamTypeAudio))
+                                LOG(VB_GENERAL, LOG_INFO, "On same audio stream");
+                            // FIXME - this is probably not wise
+                            // try and let the buffer drain to avoid interruption
+                            m_audio->Drain();
+
+                            SetupAudio(Thread);
+                            datasize = 0;
+                        }
+                    }
+
+                    if (used < 0)
+                    {
+                        LOG(VB_GENERAL, LOG_ERR, "Unknown audio decoding error");
+                        break;
+                    }
+
+                    if (datasize <= 0)
+                    {
+                        temp.data += used;
+                        temp.size -= used;
+                        continue;
+                    }
+
+                    int64_t pts = av_q2d(stream->time_base) * 1000 * (packet->pts - stream->start_time);
+
+                    int frames = (context->channels <= 0 || decodedsize < 0) ? -1 :
+                        decodedsize / (context->channels * av_get_bytes_per_sample(context->sample_fmt));
+                    m_audio->AddAudioData((char *)audiosamples, datasize, pts, frames);
+
                     temp.data += used;
                     temp.size -= used;
-                    continue;
                 }
-
-                int64_t pts = av_q2d(stream->time_base) * 1000 * (packet->pts - stream->start_time);
-
-                int frames = (context->channels <= 0 || decodedsize < 0) ? -1 :
-                    decodedsize / (context->channels * av_get_bytes_per_sample(context->sample_fmt));
-                m_audio->AddAudioData((char *)audiosamples, datasize, pts, frames);
-
-                temp.data += used;
-                temp.size -= used;
             }
 
             av_free_packet(packet);
             delete packet;
+
+            m_streamLock->unlock();
         }
     }
 
@@ -1111,10 +1148,15 @@ void AudioDecoder::DecodeSubtitles(TorcSubtitleThread *Thread)
 
     *state = TorcDecoder::Running;
 
+    bool yield = true;
+
     while (!m_interruptDecoder && *nextstate != TorcDecoder::Stopped)
     {
         queue->m_lock->lock();
-        queue->m_wait->wait(queue->m_lock);
+
+        if (yield)
+            queue->m_wait->wait(queue->m_lock);
+        yield = true;
 
         if (m_interruptDecoder || *nextstate == TorcDecoder::Stopped)
         {
@@ -1134,25 +1176,38 @@ void AudioDecoder::DecodeSubtitles(TorcSubtitleThread *Thread)
             *state = TorcDecoder::Paused;
         }
 
-        while (*state == TorcDecoder::Running && queue->Length())
+        AVPacket *packet = NULL;
+
+        if (queue->Length())
         {
+            yield = false;
+            packet = queue->Pop();
+        }
+
+        queue->m_lock->unlock();
+
+        if (packet)
+        {
+            m_streamLock->lockForRead();
+
             int index = m_currentStreams[StreamTypeSubtitle];
             AVCodecContext *context = index > -1 ? m_priv->m_avFormatContext->streams[index]->codec : NULL;
 
-            AVPacket* packet = queue->Pop();
             if (packet == &gFlushCodec)
             {
                 if (context)
                     avcodec_flush_buffers(context);
+                packet = NULL;
             }
             else
             {
                 av_free_packet(packet);
                 delete packet;
+                packet = NULL;
             }
-        }
 
-        queue->m_lock->unlock();
+            m_streamLock->unlock();
+        }
     }
 
     *state = TorcDecoder::Stopped;
@@ -1171,6 +1226,8 @@ bool AudioDecoder::FlagIsSet(TorcDecoder::DecoderFlags Flag)
 
 bool AudioDecoder::SelectProgram(int Index)
 {
+    QWriteLocker locker(m_streamLock);
+
     if (!(m_priv->m_demuxerThread->m_state == TorcDecoder::Opening ||
           m_priv->m_demuxerThread->m_state == TorcDecoder::Paused))
     {
@@ -1207,6 +1264,7 @@ bool AudioDecoder::SelectStreams(void)
         SelectStream(StreamTypeVideo);
         SelectStream(StreamTypeSubtitle);
         SelectStream(StreamTypeRawText);
+
         return true;
     }
 
@@ -1216,6 +1274,8 @@ bool AudioDecoder::SelectStreams(void)
 
 void AudioDecoder::SetupAudio(TorcAudioThread *Thread)
 {
+    QReadLocker locker(m_streamLock);
+
     if (!m_priv->m_avFormatContext || !m_audio || !Thread)
         return;
 
@@ -1538,6 +1598,8 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
 
 bool AudioDecoder::OpenDecoders(void)
 {
+    QReadLocker locker(m_streamLock);
+
     // Start afresh
     CloseDecoders();
 
@@ -1648,14 +1710,20 @@ void AudioDecoder::CloseDemuxer(TorcDemuxerThread *Thread)
     }
 
     // Reset stream selection
-    for (int i = 0; i < StreamTypeEnd; ++i)
-        m_currentStreams[i] = -1;
+    {
+        QWriteLocker locker(m_streamLock);
+        for (int i = 0; i < StreamTypeEnd; ++i)
+            m_currentStreams[i] = -1;
+    }
 
     // Close stream decoders
     CloseDecoders();
 
     // Release program details
     ResetPrograms();
+
+    // Clear chapters
+    ResetChapters();
 
     // Delete AVFormatContext (and byte context)
     if (m_priv->m_avFormatContext && m_priv->m_createdAVFormatContext)
@@ -1805,6 +1873,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
             av_init_packet(packet);
         }
 
+        // N.B. no need to lock m_streamLock for read from demux thread
         int videoindex = m_currentStreams[StreamTypeVideo];
         int audioindex = m_currentStreams[StreamTypeAudio];
         int subindex   = m_currentStreams[StreamTypeSubtitle];
@@ -1919,6 +1988,8 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
 
 void AudioDecoder::CloseDecoders(void)
 {
+    QReadLocker locker (m_streamLock);
+
     if (!m_priv->m_avFormatContext)
         return;
 
@@ -1942,6 +2013,8 @@ bool AudioDecoder::ScanPrograms(void)
     // Sanity check
     if (!m_priv->m_avFormatContext)
         return false;
+
+    QWriteLocker locker(m_streamLock);
 
     // Top level metadata
     if (m_priv->m_avFormatContext->metadata && av_dict_count(m_priv->m_avFormatContext->metadata))
@@ -2028,9 +2101,7 @@ TorcProgramData* AudioDecoder::ScanProgram(uint Index)
 
 void AudioDecoder::ResetPrograms(void)
 {
-    // Clear chapters
-    while (!m_chapters.isEmpty())
-        delete m_chapters.takeLast();
+    QWriteLocker locker(m_streamLock);
 
     // Clear top level metadata
     m_avMetaData.clear();
@@ -2124,6 +2195,10 @@ TorcStreamData* AudioDecoder::ScanStream(uint Index)
 
 void AudioDecoder::ScanChapters(void)
 {
+    ResetChapters();
+
+    QWriteLocker locker(m_chapterLock);
+
     if (m_priv->m_avFormatContext && m_priv->m_avFormatContext->nb_chapters > 1)
     {
         for (uint i = 0; i < m_priv->m_avFormatContext->nb_chapters; ++i)
@@ -2147,8 +2222,18 @@ void AudioDecoder::ScanChapters(void)
     }
 }
 
+void AudioDecoder::ResetChapters(void)
+{
+    QWriteLocker locker(m_chapterLock);
+
+    while (!m_chapters.isEmpty())
+        delete m_chapters.takeLast();
+}
+
 bool AudioDecoder::SelectStream(TorcStreamTypes Type)
 {
+    QWriteLocker locker(m_streamLock);
+
     int current  = m_currentStreams[Type];
     int selected = -1;
     int count    = m_programs[m_currentProgram]->m_streams[Type].size();
@@ -2235,6 +2320,8 @@ void AudioDecoder::DebugPrograms(void)
 {
     if (!m_priv->m_avFormatContext)
         return;
+
+    QReadLocker locker(m_streamLock);
 
     // General
     LOG(VB_GENERAL, LOG_INFO, QString("Demuxer '%1' for '%2'").arg(m_priv->m_avFormatContext->iformat->name).arg(m_uri));

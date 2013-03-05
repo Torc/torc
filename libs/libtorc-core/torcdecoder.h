@@ -9,6 +9,18 @@
 
 class TorcPlayer;
 
+typedef enum TorcStreamTypes
+{
+    StreamTypeUnknown = -1,
+    StreamTypeStart = 0,
+    StreamTypeAudio = StreamTypeStart,
+    StreamTypeVideo,
+    StreamTypeSubtitle,
+    StreamTypeRawText,
+    StreamTypeAttachment,
+    StreamTypeEnd
+} TorcStreamTypes;
+
 class TORC_CORE_PUBLIC TorcDecoder
 {
   public:
@@ -36,14 +48,16 @@ class TORC_CORE_PUBLIC TorcDecoder
     } DecoderState;
 
     virtual ~TorcDecoder();
-    static TorcDecoder*  Create       (int DecodeFlags, const QString &URI, TorcPlayer *Parent);
-    virtual bool         HandleAction (int Action) = 0;
-    virtual bool         Open         (void) = 0;
-    virtual DecoderState State        (void) = 0;
-    virtual void         Start        (void) = 0;
-    virtual void         Pause        (void) = 0;
-    virtual void         Stop         (void) = 0;
-    virtual void         Seek         (void) = 0;
+    static TorcDecoder*  Create           (int DecodeFlags, const QString &URI, TorcPlayer *Parent);
+    virtual bool         HandleAction     (int Action) = 0;
+    virtual bool         Open             (void) = 0;
+    virtual DecoderState GetState         (void) = 0;
+    virtual void         Start            (void) = 0;
+    virtual void         Pause            (void) = 0;
+    virtual void         Stop             (void) = 0;
+    virtual void         Seek             (void) = 0;
+    virtual int          GetCurrentStream (TorcStreamTypes Type) = 0;
+    virtual int          GetStreamCount   (TorcStreamTypes Type) = 0;
 };
 
 class TORC_CORE_PUBLIC DecoderFactory

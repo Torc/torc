@@ -381,13 +381,13 @@ bool TorcPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
     (void)Size;
 
     // destroy last decoder once it has stopped
-    if (m_oldDecoder && m_oldDecoder->State() == TorcDecoder::Stopped)
+    if (m_oldDecoder && m_oldDecoder->GetState() == TorcDecoder::Stopped)
         DestroyOldDecoder();
 
     // check next decoder status
     if (m_nextDecoder)
     {
-        int state = m_nextDecoder->State();
+        int state = m_nextDecoder->GetState();
 
         if (state == TorcDecoder::Errored ||
             state == TorcDecoder::Stopped)
@@ -423,7 +423,7 @@ bool TorcPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
     // check for fatal errors
     if (m_decoder)
     {
-        if (m_decoder->State() == TorcDecoder::Errored)
+        if (m_decoder->GetState() == TorcDecoder::Errored)
         {
             SendUserMessage(QObject::tr("Fatal error decoding media"));
             LOG(VB_GENERAL, LOG_ERR, "Fatal decoder error detected. Stopping playback");
@@ -442,7 +442,7 @@ bool TorcPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
     }
 
     // check for playback completion
-    if (m_decoder->State() == TorcDecoder::Stopped)
+    if (m_decoder->GetState() == TorcDecoder::Stopped)
         SetState(Stopped);
 
     // update state
@@ -478,25 +478,25 @@ bool TorcPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
 
     if (m_state == Pausing)
     {
-        if (m_decoder->State() == TorcDecoder::Paused)
+        if (m_decoder->GetState() == TorcDecoder::Paused)
             SetState(Paused);
-        else if (m_decoder->State() != TorcDecoder::Pausing)
+        else if (m_decoder->GetState() != TorcDecoder::Pausing)
             m_decoder->Pause();
     }
 
     if (m_state == Starting)
     {
-        if (m_decoder->State() == TorcDecoder::Running)
+        if (m_decoder->GetState() == TorcDecoder::Running)
             SetState(Playing);
-        else if (m_decoder->State() != TorcDecoder::Starting)
+        else if (m_decoder->GetState() != TorcDecoder::Starting)
             m_decoder->Start();
     }
 
     if (m_state == Stopping)
     {
-        if (m_decoder->State() == TorcDecoder::Stopped)
+        if (m_decoder->GetState() == TorcDecoder::Stopped)
             SetState(Stopped);
-        else if (m_decoder->State() != TorcDecoder::Stopping)
+        else if (m_decoder->GetState() != TorcDecoder::Stopping)
             m_decoder->Stop();
     }
 
