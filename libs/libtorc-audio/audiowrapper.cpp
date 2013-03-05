@@ -71,6 +71,8 @@ void AudioWrapper::Reset(void)
 
 void AudioWrapper::DeleteOutput(void)
 {
+    ClearAudioTime();
+
     if (m_audioOutput)
     {
         delete m_audioOutput;
@@ -152,6 +154,8 @@ bool AudioWrapper::Initialise(void)
         if (audiomuted)
             SetMuteState(kMuteAll);
     }
+
+    ClearAudioTime();
 
     return !m_noAudioOut;
 }
