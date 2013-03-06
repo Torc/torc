@@ -69,7 +69,6 @@ void VideoFrame::Reset(void)
     m_repeatPict           = false;
     m_frameNumber          = 0;
     m_pts                  = AV_NOPTS_VALUE;
-    m_dts                  = AV_NOPTS_VALUE;
     m_corrupt              = false;
     m_frameRate            = 30000.0f / 1001.0f;
     m_pitches[0]           = m_pitches[1] = m_pitches[2] = m_pitches[3] = 0;

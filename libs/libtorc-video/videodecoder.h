@@ -41,6 +41,10 @@ class VideoDecoder : public AudioDecoder
     void         SetFormat           (PixelFormat Format, int Width, int Height, int References, bool UpdateParent);
 
   private:
+    void         ResetPTSTracker     (void);
+    int64_t      GetPTS              (int64_t PTS, int64_t DTS);
+
+  private:
     bool         m_keyframeSeen;
     VideoPlayer *m_videoParent;
     PixelFormat  m_currentPixelFormat;
@@ -48,6 +52,11 @@ class VideoDecoder : public AudioDecoder
     int          m_currentVideoHeight;
     int          m_currentReferenceCount;
     SwsContext  *m_conversionContext;
+
+    int64_t      m_faultyPTSCount;
+    int64_t      m_faultyDTSCount;
+    int64_t      m_lastPTS;
+    int64_t      m_lastDTS;
 };
 
 #endif // VIDEODECODER_H

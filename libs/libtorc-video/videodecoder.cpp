@@ -295,6 +295,8 @@ VideoDecoder::VideoDecoder(const QString &URI, TorcPlayer *Parent, int Flags)
     m_currentReferenceCount(0),
     m_conversionContext(NULL)
 {
+    ResetPTSTracker();
+
     VideoPlayer *player = static_cast<VideoPlayer*>(Parent);
     if (player)
         m_videoParent = player;
@@ -411,8 +413,7 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     frame->m_pixelAspectRatio = GetPixelAspectRatio(Stream, avframe);
     frame->m_repeatPict       = avframe.repeat_pict;
     frame->m_frameNumber      = avframe.display_picture_number;
-    frame->m_pts              = av_q2d(Stream->time_base) * 1000 * avframe.pkt_pts;
-    frame->m_dts              = av_q2d(Stream->time_base) * 1000 * avframe.pkt_dts;
+    frame->m_pts              = av_q2d(Stream->time_base) * 1000 * GetPTS(avframe.pkt_pts, avframe.pkt_dts);
     frame->m_corrupt          = !m_keyframeSeen;
     frame->m_frameRate        = GetFrameRate(Context, Stream);
 
@@ -480,6 +481,8 @@ void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)
 
 void VideoDecoder::FlushVideoBuffers(bool Stopped)
 {
+    ResetPTSTracker();
+
     if (Stopped)
         m_videoParent->Reset();
     else
@@ -496,6 +499,34 @@ void VideoDecoder::SetFormat(PixelFormat Format, int Width, int Height, int Refe
 
     if (UpdateParent)
         m_videoParent->Buffers()->FormatChanged(m_currentPixelFormat, m_currentVideoWidth, m_currentVideoHeight, m_currentReferenceCount);
+}
+
+void VideoDecoder::ResetPTSTracker(void)
+{
+    m_lastPTS = INT64_MIN;
+    m_lastDTS = INT64_MIN;
+    m_faultyPTSCount = 0;
+    m_faultyDTSCount = 0;
+}
+
+int64_t VideoDecoder::GetPTS(int64_t PTS, int64_t DTS)
+{
+    if (DTS != (int64_t)AV_NOPTS_VALUE)
+    {
+        m_faultyDTSCount += DTS <= m_lastDTS;
+        m_lastDTS = DTS;
+    }
+
+    if (PTS != (int64_t)AV_NOPTS_VALUE)
+    {
+        m_faultyPTSCount += PTS <= m_lastPTS;
+        m_lastPTS = PTS;
+    }
+
+    if ((m_faultyPTSCount <= m_faultyDTSCount || DTS == (int64_t)AV_NOPTS_VALUE) && PTS != (int64_t)AV_NOPTS_VALUE)
+        return PTS;
+
+    return DTS;
 }
 
 class VideoDecoderFactory : public DecoderFactory

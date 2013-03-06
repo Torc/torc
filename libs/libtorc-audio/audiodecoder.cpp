@@ -681,6 +681,7 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
     if (!queue)
         return;
 
+    FlushVideoBuffers(false);
     *state = TorcDecoder::Running;
     bool yield = false;
 

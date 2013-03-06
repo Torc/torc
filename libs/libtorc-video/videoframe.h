@@ -51,7 +51,6 @@ class VideoFrame
     bool           m_repeatPict;
     qint64         m_frameNumber;
     qint64         m_pts;
-    qint64         m_dts;
     bool           m_corrupt;
     double         m_frameRate;
 };
