@@ -24,6 +24,7 @@
 #include "torcconfig.h"
 #include "torcthread.h"
 #include "torcdecoder.h"
+#include "uiedid.h"
 #include "videoframe.h"
 #include "videorenderer.h"
 #include "videocolourspace.h"
@@ -37,6 +38,20 @@
 #include "videovaapi.h"
 #endif
 #endif
+
+/*! \class VideoUIPlayer
+ *  \brief The default media player for presenting audio and/or video within the GUI
+ *
+ * \todo Interlaced video
+ * \todo Interlaced audio/videolatency from edid
+ * \todo Detect/guess whether audio and video are provided over the same interface (HDMI)
+ * \todo Timecode wrap detection and handling
+ * \todo Timecode distcontinuity detection and handling
+ * \todo repeat_picture handling
+ * \todo Discard early audio samples
+ * \todo Dynamic drift size
+ */
+
 
 void VideoUIPlayer::Initialise(void)
 {
@@ -57,6 +72,7 @@ VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags
 {
     m_render = VideoRenderer::Create(m_colourSpace);
     m_buffers.SetDisplayFormat(m_render ? m_render->PreferredPixelFormat() : PIX_FMT_YUV420P);
+    m_manualAVSyncAdjustment = gLocalContext->GetSetting(TORC_GUI + "AVSyncAdj", (int)0);
 }
 
 VideoUIPlayer::~VideoUIPlayer()
@@ -75,20 +91,100 @@ bool VideoUIPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
     if (m_reset)
         Reset();
 
-    VideoFrame *frame = m_buffers.GetFrameForDisplaying();
+    VideoFrame *frame = NULL;
 
-    if (m_render)
+    if (m_decoder && (m_decoder->GetCurrentStream(StreamTypeVideo) != -1))
     {
-        if (m_state == Paused  || m_state == Starting ||
-            m_state == Playing || m_state == Searching ||
-            m_state == Pausing || m_state == Stopping)
-        {
-            m_render->RefreshFrame(frame, Size);
-        }
-    }
+        bool hasaudiostream = m_decoder->GetCurrentStream(StreamTypeAudio) != -1;
 
-    if (frame)
-        m_buffers.ReleaseFrameFromDisplaying(frame, false);
+        // get audio time. If no audio will be AV_NOPTS_VALUE
+        quint64 lastaudioupdate = 0;
+        qint64 audiotime = AV_NOPTS_VALUE;
+        if (m_audioWrapper && hasaudiostream)
+        {
+            audiotime = m_audioWrapper->GetAudioTime(lastaudioupdate);
+
+            // update audio time - audiotime is milliseconds, TimeNow is microseconds
+            if (audiotime != (qint64)AV_NOPTS_VALUE)
+            {
+                lastaudioupdate = lastaudioupdate < TimeNow ? TimeNow - lastaudioupdate : 0;
+                audiotime += lastaudioupdate / 1000;
+
+                // adjust for known latencies in video and audio rendering (EDID values are milliseconds)
+                int edidajustment = UIEDID::GetVideoLatency(false/*interlaced*/) - UIEDID::GetAudioLatency(false/*interlaced*/);
+                audiotime += edidajustment;
+
+                // user manual adjustment - milliseconds
+                audiotime += m_manualAVSyncAdjustment;
+            }
+        }
+
+        // get video time
+        qint64 videotime = AV_NOPTS_VALUE;
+        m_buffers.GetNextVideoTimeStamp(videotime);
+
+        bool validaudio = audiotime != (qint64)AV_NOPTS_VALUE;
+        bool validvideo = videotime != (qint64)AV_NOPTS_VALUE;
+
+        LOG(VB_GENERAL, LOG_DEBUG, QString("A:%1 V:%2").arg(audiotime).arg(videotime));
+
+        if (hasaudiostream && validaudio && validvideo && ((videotime - audiotime) > 50))
+        {
+            LOG(VB_GENERAL, LOG_INFO, QString("Video ahead of audio by %1ms - waiting").arg(videotime - audiotime));
+        }
+        else if (hasaudiostream && !validaudio)
+        {
+            LOG(VB_GENERAL, LOG_INFO, "Waiting for audio to start");
+        }
+        else if (hasaudiostream && !validvideo)
+        {
+            LOG(VB_GENERAL, LOG_INFO, "Waiting for video to start");
+        }
+        else
+        {
+            // get the next available frame. If no video this will be null
+            frame = m_buffers.GetFrameForDisplaying();
+
+            // sync audio and video - if we have both
+            if (frame && hasaudiostream)
+            {
+                videotime = frame->m_pts;
+                qint64 drift = audiotime - videotime;
+
+                LOG(VB_GENERAL, LOG_DEBUG, QString("AVSync: %1").arg(drift));
+
+                while (drift > 50)
+                {
+                    LOG(VB_GENERAL, LOG_INFO, QString("Audio ahead of video by %1ms - dropping frame %2")
+                        .arg(drift).arg(frame->m_frameNumber));
+                    m_buffers.ReleaseFrameFromDisplaying(frame, false);
+                    frame = m_buffers.GetFrameForDisplaying();
+
+                    if (frame)
+                    {
+                        videotime = frame->m_pts;
+                        drift = audiotime - videotime;
+                        continue;
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        if (m_render)
+        {
+            if (m_state == Paused  || m_state == Starting ||
+                m_state == Playing || m_state == Searching ||
+                m_state == Pausing || m_state == Stopping)
+            {
+                m_render->RefreshFrame(frame, Size);
+            }
+        }
+
+        if (frame)
+            m_buffers.ReleaseFrameFromDisplaying(frame, false);
+    }
 
     return TorcPlayer::Refresh(TimeNow, Size) && (frame != NULL);
 }
