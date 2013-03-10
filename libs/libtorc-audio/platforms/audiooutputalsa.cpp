@@ -33,6 +33,12 @@ AudioOutputALSA::AudioOutputALSA(const AudioSettings &Settings, AudioWrapper *Pa
     m_mixer.handle = NULL;
     m_mixer.elem = NULL;
 
+    if (m_mainDevice.startsWith("alsa:", Qt::CaseInsensitive))
+        m_mainDevice.remove(0, 5);
+
+    if (m_mainDevice.isEmpty())
+        m_mainDevice = QString("default");
+
     // Set everything up
     if (m_passthroughDevice == "auto")
     {
