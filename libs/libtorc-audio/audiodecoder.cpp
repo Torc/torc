@@ -883,7 +883,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
         // wait for the audio device
         int fill = m_audio ? m_audio->GetFillStatus() : 0;
         Thread->m_internalBufferEmpty = fill < 2;
-        if (fill > (int)m_audioOut->m_bestFillSize)
+        if (fill > (int)(m_audioOut->m_bestFillSize << 1))
         {
             queue->m_lock->unlock();
             TorcUSleep(m_audioOut->m_bufferTime * 500);
