@@ -17,6 +17,39 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 
+void FillSelectionFromDir(const QDir &dir, QList<AudioDeviceConfig> &DeviceList)
+{
+    QFileInfoList il = dir.entryInfoList();
+    for (QFileInfoList::Iterator it = il.begin(); it != il.end(); ++it )
+    {
+        QString name = (*it).absoluteFilePath();
+        AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(name, QObject::tr("OSS device"));
+        if (!config)
+            continue;
+
+        DeviceList.append(*config);
+        delete config;
+    }
+}
+
+void GetOSSDevices(QList<AudioDeviceConfig> &DeviceList)
+{
+    QDir dev("/dev", "dsp*", QDir::Name, QDir::System);
+    FillSelectionFromDir(dev, DeviceList);
+    dev.setNameFilters(QStringList("adsp*"));
+    FillSelectionFromDir(dev, DeviceList);
+
+    dev.setPath("/dev/sound");
+    if (dev.exists())
+    {
+        dev.setNameFilters(QStringList("dsp*"));
+        FillSelectionFromDir(dev, DeviceList);
+        dev.setNameFilters(QStringList("adsp*"));
+        FillSelectionFromDir(dev, DeviceList);
+    }
+
+}
+
 AudioOutputOSS::AudioOutputOSS(const AudioSettings &Settings, AudioWrapper *Parent)
   : AudioOutput(Settings, Parent),
     m_audioFd(-1),
@@ -24,6 +57,18 @@ AudioOutputOSS::AudioOutputOSS(const AudioSettings &Settings, AudioWrapper *Pare
     m_control(SOUND_MIXER_VOLUME)
 {
     InitSettings(Settings);
+
+    if (m_mainDevice.isEmpty())
+    {
+        QList<AudioDeviceConfig> list;
+        GetOSSDevices(list);
+
+        if (list.isEmpty())
+            LOG(VB_GENERAL, LOG_ERR, "No OSS audio devices found - audio will fail");
+        else
+            m_mainDevice = list.at(0).m_name;
+    }
+
     if (Settings.m_openOnInit)
         Reconfigure(Settings);
 }
@@ -366,21 +411,6 @@ void AudioOutputOSS::SetVolumeChannel(int channel, int volume)
     }
 }
 
-static void FillSelectionFromDir(const QDir &dir, QList<AudioDeviceConfig> &DeviceList)
-{
-    QFileInfoList il = dir.entryInfoList();
-    for (QFileInfoList::Iterator it = il.begin(); it != il.end(); ++it )
-    {
-        QString name = (*it).absoluteFilePath();
-        AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(name, QObject::tr("OSS device"));
-        if (!config)
-            continue;
-
-        DeviceList.append(*config);
-        delete config;
-    }
-}
-
 class AudioFactoryOSS : public AudioFactory
 {
     void Score(const AudioSettings &Settings, AudioWrapper *Parent, int &Score)
@@ -399,19 +429,7 @@ class AudioFactoryOSS : public AudioFactory
 
     void GetDevices(QList<AudioDeviceConfig> &DeviceList)
     {
-        QDir dev("/dev", "dsp*", QDir::Name, QDir::System);
-        FillSelectionFromDir(dev, DeviceList);
-        dev.setNameFilters(QStringList("adsp*"));
-        FillSelectionFromDir(dev, DeviceList);
-
-        dev.setPath("/dev/sound");
-        if (dev.exists())
-        {
-            dev.setNameFilters(QStringList("dsp*"));
-            FillSelectionFromDir(dev, DeviceList);
-            dev.setNameFilters(QStringList("adsp*"));
-            FillSelectionFromDir(dev, DeviceList);
-        }
+        GetOSSDevices(DeviceList);
     }
 } AudioFactoryOSS;
 
