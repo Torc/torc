@@ -452,7 +452,7 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     frame->m_pixelAspectRatio = GetPixelAspectRatio(Stream, avframe);
     frame->m_repeatPict       = avframe.repeat_pict;
     frame->m_frameNumber      = avframe.display_picture_number;
-    frame->m_pts              = av_q2d(Stream->time_base) * 1000 * GetPTS(avframe.pkt_pts, avframe.pkt_dts);
+    frame->m_pts              = av_q2d(Stream->time_base) * 1000 * GetValidTimestamp(avframe.pkt_pts, avframe.pkt_dts);
     frame->m_corrupt          = !m_keyframeSeen;
     frame->m_frameRate        = GetFrameRate(Context, Stream);
 
@@ -548,7 +548,7 @@ void VideoDecoder::ResetPTSTracker(void)
     m_faultyDTSCount = 0;
 }
 
-int64_t VideoDecoder::GetPTS(int64_t PTS, int64_t DTS)
+int64_t VideoDecoder::GetValidTimestamp(int64_t PTS, int64_t DTS)
 {
     if (DTS != (int64_t)AV_NOPTS_VALUE)
     {

@@ -42,7 +42,7 @@ class VideoDecoder : public AudioDecoder
 
   private:
     void         ResetPTSTracker     (void);
-    int64_t      GetPTS              (int64_t PTS, int64_t DTS);
+    int64_t      GetValidTimestamp   (int64_t PTS, int64_t DTS);
 
   private:
     bool         m_keyframeSeen;
