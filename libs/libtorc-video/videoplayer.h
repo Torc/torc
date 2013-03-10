@@ -22,7 +22,7 @@ class VideoPlayer : public TorcPlayer
     virtual void    Render             (quint64 TimeNow);
     virtual void    Reset              (void);
     void*           GetAudio           (void);
-    VideoBuffers*   Buffers            (void);
+    VideoBuffers*   GetBuffers            (void);
 
   protected:
     virtual void    Teardown           (void);

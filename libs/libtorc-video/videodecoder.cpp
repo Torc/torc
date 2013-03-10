@@ -184,7 +184,7 @@ static int GetBuffer(struct AVCodecContext *Context, AVFrame *Frame)
 
 int VideoDecoder::GetAVBuffer(AVCodecContext *Context, AVFrame *Frame)
 {
-    VideoFrame *frame  = m_videoParent->Buffers()->GetFrameForDecoding();
+    VideoFrame *frame  = m_videoParent->GetBuffers()->GetFrameForDecoding();
 
     if (!frame)
         return -1;
@@ -232,7 +232,7 @@ static void ReleaseBuffer(AVCodecContext *Context, AVFrame *Frame)
 
 void VideoDecoder::ReleaseAVBuffer(AVCodecContext *Context, AVFrame *Frame)
 {
-    m_videoParent->Buffers()->ReleaseFrameFromDecoded(static_cast<VideoFrame*>(Frame->opaque));
+    m_videoParent->GetBuffers()->ReleaseFrameFromDecoded(static_cast<VideoFrame*>(Frame->opaque));
 
     if (Frame->type != FF_BUFFER_TYPE_USER)
         LOG(VB_GENERAL, LOG_ERR, "Unexpected buffer type");
@@ -351,7 +351,7 @@ VideoDecoder::~VideoDecoder()
 
 bool VideoDecoder::VideoBufferStatus(int &Unused, int &Inuse, int &Held)
 {
-    return m_videoParent->Buffers()->GetBufferStatus(Unused, Inuse, Held);
+    return m_videoParent->GetBuffers()->GetBufferStatus(Unused, Inuse, Held);
 }
 
 void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream, AVPacket *Packet)
@@ -395,7 +395,7 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     if (!m_keyframeSeen && avframe.key_frame)
         m_keyframeSeen = true;
 
-    VideoFrame *frame = avframe.opaque ? static_cast<VideoFrame*>(avframe.opaque) : m_videoParent->Buffers()->GetFrameForDecoding();
+    VideoFrame *frame = avframe.opaque ? static_cast<VideoFrame*>(avframe.opaque) : m_videoParent->GetBuffers()->GetFrameForDecoding();
 
     if (!frame)
     {
@@ -456,7 +456,7 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     frame->m_corrupt          = !m_keyframeSeen;
     frame->m_frameRate        = GetFrameRate(Context, Stream);
 
-    m_videoParent->Buffers()->ReleaseFrameFromDecoding(frame);
+    m_videoParent->GetBuffers()->ReleaseFrameFromDecoding(frame);
 }
 
 void VideoDecoder::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stream)
@@ -525,7 +525,7 @@ void VideoDecoder::FlushVideoBuffers(bool Stopped)
     if (Stopped)
         m_videoParent->Reset();
     else
-        m_videoParent->Buffers()->Reset(false);
+        m_videoParent->GetBuffers()->Reset(false);
     m_keyframeSeen = false;
 }
 
@@ -537,7 +537,7 @@ void VideoDecoder::SetFormat(PixelFormat Format, int Width, int Height, int Refe
     m_currentReferenceCount = References;
 
     if (UpdateParent)
-        m_videoParent->Buffers()->FormatChanged(m_currentPixelFormat, m_currentVideoWidth, m_currentVideoHeight, m_currentReferenceCount);
+        m_videoParent->GetBuffers()->FormatChanged(m_currentPixelFormat, m_currentVideoWidth, m_currentVideoHeight, m_currentReferenceCount);
 }
 
 void VideoDecoder::ResetPTSTracker(void)

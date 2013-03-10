@@ -74,7 +74,7 @@ void* VideoPlayer::GetAudio(void)
     return m_audioWrapper;
 }
 
-VideoBuffers* VideoPlayer::Buffers(void)
+VideoBuffers* VideoPlayer::GetBuffers(void)
 {
     return &m_buffers;
 }
