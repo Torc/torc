@@ -37,41 +37,80 @@ extern "C" {
 }
 #endif
 
+#define SANE_ASPECT_RATIO(Val) (Val > 0.1f && Val < 10.0f)
+
 static PixelFormat GetFormatDefault(AVCodecContext *Context, const PixelFormat *Formats);
 
 double VideoDecoder::GetFrameAspectRatio(AVStream *Stream, AVFrame &Frame)
 {
     qreal result = 0.0f;
 
-    if (Frame.height && Frame.sample_aspect_ratio.num)
+    if (Frame.height > 0 && Frame.sample_aspect_ratio.num)
+    {
         result = av_q2d(Frame.sample_aspect_ratio) * ((double)Frame.width / (double)Frame.height);
 
-    if ((result <= 0.1f || result > 10.0f) && Stream && Stream->codec)
-    {
-        if (Stream->codec->height && Stream->codec->sample_aspect_ratio.num)
-            result = av_q2d(Stream->codec->sample_aspect_ratio) * ((double)Stream->codec->width / (double)Stream->codec->height);
+        if (SANE_ASPECT_RATIO(result))
+            return result;
+    }
 
-        if ((result <= 0.1f || result > 10.0f) && Frame.height)
-            result = (double)Frame.width / (double)Frame.height;
+    if (Stream)
+    {
+        if (Stream->codec && Stream->codec->height > 0)
+        {
+            if (Stream->codec->sample_aspect_ratio.num)
+            {
+                result = av_q2d(Stream->codec->sample_aspect_ratio) * ((double)Stream->codec->width / (double)Stream->codec->height);
+
+                if (SANE_ASPECT_RATIO(result))
+                    return result;
+            }
+
+            result = (double)Stream->codec->width / (double)Stream->codec->height;
+
+            if (SANE_ASPECT_RATIO(result))
+                return result;
+        }
+
+        if (Stream->sample_aspect_ratio.num)
 
         if ((result <= 0.1f || result > 10.0f) && Stream->codec->height)
             result = (double)Stream->codec->width / (double)Stream->codec->height;
     }
 
-    if (result <= 0.1f || result > 10.0f)
-        result = 4.0f / 3.0f;
+    if (Frame.height > 0)
+        result = (double)Frame.width / (double)Frame.height;
 
-    return result;
+    if (SANE_ASPECT_RATIO(result))
+        return result;
+
+    return 4.0f / 3.0f;
 }
 
 double VideoDecoder::GetPixelAspectRatio(AVStream *Stream, AVFrame &Frame)
 {
+    double result = 0.0f;
+
     if (Frame.sample_aspect_ratio.num)
-        return av_q2d(Frame.sample_aspect_ratio);
+        result = av_q2d(Frame.sample_aspect_ratio);
 
-    if (Stream && Stream->codec && Stream->codec->sample_aspect_ratio.num)
-        return av_q2d(Stream->codec->sample_aspect_ratio);
+    if (SANE_ASPECT_RATIO(result))
+        return result;
 
+    if (Stream)
+    {
+        if (Stream->codec && Stream->codec->sample_aspect_ratio.num)
+            result = av_q2d(Stream->codec->sample_aspect_ratio);
+
+        if (SANE_ASPECT_RATIO(result))
+            return result;
+
+        result = av_q2d(Stream->sample_aspect_ratio);
+
+        if (SANE_ASPECT_RATIO(result))
+            return result;
+    }
+
+    LOG(VB_GENERAL, LOG_WARNING, "Failed to get sensible pixel aspect ratio");
     return 1.0f;
 }
 
