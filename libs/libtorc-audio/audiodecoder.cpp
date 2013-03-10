@@ -2077,7 +2077,7 @@ bool AudioDecoder::ScanPrograms(void)
     {
         AVDictionaryEntry *entry = NULL;
         while ((entry = av_dict_get(m_priv->m_avFormatContext->metadata, "", entry, AV_DICT_IGNORE_SUFFIX)))
-            m_avMetaData.insert(QString(entry->key).trimmed(), QString(entry->value).trimmed());
+            m_avMetaData.insert(QString::fromUtf8(entry->key).trimmed(), QString::fromUtf8(entry->value).trimmed());
     }
 
     // Programs (usually none or one)
@@ -2132,7 +2132,7 @@ TorcProgramData* AudioDecoder::ScanProgram(uint Index)
     {
         AVDictionaryEntry *entry = NULL;
         while ((entry = av_dict_get(avprogram->metadata, "", entry, AV_DICT_IGNORE_SUFFIX)))
-            program->m_avMetaData.insert(QString(entry->key).trimmed(), QString(entry->value).trimmed());
+            program->m_avMetaData.insert(QString::fromUtf8(entry->key).trimmed(), QString::fromUtf8(entry->value).trimmed());
     }
 
     // Streams
@@ -2189,7 +2189,7 @@ TorcStreamData* AudioDecoder::ScanStream(uint Index)
     {
         AVDictionaryEntry *entry = NULL;
         while ((entry = av_dict_get(avstream->metadata, "", entry, AV_DICT_IGNORE_SUFFIX)))
-            stream->m_avMetaData.insert(QString(entry->key).trimmed(), QString(entry->value).trimmed());
+            stream->m_avMetaData.insert(QString::fromUtf8(entry->key).trimmed(), QString::fromUtf8(entry->value).trimmed());
     }
 
     // Language
@@ -2270,7 +2270,7 @@ void AudioDecoder::ScanChapters(void)
             {
                 AVDictionaryEntry *entry = NULL;
                 while ((entry = av_dict_get(avchapter->metadata, "", entry, AV_DICT_IGNORE_SUFFIX)))
-                    chapter->m_avMetaData.insert(QString(entry->key).trimmed(), QString(entry->value).trimmed());
+                    chapter->m_avMetaData.insert(QString::fromUtf8(entry->key).trimmed(), QString::fromUtf8(entry->value).trimmed());
             }
 
             m_chapters.append(chapter);
