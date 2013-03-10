@@ -1486,8 +1486,8 @@ void AudioOutput::SetAudiotime(int Frames, qint64 Timecode)
 
     m_audioBufferTimecode =
         Timecode + (m_effectiveDSPRate ? ((Frames + processframes_unstretched * 100000) +
-                    (processframes_stretched * m_effectiveStretchFactor)
-                   ) / m_effectiveDSPRate : 0);
+                            (processframes_stretched * m_effectiveStretchFactor)
+                       ) / m_effectiveDSPRate : 0);
 
     // check for timecode wrap and reset m_timecode if detected
     // timecode will always be monotonic asc if not seeked and reset
@@ -1793,6 +1793,10 @@ void AudioOutput::run(void)
                 m_timecode = 0; // mark 'm_timecode' as invalid.
 
                 WriteAudio(zeros, zerofragmentsize);
+
+                if (m_parent)
+                    m_parent->SetAudioTime(GetAudiotime(), GetMicrosecondCount());
+
                 continue;
             }
             else
@@ -1825,6 +1829,10 @@ void AudioOutput::run(void)
                 if (!m_resetActive->TestAndDeref())
                 {
                     WriteAudio(fragment, m_fragmentSize);
+
+                    if (m_parent)
+                        m_parent->SetAudioTime(GetAudiotime(), GetMicrosecondCount());
+
                     if (!m_resetActive->TestAndDeref())
                         m_raud = nextraud;
                 }
