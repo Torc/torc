@@ -40,6 +40,19 @@ static inline double FixRate(double Rate)
     return defaultrate;
 }
 
+static inline bool IsStandardScreenRatio(double Ratio)
+{
+    static double ratios[] = { 4.0f / 3.0f, 16.0f / 9.0f, 16.0f / 10.0f };
+    double high = Ratio + 0.01f;
+    double low =  Ratio - 0.01f;
+
+    for (uint i = 0; i < sizeof(ratios) / sizeof(double); ++i)
+        if (low < ratios[i] && high > ratios[i])
+            return true;
+
+    return false;
+}
+
 static inline double FixRatio(double Ratio)
 {
     static double ratios[] = { 1.0f, 4.0f / 3.0f, 16.0f / 9.0f, 16.0f / 10.0f, 5.0f / 4.0f, 2.0f / 1.0f, 3.0f / 2.0f, 14.0f / 9.0f, 21.0f / 10.0f };
@@ -244,9 +257,20 @@ void UIDisplayBase::Sanitise(void)
 {
     m_refreshRate      = FixRate(m_refreshRate);
     m_aspectRatio      = FixRatio((double)m_physicalSize.width() / (double)m_physicalSize.height());
-    m_pixelAspectRatio = FixRatio(((double)m_physicalSize.height() / (double)m_pixelSize.height()) /
-                                  ((double)m_physicalSize.width() / (double)m_pixelSize.width()));
 
+    if (!IsStandardScreenRatio(m_aspectRatio))
+    {
+        // try to fix aspect ratios that are based on innacurate EDID physical size data (EDID only provides
+        // centimeter accuracy by default). Use the raw pixel aspect ratio as a hint.
+        double rawpar = (double)m_pixelSize.width() / (double)m_pixelSize.height();
+        if (IsStandardScreenRatio(rawpar) && (abs(m_aspectRatio - rawpar) < 0.1))
+        {
+            LOG(VB_GENERAL, LOG_INFO, QString("Adjusting screen aspect ratio from %1 to %2").arg(m_aspectRatio).arg(rawpar));
+            m_aspectRatio = rawpar;
+        }
+    }
+
+    m_pixelAspectRatio = FixRatio(((double)m_pixelSize.width() / (double)m_pixelSize.height()) / m_aspectRatio);
 
     LOG(VB_GENERAL, LOG_INFO, QString("Using screen %1 of %2")
         .arg(m_screen + 1).arg(m_screenCount));
