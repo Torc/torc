@@ -1084,7 +1084,8 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                         pts = av_q2d(stream->time_base) * 1000 * packet->pts;
                     }
 
-                    m_audio->AddAudioData((char *)audiosamples, datasize, pts, frames);
+                    if (!FilterAudioFrames(pts))
+                        m_audio->AddAudioData((char *)audiosamples, datasize, pts, frames);
 
                     temp.data += used;
                     temp.size -= used;
@@ -1183,6 +1184,11 @@ int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
     }
 
     return result;
+}
+
+bool AudioDecoder::FilterAudioFrames(qint64 Timecode)
+{
+    return false;
 }
 
 void AudioDecoder::DecodeSubtitles(TorcSubtitleThread *Thread)

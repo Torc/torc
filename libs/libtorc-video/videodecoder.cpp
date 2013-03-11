@@ -22,6 +22,7 @@
 
 // Torc
 #include "torclogging.h"
+#include "torccoreutils.h"
 #include "videoplayer.h"
 #include "audiodecoder.h"
 #include "torcavutils.h"
@@ -110,7 +111,6 @@ double VideoDecoder::GetPixelAspectRatio(AVStream *Stream, AVFrame &Frame)
             return result;
     }
 
-    LOG(VB_GENERAL, LOG_WARNING, "Failed to get sensible pixel aspect ratio");
     return 1.0f;
 }
 
@@ -332,7 +332,9 @@ VideoDecoder::VideoDecoder(const QString &URI, TorcPlayer *Parent, int Flags)
     m_currentVideoWidth(0),
     m_currentVideoHeight(0),
     m_currentReferenceCount(0),
-    m_conversionContext(NULL)
+    m_conversionContext(NULL),
+    m_filterAudioFrames(false),
+    m_firstVideoTimecode(AV_NOPTS_VALUE)
 {
     ResetPTSTracker();
 
@@ -347,6 +349,27 @@ VideoDecoder::~VideoDecoder()
 {
     if (m_conversionContext)
         sws_freeContext(m_conversionContext);
+}
+
+bool VideoDecoder::FilterAudioFrames(qint64 Timecode)
+{
+    if (m_filterAudioFrames)
+    {
+        if (m_firstVideoTimecode == (qint64)AV_NOPTS_VALUE)
+        {
+            // slow the audio decoder thread down a little and avoid it dumping
+            // large amounts of audio before the video thread is ready
+            TorcUSleep(50000);
+            return true;
+        }
+
+        if (Timecode < m_firstVideoTimecode)
+            return true;
+
+        m_filterAudioFrames = false;
+    }
+
+    return false;
 }
 
 bool VideoDecoder::VideoBufferStatus(int &Unused, int &Inuse, int &Held)
@@ -451,12 +474,15 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     frame->m_frameAspectRatio = GetFrameAspectRatio(Stream, avframe);
     frame->m_pixelAspectRatio = GetPixelAspectRatio(Stream, avframe);
     frame->m_repeatPict       = avframe.repeat_pict;
-    frame->m_frameNumber      = avframe.display_picture_number;
+    frame->m_frameNumber      = avframe.coded_picture_number;
     frame->m_pts              = av_q2d(Stream->time_base) * 1000 * GetValidTimestamp(avframe.pkt_pts, avframe.pkt_dts);
     frame->m_corrupt          = !m_keyframeSeen;
     frame->m_frameRate        = GetFrameRate(Context, Stream);
 
     m_videoParent->GetBuffers()->ReleaseFrameFromDecoding(frame);
+
+    if (m_firstVideoTimecode == (qint64)AV_NOPTS_VALUE)
+        m_firstVideoTimecode = frame->m_pts;
 }
 
 void VideoDecoder::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stream)
@@ -493,6 +519,17 @@ void VideoDecoder::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stream)
     }
 
     SetFormat(context->pix_fmt, context->width, context->height, context->refs, false);
+
+    // if this is the current video stream, start filtering early audio packets.
+    // We do this here to ensure audio packets do not pass through before the video
+    // decoder thread has started. NB attachment streams can be 'video'.
+    m_streamLock->lockForRead();
+    if (Stream->index == m_currentStreams[StreamTypeVideo])
+    {
+        m_filterAudioFrames  = true;
+        m_firstVideoTimecode = AV_NOPTS_VALUE;
+    }
+    m_streamLock->unlock();
 }
 
 void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)
@@ -526,7 +563,16 @@ void VideoDecoder::FlushVideoBuffers(bool Stopped)
         m_videoParent->Reset();
     else
         m_videoParent->GetBuffers()->Reset(false);
-    m_keyframeSeen = false;
+
+    m_keyframeSeen       = false;
+
+    m_streamLock->lockForRead();
+    if (m_currentStreams[StreamTypeVideo] != -1)
+    {
+        m_filterAudioFrames  = true;
+        m_firstVideoTimecode = AV_NOPTS_VALUE;
+    }
+    m_streamLock->unlock();
 }
 
 void VideoDecoder::SetFormat(PixelFormat Format, int Width, int Height, int References, bool UpdateParent)

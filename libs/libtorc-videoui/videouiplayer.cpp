@@ -48,7 +48,6 @@
  * \todo Timecode wrap detection and handling
  * \todo Timecode distcontinuity detection and handling
  * \todo repeat_picture handling
- * \todo Discard early audio samples
  * \todo Dynamic drift size
  */
 

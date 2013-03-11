@@ -64,6 +64,7 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
     void             DecodeVideoFrames  (TorcVideoThread    *Thread);
     void             DecodeSubtitles    (TorcSubtitleThread *Thread);
 
+    virtual bool     FilterAudioFrames  (qint64 Timecode);
     virtual bool     VideoBufferStatus  (int &Unused, int &Inuse, int &Held);
     virtual void     ProcessVideoPacket (AVFormatContext *Context, AVStream* Stream, AVPacket *Packet);
     virtual void     SetupVideoDecoder  (AVFormatContext *Context, AVStream* Stream);

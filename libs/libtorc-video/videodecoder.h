@@ -32,6 +32,7 @@ class VideoDecoder : public AudioDecoder
   protected:
     explicit VideoDecoder (const QString &URI, TorcPlayer *Parent, int Flags);
 
+    bool         FilterAudioFrames   (qint64 Timecode);
     bool         VideoBufferStatus   (int &Unused, int &Inuse, int &Held);
     void         ProcessVideoPacket  (AVFormatContext *Context, AVStream *Stream, AVPacket *Packet);
     void         SetupVideoDecoder   (AVFormatContext *Context, AVStream *Stream);
@@ -57,6 +58,9 @@ class VideoDecoder : public AudioDecoder
     int64_t      m_faultyDTSCount;
     int64_t      m_lastPTS;
     int64_t      m_lastDTS;
+
+    bool         m_filterAudioFrames;
+    int64_t      m_firstVideoTimecode;
 };
 
 #endif // VIDEODECODER_H
