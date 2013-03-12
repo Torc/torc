@@ -30,6 +30,8 @@ SOURCES += videoplayer.cpp  videodecoder.cpp
 SOURCES += videoframe.cpp   videobuffers.cpp
 
 contains(CONFIG_VDA, yes) {
+    HEADERS += platforms/videovda.h
+    SOURCES += platforms/videovda.cpp
     QMAKE_CXXFLAGS += -F/System/Library/Frameworks/CoreVideo.framework/Frameworks
     QMAKE_CXXFLAGS += -F/System/Library/Frameworks/CoreFoundation.framework/Frameworks
     LIBS           += -framework CoreVideo -framework CoreFoundation

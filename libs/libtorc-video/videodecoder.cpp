@@ -30,12 +30,7 @@
 #include "videodecoder.h"
 
 #if CONFIG_VDA
-#define VDA_CV_FORMAT  kCVPixelFormatType_422YpCbCr8
-#define VDA_PIX_FORMAT PIX_FMT_UYVY422
-#include "CoreVideo/CVPixelBuffer.h"
-extern "C" {
-#include "libavcodec/vda.h"
-}
+#include "platforms/videovda.h"
 #endif
 
 #define SANE_ASPECT_RATIO(Val) (Val > 0.1f && Val < 10.0f)
@@ -238,12 +233,7 @@ void VideoDecoder::ReleaseAVBuffer(AVCodecContext *Context, AVFrame *Frame)
         LOG(VB_GENERAL, LOG_ERR, "Unexpected buffer type");
 
 #if CONFIG_VDA
-    if (Frame->format == PIX_FMT_VDA_VLD && Context->hwaccel_context)
-    {
-        CVPixelBufferRef buffer = (CVPixelBufferRef)Frame->data[3];
-        if (buffer)
-            CFRelease(buffer);
-    }
+    VideoVDA::ReleaseBuffer(Context, Frame);
 #endif
 
     for (uint i = 0; i < 4; i++)
@@ -293,29 +283,10 @@ PixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const PixelF
         LOG(VB_GENERAL, LOG_INFO, QString("Testing pixel format: %1").arg(av_get_pix_fmt_name(format)));
 
 #if CONFIG_VDA
-        if (format == PIX_FMT_VDA_VLD && Context->codec_id == AV_CODEC_ID_H264 && 0)
-        {
-            struct vda_context *context = new vda_context;
-            memset(context, 0, sizeof(vda_context));
-            context->decoder           = NULL;
-            context->use_sync_decoding = 1;
-            context->width             = Context->width;
-            context->height            = Context->height;
-            context->cv_pix_fmt_type   = VDA_CV_FORMAT;
-            context->format            = 'avc1';
-
-            if (ff_vda_create_decoder(context, Context->extradata, Context->extradata_size))
-            {
-                LOG(VB_GENERAL, LOG_ERR, "Error creating VDA decoder");
-                delete context;
-            }
-            else
-            {
-                Context->hwaccel_context = context;
-                break;
-            }
-        }
+        if (VideoVDA::AgreePixelFormat(Context, format))
+            break;
 #endif
+
         if (format == PIX_FMT_YUV420P)
             break;
     }
@@ -427,45 +398,7 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     }
 
 #if CONFIG_VDA
-    if (avframe.format == PIX_FMT_VDA_VLD && frame->m_pixelFormat == PIX_FMT_VDA_VLD)
-    {
-        CVPixelBufferRef buffer = (CVPixelBufferRef)avframe.data[3];
-        if (buffer)
-        {
-            CVPixelBufferLockBaseAddress(buffer, 0);
-
-            int width  = frame->m_rawWidth;
-            int height = frame->m_rawHeight;
-
-            AVPicture in;
-            memset(&in, 0, sizeof(AVPicture));
-            uint planes = std::max((uint)1, (uint)CVPixelBufferGetPlaneCount(buffer));
-            for (uint i = 0; i < planes; ++i)
-            {
-                in.data[i]     = (uint8_t*)CVPixelBufferGetBaseAddressOfPlane(buffer, i);
-                in.linesize[i] = CVPixelBufferGetBytesPerRowOfPlane(buffer, i);
-            }
-
-            AVPicture out;
-            avpicture_fill(&out, frame->m_buffer, frame->m_secondaryPixelFormat, frame->m_rawWidth, frame->m_rawHeight);
-
-            m_conversionContext = sws_getCachedContext(m_conversionContext,
-                                                       width, height, VDA_PIX_FORMAT,
-                                                       width, height, frame->m_secondaryPixelFormat,
-                                                       SWS_FAST_BILINEAR, NULL, NULL, NULL);
-            if (m_conversionContext != NULL)
-            {
-                if (sws_scale(m_conversionContext, in.data, in.linesize, 0, height, out.data, out.linesize) < 1)
-                    LOG(VB_GENERAL, LOG_ERR, "Software scaling/conversion failed");
-            }
-            else
-            {
-                LOG(VB_GENERAL, LOG_ERR, "Failed to create software conversion context");
-            }
-
-            CVPixelBufferUnlockBaseAddress(buffer, 0);
-        }
-    }
+    VideoVDA::GetFrame(avframe, frame, m_conversionContext);
 #endif
 
     frame->m_colourSpace      = Stream->codec->colorspace;
@@ -541,17 +474,7 @@ void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)
     m_conversionContext = NULL;
 
 #if CONFIG_VDA
-    if (Stream->codec->hwaccel_context && Stream->codec->pix_fmt == PIX_FMT_VDA_VLD)
-    {
-        vda_context *context = static_cast<vda_context*>(Stream->codec->hwaccel_context);
-        if (context)
-        {
-            LOG(VB_PLAYBACK, LOG_INFO, "Destroying VDA decoder");
-            ff_vda_destroy_decoder(context);
-            delete context;
-            Stream->codec->hwaccel_context = NULL;
-        }
-    }
+    VideoVDA::Cleanup(Stream);
 #endif
 }
 
