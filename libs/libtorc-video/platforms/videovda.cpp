@@ -21,6 +21,7 @@
 */
 
 // Torc
+#include "torclogging.h"
 #include "videovda.h"
 
 void VideoVDA::ReleaseBuffer(AVCodecContext *Context, AVFrame *Frame)
