@@ -21,10 +21,11 @@ class VideoFrame
     ~VideoFrame                  ();
 
     void           Reset         (void);
-    bool           Initialise    (PixelFormat Format, int Width, int Height);
+    void           Initialise    (PixelFormat Format, int Width, int Height);
+    void           InitialiseBuffer (void);
     bool           Discard       (void);
     void           SetDiscard    (void);
-    bool           SetOffsets    (void);
+    void           SetOffsets    (void);
 
     unsigned char *m_buffer;
     int            m_pitches[4];
@@ -53,6 +54,8 @@ class VideoFrame
     qint64         m_pts;
     bool           m_corrupt;
     double         m_frameRate;
+
+    void*          m_acceleratedBuffer;
 };
 
 #endif // VIDEOFRAME_H

@@ -29,10 +29,6 @@
 #include "videoframe.h"
 #include "videodecoder.h"
 
-#if CONFIG_VDA
-#include "platforms/videovda.h"
-#endif
-
 #define SANE_ASPECT_RATIO(Val) (Val > 0.1f && Val < 10.0f)
 
 static PixelFormat GetFormatDefault(AVCodecContext *Context, const PixelFormat *Formats);
@@ -187,25 +183,43 @@ int VideoDecoder::GetAVBuffer(AVCodecContext *Context, AVFrame *Frame)
     if (Context->width != frame->m_rawWidth || Context->height != frame->m_rawHeight || Context->pix_fmt != frame->m_pixelFormat)
         LOG(VB_GENERAL, LOG_ERR, "Frame format changed");
 
-    static uint8_t dummy = 1;
-    bool hardware = Context->pix_fmt == PIX_FMT_VDA_VLD;
-
-    for (int i = 0; i < 4; i++)
-    {
-        Frame->data[i]     = hardware ? &dummy : frame->m_buffer + frame->m_offsets[i];
-        Frame->base[i]     = hardware ? &dummy : Frame->data[i];
-        Frame->linesize[i] = hardware ? dummy  : frame->m_pitches[i];
-    }
-
+    // start frame initalisation
     Frame->opaque              = frame;
     Frame->type                = FF_BUFFER_TYPE_USER;
-    Frame->extended_data       = Frame->data;
     Frame->pkt_pts             = Context->pkt ? Context->pkt->pts : AV_NOPTS_VALUE;
     Frame->pkt_dts             = Context->pkt ? Context->pkt->dts : AV_NOPTS_VALUE;
     Frame->width               = frame->m_rawWidth;
     Frame->height              = frame->m_rawHeight;
     Frame->format              = frame->m_pixelFormat;
     Frame->sample_aspect_ratio = Context->sample_aspect_ratio;
+
+    // initialise hardware context
+    // FIXME this needs a failure mode so that we don't always fallback to a software frame
+    bool initialised = false;
+    AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+    for ( ; factory; factory = factory->NextFactory())
+    {
+        if (factory->InitialiseBuffer(Context, Frame, frame))
+        {
+            initialised = true;
+            break;
+        }
+    }
+
+    // or fallback to software decoding
+    if (!initialised)
+    {
+        frame->InitialiseBuffer();
+        for (int i = 0; i < 4; i++)
+        {
+            Frame->data[i]     = frame->m_buffer + frame->m_offsets[i];
+            Frame->base[i]     = Frame->data[i];
+            Frame->linesize[i] = frame->m_pitches[i];
+        }
+    }
+
+    // finish frame initialisation
+    Frame->extended_data       = Frame->data;
 
     return 0;
 }
@@ -227,14 +241,16 @@ static void ReleaseBuffer(AVCodecContext *Context, AVFrame *Frame)
 
 void VideoDecoder::ReleaseAVBuffer(AVCodecContext *Context, AVFrame *Frame)
 {
-    m_videoParent->GetBuffers()->ReleaseFrameFromDecoded(static_cast<VideoFrame*>(Frame->opaque));
+    VideoFrame *frame = static_cast<VideoFrame*>(Frame->opaque);
+
+    m_videoParent->GetBuffers()->ReleaseFrameFromDecoded(frame);
 
     if (Frame->type != FF_BUFFER_TYPE_USER)
         LOG(VB_GENERAL, LOG_ERR, "Unexpected buffer type");
 
-#if CONFIG_VDA
-    VideoVDA::ReleaseBuffer(Context, Frame);
-#endif
+    AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+    for ( ; factory; factory = factory->NextFactory())
+        factory->DeinitialiseBuffer(Context, Frame, frame);
 
     for (uint i = 0; i < 4; i++)
         Frame->data[i] = NULL;
@@ -282,16 +298,29 @@ PixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const PixelF
         format = *(formats++);
         LOG(VB_GENERAL, LOG_INFO, QString("Testing pixel format: %1").arg(av_get_pix_fmt_name(format)));
 
-#if CONFIG_VDA
-        if (VideoVDA::AgreePixelFormat(Context, format))
+        bool accelerate = false;
+        AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+        for ( ; factory; factory = factory->NextFactory())
+        {
+            if (factory->CanAccelerate(Context, format))
+            {
+                accelerate = true;
+                break;
+            }
+        }
+
+        if (accelerate)
             break;
-#endif
 
         if (format == PIX_FMT_YUV420P)
             break;
     }
 
     SetFormat(format, Context->width, Context->height, Context->refs, true);
+    Context->pix_fmt = format;
+
+    PostInitVideoDecoder(Context);
+
     return format;
 }
 
@@ -353,19 +382,6 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     if (!Context || !Packet || !Stream || (Stream && !Stream->codec))
         return;
 
-    // sanity check for format changes
-    if (Stream->codec->pix_fmt != m_currentPixelFormat ||
-        Stream->codec->width   != m_currentVideoWidth  ||
-        Stream->codec->height  != m_currentVideoHeight ||
-        Stream->codec->refs    != m_currentReferenceCount)
-    {
-        LOG(VB_GENERAL, LOG_INFO, QString("Video format changed from %1 %2x%3 (%4refs) to %5 %6x%7 %8")
-            .arg(av_get_pix_fmt_name(m_currentPixelFormat)).arg(m_currentVideoWidth).arg(m_currentVideoHeight).arg(m_currentReferenceCount)
-            .arg(av_get_pix_fmt_name(Stream->codec->pix_fmt)).arg(Stream->codec->width).arg(Stream->codec->height).arg(Stream->codec->refs));
-
-        SetFormat(Stream->codec->pix_fmt, Stream->codec->width, Stream->codec->height, Stream->codec->refs, true);
-    }
-
     // Add any preprocessing here
 
     // Decode a frame
@@ -397,9 +413,9 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
         return;
     }
 
-#if CONFIG_VDA
-    VideoVDA::GetFrame(avframe, frame, m_conversionContext);
-#endif
+    AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+    for ( ; factory; factory = factory->NextFactory())
+        factory->ConvertBuffer(avframe, frame, m_conversionContext);
 
     frame->m_colourSpace      = Stream->codec->colorspace;
     frame->m_topFieldFirst    = avframe.top_field_first;
@@ -418,7 +434,7 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
         m_firstVideoTimecode = frame->m_pts;
 }
 
-void VideoDecoder::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stream)
+void VideoDecoder::PreInitVideoDecoder(AVFormatContext *Context, AVStream *Stream)
 {
     (void)Context;
 
@@ -451,6 +467,11 @@ void VideoDecoder::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stream)
         context->flags            |= CODEC_FLAG_EMU_EDGE;
     }
 
+    // setup hardware context
+    AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+    for ( ; factory; factory = factory->NextFactory())
+        factory->PreInitialiseDecoder(context);
+
     SetFormat(context->pix_fmt, context->width, context->height, context->refs, false);
 
     // if this is the current video stream, start filtering early audio packets.
@@ -465,6 +486,14 @@ void VideoDecoder::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stream)
     m_streamLock->unlock();
 }
 
+void VideoDecoder::PostInitVideoDecoder(AVCodecContext *Context)
+{
+    // setup hardware context
+    AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+    for ( ; factory; factory = factory->NextFactory())
+        factory->PostInitialiseDecoder(Context);
+}
+
 void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)
 {
     if (!Stream || (Stream && !Stream->codec))
@@ -473,9 +502,9 @@ void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)
     sws_freeContext(m_conversionContext);
     m_conversionContext = NULL;
 
-#if CONFIG_VDA
-    VideoVDA::Cleanup(Stream);
-#endif
+    AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+    for ( ; factory; factory = factory->NextFactory())
+        factory->DeinitialiseDecoder(Stream->codec);
 }
 
 void VideoDecoder::FlushVideoBuffers(bool Stopped)
@@ -553,4 +582,26 @@ class VideoDecoderFactory : public DecoderFactory
         return NULL;
     }
 } VideoDecoderFactory;
+
+AccelerationFactory* AccelerationFactory::gAccelerationFactory = NULL;
+
+AccelerationFactory::AccelerationFactory()
+{
+    nextAccelerationFactory = gAccelerationFactory;
+    gAccelerationFactory = this;
+}
+
+AccelerationFactory::~AccelerationFactory()
+{
+}
+
+AccelerationFactory* AccelerationFactory::GetAccelerationFactory(void)
+{
+    return gAccelerationFactory;
+}
+
+AccelerationFactory* AccelerationFactory::NextFactory(void) const
+{
+    return nextAccelerationFactory;
+}
 

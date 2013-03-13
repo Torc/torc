@@ -810,10 +810,15 @@ void AudioDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     (void)Packet;
 }
 
-void AudioDecoder::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stream)
+void AudioDecoder::PreInitVideoDecoder(AVFormatContext *Context, AVStream *Stream)
 {
     (void)Context;
     (void)Stream;
+}
+
+void AudioDecoder::PostInitVideoDecoder(AVCodecContext *Context)
+{
+    (void)Context;
 }
 
 void AudioDecoder::CleanupVideoDecoder(AVStream *Stream)
@@ -1735,8 +1740,10 @@ bool AudioDecoder::OpenDecoders(const QList<TorcStreamData*> &Streams)
             return false;
         }
 
+        // NB 'post' initialisation is triggered when the first video packet is processed
+        // by the decoder and AgreePixelFormat is called
         if (context->codec_type == AVMEDIA_TYPE_VIDEO)
-            SetupVideoDecoder(m_priv->m_avFormatContext, stream);
+            PreInitVideoDecoder(m_priv->m_avFormatContext, stream);
 
         int error;
         if ((error = avcodec_open2(context, avcodec, NULL)) < 0)

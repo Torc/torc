@@ -13,6 +13,7 @@ extern "C" {
 }
 
 class VideoPlayer;
+class VideoFrame;
 
 class VideoDecoder : public AudioDecoder
 {
@@ -35,7 +36,8 @@ class VideoDecoder : public AudioDecoder
     bool         FilterAudioFrames   (qint64 Timecode);
     bool         VideoBufferStatus   (int &Unused, int &Inuse, int &Held);
     void         ProcessVideoPacket  (AVFormatContext *Context, AVStream *Stream, AVPacket *Packet);
-    void         SetupVideoDecoder   (AVFormatContext *Context, AVStream *Stream);
+    void         PreInitVideoDecoder (AVFormatContext *Context, AVStream *Stream);
+    void         PostInitVideoDecoder(AVCodecContext *Context);
     void         CleanupVideoDecoder (AVStream *Stream);
     void         FlushVideoBuffers   (bool Stopped);
 
@@ -61,6 +63,28 @@ class VideoDecoder : public AudioDecoder
 
     bool         m_filterAudioFrames;
     int64_t      m_firstVideoTimecode;
+};
+
+class AccelerationFactory
+{
+  public:
+    AccelerationFactory();
+    virtual ~AccelerationFactory();
+
+    static AccelerationFactory* GetAccelerationFactory  (void);
+    AccelerationFactory*        NextFactory             (void) const;
+
+    virtual bool                CanAccelerate           (AVCodecContext *Context, AVPixelFormat Format) = 0;
+    virtual void                PreInitialiseDecoder    (AVCodecContext *Context) = 0;
+    virtual void                PostInitialiseDecoder   (AVCodecContext *Context) = 0;
+    virtual void                DeinitialiseDecoder     (AVCodecContext *Context) = 0;
+    virtual bool                InitialiseBuffer        (AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame) = 0;
+    virtual void                DeinitialiseBuffer      (AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame) = 0;
+    virtual void                ConvertBuffer           (AVFrame &Avframe, VideoFrame *Frame, SwsContext *ConversionContext) = 0;
+
+  protected:
+    static AccelerationFactory* gAccelerationFactory;
+    AccelerationFactory*        nextAccelerationFactory;
 };
 
 #endif // VIDEODECODER_H
