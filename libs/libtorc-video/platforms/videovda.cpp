@@ -22,19 +22,10 @@
 
 // Torc
 #include "torclogging.h"
+#include "videodecoder.h"
 #include "videovda.h"
 
-void VideoVDA::ReleaseBuffer(AVCodecContext *Context, AVFrame *Frame)
-{
-    if (Frame->format == PIX_FMT_VDA_VLD && Context->hwaccel_context)
-    {
-        CVPixelBufferRef buffer = (CVPixelBufferRef)Frame->data[3];
-        if (buffer)
-            CFRelease(buffer);
-    }
-}
-
-bool VideoVDA::AgreePixelFormat(AVCodecContext *Context, PixelFormat Format)
+bool VideoVDA::CanAccelerate(AVCodecContext *Context, AVPixelFormat Format)
 {
     // NB this is currently disabled by default as it is not stable
     if (Format == PIX_FMT_VDA_VLD && Context->codec_id == AV_CODEC_ID_H264 && 0)
@@ -63,60 +54,92 @@ bool VideoVDA::AgreePixelFormat(AVCodecContext *Context, PixelFormat Format)
     return false;
 }
 
-void VideoVDA::GetFrame(AVFrame &Avframe, VideoFrame *Frame, SwsContext *ConversionContext)
+class VDAAcceleration : public AccelerationFactory
 {
-    if (Avframe.format == PIX_FMT_VDA_VLD && Frame->m_pixelFormat == PIX_FMT_VDA_VLD)
+    bool CanAccelerate(AVCodecContext *Context, AVPixelFormat Format)
     {
-        CVPixelBufferRef buffer = (CVPixelBufferRef)Avframe.data[3];
-        if (buffer)
+        return VideoVDA::CanAccelerate(Context, Format);
+    }
+
+    void PreInitialiseDecoder(AVCodecContext *Context)
+    {
+    }
+
+    void PostInitialiseDecoder(AVCodecContext *Context)
+    {
+    }
+
+    void DeinitialiseDecoder(AVCodecContext *Context)
+    {
+        if (Context && Context->hwaccel_context && Context->pix_fmt == PIX_FMT_VDA_VLD)
         {
-            CVPixelBufferLockBaseAddress(buffer, 0);
-
-            int width  = Frame->m_rawWidth;
-            int height = Frame->m_rawHeight;
-
-            AVPicture in;
-            memset(&in, 0, sizeof(AVPicture));
-            uint planes = std::max((uint)1, (uint)CVPixelBufferGetPlaneCount(buffer));
-            for (uint i = 0; i < planes; ++i)
+            vda_context *context = static_cast<vda_context*>(Context->hwaccel_context);
+            if (context)
             {
-                in.data[i]     = (uint8_t*)CVPixelBufferGetBaseAddressOfPlane(buffer, i);
-                in.linesize[i] = CVPixelBufferGetBytesPerRowOfPlane(buffer, i);
+                LOG(VB_PLAYBACK, LOG_INFO, "Destroying VDA decoder");
+                ff_vda_destroy_decoder(context);
+                delete context;
+                Context->hwaccel_context = NULL;
             }
-
-            AVPicture out;
-            avpicture_fill(&out, Frame->m_buffer, Frame->m_secondaryPixelFormat, Frame->m_rawWidth, Frame->m_rawHeight);
-
-            ConversionContext = sws_getCachedContext(ConversionContext,
-                                                     width, height, VDA_PIX_FORMAT,
-                                                     width, height, Frame->m_secondaryPixelFormat,
-                                                     SWS_FAST_BILINEAR, NULL, NULL, NULL);
-            if (ConversionContext != NULL)
-            {
-                if (sws_scale(ConversionContext, in.data, in.linesize, 0, height, out.data, out.linesize) < 1)
-                    LOG(VB_GENERAL, LOG_ERR, "Software scaling/conversion failed");
-            }
-            else
-            {
-                LOG(VB_GENERAL, LOG_ERR, "Failed to create software conversion context");
-            }
-
-            CVPixelBufferUnlockBaseAddress(buffer, 0);
         }
     }
-}
 
-void VideoVDA::Cleanup(AVStream *Stream)
-{
-    if (Stream && Stream->codec && Stream->codec->hwaccel_context && Stream->codec->pix_fmt == PIX_FMT_VDA_VLD)
+    bool InitialiseBuffer(AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame)
     {
-        vda_context *context = static_cast<vda_context*>(Stream->codec->hwaccel_context);
-        if (context)
+        return false;
+    }
+
+    void DeinitialiseBuffer(AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame)
+    {
+        if (Context && Avframe && Avframe->format == PIX_FMT_VDA_VLD && Context->hwaccel_context)
         {
-            LOG(VB_PLAYBACK, LOG_INFO, "Destroying VDA decoder");
-            ff_vda_destroy_decoder(context);
-            delete context;
-            Stream->codec->hwaccel_context = NULL;
+            CVPixelBufferRef buffer = (CVPixelBufferRef)Avframe->data[3];
+            if (buffer)
+                CFRelease(buffer);
         }
     }
-}
+
+    void ConvertBuffer(AVFrame &Avframe, VideoFrame *Frame, SwsContext *&ConversionContext)
+    {
+        if (Avframe.format == PIX_FMT_VDA_VLD && Frame->m_pixelFormat == PIX_FMT_VDA_VLD)
+        {
+            CVPixelBufferRef buffer = (CVPixelBufferRef)Avframe.data[3];
+            if (buffer)
+            {
+                CVPixelBufferLockBaseAddress(buffer, 0);
+
+                int width  = Frame->m_rawWidth;
+                int height = Frame->m_rawHeight;
+
+                AVPicture in;
+                memset(&in, 0, sizeof(AVPicture));
+                uint planes = std::max((uint)1, (uint)CVPixelBufferGetPlaneCount(buffer));
+                for (uint i = 0; i < planes; ++i)
+                {
+                    in.data[i]     = (uint8_t*)CVPixelBufferGetBaseAddressOfPlane(buffer, i);
+                    in.linesize[i] = CVPixelBufferGetBytesPerRowOfPlane(buffer, i);
+                }
+
+                AVPicture out;
+                avpicture_fill(&out, Frame->m_buffer, Frame->m_secondaryPixelFormat, Frame->m_rawWidth, Frame->m_rawHeight);
+
+                ConversionContext = sws_getCachedContext(ConversionContext,
+                                                         width, height, VDA_PIX_FORMAT,
+                                                         width, height, Frame->m_secondaryPixelFormat,
+                                                         SWS_FAST_BILINEAR, NULL, NULL, NULL);
+                if (ConversionContext != NULL)
+                {
+                    if (sws_scale(ConversionContext, in.data, in.linesize, 0, height, out.data, out.linesize) < 1)
+                        LOG(VB_GENERAL, LOG_ERR, "Software scaling/conversion failed");
+                }
+                else
+                {
+                    LOG(VB_GENERAL, LOG_ERR, "Failed to create software conversion context");
+                }
+
+                CVPixelBufferUnlockBaseAddress(buffer, 0);
+            }
+        }
+    }
+
+} VDAAcceleration;

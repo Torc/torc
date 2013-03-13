@@ -19,10 +19,7 @@ extern "C" {
 class VideoVDA
 {
   public:
-    static void  ReleaseBuffer    (AVCodecContext *Context, AVFrame *Frame);
-    static bool  AgreePixelFormat (AVCodecContext *Context, PixelFormat Format);
-    static void  GetFrame         (AVFrame &Avframe, VideoFrame *Frame, SwsContext *ConversionContext);
-    static void  Cleanup          (AVStream *Stream);
+    static bool CanAccelerate (AVCodecContext *Context, AVPixelFormat Format);
 };
 
 #endif // VIDEOVDA_H
