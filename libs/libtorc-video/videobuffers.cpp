@@ -35,9 +35,6 @@
 // roughly 1/240 or 1/4 frame interval at 60fps
 #define WAIT_FOR_READY_RETRY  4000
 
-#define MIN_BUFFERS_FOR_DECODE  2
-#define MIN_BUFFERS_FOR_DISPLAY 6
-
 extern "C" {
 #include "libavutil/pixdesc.h"
 }
@@ -68,8 +65,8 @@ extern "C" {
 
 VideoBuffers::VideoBuffers()
   : m_frameCount(0),
-    m_referenceFrames(MIN_BUFFERS_FOR_DECODE),
-    m_displayFrames(MIN_BUFFERS_FOR_DISPLAY),
+    m_referenceFrames(MIN_VIDEO_BUFFERS_FOR_DECODE),
+    m_displayFrames(MIN_VIDEO_BUFFERS_FOR_DISPLAY),
     m_lock(new QMutex(QMutex::Recursive)),
     m_currentFormat(PIX_FMT_NONE),
     m_currentWidth(0),
@@ -110,7 +107,7 @@ void VideoBuffers::FormatChanged(PixelFormat Format, int Width, int Height, int 
 
     QMutexLocker locker(m_lock);
 
-    bool referenceschanged = ReferenceFrames != m_referenceFrames && ReferenceFrames >= MIN_BUFFERS_FOR_DECODE;
+    bool referenceschanged = ReferenceFrames != m_referenceFrames && ReferenceFrames >= MIN_VIDEO_BUFFERS_FOR_DECODE;
     bool formatchanged     = Format != m_currentFormat || Width != m_currentWidth || Height != m_currentHeight;
 
     // nothing to do

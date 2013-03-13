@@ -9,6 +9,9 @@ extern "C" {
 #include "libavutil/pixfmt.h"
 }
 
+#define MIN_VIDEO_BUFFERS_FOR_DECODE  2
+#define MIN_VIDEO_BUFFERS_FOR_DISPLAY 6
+
 class VideoFrame;
 
 class VideoBuffers
