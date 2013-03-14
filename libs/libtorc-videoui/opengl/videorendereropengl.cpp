@@ -23,6 +23,7 @@
 // Torc
 #include "torclocalcontext.h"
 #include "torclogging.h"
+#include "torcavutils.h"
 #include "uiopengltextures.h"
 #include "uiopenglwindow.h"
 #include "videocolourspace.h"
@@ -144,51 +145,18 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
 
     if (Frame && !Frame->m_corrupt)
     {
-        // check for a size change
-        if (m_rawVideoTexture)
+        // trigger a reset for any pixel format or raw frame size change
+        if (m_lastFrameWidth != Frame->m_rawWidth || m_lastFrameHeight != Frame->m_rawHeight||
+            Frame->m_pixelFormat != m_lastInputFormat)
         {
-            if ((m_rawVideoTexture->m_actualSize.width() != (Frame->m_rawWidth / 2)) || (m_rawVideoTexture->m_actualSize.height() != Frame->m_rawHeight))
-            {
-                LOG(VB_GENERAL, LOG_INFO, QString("Video frame size changed from %1x%2 to %3x%4")
-                    .arg(m_rawVideoTexture->m_actualSize.width() * 2).arg(m_rawVideoTexture->m_actualSize.height())
-                    .arg(Frame->m_rawWidth).arg(Frame->m_rawHeight));
-                ResetOutput();
-            }
+            LOG(VB_GENERAL, LOG_INFO, QString("Video frame size changed from %1x%2 to %3x%4")
+                .arg(m_lastFrameWidth).arg(m_lastFrameHeight).arg(Frame->m_rawWidth).arg(Frame->m_rawHeight));
+            ResetOutput();
         }
 
-        // create a texture if needed
-        if (!m_rawVideoTexture)
-        {
-            QSize size(Frame->m_rawWidth / 2, Frame->m_rawHeight);
-            m_rawVideoTexture = m_openglWindow->CreateTexture(size, true, 0, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA, GL_NEAREST);
+        m_lastInputFormat = Frame->m_pixelFormat;
 
-            if (!m_rawVideoTexture)
-            {
-                LOG(VB_GENERAL, LOG_ERR, "Failed to create video texture");
-                return;
-            }
-
-            // standard texture vertices only use width and height, we need the offset
-            // as well to ensure texture inversion works
-            m_rawVideoTexture->m_fullVertices = true;
-
-            LOG(VB_GENERAL, LOG_INFO, QString("Created video texture %1x%2").arg(Frame->m_rawWidth).arg(Frame->m_rawHeight));
-        }
-
-        // create a yuv to rgb shader
-        if (!m_yuvShader)
-        {
-            QByteArray vertex(YUV2RGBVertexShader);
-            QByteArray fragment(YUV2RGBFragmentShader);
-            CustomiseShader(fragment);
-            m_yuvShader = m_openglWindow->CreateShaderObject(vertex, fragment);
-
-            if (!m_yuvShader)
-                return;
-        }
-
-        // TODO check for FBO support
-        // create rgb texture and framebuffer
+        // create a plain argb texture
         if (!m_rgbVideoTexture)
         {
             QSize size(Frame->m_rawWidth, Frame->m_rawHeight);
@@ -216,6 +184,8 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
                 return;
         }
 
+        // create a framebuffer
+        // TODO check for FBO support
         if (!m_rgbVideoBuffer && m_rgbVideoTexture)
         {
             if (!m_openglWindow->CreateFrameBuffer(m_rgbVideoBuffer, m_rgbVideoTexture->m_val))
@@ -225,56 +195,11 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
             }
         }
 
-        // update the textures
-        void* buffer = m_openglWindow->GetTextureBuffer(m_rawVideoTexture);
-
-        PixelFormat informat  = Frame->m_secondaryPixelFormat != PIX_FMT_NONE ? Frame->m_secondaryPixelFormat : Frame->m_pixelFormat;
-
-        if (informat != m_outputFormat)
-        {
-            AVPicture in;
-            avpicture_fill(&in, Frame->m_buffer, informat, Frame->m_adjustedWidth, Frame->m_adjustedHeight);
-            AVPicture out;
-            avpicture_fill(&out, (uint8_t*)buffer, m_outputFormat, Frame->m_rawWidth, Frame->m_rawHeight);
-
-            m_conversionContext = sws_getCachedContext(m_conversionContext,
-                                                       Frame->m_rawWidth, Frame->m_rawHeight, informat,
-                                                       Frame->m_rawWidth, Frame->m_rawHeight, m_outputFormat,
-                                                       SWS_FAST_BILINEAR, NULL, NULL, NULL);
-            if (m_conversionContext != NULL)
-            {
-                if (sws_scale(m_conversionContext, in.data, in.linesize, 0, Frame->m_rawHeight, out.data, out.linesize) < 1)
-                    LOG(VB_GENERAL, LOG_ERR, "Software scaling/conversion failed");
-            }
-            else
-            {
-                LOG(VB_GENERAL, LOG_ERR, "Failed to create software conversion context");
-            }
-        }
+        // actually update the frame
+        if (IsHardwarePixelFormat(Frame->m_pixelFormat))
+            RefreshHardwareFrame(Frame);
         else
-        {
-            memcpy(buffer, Frame->m_buffer, Frame->m_bufferSize);
-        }
-
-        m_openglWindow->UpdateTexture(m_rawVideoTexture, buffer);
-        m_validVideoFrame = true;
-
-        // colour space conversion
-        QRect viewport = m_openglWindow->GetViewPort();
-        QRect view(QPoint(0, 0), m_rgbVideoTexture->m_actualSize);
-        QRectF destination(QPointF(0.0, m_rgbVideoTexture->m_actualSize.height()),
-                           QPointF(m_rgbVideoTexture->m_actualSize.width(), 0.0));
-        QSizeF size(m_rawVideoTexture->m_actualSize);
-
-        m_openglWindow->SetBlend(false);
-        m_openglWindow->BindFramebuffer(m_rgbVideoBuffer);
-        m_openglWindow->SetViewPort(view);
-        m_colourSpace->SetColourSpace(Frame->m_colourSpace);
-        m_colourSpace->SetStudioLevels(m_window->GetStudioLevels());
-        if (m_colourSpace->HasChanged())
-            m_openglWindow->SetShaderParams(m_yuvShader, m_colourSpace->Data(), "COLOUR_UNIFORM");
-        m_openglWindow->DrawTexture(m_rawVideoTexture, &destination, &size, m_yuvShader);
-        m_openglWindow->SetViewPort(viewport);
+            RefreshSoftwareFrame(Frame);
 
         // update the display setup
         UpdateRefreshRate(Frame);
@@ -282,6 +207,99 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
 
     // update position even with no frame as the display may be animated while paused/seeking etc
     m_updateFrameVertices |= UpdatePosition(Frame, Size);
+}
+
+void VideoRendererOpenGL::RefreshHardwareFrame(VideoFrame *Frame)
+{
+    (void)Frame;
+}
+
+void VideoRendererOpenGL::RefreshSoftwareFrame(VideoFrame *Frame)
+{
+    if (!Frame)
+        return;
+
+    // create a raw texture if needed
+    if (!m_rawVideoTexture)
+    {
+        QSize size(Frame->m_rawWidth / 2, Frame->m_rawHeight);
+        m_rawVideoTexture = m_openglWindow->CreateTexture(size, true, 0, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA, GL_NEAREST);
+
+        if (!m_rawVideoTexture)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Failed to create video texture");
+            return;
+        }
+
+        // standard texture vertices only use width and height, we need the offset
+        // as well to ensure texture inversion works
+        m_rawVideoTexture->m_fullVertices = true;
+
+        LOG(VB_GENERAL, LOG_INFO, QString("Created video texture %1x%2").arg(Frame->m_rawWidth).arg(Frame->m_rawHeight));
+    }
+
+    // create a yuv to rgb shader
+    if (!m_yuvShader)
+    {
+        QByteArray vertex(YUV2RGBVertexShader);
+        QByteArray fragment(YUV2RGBFragmentShader);
+        CustomiseShader(fragment);
+        m_yuvShader = m_openglWindow->CreateShaderObject(vertex, fragment);
+
+        if (!m_yuvShader)
+            return;
+    }
+
+    // update the textures
+    void* buffer = m_openglWindow->GetTextureBuffer(m_rawVideoTexture);
+
+    PixelFormat informat  = Frame->m_secondaryPixelFormat != PIX_FMT_NONE ? Frame->m_secondaryPixelFormat : Frame->m_pixelFormat;
+
+    if (informat != m_outputFormat)
+    {
+        AVPicture in;
+        avpicture_fill(&in, Frame->m_buffer, informat, Frame->m_adjustedWidth, Frame->m_adjustedHeight);
+        AVPicture out;
+        avpicture_fill(&out, (uint8_t*)buffer, m_outputFormat, Frame->m_rawWidth, Frame->m_rawHeight);
+
+        m_conversionContext = sws_getCachedContext(m_conversionContext,
+                                                   Frame->m_rawWidth, Frame->m_rawHeight, informat,
+                                                   Frame->m_rawWidth, Frame->m_rawHeight, m_outputFormat,
+                                                   SWS_FAST_BILINEAR, NULL, NULL, NULL);
+        if (m_conversionContext != NULL)
+        {
+            if (sws_scale(m_conversionContext, in.data, in.linesize, 0, Frame->m_rawHeight, out.data, out.linesize) < 1)
+                LOG(VB_GENERAL, LOG_ERR, "Software scaling/conversion failed");
+        }
+        else
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Failed to create software conversion context");
+        }
+    }
+    else
+    {
+        memcpy(buffer, Frame->m_buffer, Frame->m_bufferSize);
+    }
+
+    m_openglWindow->UpdateTexture(m_rawVideoTexture, buffer);
+    m_validVideoFrame = true;
+
+    // colour space conversion
+    QRect viewport = m_openglWindow->GetViewPort();
+    QRect view(QPoint(0, 0), m_rgbVideoTexture->m_actualSize);
+    QRectF destination(QPointF(0.0, m_rgbVideoTexture->m_actualSize.height()),
+                       QPointF(m_rgbVideoTexture->m_actualSize.width(), 0.0));
+    QSizeF size(m_rawVideoTexture->m_actualSize);
+
+    m_openglWindow->SetBlend(false);
+    m_openglWindow->BindFramebuffer(m_rgbVideoBuffer);
+    m_openglWindow->SetViewPort(view);
+    m_colourSpace->SetColourSpace(Frame->m_colourSpace);
+    m_colourSpace->SetStudioLevels(m_window->GetStudioLevels());
+    if (m_colourSpace->HasChanged())
+        m_openglWindow->SetShaderParams(m_yuvShader, m_colourSpace->Data(), "COLOUR_UNIFORM");
+    m_openglWindow->DrawTexture(m_rawVideoTexture, &destination, &size, m_yuvShader);
+    m_openglWindow->SetViewPort(viewport);
 }
 
 void VideoRendererOpenGL::RenderFrame(void)

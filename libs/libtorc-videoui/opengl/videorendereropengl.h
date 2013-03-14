@@ -20,6 +20,8 @@ class VideoRendererOpenGL : public VideoRenderer
 
   protected:
     void               ResetOutput          (void);
+    void               RefreshHardwareFrame (VideoFrame *Frame);
+    void               RefreshSoftwareFrame (VideoFrame *Frame);
 
   protected:
     UIOpenGLWindow    *m_openglWindow;
