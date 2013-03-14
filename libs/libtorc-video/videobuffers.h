@@ -21,10 +21,10 @@ class VideoBuffers
     ~VideoBuffers();
 
     void               Debug                      (void);
-    void               FormatChanged              (PixelFormat Format, int Width, int Height, int ReferenceFrames = 2);
+    void               FormatChanged              (AVPixelFormat Format, int Width, int Height, int ReferenceFrames = 2);
     void               Reset                      (bool DeleteFrames);
     bool               GetBufferStatus            (int &Unused, int &Inuse, int &Held);
-    void               SetDisplayFormat           (PixelFormat Format);
+    void               SetDisplayFormat           (AVPixelFormat Format);
     bool               GetNextVideoTimeStamp      (qint64 &TimeStamp, int WaitUSecs = 0);
 
     VideoFrame*        GetFrameForDecoding        (void);
@@ -36,7 +36,7 @@ class VideoBuffers
     void               CheckDecodedFrames         (void);
 
   private:
-    void               SetFormat                  (PixelFormat Format, int Width, int Height);
+    void               SetFormat                  (AVPixelFormat Format, int Width, int Height);
 
   private:
     int                m_frameCount;
@@ -53,11 +53,11 @@ class VideoBuffers
 
     QList<VideoFrame*> m_decoded;
 
-    PixelFormat        m_currentFormat;
+    AVPixelFormat      m_currentFormat;
     int                m_currentWidth;
     int                m_currentHeight;
 
-    PixelFormat        m_preferredDisplayFormat;
+    AVPixelFormat      m_preferredDisplayFormat;
 };
 
 #endif // VIDEOBUFFERS_H

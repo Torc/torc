@@ -99,7 +99,7 @@ void VideoBuffers::Debug(void)
         .arg(displaying).arg(displayed).arg(reference).arg(decoded));
 }
 
-void VideoBuffers::FormatChanged(PixelFormat Format, int Width, int Height, int ReferenceFrames)
+void VideoBuffers::FormatChanged(AVPixelFormat Format, int Width, int Height, int ReferenceFrames)
 {
     // TODO this could be extended
     // First - allow for small differences within macroblock bounds
@@ -177,7 +177,7 @@ void VideoBuffers::FormatChanged(PixelFormat Format, int Width, int Height, int 
     CheckDecodedFrames();
 }
 
-void VideoBuffers::SetFormat(PixelFormat Format, int Width, int Height)
+void VideoBuffers::SetFormat(AVPixelFormat Format, int Width, int Height)
 {
     LOG(VB_GENERAL, LOG_INFO, QString("Video buffer format: %1 %2x%3")
         .arg(av_get_pix_fmt_name(Format)).arg(Width).arg(Height));
@@ -187,7 +187,7 @@ void VideoBuffers::SetFormat(PixelFormat Format, int Width, int Height)
     m_currentHeight = Height;
 }
 
-void VideoBuffers::SetDisplayFormat(PixelFormat Format)
+void VideoBuffers::SetDisplayFormat(AVPixelFormat Format)
 {
     m_preferredDisplayFormat = Format;
 }
