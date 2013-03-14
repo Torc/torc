@@ -33,7 +33,7 @@ VideoPlayer::VideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
 {
     setObjectName("Player");
 
-    m_buffers.SetDisplayFormat(PIX_FMT_YUV420P);
+    m_buffers.SetDisplayFormat(AV_PIX_FMT_YUV420P);
 }
 
 VideoPlayer::~VideoPlayer()

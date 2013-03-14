@@ -68,10 +68,10 @@ VideoBuffers::VideoBuffers()
     m_referenceFrames(MIN_VIDEO_BUFFERS_FOR_DECODE),
     m_displayFrames(MIN_VIDEO_BUFFERS_FOR_DISPLAY),
     m_lock(new QMutex(QMutex::Recursive)),
-    m_currentFormat(PIX_FMT_NONE),
+    m_currentFormat(AV_PIX_FMT_NONE),
     m_currentWidth(0),
     m_currentHeight(0),
-    m_preferredDisplayFormat(PIX_FMT_YUV420P)
+    m_preferredDisplayFormat(AV_PIX_FMT_YUV420P)
 {
 }
 

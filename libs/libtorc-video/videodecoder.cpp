@@ -259,7 +259,7 @@ void VideoDecoder::ReleaseAVBuffer(AVCodecContext *Context, AVFrame *Frame)
 static AVPixelFormat GetFormat(AVCodecContext *Context, const AVPixelFormat *Formats)
 {
     if (!Context || !Formats)
-        return PIX_FMT_YUV420P;
+        return AV_PIX_FMT_YUV420P;
 
     VideoDecoder* parent = static_cast<VideoDecoder*>(Context->opaque);
     if (parent)
@@ -271,7 +271,7 @@ static AVPixelFormat GetFormat(AVCodecContext *Context, const AVPixelFormat *For
 AVPixelFormat GetFormatDefault(AVCodecContext *Context, const AVPixelFormat *Formats)
 {
     if (!Context || !Formats)
-        return PIX_FMT_YUV420P;
+        return AV_PIX_FMT_YUV420P;
 
     // return the last format in the list, which should avoid any hardware formats
     AVPixelFormat *formats = const_cast<AVPixelFormat*>(Formats);
@@ -285,7 +285,7 @@ AVPixelFormat GetFormatDefault(AVCodecContext *Context, const AVPixelFormat *For
 AVPixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const AVPixelFormat *Formats)
 {
     if (!Context || !Formats)
-        return PIX_FMT_YUV420P;
+        return AV_PIX_FMT_YUV420P;
 
     VideoDecoder* parent = static_cast<VideoDecoder*>(Context->opaque);
     if (parent != this)
@@ -312,7 +312,7 @@ AVPixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const AVPi
         if (accelerate)
             break;
 
-        if (format == PIX_FMT_YUV420P)
+        if (format == AV_PIX_FMT_YUV420P)
             break;
     }
 
@@ -328,7 +328,7 @@ VideoDecoder::VideoDecoder(const QString &URI, TorcPlayer *Parent, int Flags)
   : AudioDecoder(URI, Parent, Flags),
     m_keyframeSeen(false),
     m_videoParent(NULL),
-    m_currentPixelFormat(PIX_FMT_NONE),
+    m_currentPixelFormat(AV_PIX_FMT_NONE),
     m_currentVideoWidth(0),
     m_currentVideoHeight(0),
     m_currentReferenceCount(0),
