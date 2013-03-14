@@ -37,7 +37,7 @@ extern "C" {
  * \todo Convert more initialisation code to use libav functions.
 */
 
-VideoFrame::VideoFrame(PixelFormat PreferredDisplayFormat)
+VideoFrame::VideoFrame(AVPixelFormat PreferredDisplayFormat)
   : m_preferredDisplayFormat(PreferredDisplayFormat)
 {
     m_buffer = NULL;
@@ -82,7 +82,7 @@ void VideoFrame::Reset(void)
     m_acceleratedBuffer    = NULL;
 }
 
-void VideoFrame::Initialise(PixelFormat Format, int Width, int Height)
+void VideoFrame::Initialise(AVPixelFormat Format, int Width, int Height)
 {
     if (m_pixelFormat != AV_PIX_FMT_NONE)
         Reset();
@@ -97,7 +97,7 @@ void VideoFrame::Initialise(PixelFormat Format, int Width, int Height)
     LOG(VB_GENERAL, LOG_INFO, QString("Initialise frame: '%1' %2x%3")
         .arg(av_get_pix_fmt_name(Format)).arg(Width).arg(Height));
 
-    PixelFormat cpuformat = Format;
+    AVPixelFormat cpuformat = Format;
     if (Format == AV_PIX_FMT_VDA_VLD)
         m_secondaryPixelFormat = cpuformat = m_preferredDisplayFormat;
 
@@ -130,7 +130,7 @@ void VideoFrame::SetDiscard(void)
     m_discard = true;
 }
 
-int VideoFrame::PlaneCount(PixelFormat Format)
+int VideoFrame::PlaneCount(AVPixelFormat Format)
 {
     switch (Format)
     {
@@ -170,7 +170,7 @@ int VideoFrame::PlaneCount(PixelFormat Format)
 
 void VideoFrame::SetOffsets(void)
 {
-    PixelFormat format = m_secondaryPixelFormat != AV_PIX_FMT_NONE ? m_secondaryPixelFormat : m_pixelFormat;
+    AVPixelFormat format = m_secondaryPixelFormat != AV_PIX_FMT_NONE ? m_secondaryPixelFormat : m_pixelFormat;
 
     int halfpitch = m_adjustedWidth >> 1;
     int fullplane = m_adjustedWidth * m_adjustedHeight;
