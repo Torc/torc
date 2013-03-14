@@ -14,14 +14,14 @@ class VideoFrame
     friend class VideoDecoder;
 
   public:
-    static int     PlaneCount    (PixelFormat Format);
+    static int     PlaneCount    (AVPixelFormat Format);
 
   public:
-    explicit VideoFrame          (PixelFormat PreferredDisplayFormat);
+    explicit VideoFrame          (AVPixelFormat PreferredDisplayFormat);
     ~VideoFrame                  ();
 
     void           Reset         (void);
-    void           Initialise    (PixelFormat Format, int Width, int Height);
+    void           Initialise    (AVPixelFormat Format, int Width, int Height);
     void           InitialiseBuffer (void);
     bool           Discard       (void);
     void           SetDiscard    (void);
