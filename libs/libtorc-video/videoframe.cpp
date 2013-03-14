@@ -59,8 +59,8 @@ void VideoFrame::Reset(void)
     m_bitsPerPixel         = 0;
     m_numPlanes            = 0;
     m_bufferSize           = 0;
-    m_pixelFormat          = PIX_FMT_NONE;
-    m_secondaryPixelFormat = PIX_FMT_NONE;
+    m_pixelFormat          = AV_PIX_FMT_NONE;
+    m_secondaryPixelFormat = AV_PIX_FMT_NONE;
     m_colourSpace          = AVCOL_SPC_BT709;
     m_topFieldFirst        = false;
     m_interlaced           = false;
@@ -84,10 +84,10 @@ void VideoFrame::Reset(void)
 
 void VideoFrame::Initialise(PixelFormat Format, int Width, int Height)
 {
-    if (m_pixelFormat != PIX_FMT_NONE)
+    if (m_pixelFormat != AV_PIX_FMT_NONE)
         Reset();
 
-    if (Height < 1 || Width < 1 || Format == PIX_FMT_NONE)
+    if (Height < 1 || Width < 1 || Format == AV_PIX_FMT_NONE)
     {
         LOG(VB_GENERAL, LOG_ERR, QString("Cannot initialise frame (%1 %2x%3")
             .arg(av_get_pix_fmt_name(Format)).arg(Width).arg(Height));
@@ -98,7 +98,7 @@ void VideoFrame::Initialise(PixelFormat Format, int Width, int Height)
         .arg(av_get_pix_fmt_name(Format)).arg(Width).arg(Height));
 
     PixelFormat cpuformat = Format;
-    if (Format == PIX_FMT_VDA_VLD)
+    if (Format == AV_PIX_FMT_VDA_VLD)
         m_secondaryPixelFormat = cpuformat = m_preferredDisplayFormat;
 
     m_rawWidth        = Width;
@@ -134,34 +134,34 @@ int VideoFrame::PlaneCount(PixelFormat Format)
 {
     switch (Format)
     {
-        case PIX_FMT_YUV420P:
-        case PIX_FMT_YUV411P:
-        case PIX_FMT_YUV422P:
-        case PIX_FMT_YUV444P:
+        case AV_PIX_FMT_YUV420P:
+        case AV_PIX_FMT_YUV411P:
+        case AV_PIX_FMT_YUV422P:
+        case AV_PIX_FMT_YUV444P:
             return 3;
-        case PIX_FMT_NV12:
-        case PIX_FMT_NV21:
+        case AV_PIX_FMT_NV12:
+        case AV_PIX_FMT_NV21:
             return 2;
-        case PIX_FMT_UYYVYY411:
-        case PIX_FMT_UYVY422:
-        case PIX_FMT_YUYV422:
-        case PIX_FMT_ARGB:
-        case PIX_FMT_RGBA:
-        case PIX_FMT_ABGR:
-        case PIX_FMT_BGRA:
-        case PIX_FMT_RGB24:
-        case PIX_FMT_BGR24:
-        case PIX_FMT_GRAY8:
-        case PIX_FMT_BGR8:
-        case PIX_FMT_BGR4_BYTE:
-        case PIX_FMT_RGB8:
-        case PIX_FMT_RGB4_BYTE:
-        case PIX_FMT_BGR4:
-        case PIX_FMT_RGB4:
-        case PIX_FMT_MONOWHITE:
-        case PIX_FMT_MONOBLACK:
-        case PIX_FMT_GRAY16BE:
-        case PIX_FMT_GRAY16LE:
+        case AV_PIX_FMT_UYYVYY411:
+        case AV_PIX_FMT_UYVY422:
+        case AV_PIX_FMT_YUYV422:
+        case AV_PIX_FMT_ARGB:
+        case AV_PIX_FMT_RGBA:
+        case AV_PIX_FMT_ABGR:
+        case AV_PIX_FMT_BGRA:
+        case AV_PIX_FMT_RGB24:
+        case AV_PIX_FMT_BGR24:
+        case AV_PIX_FMT_GRAY8:
+        case AV_PIX_FMT_BGR8:
+        case AV_PIX_FMT_BGR4_BYTE:
+        case AV_PIX_FMT_RGB8:
+        case AV_PIX_FMT_RGB4_BYTE:
+        case AV_PIX_FMT_BGR4:
+        case AV_PIX_FMT_RGB4:
+        case AV_PIX_FMT_MONOWHITE:
+        case AV_PIX_FMT_MONOBLACK:
+        case AV_PIX_FMT_GRAY16BE:
+        case AV_PIX_FMT_GRAY16LE:
             return 1;
         default:
             return 0; // hardware format or unsupported
@@ -170,7 +170,7 @@ int VideoFrame::PlaneCount(PixelFormat Format)
 
 void VideoFrame::SetOffsets(void)
 {
-    PixelFormat format = m_secondaryPixelFormat != PIX_FMT_NONE ? m_secondaryPixelFormat : m_pixelFormat;
+    PixelFormat format = m_secondaryPixelFormat != AV_PIX_FMT_NONE ? m_secondaryPixelFormat : m_pixelFormat;
 
     int halfpitch = m_adjustedWidth >> 1;
     int fullplane = m_adjustedWidth * m_adjustedHeight;
@@ -195,25 +195,25 @@ void VideoFrame::SetOffsets(void)
     if (m_numPlanes != 3)
         return;
 
-    if (format == PIX_FMT_YUV420P)
+    if (format == AV_PIX_FMT_YUV420P)
     {
         m_offsets[1] = fullplane;
         m_offsets[2] = m_offsets[3] = m_offsets[1] + (fullplane >> 2);
         m_pitches[3] = m_pitches[2] = m_pitches[1] = halfpitch;
     }
-    else if (format == PIX_FMT_YUV411P)
+    else if (format == AV_PIX_FMT_YUV411P)
     {
         m_offsets[1] = fullplane;
         m_offsets[2] = m_offsets[3] = m_offsets[1] + (fullplane >> 2);
         m_pitches[1] = m_pitches[2] = m_pitches[3] = halfpitch >> 1;
     }
-    else if (format == PIX_FMT_YUV422P)
+    else if (format == AV_PIX_FMT_YUV422P)
     {
         m_offsets[1] = fullplane;
         m_offsets[2] = m_offsets[3] = m_offsets[1] + (fullplane >> 1);
         m_pitches[1] = m_pitches[2] = m_pitches[3] = halfpitch;
     }
-    else if (format == PIX_FMT_YUV444P)
+    else if (format == AV_PIX_FMT_YUV444P)
     {
         m_offsets[1] = fullplane;
         m_offsets[2] = m_offsets[3] = m_offsets[1] + fullplane;

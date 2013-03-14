@@ -40,9 +40,9 @@ class VideoFrame
     int            m_bitsPerPixel;
     int            m_numPlanes;
     int            m_bufferSize;
-    PixelFormat    m_pixelFormat;
-    PixelFormat    m_secondaryPixelFormat;
-    PixelFormat    m_preferredDisplayFormat;
+    AVPixelFormat  m_pixelFormat;
+    AVPixelFormat  m_secondaryPixelFormat;
+    AVPixelFormat  m_preferredDisplayFormat;
 
     AVColorSpace   m_colourSpace;
     bool           m_topFieldFirst;
