@@ -5,7 +5,7 @@
 #include "videoframe.h"
 
 #define VDA_CV_FORMAT  kCVPixelFormatType_422YpCbCr8
-#define VDA_PIX_FORMAT PIX_FMT_UYVY422
+#define VDA_PIX_FORMAT AV_PIX_FMT_UYVY422
 #include "CoreVideo/CVPixelBuffer.h"
 extern "C" {
 #include "libavcodec/vda.h"

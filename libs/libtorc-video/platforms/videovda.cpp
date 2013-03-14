@@ -28,7 +28,7 @@
 bool VideoVDA::CanAccelerate(AVCodecContext *Context, AVPixelFormat Format)
 {
     // NB this is currently disabled by default as it is not stable
-    if (Format == PIX_FMT_VDA_VLD && Context->codec_id == AV_CODEC_ID_H264 && 0)
+    if (Format == AV_PIX_FMT_VDA_VLD && Context->codec_id == AV_CODEC_ID_H264 && 0)
     {
         struct vda_context *context = new vda_context;
         memset(context, 0, sizeof(vda_context));
@@ -71,7 +71,7 @@ class VDAAcceleration : public AccelerationFactory
 
     void DeinitialiseDecoder(AVCodecContext *Context)
     {
-        if (Context && Context->hwaccel_context && Context->pix_fmt == PIX_FMT_VDA_VLD)
+        if (Context && Context->hwaccel_context && Context->pix_fmt == AV_PIX_FMT_VDA_VLD)
         {
             vda_context *context = static_cast<vda_context*>(Context->hwaccel_context);
             if (context)
@@ -91,7 +91,7 @@ class VDAAcceleration : public AccelerationFactory
 
     void DeinitialiseBuffer(AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame)
     {
-        if (Context && Avframe && Avframe->format == PIX_FMT_VDA_VLD && Context->hwaccel_context)
+        if (Context && Avframe && Avframe->format == AV_PIX_FMT_VDA_VLD && Context->hwaccel_context)
         {
             CVPixelBufferRef buffer = (CVPixelBufferRef)Avframe->data[3];
             if (buffer)
@@ -101,7 +101,7 @@ class VDAAcceleration : public AccelerationFactory
 
     void ConvertBuffer(AVFrame &Avframe, VideoFrame *Frame, SwsContext *&ConversionContext)
     {
-        if (Avframe.format == PIX_FMT_VDA_VLD && Frame->m_pixelFormat == PIX_FMT_VDA_VLD)
+        if (Avframe.format == AV_PIX_FMT_VDA_VLD && Frame->m_pixelFormat == AV_PIX_FMT_VDA_VLD)
         {
             CVPixelBufferRef buffer = (CVPixelBufferRef)Avframe.data[3];
             if (buffer)
