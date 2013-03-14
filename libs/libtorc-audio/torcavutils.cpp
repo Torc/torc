@@ -26,10 +26,6 @@
 // Torc
 #include "torcavutils.h"
 
-extern "C" {
-#include "libavcodec/avcodec.h"
-}
-
 QString AVCodecToString(int Codec)
 {
     switch (Codec)
@@ -392,4 +388,23 @@ QString AVTimeToString(qint64 Time)
     return QString("%1:%2:%3").arg(hours, 2, 10, QChar('0'))
                               .arg(mins,  2, 10, QChar('0'))
                               .arg(secs,  5, 'f', 2, QChar('0'));
+}
+
+
+bool IsHardwarePixelFormat(AVPixelFormat Format)
+{
+    return Format == AV_PIX_FMT_XVMC_MPEG2_MC   ||
+           Format == AV_PIX_FMT_XVMC_MPEG2_IDCT ||
+           Format == AV_PIX_FMT_VDPAU_H264      ||
+           Format == AV_PIX_FMT_VDPAU_MPEG1     ||
+           Format == AV_PIX_FMT_VDPAU_MPEG2     ||
+           Format == AV_PIX_FMT_VDPAU_WMV3      ||
+           Format == AV_PIX_FMT_VDPAU_VC1       ||
+           Format == AV_PIX_FMT_VAAPI_MOCO      ||
+           Format == AV_PIX_FMT_VAAPI_IDCT      ||
+           Format == AV_PIX_FMT_VAAPI_VLD       ||
+           Format == AV_PIX_FMT_VDPAU_MPEG4     ||
+           Format == AV_PIX_FMT_DXVA2_VLD;
+
+    // AV_PIX_FMT_VDA_VLD
 }
