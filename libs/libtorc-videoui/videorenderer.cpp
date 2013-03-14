@@ -41,7 +41,8 @@
 
 VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
   : m_window(Window),
-    m_outputFormat(PIX_FMT_UYVY422),
+    m_outputFormat(AV_PIX_FMT_UYVY422),
+    m_lastInputFormat(AV_PIX_FMT_NONE),
     m_validVideoFrame(false),
     m_lastFrameAspectRatio(1.77778f),
     m_lastFrameWidth(1920),
@@ -66,7 +67,7 @@ VideoRenderer::~VideoRenderer()
     sws_freeContext(m_conversionContext);
 }
 
-PixelFormat VideoRenderer::PreferredPixelFormat(void)
+AVPixelFormat VideoRenderer::PreferredPixelFormat(void)
 {
     return m_outputFormat;
 }

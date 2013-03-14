@@ -29,7 +29,7 @@ class VideoRenderer
     virtual void           RefreshFrame         (VideoFrame* Frame, const QSizeF &Size) = 0;
     virtual void           RenderFrame          (void) = 0;
     virtual bool           DisplayReset         (void);
-    PixelFormat            PreferredPixelFormat (void);
+    AVPixelFormat          PreferredPixelFormat (void);
     void                   PlaybackFinished     (void);
 
     bool                   GetHighQualityScaling     (void);
@@ -45,7 +45,8 @@ class VideoRenderer
   protected:
     UIWindow               *m_window;
     UIDisplay              *m_display;
-    PixelFormat             m_outputFormat;
+    AVPixelFormat           m_outputFormat;
+    AVPixelFormat           m_lastInputFormat;
     bool                    m_validVideoFrame;
     double                  m_lastFrameAspectRatio;
     int                     m_lastFrameWidth;
