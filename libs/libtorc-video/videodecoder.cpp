@@ -31,7 +31,7 @@
 
 #define SANE_ASPECT_RATIO(Val) (Val > 0.1f && Val < 10.0f)
 
-static PixelFormat GetFormatDefault(AVCodecContext *Context, const PixelFormat *Formats);
+static AVPixelFormat GetFormatDefault(AVCodecContext *Context, const AVPixelFormat *Formats);
 
 double VideoDecoder::GetFrameAspectRatio(AVStream *Stream, AVFrame &Frame)
 {
@@ -256,7 +256,7 @@ void VideoDecoder::ReleaseAVBuffer(AVCodecContext *Context, AVFrame *Frame)
         Frame->data[i] = NULL;
 }
 
-static PixelFormat GetFormat(AVCodecContext *Context, const PixelFormat *Formats)
+static AVPixelFormat GetFormat(AVCodecContext *Context, const AVPixelFormat *Formats)
 {
     if (!Context || !Formats)
         return PIX_FMT_YUV420P;
@@ -268,21 +268,21 @@ static PixelFormat GetFormat(AVCodecContext *Context, const PixelFormat *Formats
     return GetFormatDefault(Context, Formats);
 }
 
-PixelFormat GetFormatDefault(AVCodecContext *Context, const PixelFormat *Formats)
+AVPixelFormat GetFormatDefault(AVCodecContext *Context, const AVPixelFormat *Formats)
 {
     if (!Context || !Formats)
         return PIX_FMT_YUV420P;
 
     // return the last format in the list, which should avoid any hardware formats
-    PixelFormat *formats = const_cast<PixelFormat*>(Formats);
-    PixelFormat   format = *formats;
+    AVPixelFormat *formats = const_cast<AVPixelFormat*>(Formats);
+    AVPixelFormat   format = *formats;
     while (*formats != -1)
         format = *(formats++);
 
     return format;
 }
 
-PixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const PixelFormat *Formats)
+AVPixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const AVPixelFormat *Formats)
 {
     if (!Context || !Formats)
         return PIX_FMT_YUV420P;
@@ -291,8 +291,8 @@ PixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const PixelF
     if (parent != this)
         return GetFormatDefault(Context, Formats);
 
-    PixelFormat *formats = const_cast<PixelFormat*>(Formats);
-    PixelFormat format   = *formats;
+    AVPixelFormat *formats = const_cast<AVPixelFormat*>(Formats);
+    AVPixelFormat format   = *formats;
     while (*formats != -1)
     {
         format = *(formats++);
@@ -527,7 +527,7 @@ void VideoDecoder::FlushVideoBuffers(bool Stopped)
     m_streamLock->unlock();
 }
 
-void VideoDecoder::SetFormat(PixelFormat Format, int Width, int Height, int References, bool UpdateParent)
+void VideoDecoder::SetFormat(AVPixelFormat Format, int Width, int Height, int References, bool UpdateParent)
 {
     m_currentPixelFormat    = Format;
     m_currentVideoWidth     = Width;

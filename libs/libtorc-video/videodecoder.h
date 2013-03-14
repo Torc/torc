@@ -26,7 +26,7 @@ class VideoDecoder : public AudioDecoder
 
   public:
     ~VideoDecoder();
-    PixelFormat  AgreePixelFormat    (AVCodecContext *Context, const PixelFormat *Formats);
+    AVPixelFormat AgreePixelFormat    (AVCodecContext *Context, const AVPixelFormat *Formats);
     int          GetAVBuffer         (AVCodecContext *Context, AVFrame* Frame);
     void         ReleaseAVBuffer     (AVCodecContext *Context, AVFrame* Frame);
 
@@ -41,7 +41,7 @@ class VideoDecoder : public AudioDecoder
     void         CleanupVideoDecoder (AVStream *Stream);
     void         FlushVideoBuffers   (bool Stopped);
 
-    void         SetFormat           (PixelFormat Format, int Width, int Height, int References, bool UpdateParent);
+    void         SetFormat           (AVPixelFormat Format, int Width, int Height, int References, bool UpdateParent);
 
   private:
     void         ResetPTSTracker     (void);
@@ -50,7 +50,7 @@ class VideoDecoder : public AudioDecoder
   private:
     bool         m_keyframeSeen;
     VideoPlayer *m_videoParent;
-    PixelFormat  m_currentPixelFormat;
+    AVPixelFormat m_currentPixelFormat;
     int          m_currentVideoWidth;
     int          m_currentVideoHeight;
     int          m_currentReferenceCount;
