@@ -655,10 +655,7 @@ void AudioDecoder::Seek(void)
 
 int AudioDecoder::GetCurrentStream(TorcStreamTypes Type)
 {
-    m_streamLock->lockForRead();
-    int result = m_currentStreams[Type];
-    m_streamLock->unlock();
-    return result;
+    return m_currentStreams[Type];
 }
 
 int AudioDecoder::GetStreamCount(TorcStreamTypes Type)
