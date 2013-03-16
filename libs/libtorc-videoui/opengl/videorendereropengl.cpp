@@ -184,17 +184,6 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
                 return;
         }
 
-        // create a framebuffer
-        // TODO check for FBO support
-        if (!m_rgbVideoBuffer && m_rgbVideoTexture)
-        {
-            if (!m_openglWindow->CreateFrameBuffer(m_rgbVideoBuffer, m_rgbVideoTexture->m_val))
-            {
-                LOG(VB_GENERAL, LOG_ERR, "Failed to create RGB video frame buffer");
-                return;
-            }
-        }
-
         // actually update the frame
         if (IsHardwarePixelFormat(Frame->m_pixelFormat))
             RefreshHardwareFrame(Frame);
@@ -221,6 +210,17 @@ void VideoRendererOpenGL::RefreshSoftwareFrame(VideoFrame *Frame)
 {
     if (!Frame)
         return;
+
+    // create a framebuffer
+    // TODO check for FBO support
+    if (!m_rgbVideoBuffer && m_rgbVideoTexture)
+    {
+        if (!m_openglWindow->CreateFrameBuffer(m_rgbVideoBuffer, m_rgbVideoTexture->m_val))
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Failed to create RGB video frame buffer");
+            return;
+        }
+    }
 
     // create a raw texture if needed
     if (!m_rawVideoTexture)
