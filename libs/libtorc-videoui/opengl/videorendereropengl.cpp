@@ -201,6 +201,9 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
         else
             RefreshSoftwareFrame(Frame);
 
+        // OpenGL frames need flipping
+        Frame->m_invertForDisplay = 1;
+
         // update the display setup
         UpdateRefreshRate(Frame);
     }
@@ -287,8 +290,7 @@ void VideoRendererOpenGL::RefreshSoftwareFrame(VideoFrame *Frame)
     // colour space conversion
     QRect viewport = m_openglWindow->GetViewPort();
     QRect view(QPoint(0, 0), m_rgbVideoTexture->m_actualSize);
-    QRectF destination(QPointF(0.0, m_rgbVideoTexture->m_actualSize.height()),
-                       QPointF(m_rgbVideoTexture->m_actualSize.width(), 0.0));
+    QRectF destination(0.0, 0.0, m_rgbVideoTexture->m_actualSize.width(), m_rgbVideoTexture->m_actualSize.height());
     QSizeF size(m_rawVideoTexture->m_actualSize);
 
     m_openglWindow->SetBlend(false);

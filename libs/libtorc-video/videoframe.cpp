@@ -61,7 +61,10 @@ void VideoFrame::Reset(void)
     m_bufferSize           = 0;
     m_pixelFormat          = AV_PIX_FMT_NONE;
     m_secondaryPixelFormat = AV_PIX_FMT_NONE;
+    m_invertForSource     = 0;
+    m_invertForDisplay     = 0;
     m_colourSpace          = AVCOL_SPC_BT709;
+    m_field                = Frame;
     m_topFieldFirst        = false;
     m_interlaced           = false;
     m_frameAspectRatio     = 0.0;

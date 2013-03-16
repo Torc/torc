@@ -51,6 +51,7 @@ class VideoRenderer
     double                  m_lastFrameAspectRatio;
     int                     m_lastFrameWidth;
     int                     m_lastFrameHeight;
+    bool                    m_lastFrameInverted;
     QRectF                  m_presentationRect;
     VideoColourSpace       *m_colourSpace;
     bool                    m_updateFrameVertices;

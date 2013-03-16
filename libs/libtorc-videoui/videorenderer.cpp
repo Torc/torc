@@ -47,6 +47,7 @@ VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
     m_lastFrameAspectRatio(1.77778f),
     m_lastFrameWidth(1920),
     m_lastFrameHeight(1080),
+    m_lastFrameInverted(false),
     m_colourSpace(ColourSpace),
     m_updateFrameVertices(true),
     m_wantHighQualityScaling(false),
@@ -137,6 +138,7 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame, const QSizeF &Size)
         m_lastFrameAspectRatio = Frame->m_pixelAspectRatio;
         m_lastFrameWidth       = Frame->m_rawWidth;
         m_lastFrameHeight      = Frame->m_rawHeight;
+        m_lastFrameInverted    = (Frame->m_invertForSource + Frame->m_invertForDisplay) & 1;
     }
 
     qreal avframePAR   = m_lastFrameAspectRatio;
@@ -145,6 +147,7 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame, const QSizeF &Size)
     qreal height       = m_lastFrameHeight;
     qreal widthfactor  = (qreal)Size.width() / width;
     qreal heightfactor = (qreal)Size.height() / height;
+    bool invert        = m_lastFrameInverted;
 
     qreal left = 0.0f;
     qreal top  = 0.0f;
@@ -162,7 +165,7 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame, const QSizeF &Size)
         left = (Size.width() - width) / 2.0f;
     }
 
-    QRectF newrect(left, top, width, height);
+    QRectF newrect(left, invert ? top + height : top, width, invert ? -height : height);
     bool changed = newrect != m_presentationRect;
     m_presentationRect = newrect;
 

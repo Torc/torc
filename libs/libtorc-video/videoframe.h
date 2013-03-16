@@ -11,6 +11,13 @@ extern "C" {
 
 class VideoFrame
 {
+    enum Field
+    {
+        Frame       = 0,
+        TopField    = 1,
+        BottomField = 2
+    };
+
     friend class VideoDecoder;
 
   public:
@@ -44,7 +51,10 @@ class VideoFrame
     AVPixelFormat  m_secondaryPixelFormat;
     AVPixelFormat  m_preferredDisplayFormat;
 
+    int            m_invertForSource;
+    int            m_invertForDisplay;
     AVColorSpace   m_colourSpace;
+    Field          m_field;
     bool           m_topFieldFirst;
     bool           m_interlaced;
     double         m_frameAspectRatio;

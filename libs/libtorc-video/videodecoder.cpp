@@ -427,6 +427,9 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
     frame->m_pts              = av_q2d(Stream->time_base) * 1000 * GetValidTimestamp(avframe.pkt_pts, avframe.pkt_dts);
     frame->m_corrupt          = !m_keyframeSeen;
     frame->m_frameRate        = GetFrameRate(Context, Stream);
+    frame->m_invertForSource  = 0;
+    frame->m_invertForDisplay = 0;
+    frame->m_field            = VideoFrame::Frame;
 
     m_videoParent->GetBuffers()->ReleaseFrameFromDecoding(frame);
 
