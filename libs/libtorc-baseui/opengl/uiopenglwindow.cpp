@@ -90,7 +90,8 @@ UIOpenGLWindow::UIOpenGLWindow(const QGLFormat &Format, GLType Type)
     m_timer(NULL),
     m_openGLType(Type),
     m_blend(false),
-    m_backgroundColour(0x00000000)
+    m_backgroundColour(0x00000000),
+    m_callbackLock(new QMutex())
 {
     setObjectName("MainWindow");
 
@@ -148,6 +149,9 @@ UIOpenGLWindow::~UIOpenGLWindow()
 
     // free up OpenGL textures
     ReleaseAllTextures();
+
+    // cleanup callbacks
+    delete m_callbackLock;
 }
 
 QGLFunctionPointer UIOpenGLWindow::GetProcAddress(const QString &Proc)
@@ -176,11 +180,38 @@ QGLFunctionPointer UIOpenGLWindow::GetProcAddress(const QString &Proc)
     return result;
 }
 
+void UIOpenGLWindow::RegisterCallback(OpenGLCallback Function, void *Object, int Parameter)
+{
+    QMutexLocker locker(m_callbackLock);
+    m_callbacks.push_back(UIOpenGLCallback(Function, Object, Parameter));
+}
+
+void UIOpenGLWindow::ProcessCallbacks(void)
+{
+    m_callbackLock->lock();
+    if (m_callbacks.isEmpty())
+    {
+        m_callbackLock->unlock();
+        return;
+    }
+
+    QList<UIOpenGLCallback> callbacks = m_callbacks;
+    m_callbacks.clear();
+    m_callbackLock->unlock();
+
+    for (int i = 0; i < callbacks.size(); ++i)
+        (callbacks[i].m_function)(callbacks[i].m_object, callbacks[i].m_parameter);
+}
+
 void UIOpenGLWindow::MainLoop(void)
 {
     quint64 timestamp = StartFrame();
 
     makeCurrent();
+
+    // process any callbacks requests while gl context is current
+    ProcessCallbacks();
+
     SetViewPort(geometry());
     ClearFramebuffer();
 

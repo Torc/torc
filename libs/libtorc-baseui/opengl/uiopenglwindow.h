@@ -26,6 +26,22 @@ class UITimer;
 class UIShapePath;
 
 typedef void (*QGLFunctionPointer)();
+typedef void (*OpenGLCallback) (void*, int);
+
+class UIOpenGLCallback
+{
+  public:
+    UIOpenGLCallback(OpenGLCallback Function, void *Object, int Parameter)
+        : m_function(Function),
+          m_object(Object),
+          m_parameter(Parameter)
+    {
+    }
+
+    OpenGLCallback m_function;
+    void          *m_object;
+    int            m_parameter;
+};
 
 class TORC_BASEUI_PUBLIC UIOpenGLWindow
   : public QGLWidget,
@@ -47,6 +63,7 @@ class TORC_BASEUI_PUBLIC UIOpenGLWindow
     virtual ~UIOpenGLWindow();
 
     static QGLFunctionPointer GetProcAddress (const QString &Proc);
+    void        RegisterCallback  (OpenGLCallback Function, void* Object, int Parameter);
 
     // UIWindow
     QSize       GetSize           (void);
@@ -86,6 +103,7 @@ class TORC_BASEUI_PUBLIC UIOpenGLWindow
   protected:
     // UIOpenGLWindow
     UIOpenGLWindow(const QGLFormat &Format, GLType Type = kGLOpenGL2);
+    void       ProcessCallbacks   (void);
 
     // QWidget
     bool       eventFilter        (QObject     *Object, QEvent *Event);
@@ -112,6 +130,9 @@ class TORC_BASEUI_PUBLIC UIOpenGLWindow
     QString                       m_extensions;
     bool                          m_blend;
     quint32                       m_backgroundColour;
+
+    QMutex                       *m_callbackLock;
+    QList<UIOpenGLCallback>       m_callbacks;
 };
 
 #endif // UIOPENGLWINDOW_H
