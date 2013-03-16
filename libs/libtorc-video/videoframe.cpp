@@ -138,6 +138,9 @@ int VideoFrame::PlaneCount(AVPixelFormat Format)
         case AV_PIX_FMT_YUV411P:
         case AV_PIX_FMT_YUV422P:
         case AV_PIX_FMT_YUV444P:
+        case AV_PIX_FMT_YUVJ420P:
+        case AV_PIX_FMT_YUVJ422P:
+        case AV_PIX_FMT_YUVJ444P:
             return 3;
         case AV_PIX_FMT_NV12:
         case AV_PIX_FMT_NV21:
@@ -195,7 +198,7 @@ void VideoFrame::SetOffsets(void)
     if (m_numPlanes != 3)
         return;
 
-    if (format == AV_PIX_FMT_YUV420P)
+    if (format == AV_PIX_FMT_YUV420P || format == AV_PIX_FMT_YUVJ420P)
     {
         m_offsets[1] = fullplane;
         m_offsets[2] = m_offsets[3] = m_offsets[1] + (fullplane >> 2);
@@ -207,13 +210,13 @@ void VideoFrame::SetOffsets(void)
         m_offsets[2] = m_offsets[3] = m_offsets[1] + (fullplane >> 2);
         m_pitches[1] = m_pitches[2] = m_pitches[3] = halfpitch >> 1;
     }
-    else if (format == AV_PIX_FMT_YUV422P)
+    else if (format == AV_PIX_FMT_YUV422P || format == AV_PIX_FMT_YUVJ422P)
     {
         m_offsets[1] = fullplane;
         m_offsets[2] = m_offsets[3] = m_offsets[1] + (fullplane >> 1);
         m_pitches[1] = m_pitches[2] = m_pitches[3] = halfpitch;
     }
-    else if (format == AV_PIX_FMT_YUV444P)
+    else if (format == AV_PIX_FMT_YUV444P || format == AV_PIX_FMT_YUVJ444P)
     {
         m_offsets[1] = fullplane;
         m_offsets[2] = m_offsets[3] = m_offsets[1] + fullplane;
