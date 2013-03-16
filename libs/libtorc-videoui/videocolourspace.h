@@ -36,6 +36,7 @@ class VideoColourSpace
     float*         Data                 (void);
 
     AVColorSpace   GetColourSpace       (void);
+    AVColorRange   GetColourRange       (void);
     int            GetBrightness        (void);
     int            GetContrast          (void);
     int            GetSaturation        (void);
@@ -48,6 +49,7 @@ class VideoColourSpace
     void           ChangeHue            (bool Increase);
 
     void           SetColourSpace       (AVColorSpace ColourSpace);
+    void           SetColourRange       (AVColorRange ColourRange);
     void           SetBrightness        (int  Value);
     void           SetContrast          (int  Value);
     void           SetHue               (int  Value);
@@ -65,6 +67,7 @@ class VideoColourSpace
 
   private:
     AVColorSpace   m_colourSpace;
+    AVColorRange   m_colourRange;
     bool           m_changed;
     bool           m_studioLevels;
     float          m_brightness;

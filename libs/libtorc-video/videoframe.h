@@ -54,6 +54,7 @@ class VideoFrame
     int            m_invertForSource;
     int            m_invertForDisplay;
     AVColorSpace   m_colourSpace;
+    AVColorRange   m_colourRange;
     Field          m_field;
     bool           m_topFieldFirst;
     bool           m_interlaced;

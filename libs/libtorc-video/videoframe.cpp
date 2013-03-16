@@ -64,6 +64,7 @@ void VideoFrame::Reset(void)
     m_invertForSource     = 0;
     m_invertForDisplay     = 0;
     m_colourSpace          = AVCOL_SPC_BT709;
+    m_colourRange          = AVCOL_RANGE_UNSPECIFIED;
     m_field                = Frame;
     m_topFieldFirst        = false;
     m_interlaced           = false;

@@ -418,6 +418,7 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
         factory->ConvertBuffer(avframe, frame, m_conversionContext);
 
     frame->m_colourSpace      = Stream->codec->colorspace;
+    frame->m_colourRange      = Stream->codec->color_range;
     frame->m_topFieldFirst    = avframe.top_field_first;
     frame->m_interlaced       = avframe.interlaced_frame;
     frame->m_frameAspectRatio = GetFrameAspectRatio(Stream, avframe);

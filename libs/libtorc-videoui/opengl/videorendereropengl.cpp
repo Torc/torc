@@ -298,6 +298,7 @@ void VideoRendererOpenGL::RefreshSoftwareFrame(VideoFrame *Frame)
     m_openglWindow->SetViewPort(view);
     m_colourSpace->SetColourSpace(Frame->m_colourSpace);
     m_colourSpace->SetStudioLevels(m_window->GetStudioLevels());
+    m_colourSpace->SetColourRange(Frame->m_colourRange);
     if (m_colourSpace->HasChanged())
         m_openglWindow->SetShaderParams(m_yuvShader, m_colourSpace->Data(), "COLOUR_UNIFORM");
     m_openglWindow->DrawTexture(m_rawVideoTexture, &destination, &size, m_yuvShader);

@@ -135,6 +135,7 @@ QString VideoColourSpace::ColourSpaceToString(AVColorSpace ColorSpace)
 
 VideoColourSpace::VideoColourSpace(AVColorSpace ColourSpace)
   : m_colourSpace(ColourSpace),
+    m_colourRange(AVCOL_RANGE_UNSPECIFIED),
     m_changed(true),
     m_studioLevels(false),
     m_brightness(0.0f),
@@ -171,6 +172,11 @@ float* VideoColourSpace::Data(void)
 AVColorSpace VideoColourSpace::GetColourSpace(void)
 {
     return m_colourSpace;
+}
+
+AVColorRange VideoColourSpace::GetColourRange(void)
+{
+    return m_colourRange;
 }
 
 int VideoColourSpace::GetBrightness(void)
@@ -310,6 +316,15 @@ void VideoColourSpace::SetColourSpace(AVColorSpace ColourSpace)
     }
 }
 
+void VideoColourSpace::SetColourRange(AVColorRange ColourRange)
+{
+    if (m_colourRange != ColourRange)
+    {
+        m_colourRange = ColourRange;
+        SetMatrix();
+    }
+}
+
 void VideoColourSpace::SetStudioLevelsPriv(bool Studio, bool UpdateMatrix)
 {
     m_studioLevels = Studio;
@@ -319,16 +334,19 @@ void VideoColourSpace::SetStudioLevelsPriv(bool Studio, bool UpdateMatrix)
 
 void VideoColourSpace::SetMatrix(void)
 {
-    float luma_range    = m_studioLevels ? 255.0f : 219.0f;
-    float chroma_range  = m_studioLevels ? 255.0f : 224.0f;
-    float luma_offset   = m_studioLevels ? 0.0f   : -16.0f / 255.0f;
+    bool expand = (!m_studioLevels && m_colourRange != AVCOL_RANGE_JPEG);
+    //contract  = ( m_studioLevels && m_colourRange == AVCOL_RANGE_JPEG);
+    bool same   = ( m_studioLevels && m_colourRange != AVCOL_RANGE_JPEG) ||
+                  (!m_studioLevels && m_colourRange == AVCOL_RANGE_JPEG);
+
+    float luma_scale    = same ? 1.0f : expand ? 255.0f / 219.0f : 219.0f / 255.0f;
+    float chroma_scale  = same ? 1.0f : expand ? 255.0f / 224.0f : 224.0f / 255.0f;
+    float luma_offset   = same ? 0.0f : expand ? -16.0f / 255.0f :  16.0f / 255.0f;
     float chroma_offset = -128.0f / 255.0f;
 
     float uvcos         = m_saturation * cos(m_hue);
     float uvsin         = m_saturation * sin(m_hue);
-    float brightness    = m_brightness * 255.0f / luma_range;
-    float luma_scale    = 255.0f / luma_range;
-    float chroma_scale  = 255.0f / chroma_range;
+    float brightness    = m_brightness * luma_scale;
 
     Matrix matrix;
     switch (m_colourSpace)
