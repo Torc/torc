@@ -142,4 +142,11 @@ class VDAAcceleration : public AccelerationFactory
         }
     }
 
+    bool UpdateFrame(VideoFrame *Frame, VideoColourSpace *ColourSpace, void *Surface)
+    {
+        (void)Frame;
+        (void)ColourSpace;
+        (void)Surface;
+    }
+
 } VDAAcceleration;

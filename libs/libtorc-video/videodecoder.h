@@ -14,6 +14,7 @@ extern "C" {
 
 class VideoPlayer;
 class VideoFrame;
+class VideoColourSpace;
 
 class VideoDecoder : public AudioDecoder
 {
@@ -81,6 +82,7 @@ class AccelerationFactory
     virtual bool                InitialiseBuffer        (AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame) = 0;
     virtual void                DeinitialiseBuffer      (AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame) = 0;
     virtual void                ConvertBuffer           (AVFrame &Avframe, VideoFrame *Frame, SwsContext *&ConversionContext) = 0;
+    virtual bool                UpdateFrame             (VideoFrame *Frame, VideoColourSpace *ColourSpace, void *Surface) = 0;
 
   protected:
     static AccelerationFactory* gAccelerationFactory;
