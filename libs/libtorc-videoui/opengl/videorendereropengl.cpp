@@ -26,6 +26,7 @@
 #include "torcavutils.h"
 #include "uiopengltextures.h"
 #include "uiopenglwindow.h"
+#include "videodecoder.h"
 #include "videocolourspace.h"
 #include "videorendereropengl.h"
 
@@ -203,7 +204,18 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
 
 void VideoRendererOpenGL::RefreshHardwareFrame(VideoFrame *Frame)
 {
-    (void)Frame;
+    if (Frame && m_rgbVideoTexture)
+    {
+        AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+        for ( ; factory; factory = factory->NextFactory())
+        {
+            if (factory->UpdateFrame(Frame, m_colourSpace, (void*)m_rgbVideoTexture))
+            {
+                m_validVideoFrame = true;
+                break;
+            }
+        }
+    }
 }
 
 void VideoRendererOpenGL::RefreshSoftwareFrame(VideoFrame *Frame)
