@@ -471,11 +471,6 @@ void VideoDecoder::PreInitVideoDecoder(AVFormatContext *Context, AVStream *Strea
         context->flags            |= CODEC_FLAG_EMU_EDGE;
     }
 
-    // setup hardware context
-    AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
-    for ( ; factory; factory = factory->NextFactory())
-        factory->PreInitialiseDecoder(context);
-
     SetFormat(context->pix_fmt, context->width, context->height, context->refs, false);
 
     // if this is the current video stream, start filtering early audio packets.
@@ -492,10 +487,7 @@ void VideoDecoder::PreInitVideoDecoder(AVFormatContext *Context, AVStream *Strea
 
 void VideoDecoder::PostInitVideoDecoder(AVCodecContext *Context)
 {
-    // setup hardware context
-    AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
-    for ( ; factory; factory = factory->NextFactory())
-        factory->PostInitialiseDecoder(Context);
+    (void)Context;
 }
 
 void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)

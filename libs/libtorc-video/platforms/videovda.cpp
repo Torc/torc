@@ -61,14 +61,6 @@ class VDAAcceleration : public AccelerationFactory
         return VideoVDA::CanAccelerate(Context, Format);
     }
 
-    void PreInitialiseDecoder(AVCodecContext *Context)
-    {
-    }
-
-    void PostInitialiseDecoder(AVCodecContext *Context)
-    {
-    }
-
     void DeinitialiseDecoder(AVCodecContext *Context)
     {
         if (Context && Context->hwaccel_context && Context->pix_fmt == AV_PIX_FMT_VDA_VLD)
