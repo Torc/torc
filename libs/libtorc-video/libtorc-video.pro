@@ -23,11 +23,17 @@ LIBS += -L../libtorc-av/libswscale -ltorc-swscale
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 
 HEADERS += torcvideoexport.h
-HEADERS += videoplayer.h    videodecoder.h
-HEADERS += videoframe.h     videobuffers.h
+HEADERS += videoplayer.h
+HEADERS += videodecoder.h
+HEADERS += videoframe.h
+HEADERS += videobuffers.h
+HEADERS += videocolourspace.h
 
-SOURCES += videoplayer.cpp  videodecoder.cpp
-SOURCES += videoframe.cpp   videobuffers.cpp
+SOURCES += videoplayer.cpp
+SOURCES += videodecoder.cpp
+SOURCES += videoframe.cpp
+SOURCES += videobuffers.cpp
+SOURCES += videocolourspace.cpp
 
 contains(CONFIG_VDA, yes) {
     HEADERS += platforms/videovda.h

@@ -28,11 +28,9 @@ LIBS += -L../libtorc-av/libswscale   -ltorc-swscale
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 
 HEADERS += torcvideouiexport.h
-HEADERS += videocolourspace.h
 HEADERS += videouiplayer.h
 HEADERS += videorenderer.h
 
-SOURCES += videocolourspace.cpp
 SOURCES += videouiplayer.cpp
 SOURCES += videorenderer.cpp
 
