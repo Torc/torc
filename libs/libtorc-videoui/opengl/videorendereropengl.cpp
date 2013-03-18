@@ -150,8 +150,9 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
         if (m_lastFrameWidth != Frame->m_rawWidth || m_lastFrameHeight != Frame->m_rawHeight||
             Frame->m_pixelFormat != m_lastInputFormat)
         {
-            LOG(VB_GENERAL, LOG_INFO, QString("Video frame size changed from %1x%2 to %3x%4")
-                .arg(m_lastFrameWidth).arg(m_lastFrameHeight).arg(Frame->m_rawWidth).arg(Frame->m_rawHeight));
+            LOG(VB_GENERAL, LOG_INFO, QString("Video frame format changed from %1 %2x%3 to %4 %5x%6")
+                .arg(av_get_pix_fmt_name(m_lastInputFormat)).arg(m_lastFrameWidth).arg(m_lastFrameHeight)
+                .arg(av_get_pix_fmt_name(Frame->m_pixelFormat)).arg(Frame->m_rawWidth).arg(Frame->m_rawHeight));
             ResetOutput();
         }
 
