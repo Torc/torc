@@ -11,6 +11,7 @@ extern "C" {
 
 class VideoFrame
 {
+  public:
     enum Field
     {
         Frame       = 0,
