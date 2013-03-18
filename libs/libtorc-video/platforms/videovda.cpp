@@ -141,4 +141,9 @@ class VDAAcceleration : public AccelerationFactory
         (void)Surface;
     }
 
+    bool ReleaseFrame(VideoFrame *Frame)
+    {
+        (void)Frame;
+    }
+
 } VDAAcceleration;

@@ -22,6 +22,7 @@
 
 // Torc
 #include "torclogging.h"
+#include "videodecoder.h"
 #include "videoframe.h"
 
 extern "C" {
@@ -40,7 +41,8 @@ extern "C" {
 VideoFrame::VideoFrame(AVPixelFormat PreferredDisplayFormat)
   : m_preferredDisplayFormat(PreferredDisplayFormat)
 {
-    m_buffer = NULL;
+    m_buffer               = NULL;
+    m_acceleratedBuffer    = NULL;
     Reset();
 }
 
@@ -51,6 +53,16 @@ VideoFrame::~VideoFrame()
 
 void VideoFrame::Reset(void)
 {
+    // delete before pixel format is reset
+    if (m_acceleratedBuffer)
+    {
+        AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+        for ( ; factory; factory = factory->NextFactory())
+            if (factory->ReleaseFrame(this))
+                break;
+    }
+    m_acceleratedBuffer    = NULL;
+
     m_discard              = false;
     m_rawWidth             = 0;
     m_rawHeight            = 0;
@@ -81,9 +93,6 @@ void VideoFrame::Reset(void)
     if (m_buffer)
         av_free(m_buffer);
     m_buffer = NULL;
-
-    // this is owned and managed by the appropriate classes
-    m_acceleratedBuffer    = NULL;
 }
 
 void VideoFrame::Initialise(AVPixelFormat Format, int Width, int Height)
