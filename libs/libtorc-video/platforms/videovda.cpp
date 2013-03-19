@@ -146,4 +146,11 @@ class VDAAcceleration : public AccelerationFactory
         (void)Frame;
     }
 
+    bool NeedsCustomSurfaceFormat(VideoFrame *Frame, void *Format)
+    {
+        (void)Frame;
+        (void)Format;
+        return false;
+    }
+
 } VDAAcceleration;

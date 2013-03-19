@@ -105,7 +105,8 @@ VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGL
     m_rgbShader(0),
     m_bicubicShader(0)
 {
-    m_allowHighQualityScaling = m_openglWindow->IsRectTexture(m_openglWindow->GetRectTextureType());
+    m_rgbVideoTextureFormat   = m_openglWindow->GetRectTextureType();
+    m_allowHighQualityScaling = m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat);
 }
 
 VideoRendererOpenGL::~VideoRendererOpenGL()
@@ -154,6 +155,24 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
                 .arg(av_get_pix_fmt_name(m_lastInputFormat)).arg(m_lastFrameWidth).arg(m_lastFrameHeight)
                 .arg(av_get_pix_fmt_name(Frame->m_pixelFormat)).arg(Frame->m_rawWidth).arg(Frame->m_rawHeight));
             ResetOutput();
+
+            if (Frame->m_pixelFormat != m_lastInputFormat)
+            {
+                int customformat = 0;
+                AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+                for ( ; factory; factory = factory->NextFactory())
+                {
+                    if (factory->NeedsCustomSurfaceFormat(Frame, &customformat))
+                        break;
+                }
+
+                if (customformat != 0)
+                    m_rgbVideoTextureFormat = customformat;
+                else
+                    m_rgbVideoTextureFormat = m_openglWindow->GetRectTextureType();
+
+                m_allowHighQualityScaling = m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat);
+            }
         }
 
         m_lastInputFormat = Frame->m_pixelFormat;
@@ -162,8 +181,7 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
         if (!m_rgbVideoTexture)
         {
             QSize size(Frame->m_rawWidth, Frame->m_rawHeight);
-            m_rgbVideoTexture = m_openglWindow->CreateTexture(size, false, m_allowHighQualityScaling ? m_openglWindow->GetRectTextureType() : 0,
-                                                              GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA);
+            m_rgbVideoTexture = m_openglWindow->CreateTexture(size, false, m_rgbVideoTextureFormat, GL_UNSIGNED_BYTE, GL_RGBA, GL_RGBA);
 
             if (!m_rgbVideoTexture)
             {
@@ -361,7 +379,7 @@ void VideoRendererOpenGL::CustomiseShader(QByteArray &Source)
     QByteArray rgbsampler = "sampler2D";
     QByteArray rgbtexture = "texture2D";
 
-    if (m_allowHighQualityScaling)
+    if (m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat))
     {
         extensions += "#extension GL_ARB_texture_rectangle : enable\n";
         rgbsampler += "Rect";

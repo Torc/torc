@@ -82,6 +82,7 @@ class AccelerationFactory
     virtual void                ConvertBuffer           (AVFrame &Avframe, VideoFrame *Frame, SwsContext *&ConversionContext) = 0;
     virtual bool                UpdateFrame             (VideoFrame *Frame, VideoColourSpace *ColourSpace, void *Surface) = 0;
     virtual bool                ReleaseFrame            (VideoFrame *Frame) = 0;
+    virtual bool                NeedsCustomSurfaceFormat(VideoFrame *Frame, void* Format) = 0;
 
   protected:
     static AccelerationFactory* gAccelerationFactory;

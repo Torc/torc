@@ -27,6 +27,7 @@ class VideoRendererOpenGL : public VideoRenderer
     UIOpenGLWindow    *m_openglWindow;
     GLTexture         *m_rawVideoTexture;
     GLTexture         *m_rgbVideoTexture;
+    int                m_rgbVideoTextureFormat;
     uint               m_rgbVideoBuffer;
     uint               m_yuvShader;
     uint               m_rgbShader;
