@@ -59,7 +59,7 @@ void VideoUIPlayer::Initialise(void)
     (void)VideoVDPAU::VDPAUAvailable();
 #endif
 #if CONFIG_VAAPI
-    (void)VideoVAAPI::VAAPIAvailable();
+    (void)VideoVAAPI::VAAPIAvailable(true /*OpenGL - this must be run from UI thread*/);
 #endif
 #endif
 }
