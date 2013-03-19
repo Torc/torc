@@ -139,11 +139,13 @@ class VDAAcceleration : public AccelerationFactory
         (void)Frame;
         (void)ColourSpace;
         (void)Surface;
+        return false;
     }
 
     bool ReleaseFrame(VideoFrame *Frame)
     {
         (void)Frame;
+        return false;
     }
 
     bool NeedsCustomSurfaceFormat(VideoFrame *Frame, void *Format)
