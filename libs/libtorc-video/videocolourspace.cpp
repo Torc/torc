@@ -181,22 +181,22 @@ AVColorRange VideoColourSpace::GetColourRange(void)
 
 int VideoColourSpace::GetBrightness(void)
 {
-    return ((m_brightness + 1.0f) / 0.02f);
+    return 0.5f + ((m_brightness + 1.0f) / 0.02f);
 }
 
 int VideoColourSpace::GetContrast(void)
 {
-    return m_contrast / 0.02f;
+    return 0.5f + (m_contrast / 0.02f);
 }
 
 int VideoColourSpace::GetSaturation(void)
 {
-    return m_saturation / 0.02f;
+    return 0.5f + (m_saturation / 0.02f);
 }
 
 int VideoColourSpace::GetHue(void)
 {
-    return (m_hue * 180.0f) / (-3.6f * M_PI);
+    return 0.5f + ((m_hue * 180.0f) / (-3.6f * M_PI));
 }
 
 bool VideoColourSpace::GetStudioLevels(void)
@@ -220,7 +220,7 @@ void VideoColourSpace::ChangeContrast(bool Increase)
 
 void VideoColourSpace::ChangeSaturation(bool Increase)
 {
-    int current = GetContrast();
+    int current = GetSaturation();
     current += Increase ? 1 : -1;
     SetSaturation(current);
 }
