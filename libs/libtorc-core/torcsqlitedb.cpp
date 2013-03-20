@@ -74,6 +74,20 @@ bool TorcSQLiteDB::InitDatabase(void)
         DebugError(&query);
     }
 
+    // optimise the database
+    query.exec("PRAGMA page_size = 4096");
+    DebugError(&query);
+    query.exec("PRAGMA cache_size = 16384");
+    DebugError(&query);
+    query.exec("PRAGMA temp_store = MEMORY");
+    DebugError(&query);
+    query.exec("PRAGMA journal_mode = OFF");
+    DebugError(&query);
+    query.exec("PRAGMA locking_mode = EXCLUSIVE");
+    DebugError(&query);
+    query.exec("PRAGMA synchronous = OFF");
+    DebugError(&query);
+
     m_databaseValid = true;
 
     return true;
