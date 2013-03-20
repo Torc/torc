@@ -131,6 +131,22 @@ int UIActions::GetActionFromKey(QKeyEvent *Event)
             return Torc::DisableHighQualityScaling;
         case Qt::Key_D:
             return Torc::ToggleHighQualityScaling;
+        case Qt::Key_Z:
+            return Torc::DecreaseBrightness;
+        case Qt::Key_X:
+            return Torc::IncreaseBrightness;
+        case Qt::Key_C:
+            return Torc::DecreaseContrast;
+        case Qt::Key_V:
+            return Torc::IncreaseContrast;
+        case Qt::Key_B:
+            return Torc::DecreaseSaturation;
+        case Qt::Key_N:
+            return Torc::IncreaseSaturation;
+        case Qt::Key_M:
+            return Torc::DecreaseHue;
+        case Qt::Key_Slash:
+            return Torc::IncreaseHue;
         default:
             break;
     }

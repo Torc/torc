@@ -246,6 +246,38 @@ bool VideoUIPlayer::HandleAction(int Action)
                 SendUserMessage(QObject::tr("Not available"));
             }
         }
+        else if (Action == Torc::DecreaseBrightness)
+        {
+            m_colourSpace->ChangeBrightness(false);
+        }
+        else if (Action == Torc::IncreaseBrightness)
+        {
+            m_colourSpace->ChangeBrightness(true);
+        }
+        else if (Action == Torc::DecreaseContrast)
+        {
+            m_colourSpace->ChangeContrast(false);
+        }
+        else if (Action == Torc::IncreaseContrast)
+        {
+            m_colourSpace->ChangeContrast(true);
+        }
+        else if (Action == Torc::DecreaseSaturation)
+        {
+            m_colourSpace->ChangeSaturation(false);
+        }
+        else if (Action == Torc::IncreaseSaturation)
+        {
+            m_colourSpace->ChangeSaturation(true);
+        }
+        else if (Action == Torc::DecreaseHue)
+        {
+            m_colourSpace->ChangeHue(false);
+        }
+        else if (Action == Torc::IncreaseHue)
+        {
+            m_colourSpace->ChangeHue(true);
+        }
     }
 
     return VideoPlayer::HandleAction(Action);
