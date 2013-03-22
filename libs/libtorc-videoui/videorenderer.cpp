@@ -176,13 +176,13 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame, const QSizeF &Size)
     }
 
     // enable/disable high quality scaling
-    if (m_wantHighQualityScaling && m_allowHighQualityScaling && !m_usingHighQualityScaling &&
+    if (Frame && m_wantHighQualityScaling && m_allowHighQualityScaling && !m_usingHighQualityScaling &&
         (Frame->m_rawWidth < width || Frame->m_rawHeight < height))
     {
         LOG(VB_GENERAL, LOG_INFO, "Enabling high quality scaling");
         m_usingHighQualityScaling = true;
     }
-    else if (m_usingHighQualityScaling && (!(Frame->m_rawWidth < Size.width() || Frame->m_rawHeight < Size.height()) || !m_wantHighQualityScaling))
+    else if (Frame && m_usingHighQualityScaling && (!(Frame->m_rawWidth < Size.width() || Frame->m_rawHeight < Size.height()) || !m_wantHighQualityScaling))
     {
         LOG(VB_GENERAL, LOG_INFO, "Disabling high quality scaling");
         m_usingHighQualityScaling = false;
