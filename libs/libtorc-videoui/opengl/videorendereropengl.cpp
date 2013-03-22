@@ -197,7 +197,7 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
         if (!m_rgbShader)
         {
             QByteArray fragment(DefaultFragmentShader);
-            CustomiseShader(fragment);
+            CustomiseShader(fragment, m_rgbVideoTexture);
             m_rgbShader = m_openglWindow->CreateShaderObject(QByteArray(), fragment);
 
             if (!m_rgbShader)
@@ -277,7 +277,7 @@ void VideoRendererOpenGL::RefreshSoftwareFrame(VideoFrame *Frame)
     {
         QByteArray vertex(YUV2RGBVertexShader);
         QByteArray fragment(YUV2RGBFragmentShader);
-        CustomiseShader(fragment);
+        CustomiseShader(fragment, m_rawVideoTexture);
         m_yuvShader = m_openglWindow->CreateShaderObject(vertex, fragment);
 
         if (!m_yuvShader)
@@ -355,7 +355,7 @@ void VideoRendererOpenGL::RenderFrame(void)
             if (!m_bicubicShader)
             {
                 QByteArray bicubic(BicubicShader);
-                CustomiseShader(bicubic);
+                CustomiseShader(bicubic, NULL);
                 m_bicubicShader = m_openglWindow->CreateShaderObject(QByteArray(), bicubic);
             }
 
@@ -368,22 +368,24 @@ void VideoRendererOpenGL::RenderFrame(void)
     }
 }
 
-void VideoRendererOpenGL::CustomiseShader(QByteArray &Source)
+void VideoRendererOpenGL::CustomiseShader(QByteArray &Source, GLTexture *Texture)
 {
+    bool  rectangle    = Texture ? m_openglWindow->IsRectTexture(Texture->m_type) : false;
     float selectcolumn = 1.0f;
-
-    if (m_rawVideoTexture && !m_openglWindow->IsRectTexture(m_rawVideoTexture->m_type) && m_rawVideoTexture->m_size.width() > 0)
-        selectcolumn /= ((float)m_rawVideoTexture->m_size.width());
 
     QByteArray extensions = "";
     QByteArray rgbsampler = "sampler2D";
     QByteArray rgbtexture = "texture2D";
 
-    if (m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat))
+    if (rectangle)
     {
         extensions += "#extension GL_ARB_texture_rectangle : enable\n";
         rgbsampler += "Rect";
         rgbtexture += "Rect";
+    }
+    else if (Texture && Texture->m_size.width() > 0)
+    {
+        selectcolumn /= ((float)Texture->m_size.width());
     }
 
     Source.replace("RGB_SAMPLER", rgbsampler);
