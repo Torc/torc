@@ -58,21 +58,16 @@ static const char YUV2RGBFragmentShader[] =
 static const char DefaultFragmentShader[] =
 "GLSL_DEFINES"
 "RGB_DEFINES"
+"#define SAMPLE_MODE\n"
+"#define SOURCE_MODE\n"
+"#define OUTPUT_MODE\n"
 "uniform RGB_SAMPLER s_texture0;\n"
 "varying vec2 v_texcoord0;\n"
-"void main(void)\n"
+"#if defined(SAMPLE_BICUBIC)\n"
+"#define SAMPLE(TEXTURE, COORD) Bicubic(TEXTURE, COORD)\n"
+"vec4 Bicubic(in RGB_SAMPLER Texture, in vec2 Texcoord)\n"
 "{\n"
-"    gl_FragColor = RGB_TEXTURE(s_texture0, v_texcoord0);\n"
-"}\n";
-
-static const char BicubicShader[] =
-"GLSL_DEFINES"
-"RGB_DEFINES"
-"uniform sampler2DRect s_texture0;\n"
-"varying vec2 v_texcoord0;\n"
-"void main(void)\n"
-"{\n"
-"    vec2 coord = v_texcoord0 - vec2(0.5, 0.5);\n"
+"    vec2 coord = Texcoord - vec2(0.5, 0.5);\n"
 "    vec2 index = floor(coord);\n"
 "    vec2 fract = coord - index;\n"
 "    vec2 one   = 1.0 - fract;\n"
@@ -86,13 +81,69 @@ static const char BicubicShader[] =
 "    vec2 g1    = w2 + w3;\n"
 "    vec2 h0    = (w1 / g0) - 0.5 + index;\n"
 "    vec2 h1    = (w3 / g1) + 1.5 + index;\n"
-"    vec4 tex00 = texture2DRect(s_texture0, h0);\n"
-"    vec4 tex10 = texture2DRect(s_texture0, vec2(h1.x, h0.y));\n"
-"    vec4 tex01 = texture2DRect(s_texture0, vec2(h0.x, h1.y));\n"
-"    vec4 tex11 = texture2DRect(s_texture0, h1);\n"
+"    vec4 tex00 = RGB_TEXTURE(Texture, h0);\n"
+"    vec4 tex10 = RGB_TEXTURE(Texture, vec2(h1.x, h0.y));\n"
+"    vec4 tex01 = RGB_TEXTURE(Texture, vec2(h0.x, h1.y));\n"
+"    vec4 tex11 = RGB_TEXTURE(Texture, h1);\n"
 "    tex00      = mix(tex01, tex00, g0.y);\n"
 "    tex10      = mix(tex11, tex10, g0.y);\n"
-"    gl_FragColor = mix(tex10, tex00, g0.x);\n"
+"    return mix(tex10, tex00, g0.x);\n"
+"}\n"
+"#else\n"
+"#define SAMPLE(TEXTURE, COORD) RGB_TEXTURE(TEXTURE, COORD)\n"
+"#endif\n"
+""
+"void main(void)\n"
+"{\n"
+"#if defined(OUTPUT_RED_CYAN) || defined(OUTPUT_GREEN_MAGENTA) || defined(OUTPUT_AMBERBLUE) || defined(OUTPUT_DISCARD)\n"
+"#if defined(OUTPUT_AMBER_BLUE)\n"
+"    mat3 lm = mat3( 1.062, -0.026, -0.038,"
+"                   -0.205,  0.908, -0.173,"
+"                    0.299,  0.068,  0.022);\n"
+"    mat3 rm = mat3(-0.016,  0.006,  0.094,"
+"                   -0.123,  0.062,  0.185,"
+"                   -0.017, -0.017,  0.911);\n"
+"#elif defined(OUTPUT_GREEN_MAGENTA)\n"
+"    mat3 lm = mat3(-0.062,  0.284, -0.015,"
+"                   -0.158,  0.668, -0.027,"
+"                   -0.039,  0.143,  0.021);\n"
+"    mat3 rm = mat3( 0.529, -0.016,  0.009,"
+"                    0.705, -0.015,  0.075,"
+"                    0.024, -0.065,  0.937);\n"
+"#elif defined(OUTPUT_RED_CYAN)\n"
+"    mat3 lm = mat3( 0.437, -0.062, -0.048,"
+"                    0.449, -0.062, -0.050,"
+"                    0.164, -0.024, -0.017);\n"
+"    mat3 rm = mat3(-0.011,  0.377, -0.026,"
+"                   -0.032,  0.761, -0.093,"
+"                   -0.007,  0.009,  1.234);\n"
+"#endif\n"
+"#if defined(SOURCE_SIDEBYSIDE)\n"
+"    float    x = v_texcoord0.x / 2.0;\n"
+"    vec4  left = SAMPLE(s_texture0, vec2(x, v_texcoord0.y));\n"
+"#if !defined(OUTPUT_DISCARD)\n"
+"    vec4 right = SAMPLE(s_texture0, vec2(x + HALF_WIDTH, v_texcoord0.y));\n"
+"#endif\n"
+"#elif defined(SOURCE_TOPANDBOTTOM)\n"
+"    float    y = v_texcoord0.y / 2.0;\n"
+"    vec4  left = SAMPLE(s_texture0, vec2(v_texcoord0.x, y));\n"
+"#if !defined(OUTPUT_DISCARD)\n"
+"    vec4 right = SAMPLE(s_texture0, vec2(v_texcoord0.x, y + HALF_HEIGHT));\n"
+"#endif\n"
+"#else\n"
+"    vec4  left = SAMPLE(s_texture0, v_texcoord0);\n"
+"#if !defined(OUTPUT_DISCARD)\n"
+"    vec4 right = left;\n"
+"#endif\n"
+"#endif\n"
+"#if !defined(OUTPUT_DISCARD)\n"
+"    gl_FragColor = vec4((lm * left.rgb) + (rm * right.rgb), 1.0);\n"
+"#else\n"
+"    gl_FragColor = left;\n"
+"#endif\n"
+"#else\n"
+"    gl_FragColor = SAMPLE(s_texture0, v_texcoord0);\n"
+"#endif\n"
 "}\n";
 
 VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGLWindow *Window)
@@ -354,8 +405,9 @@ void VideoRendererOpenGL::RenderFrame(void)
         {
             if (!m_bicubicShader)
             {
-                QByteArray bicubic(BicubicShader);
-                CustomiseShader(bicubic, NULL);
+                QByteArray bicubic(DefaultFragmentShader);
+                bicubic.replace("SAMPLE_MODE", "SAMPLE_BICUBIC");
+                CustomiseShader(bicubic, m_rgbVideoTexture);
                 m_bicubicShader = m_openglWindow->CreateShaderObject(QByteArray(), bicubic);
             }
 
@@ -372,6 +424,8 @@ void VideoRendererOpenGL::CustomiseShader(QByteArray &Source, GLTexture *Texture
 {
     bool  rectangle    = Texture ? m_openglWindow->IsRectTexture(Texture->m_type) : false;
     float selectcolumn = 1.0f;
+    float halfwidth    = Texture ? Texture->m_actualSize.width() / 2.0f : 1.0;
+    float halfheight   = Texture ? Texture->m_actualSize.height() / 2.0f : 1.0;
 
     QByteArray extensions = "";
     QByteArray rgbsampler = "sampler2D";
@@ -386,13 +440,16 @@ void VideoRendererOpenGL::CustomiseShader(QByteArray &Source, GLTexture *Texture
     else if (Texture && Texture->m_size.width() > 0)
     {
         selectcolumn /= ((float)Texture->m_size.width());
+        halfwidth    /= ((float)Texture->m_size.width());
+        halfheight   /= ((float)Texture->m_size.height());
     }
 
     Source.replace("RGB_SAMPLER", rgbsampler);
     Source.replace("RGB_TEXTURE", rgbtexture);
     Source.replace("RGB_DEFINES", extensions);
-
     Source.replace("SELECT_COLUMN", QByteArray::number(1.0f / selectcolumn, 'f', 8));
+    Source.replace("HALF_WIDTH",    QByteArray::number(halfwidth, 'f', 8));
+    Source.replace("HALF_HEIGHT",   QByteArray::number(halfheight, 'f', 8));
 }
 
 class RenderOpenGLFactory : public RenderFactory
