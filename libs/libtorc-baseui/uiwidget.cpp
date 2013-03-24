@@ -411,6 +411,7 @@ bool UIWidget::Initialise(QDomElement *Element, const QString &Position)
         else if (element.tagName() == "scriptfunction")
         {
             QString name = element.attribute("name");
+            QString args = element.attribute("arguments");
             if (name.isEmpty())
             {
                 LOG(VB_GENERAL, LOG_ERR, "Scriptfunction must have a name.");
@@ -418,7 +419,7 @@ bool UIWidget::Initialise(QDomElement *Element, const QString &Position)
             else
             {
                 QString function = GetText(&element);
-                function = QString("function %1() {%2}").arg(name).arg(function);
+                function = QString("function %1(%2) {%3}").arg(name).arg(args).arg(function);
 
                 AddScriptProperty(name, function);
             }
@@ -1372,7 +1373,12 @@ bool UIWidget::Connect(const QString &Sender, const QString &Signal,
         return false;
     }
 
-    QByteArray signal = Signal.trimmed().toLatin1() + "()";
+    // if the function requires arguments, the theme must use the full signature
+    // e.g. ValueChanged(int), otherwise append '()'
+    QByteArray signal = Signal.trimmed().toLatin1();
+    if (!signal.endsWith(")"))
+        signal += "()";
+
     int signalidx = sender->metaObject()->indexOfSignal(signal);
     if (signalidx < 0)
     {
