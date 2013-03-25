@@ -459,6 +459,8 @@ bool UIWidget::Finalise(void)
 
     AutoConnect();
 
+    emit Finalised();
+
     return true;
 }
 

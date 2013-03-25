@@ -171,6 +171,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     bool            SetRootWidget       (const QString &Widget);
 
   signals:
+    void            Finalised           (void);
     void            Closed              (void);
     void            Enabled             (void);
     void            Disabled            (void);
