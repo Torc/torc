@@ -49,6 +49,7 @@
  * \todo Timecode distcontinuity detection and handling
  * \todo repeat_picture handling
  * \todo Dynamic drift size
+ * \todo Add Property getter/setter functions for HTTP interface
  */
 
 
@@ -66,12 +67,16 @@ void VideoUIPlayer::Initialise(void)
 
 VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : VideoPlayer(Parent, PlaybackFlags, DecodeFlags),
-    TorcHTTPService(this, "/player", tr("Player"), VideoPlayer::staticMetaObject),
+    TorcHTTPService(this, "/player", tr("Player"), VideoUIPlayer::staticMetaObject),
     m_colourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED))
 {
     m_render = VideoRenderer::Create(m_colourSpace);
     m_buffers.SetDisplayFormat(m_render ? m_render->PreferredPixelFormat() : PIX_FMT_YUV420P);
     m_manualAVSyncAdjustment = gLocalContext->GetSetting(TORC_GUI + "AVSyncAdj", (int)0);
+
+    // connect VideoColourSpace to the UI
+    connect(m_colourSpace, SIGNAL(PropertyChanged(TorcPlayer::PlayerProperty,QVariant)),
+            parent(), SLOT(PlayerPropertyChanged(TorcPlayer::PlayerProperty,QVariant)));
 }
 
 VideoUIPlayer::~VideoUIPlayer()
@@ -281,6 +286,43 @@ bool VideoUIPlayer::HandleAction(int Action)
     }
 
     return VideoPlayer::HandleAction(Action);
+}
+
+QVariant VideoUIPlayer::GetProperty(PlayerProperty Property)
+{
+    switch (Property)
+    {
+        case Brightness: return QVariant((int)m_colourSpace->GetBrightness());
+        case Saturation: return QVariant((int)m_colourSpace->GetSaturation());
+        case Hue:        return QVariant((int)m_colourSpace->GetHue());
+        case Contrast:   return QVariant((int)m_colourSpace->GetContrast());
+        default: break;
+    }
+
+    return VideoPlayer::GetProperty(Property);
+}
+
+void VideoUIPlayer::SetProperty(PlayerProperty Property, QVariant Value)
+{
+    switch (Property)
+    {
+        case Brightness:
+            m_colourSpace->SetBrightness(Value.toInt());
+            return;
+        case Contrast:
+            m_colourSpace->SetContrast(Value.toInt());
+            return;
+        case Saturation:
+            m_colourSpace->SetSaturation(Value.toInt());
+            return;
+        case Hue:
+            m_colourSpace->SetHue(Value.toInt());
+            return;
+        default:
+            break;
+    }
+
+    VideoPlayer::SetProperty(Property, Value);
 }
 
 class VideoUIPlayerFactory : public PlayerFactory

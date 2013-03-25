@@ -22,8 +22,19 @@ class UIMedia : public UIWidget, public TorcPlayerInterface
     bool            InitialisePlayer   (void);
     bool            HandlePlayerAction (int Action);
 
+    // signals to update the theme
+  signals:
+    void            PropertyChanged    (int Property, QVariant Value);
+
+    // slots to interrogate the widget from theme etc (external)
+  public slots:
+    QVariant        GetProperty        (int Property);
+    void            SetProperty        (int Property, const QVariant Value);
+
+    // slots that update the widget from child objects (internal)
   public slots:
     void            PlayerStateChanged (TorcPlayer::PlayerState NewState);
+    void            PlayerPropertyChanged (TorcPlayer::PlayerProperty Property, const QVariant &Value);
 
   protected:
     bool            DrawSelf           (UIWindow* Window, qreal XOffset, qreal YOffset);

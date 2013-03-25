@@ -154,9 +154,24 @@ void UIMedia::CreateCopy(UIWidget *Parent)
     media->CopyFrom(this);
 }
 
+QVariant UIMedia::GetProperty(int Property)
+{
+    return m_player->GetProperty((TorcPlayer::PlayerProperty)Property);
+}
+
+void UIMedia::SetProperty(int Property, const QVariant Value)
+{
+    m_player->SetProperty((TorcPlayer::PlayerProperty)Property, Value);
+}
+
 void UIMedia::PlayerStateChanged(TorcPlayer::PlayerState NewState)
 {
     LOG(VB_GENERAL, LOG_INFO, QString("Player state '%1'").arg(TorcPlayer::StateToString(NewState)));
+}
+
+void UIMedia::PlayerPropertyChanged(TorcPlayer::PlayerProperty Property, const QVariant &Value)
+{
+    emit PropertyChanged(Property, Value);
 }
 
 static class UIMediaFactory : public WidgetFactory

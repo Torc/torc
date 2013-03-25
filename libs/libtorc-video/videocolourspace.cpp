@@ -134,7 +134,8 @@ QString VideoColourSpace::ColourSpaceToString(AVColorSpace ColorSpace)
 }
 
 VideoColourSpace::VideoColourSpace(AVColorSpace ColourSpace)
-  : m_colourSpace(ColourSpace),
+  : QObject(),
+    m_colourSpace(ColourSpace),
     m_colourRange(AVCOL_RANGE_UNSPECIFIED),
     m_changed(true),
     m_studioLevels(false),
@@ -261,10 +262,17 @@ void VideoColourSpace::SetStudioLevels(bool Value)
 void VideoColourSpace::SetBrightnessPriv(int Value, bool UpdateMatrix, bool UpdateSettings)
 {
     int value = std::max(0, std::min(Value, 100));
-    m_brightness = (value * 0.02f) - 1.0f;
+    float brightness = (value * 0.02f) - 1.0f;
+    bool changed     = !qFuzzyCompare(brightness + 1, m_brightness + 1);
+    m_brightness     = brightness;
 
     if (UpdateMatrix)
+    {
         SetMatrix();
+
+        if (changed)
+            emit PropertyChanged(TorcPlayer::Brightness, QVariant(value));
+    }
 
     if (UpdateSettings)
         gLocalContext->SetSetting(TORC_GUI + "Brightness", value);
@@ -274,10 +282,17 @@ void VideoColourSpace::SetBrightnessPriv(int Value, bool UpdateMatrix, bool Upda
 void VideoColourSpace::SetContrastPriv(int Value, bool UpdateMatrix, bool UpdateSettings)
 {
     int value = std::max(0, std::min(Value, 100));
-    m_contrast = value * 0.02f;
+    float contrast = value * 0.02f;
+    bool changed   = !qFuzzyCompare(contrast + 1, m_contrast + 1);
+    m_contrast     = contrast;
 
     if (UpdateMatrix)
+    {
         SetMatrix();
+
+        if (changed)
+            emit PropertyChanged(TorcPlayer::Contrast, QVariant(value));
+    }
 
     if (UpdateSettings)
         gLocalContext->SetSetting(TORC_GUI + "Contrast", value);
@@ -286,10 +301,17 @@ void VideoColourSpace::SetContrastPriv(int Value, bool UpdateMatrix, bool Update
 void VideoColourSpace::SetSaturationPriv(int Value, bool UpdateMatrix, bool UpdateSettings)
 {
     int value = std::max(0, std::min(Value, 100));
-    m_saturation = value * 0.02f;
+    float saturation = value * 0.02f;
+    bool changed     = !qFuzzyCompare(saturation + 1, m_saturation + 1);
+    m_saturation     = saturation;
 
     if (UpdateMatrix)
+    {
         SetMatrix();
+
+        if (changed)
+            emit PropertyChanged(TorcPlayer::Saturation, QVariant(value));
+    }
 
     if (UpdateSettings)
         gLocalContext->SetSetting(TORC_GUI + "Saturation", value);
@@ -298,10 +320,17 @@ void VideoColourSpace::SetSaturationPriv(int Value, bool UpdateMatrix, bool Upda
 void VideoColourSpace::SetHuePriv(int Value, bool UpdateMatrix, bool UpdateSettings)
 {
     int value = std::max(0, std::min(Value, 100));
-    m_hue = value * (-3.6f * M_PI / 180.0f);
+    float hue = value * (-3.6f * M_PI / 180.0f);
+    bool changed = !qFuzzyCompare(hue + 1, m_hue + 1);
+    m_hue = hue;
 
     if (UpdateMatrix)
+    {
         SetMatrix();
+
+        if (changed)
+            emit PropertyChanged(TorcPlayer::Hue, QVariant(value));
+    }
 
     if (UpdateSettings)
         gLocalContext->SetSetting(TORC_GUI + "Hue", value);

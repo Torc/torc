@@ -79,6 +79,16 @@ VideoBuffers* VideoPlayer::GetBuffers(void)
     return &m_buffers;
 }
 
+QVariant VideoPlayer::GetProperty(PlayerProperty Property)
+{
+    return TorcPlayer::GetProperty(Property);
+}
+
+void VideoPlayer::SetProperty(PlayerProperty Property, QVariant Value)
+{
+    TorcPlayer::SetProperty(Property, Value);
+}
+
 class VideoPlayerFactory : public PlayerFactory
 {
     void Score(QObject *Parent, int PlaybackFlags, int DecoderFlags, int &Score)

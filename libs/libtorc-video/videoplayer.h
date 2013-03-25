@@ -21,8 +21,11 @@ class VideoPlayer : public TorcPlayer
     virtual bool    Refresh            (quint64 TimeNow, const QSizeF &Size);
     virtual void    Render             (quint64 TimeNow);
     virtual void    Reset              (void);
+    virtual QVariant GetProperty       (PlayerProperty Property);
+    virtual void    SetProperty        (PlayerProperty Property, QVariant Value);
+
     void*           GetAudio           (void);
-    VideoBuffers*   GetBuffers            (void);
+    VideoBuffers*   GetBuffers         (void);
 
   protected:
     virtual void    Teardown           (void);

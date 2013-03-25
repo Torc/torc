@@ -27,6 +27,7 @@
 // Torc
 #include "torclogging.h"
 #include "torclocalcontext.h"
+#include "torcplayer.h"
 #include "uiwindow.h"
 #include "uitheme.h"
 #include "uieffect.h"
@@ -154,7 +155,12 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
 
         // register Torc:: ('Torc')
         QScriptValue torc = m_engine->newQMetaObject(&Torc::staticMetaObject);
-        m_engine->globalObject().setProperty("Torc", torc); 
+        m_engine->globalObject().setProperty("Torc", torc);
+
+        // register TorcPlayer:: ('TorcPlayer') for PlayerProperty
+        // add TorcPlayer statics to script environment
+        QScriptValue torcplayer = m_engine->newQMetaObject(&TorcPlayer::staticMetaObject);
+        m_engine->globalObject().setProperty("TorcPlayer", torcplayer);
 
         // register the log function ('Log')
         QScriptValue log = m_engine->newFunction(ScriptDebug);

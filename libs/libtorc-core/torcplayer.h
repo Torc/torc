@@ -5,6 +5,7 @@
 #include <QSize>
 #include <QObject>
 #include <QString>
+#include <QVariant>
 
 // Torc
 #include "torccoreexport.h"
@@ -14,6 +15,7 @@ class TorcDecoder;
 class TORC_CORE_PUBLIC TorcPlayer : public QObject
 {
     Q_OBJECT
+    Q_ENUMS(PlayerProperty)
 
   public:
     enum PlayerFlags
@@ -38,14 +40,30 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
         Stopped
     } PlayerState;
 
+    enum PlayerProperty
+    {
+        Unknown = 0,
+        // appearance
+        Brightness = 0x1000,
+        Contrast,
+        Saturation,
+        Hue,
+        // state
+        Speed = 0x2000
+    };
+
   public:
     static TorcPlayer* Create(QObject *Parent, int PlaybackFlags, int DecoderFlags);
     static QString     StateToString(PlayerState State);
+    static QString     PropertyToString (PlayerProperty Property);
+    static PlayerProperty StringToProperty (const QString &Property);
 
     virtual ~TorcPlayer();
 
     virtual bool    Refresh            (quint64 TimeNow, const QSizeF &Size);
     virtual void    Render             (quint64 TimeNow);
+    virtual QVariant GetProperty       (PlayerProperty Property);
+    virtual void    SetProperty        (PlayerProperty Property, QVariant Value);
 
     void            Reset              (void);
     bool            HandleEvent        (QEvent *Event);
@@ -61,7 +79,6 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 
   public slots:
     virtual bool    PlayMedia          (const QString &URI, bool StartPaused);
-    qreal           GetSpeed           (void);
     bool            Play               (void);
     bool            Stop               (void);
     bool            Pause              (void);

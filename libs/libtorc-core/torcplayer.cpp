@@ -26,6 +26,7 @@
 #include <QTimerEvent>
 #include <QThread>
 #include <QObject>
+#include <QMetaEnum>
 
 // Torc
 #include "torclocalcontext.h"
@@ -84,6 +85,23 @@ QString TorcPlayer::StateToString(PlayerState State)
     }
 
     return QString("Unknown");
+}
+
+QString TorcPlayer::PropertyToString(PlayerProperty Property)
+{
+    const QMetaObject &mo = TorcPlayer::staticMetaObject;
+    int enum_index        = mo.indexOfEnumerator("PlayerProperty");
+    QMetaEnum metaEnum    = mo.enumerator(enum_index);
+    return metaEnum.valueToKey((int)Property);
+
+}
+
+TorcPlayer::PlayerProperty TorcPlayer::StringToProperty(const QString &Property)
+{
+    const QMetaObject &mo = TorcPlayer::staticMetaObject;
+    int enum_index        = mo.indexOfEnumerator("PlayerProperty");
+    QMetaEnum metaEnum    = mo.enumerator(enum_index);
+    return (PlayerProperty)metaEnum.keyToValue(Property.toLatin1());
 }
 
 TorcPlayer::TorcPlayer(QObject *Parent, int PlaybackFlags, int DecoderFlags)
@@ -293,9 +311,28 @@ TorcPlayer::PlayerState TorcPlayer::GetNextState(void)
     return m_nextState;
 }
 
-qreal TorcPlayer::GetSpeed(void)
+QVariant TorcPlayer::GetProperty(PlayerProperty Property)
 {
-    return m_speed;
+    switch (Property)
+    {
+        case Speed: return QVariant(m_speed);
+        default:
+            break;
+    }
+
+    return QVariant();
+}
+
+void TorcPlayer::SetProperty(PlayerProperty Property, QVariant Value)
+{
+    switch (Property)
+    {
+        case Speed:
+            m_speed = Value.toFloat();
+            break;
+        default:
+            break;
+    }
 }
 
 bool TorcPlayer::Play(void)

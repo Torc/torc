@@ -27,6 +27,8 @@ class VideoUIPlayer : public VideoPlayer, public TorcHTTPService
     void               Render        (quint64 TimeNow);
     void               Reset         (void);
     bool               HandleAction  (int Action);
+    QVariant           GetProperty   (PlayerProperty Property);
+    void               SetProperty   (PlayerProperty Property, QVariant Value);
 
   protected:
     virtual void       Teardown      (void);

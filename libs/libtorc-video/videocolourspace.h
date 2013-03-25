@@ -1,6 +1,12 @@
 #ifndef VIDEOCOLOURSPACE_H
 #define VIDEOCOLOURSPACE_H
 
+// Qt
+#include <QObject>
+
+// Torc
+#include "torcplayer.h"
+
 extern "C" {
 #include "libavformat/avformat.h"
 }
@@ -22,10 +28,15 @@ class Matrix
     float m[4][4];
 };
 
-class VideoColourSpace
+class VideoColourSpace : public QObject
 {
+    Q_OBJECT
+
   public:
     static QString ColourSpaceToString  (AVColorSpace ColorSpace);
+
+  signals:
+    void           PropertyChanged      (TorcPlayer::PlayerProperty Property, QVariant Value);
 
   public:
     explicit VideoColourSpace(AVColorSpace ColourSpace);
