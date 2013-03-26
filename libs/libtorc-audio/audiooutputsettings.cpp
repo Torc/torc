@@ -358,31 +358,31 @@ AudioOutputSettings* AudioOutputSettings::GetUsers(bool NewCopy)
     if (aosettings->m_invalid)
         return aosettings;
 
-    int currentchannels = gLocalContext->GetSetting(TORC_CORE + "MaxChannels", 2);
+    int currentchannels = gLocalContext->GetSetting(TORC_AUDIO + "MaxChannels", 2);
     int maxchannels     = aosettings->BestSupportedChannels();
 
     bool bAC3  = aosettings->CanFeature(FEATURE_AC3) &&
-        gLocalContext->GetSetting(TORC_CORE + "AC3PassThru", false);
+        gLocalContext->GetSetting(TORC_AUDIO + "AC3PassThru", false);
 
     bool bDTS  = aosettings->CanFeature(FEATURE_DTS) &&
-        gLocalContext->GetSetting(TORC_CORE + "DTSPassThru", false);
+        gLocalContext->GetSetting(TORC_AUDIO + "DTSPassThru", false);
 
     bool bLPCM = aosettings->CanFeature(FEATURE_LPCM) &&
-        !gLocalContext->GetSetting(TORC_CORE + "StereoPCM", false);
+        !gLocalContext->GetSetting(TORC_AUDIO + "StereoPCM", false);
 
     bool bEAC3 = aosettings->CanFeature(FEATURE_EAC3) &&
-        gLocalContext->GetSetting(TORC_CORE + "EAC3PassThru", false) &&
-        !gLocalContext->GetSetting(TORC_CORE + "Audio48kOverride", false);
+        gLocalContext->GetSetting(TORC_AUDIO + "EAC3PassThru", false) &&
+        !gLocalContext->GetSetting(TORC_AUDIO + "Audio48kOverride", false);
 
     // TrueHD requires HBR support.
     bool bTRUEHD = aosettings->CanFeature(FEATURE_TRUEHD) &&
-        gLocalContext->GetSetting(TORC_CORE + "TrueHDPassThru", false) &&
-        !gLocalContext->GetSetting(TORC_CORE + "Audio48kOverride", false) &&
-        gLocalContext->GetSetting(TORC_CORE + "HBRPassthru", true);
+        gLocalContext->GetSetting(TORC_AUDIO + "TrueHDPassThru", false) &&
+        !gLocalContext->GetSetting(TORC_AUDIO + "Audio48kOverride", false) &&
+        gLocalContext->GetSetting(TORC_AUDIO + "HBRPassthru", true);
 
     bool bDTSHD = aosettings->CanFeature(FEATURE_DTSHD) &&
-        gLocalContext->GetSetting(TORC_CORE + "DTSHDPassThru", false) &&
-        !gLocalContext->GetSetting(TORC_CORE + "Audio48kOverride", false);
+        gLocalContext->GetSetting(TORC_AUDIO + "DTSHDPassThru", false) &&
+        !gLocalContext->GetSetting(TORC_AUDIO + "Audio48kOverride", false);
 
     if (maxchannels > 2 && !bLPCM)
         maxchannels = 2;
@@ -409,7 +409,7 @@ int AudioOutputSettings::GetMaxHDRate()
         return 0;
 
     // If no HBR or no LPCM, limit bitrate to 6.144Mbit/s
-    if (!gLocalContext->GetSetting(TORC_CORE + "HBRPassthru", true) ||
+    if (!gLocalContext->GetSetting(TORC_AUDIO + "HBRPassthru", true) ||
         !CanFeature(FEATURE_LPCM))
     {
         return 192000;  // E-AC3/DTS-HD High Res: 192k, 16 bits, 2 ch

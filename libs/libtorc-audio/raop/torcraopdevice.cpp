@@ -50,7 +50,7 @@ TorcRAOPDevice* TorcRAOPDevice::gTorcRAOPDevice = NULL;
 void TorcRAOPDevice::Enable(bool Enable)
 {
     bool allow = gLocalContext->GetFlag(Torc::Server) &&
-                 gLocalContext->GetSetting(TORC_CORE + "RAOPEnabled", false) &&
+                 gLocalContext->GetSetting(TORC_AUDIO + "RAOPEnabled", false) &&
                  TorcRAOPConnection::LoadKey();
 
     {
@@ -99,7 +99,7 @@ TorcRAOPDevice::TorcRAOPDevice()
     connect(this, SIGNAL(newConnection()), this, SLOT(NewConnection()));
     gLocalContext->AddObserver(this);
 
-    int lastport = gLocalContext->GetSetting(TORC_CORE + "RAOPServerPort", 4850);
+    int lastport = gLocalContext->GetSetting(TORC_AUDIO + "RAOPServerPort", 4850);
     m_port = lastport > 1023 ? lastport : 4850;
 
     // no network = no mac address (and no clients)
@@ -144,7 +144,7 @@ bool TorcRAOPDevice::Open(void)
     if (newport != m_port)
     {
         m_port = serverPort();
-        gLocalContext->SetSetting(TORC_CORE + "RAOPServerPort", m_port);
+        gLocalContext->SetSetting(TORC_AUDIO + "RAOPServerPort", m_port);
     }
 
     // advertise

@@ -4,7 +4,7 @@
         <state visible="false" />
         <scriptfunction name="Startup">
             var start = true;
-            if (LocalContext.GetSetting('Theme_Skipsplash', 'no') == 'yes')
+            if (LocalContext.GetSetting('GUI_SkipSplashScreen', 'no') == 'yes')
             {
                 Log('Disabling splash screen');
                 if (ThemeRoot.SetRootWidget('topmenu'))

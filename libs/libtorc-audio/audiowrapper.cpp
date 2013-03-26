@@ -33,11 +33,11 @@ AudioWrapper::AudioWrapper(TorcPlayer *Parent)
     m_lastTimeStamp(AV_NOPTS_VALUE),
     m_lastTimeStampUpdate(0)
 {
-    m_mainDevice        = gLocalContext->GetSetting(TORC_CORE + "AudioOutputDevice", QString(""));
-    m_passthroughDevice = gLocalContext->GetSetting(TORC_CORE + "AudioPassthroughDevice", QString(""));
-    m_controlsVolume    = gLocalContext->GetSetting(TORC_CORE + "ControlsVolume", true);
-    m_samplerate        = gLocalContext->GetSetting(TORC_CORE + "AudioSamplerate", 44100);
-    if (gLocalContext->GetSetting(TORC_CORE + "UseAudioPassthroughDevice", false))
+    m_mainDevice        = gLocalContext->GetSetting(TORC_AUDIO + "AudioOutputDevice", QString(""));
+    m_passthroughDevice = gLocalContext->GetSetting(TORC_AUDIO + "AudioPassthroughDevice", QString(""));
+    m_controlsVolume    = gLocalContext->GetSetting(TORC_AUDIO + "ControlsVolume", true);
+    m_samplerate        = gLocalContext->GetSetting(TORC_AUDIO + "AudioSamplerate", 44100);
+    if (gLocalContext->GetSetting(TORC_AUDIO + "UseAudioPassthroughDevice", false))
         m_passthroughDevice = QString();
 }
 

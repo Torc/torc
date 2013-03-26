@@ -69,7 +69,7 @@ bool TorcSQLiteDB::InitDatabase(void)
         LOG(VB_GENERAL, LOG_INFO, QString("Initialising settings table."));
         QString createdon = QDateTime::currentDateTime().toUTC().toString(Qt::ISODate);
         query.exec(
-            QString("INSERT INTO settings (name, value) VALUES ('DB.created', '%1');")
+            QString("INSERT INTO settings (name, value) VALUES ('DB_DateCreated', '%1');")
                 .arg(createdon));
         DebugError(&query);
     }

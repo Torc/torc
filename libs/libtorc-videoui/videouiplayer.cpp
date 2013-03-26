@@ -72,7 +72,7 @@ VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags
 {
     m_render = VideoRenderer::Create(m_colourSpace);
     m_buffers.SetDisplayFormat(m_render ? m_render->PreferredPixelFormat() : PIX_FMT_YUV420P);
-    m_manualAVSyncAdjustment = gLocalContext->GetSetting(TORC_GUI + "AVSyncAdj", (int)0);
+    m_manualAVSyncAdjustment = gLocalContext->GetSetting(TORC_VIDEO + "AVSyncAdj", (int)0);
 
     // connect VideoColourSpace to the UI
     connect(m_colourSpace, SIGNAL(PropertyChanged(TorcPlayer::PlayerProperty,QVariant)),

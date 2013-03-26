@@ -144,10 +144,10 @@ VideoColourSpace::VideoColourSpace(AVColorSpace ColourSpace)
     m_saturation(1.0),
     m_hue(0.0f)
 {
-    SetBrightnessPriv(gLocalContext->GetSetting(TORC_GUI + "Brightness", 50), false, false);
-    SetContrastPriv(gLocalContext->GetSetting(TORC_GUI + "Contrast", 50), false, false);
-    SetSaturationPriv(gLocalContext->GetSetting(TORC_GUI + "Saturation", 50), false, false);
-    SetHuePriv(gLocalContext->GetSetting(TORC_GUI + "Hue", 0), true, false);
+    SetBrightnessPriv(gLocalContext->GetSetting(TORC_VIDEO + "Brightness", 50), false, false);
+    SetContrastPriv(gLocalContext->GetSetting(TORC_VIDEO + "Contrast", 50), false, false);
+    SetSaturationPriv(gLocalContext->GetSetting(TORC_VIDEO + "Saturation", 50), false, false);
+    SetHuePriv(gLocalContext->GetSetting(TORC_VIDEO + "Hue", 0), true, false);
 }
 
 VideoColourSpace::~VideoColourSpace()
@@ -275,7 +275,7 @@ void VideoColourSpace::SetBrightnessPriv(int Value, bool UpdateMatrix, bool Upda
     }
 
     if (UpdateSettings)
-        gLocalContext->SetSetting(TORC_GUI + "Brightness", value);
+        gLocalContext->SetSetting(TORC_VIDEO + "Brightness", value);
 }
 
 
@@ -295,7 +295,7 @@ void VideoColourSpace::SetContrastPriv(int Value, bool UpdateMatrix, bool Update
     }
 
     if (UpdateSettings)
-        gLocalContext->SetSetting(TORC_GUI + "Contrast", value);
+        gLocalContext->SetSetting(TORC_VIDEO + "Contrast", value);
 }
 
 void VideoColourSpace::SetSaturationPriv(int Value, bool UpdateMatrix, bool UpdateSettings)
@@ -314,7 +314,7 @@ void VideoColourSpace::SetSaturationPriv(int Value, bool UpdateMatrix, bool Upda
     }
 
     if (UpdateSettings)
-        gLocalContext->SetSetting(TORC_GUI + "Saturation", value);
+        gLocalContext->SetSetting(TORC_VIDEO + "Saturation", value);
 }
 
 void VideoColourSpace::SetHuePriv(int Value, bool UpdateMatrix, bool UpdateSettings)
@@ -333,7 +333,7 @@ void VideoColourSpace::SetHuePriv(int Value, bool UpdateMatrix, bool UpdateSetti
     }
 
     if (UpdateSettings)
-        gLocalContext->SetSetting(TORC_GUI + "Hue", value);
+        gLocalContext->SetSetting(TORC_VIDEO + "Hue", value);
 }
 
 void VideoColourSpace::SetColourSpace(AVColorSpace ColourSpace)

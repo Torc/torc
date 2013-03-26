@@ -60,7 +60,7 @@ VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
     if (!m_display)
         LOG(VB_GENERAL, LOG_ERR, "Failed to find display object");
 
-    m_wantHighQualityScaling = gLocalContext->GetSetting(TORC_GUI + "BicubicScaling", false);
+    m_wantHighQualityScaling = gLocalContext->GetSetting(TORC_VIDEO + "BicubicScaling", false);
 }
 
 VideoRenderer::~VideoRenderer()
@@ -99,7 +99,7 @@ bool VideoRenderer::GetHighQualityScaling(void)
 bool VideoRenderer::SetHighQualityScaling(bool Enable)
 {
     m_wantHighQualityScaling = Enable;
-    gLocalContext->SetSetting(TORC_GUI + "BicubicScaling", m_wantHighQualityScaling);
+    gLocalContext->SetSetting(TORC_VIDEO + "BicubicScaling", m_wantHighQualityScaling);
     return true;
 }
 

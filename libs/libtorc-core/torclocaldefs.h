@@ -13,6 +13,9 @@
 
 #define TORC_CORE                  QString("CORE_")
 #define TORC_GUI                   QString("GUI_")
+#define TORC_AUDIO                 QString("AUDIO_")
+#define TORC_VIDEO                 QString("VIDEO_")
+#define TORC_DB                    QString("DB_")
 
 #define TORC_GUI_TENFOOT_THEMES    QString("tenfootthemes")
 #define TORC_GUI_TENINCH_THEMES    QString("teninchthemes")
