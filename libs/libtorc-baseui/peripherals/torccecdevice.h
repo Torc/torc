@@ -7,19 +7,19 @@
 // Torc
 #include "torcbaseuiexport.h"
 
-#define CEC_KEYPRESS_CONTEXT QString("libCEC")
+#define CEC_KEYPRESS_CONTEXT QString("CEC")
 
 // settings
-#define LIBCEC_ENABLED            QString("libCECEnabled")
-#define LIBCEC_DEVICE             QString("libCECDevice")          // e.g. /dev/ttyACM0
-#define LIBCEC_PHYSICALADDRESS    QString("libCECPhysicalAddress") // e.g. 0x1000
-#define LIBCEC_HDMIPORT           QString("libCECHDMIPort")        // e.g. 1 - 4
-#define LIBCEC_BASEDEVICE         QString("libCECBaseDevice")      // e.g. CEC_DEVICE_TYPE_TV
+#define LIBCEC_ENABLED            (TORC_GUI + QString("CECEnabled"))
+#define LIBCEC_DEVICE             (TORC_GUI + QString("CECDevice"))          // e.g. /dev/ttyACM0
+#define LIBCEC_PHYSICALADDRESS    (TORC_GUI + QString("CECPhysicalAddress")) // e.g. 0x1000
+#define LIBCEC_HDMIPORT           (TORC_GUI + QString("CECHDMIPort"))        // e.g. 1 - 4
+#define LIBCEC_BASEDEVICE         (TORC_GUI + QString("CECBaseDevice"))      // e.g. CEC_DEVICE_TYPE_TV
 
-#define LIBCEC_POWERONTV_ONSTART  QString("libCECPowerOnTVOnStart")
-#define LIBCEC_POWEROFFTV_ONEXIT  QString("libCECPowerOffTVOnExit")
-#define LIBCEC_MAKEACTIVESOURCE   QString("libCECMakeActiveSource")
-#define LIBCEC_SENDINACTIVESOURCE QString("libCECSendInactiveSource")
+#define LIBCEC_POWERONTV_ONSTART  (TORC_GUI + QString("CECPowerOnTVOnStart"))
+#define LIBCEC_POWEROFFTV_ONEXIT  (TORC_GUI + QString("CECPowerOffTVOnExit"))
+#define LIBCEC_MAKEACTIVESOURCE   (TORC_GUI + QString("CECMakeActiveSource"))
+#define LIBCEC_SENDINACTIVESOURCE (TORC_GUI + QString("CECSendInactiveSource"))
 
 // setting defaults
 #define LIBCEC_ENABLED_DEFAULT            true
