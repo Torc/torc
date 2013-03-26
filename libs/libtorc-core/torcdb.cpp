@@ -211,6 +211,23 @@ void TorcDB::LoadSettings(QMap<QString, QString> &Settings)
     }
 }
 
+void TorcDB::LoadPreferences(QMap<QString, QString> &Preferences)
+{
+    QSqlDatabase db = QSqlDatabase::database(GetThreadConnection());
+    DebugError(&db);
+    if (!db.isValid() || !db.isOpen())
+        return;
+
+    QSqlQuery query("SELECT name, value from preferences;", db);
+    DebugError(&query);
+
+    while (query.next())
+    {
+        LOG(VB_GENERAL, LOG_DEBUG, QString("'%1' : '%2'").arg(query.value(0).toString()).arg(query.value(1).toString()));
+        Preferences.insert(query.value(0).toString(), query.value(1).toString());
+    }
+}
+
 void TorcDB::SetSetting(const QString &Name, const QString &Value)
 {
     if (Name.isEmpty())
@@ -231,6 +248,33 @@ void TorcDB::SetSetting(const QString &Name, const QString &Value)
         DebugError(&query);
 
     query.prepare("INSERT INTO settings (name, value) "
+                  "VALUES (:NAME, :VALUE);");
+    query.bindValue(":NAME", Name);
+    query.bindValue(":VALUE", Value);
+    if (query.exec())
+        DebugError(&query);
+}
+
+void TorcDB::SetPreference(const QString &Name, const QString &Value)
+{
+    if (Name.isEmpty())
+        return;
+
+    QSqlDatabase db = QSqlDatabase::database(GetThreadConnection());
+    DebugError(&db);
+    if (!db.isValid() || !db.isOpen())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to open database connection.");
+        return;
+    }
+
+    QSqlQuery query(db);
+    query.prepare("DELETE FROM preferences where name=:NAME;");
+    query.bindValue(":NAME", Name);
+    if (query.exec())
+        DebugError(&query);
+
+    query.prepare("INSERT INTO preferences (name, value) "
                   "VALUES (:NAME, :VALUE);");
     query.bindValue(":NAME", Name);
     query.bindValue(":VALUE", Value);

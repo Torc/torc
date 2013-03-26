@@ -68,6 +68,9 @@ class TorcLocalContextPriv
     bool    Init                 (void);
     QString GetSetting           (const QString &Name, const QString &DefaultValue);
     void    SetSetting           (const QString &Name, const QString &Value);
+    QString GetPreference        (const QString &Name, const QString &DefaultValue);
+    void    SetPreference        (const QString &Name, const QString &Value);
+
     void    PrintSessionSettings (void);
 
     int                   m_flags;
@@ -75,6 +78,8 @@ class TorcLocalContextPriv
     QMap<QString,QString> m_localSettings;
     QMap<QString,QString> m_sessionSettings;
     QReadWriteLock       *m_localSettingsLock;
+    QMap<QString,QString> m_preferences;
+    QReadWriteLock       *m_preferencesLock;
     QObject              *m_UIObject;
     TorcAdminThread      *m_adminThread;
     TorcLanguage          m_language;
@@ -84,6 +89,7 @@ TorcLocalContextPriv::TorcLocalContextPriv(int ApplicationFlags)
   : m_flags(ApplicationFlags),
     m_sqliteDB(NULL),
     m_localSettingsLock(new QReadWriteLock(QReadWriteLock::Recursive)),
+    m_preferencesLock(new QReadWriteLock(QReadWriteLock::Recursive)),
     m_UIObject(NULL),
     m_adminThread(NULL)
 {
@@ -110,6 +116,10 @@ TorcLocalContextPriv::~TorcLocalContextPriv()
     // delete settings lock
     delete m_localSettingsLock;
     m_localSettingsLock = NULL;
+
+    // delete preferences lock
+    delete m_preferencesLock;
+    m_preferencesLock = NULL;
 }
 
 bool TorcLocalContextPriv::Init(void)
@@ -141,6 +151,12 @@ bool TorcLocalContextPriv::Init(void)
         {
             QWriteLocker locker(m_localSettingsLock);
             m_sqliteDB->LoadSettings(m_localSettings);
+        }
+
+        // Load preferences
+        {
+            QWriteLocker locker(m_preferencesLock);
+            m_sqliteDB->LoadPreferences(m_preferences);
         }
     }
     else
@@ -198,6 +214,30 @@ void TorcLocalContextPriv::SetSetting(const QString &Name, const QString &Value)
     if (m_sqliteDB)
         m_sqliteDB->SetSetting(Name, Value);
     m_localSettings[Name] = Value;
+}
+
+QString TorcLocalContextPriv::GetPreference(const QString &Name, const QString &DefaultValue)
+{
+    {
+        QReadLocker locker(m_preferencesLock);
+
+        if (m_preferences.contains(Name))
+            return m_preferences.value(Name);
+
+        if (m_preferences.contains(Name))
+            return m_preferences.value(Name);
+    }
+
+    SetPreference(Name, DefaultValue);
+    return DefaultValue;
+}
+
+void TorcLocalContextPriv::SetPreference(const QString &Name, const QString &Value)
+{
+    QWriteLocker locker(m_preferencesLock);
+    if (m_sqliteDB)
+        m_sqliteDB->SetPreference(Name, Value);
+    m_preferences[Name] = Value;
 }
 
 void TorcLocalContextPriv::PrintSessionSettings(void)
@@ -408,6 +448,38 @@ void TorcLocalContext::SetSetting(const QString &Name, const bool &Value)
 void TorcLocalContext::SetSetting(const QString &Name, const int &Value)
 {
     m_priv->SetSetting(Name, QString::number(Value));
+}
+
+QString TorcLocalContext::GetPreference(const QString &Name, const QString &DefaultValue)
+{
+    return m_priv->GetPreference(Name, DefaultValue);
+}
+
+bool TorcLocalContext::GetPreference(const QString &Name, const bool &DefaultValue)
+{
+    QString value = GetPreference(Name, DefaultValue ? QString("1") : QString("0"));
+    return value.trimmed() == "1";
+}
+
+int TorcLocalContext::GetPreference(const QString &Name, const int &DefaultValue)
+{
+    QString value = GetPreference(Name, QString::number(DefaultValue));
+    return value.toInt();
+}
+
+void TorcLocalContext::SetPreference(const QString &Name, const QString &Value)
+{
+    m_priv->SetPreference(Name, Value);
+}
+
+void TorcLocalContext::SetPreference(const QString &Name, const bool &Value)
+{
+    m_priv->SetPreference(Name, Value ? QString("1") : QString("0"));
+}
+
+void TorcLocalContext::SetPreference(const QString &Name, const int &Value)
+{
+    m_priv->SetPreference(Name, QString::number(Value));
 }
 
 void TorcLocalContext::SetUIObject(QObject *UI)

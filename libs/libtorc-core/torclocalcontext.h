@@ -174,6 +174,9 @@ class TORC_CORE_PUBLIC Torc
         ToggleStudioLevels,
         // USB
         USBRescan = 8000,
+        // users
+        ChangeUser = 9000,
+        UserChanged,
         // end of predefined
         MaxTorc = 60000,
         // plugins etc
@@ -206,12 +209,19 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     Q_INVOKABLE   void       SetSetting    (const QString &Name, const QString &Value);
     Q_INVOKABLE   void       SetSetting    (const QString &Name, const bool    &Value);
     Q_INVOKABLE   void       SetSetting    (const QString &Name, const int     &Value);
+    Q_INVOKABLE   QString    GetPreference (const QString &Name, const QString &DefaultValue);
+    Q_INVOKABLE   bool       GetPreference (const QString &Name, const bool    &DefaultValue);
+    Q_INVOKABLE   int        GetPreference (const QString &Name, const int     &DefaultValue);
+    Q_INVOKABLE   void       SetPreference (const QString &Name, const QString &Value);
+    Q_INVOKABLE   void       SetPreference (const QString &Name, const bool    &Value);
+    Q_INVOKABLE   void       SetPreference (const QString &Name, const int     &Value);
+
     Q_INVOKABLE   QObject*   GetUIObject   (void);
 
     QLocale::Language        GetLanguage   (void);
-    void          SetUIObject              (QObject* UI);
-    void          CloseDatabaseConnections (void);
-    bool          GetFlag                  (int Flag);
+    void                     SetUIObject   (QObject* UI);
+    void                     CloseDatabaseConnections (void);
+    bool                     GetFlag       (int Flag);
 
   private:
     TorcLocalContext(TorcCommandLineParser* CommandLine, int ApplicationFlags);
