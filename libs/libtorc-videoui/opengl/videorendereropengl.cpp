@@ -63,6 +63,7 @@ static const char DefaultFragmentShader[] =
 "#define OUTPUT_MODE\n"
 "uniform RGB_SAMPLER s_texture0;\n"
 "varying vec2 v_texcoord0;\n"
+"varying vec4 v_color;\n"
 "#if defined(SAMPLE_BICUBIC)\n"
 "#define SAMPLE(TEXTURE, COORD) Bicubic(TEXTURE, COORD)\n"
 "vec4 Bicubic(in RGB_SAMPLER Texture, in vec2 Texcoord)\n"
@@ -137,13 +138,15 @@ static const char DefaultFragmentShader[] =
 "#endif\n"
 "#endif\n"
 "#if !defined(OUTPUT_DISCARD)\n"
-"    gl_FragColor = vec4((lm * left.rgb) + (rm * right.rgb), 1.0);\n"
+"    vec4 color = vec4((lm * left.rgb) + (rm * right.rgb), 1.0);\n"
 "#else\n"
-"    gl_FragColor = left;\n"
+"    vec4 color = left;\n"
 "#endif\n"
 "#else\n"
-"    gl_FragColor = SAMPLE(s_texture0, v_texcoord0);\n"
+"    vec4 color = SAMPLE(s_texture0, v_texcoord0);\n"
 "#endif\n"
+"    float grey   = dot(color.rgb, vec3(0.299, 0.587, 0.114));\n"
+"    gl_FragColor = vec4(mix(vec3(grey, grey, grey), color.rgb, v_color.r), v_color.a);\n"
 "}\n";
 
 VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGLWindow *Window)
@@ -392,7 +395,7 @@ void VideoRendererOpenGL::RenderFrame(void)
     if (m_validVideoFrame && m_openglWindow && m_rgbVideoTexture)
     {
         QSizeF size = m_rgbVideoTexture->m_actualSize;
-        m_openglWindow->SetBlend(false);
+        m_openglWindow->SetBlend(true);
         m_openglWindow->BindFramebuffer(0);
 
         if (m_updateFrameVertices)

@@ -499,7 +499,11 @@ void UIOpenGLWindow::DrawTexture(GLTexture *Texture, QRectF *Dest, QSizeF *Size,
     m_glVertexAttribPointer(VERTEX_INDEX, VERTEX_SIZE, GL_FLOAT, GL_FALSE,
                             VERTEX_SIZE * sizeof(GLfloat),
                             (const void *) kVertexOffset);
-    m_glVertexAttrib4f(COLOR_INDEX, 1.0, 1.0, 0.0, m_transforms[m_currentTransformIndex].alpha);
+    m_glVertexAttrib4f(COLOR_INDEX,
+                       m_transforms[m_currentTransformIndex].color,
+                       1.0,
+                       0.0,
+                       m_transforms[m_currentTransformIndex].alpha);
     m_glVertexAttribPointer(TEXTURE_INDEX, TEXTURE_SIZE, GL_FLOAT, GL_FALSE,
                             TEXTURE_SIZE * sizeof(GLfloat),
                             (const void *) kTextureOffset);

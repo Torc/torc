@@ -287,6 +287,7 @@ void VideoRenderDirect3D9::RenderFrame(void)
     if (m_validVideoFrame && m_direct3D9Window && m_rgbVideoTexture)
     {
         QSizeF size = m_rgbVideoTexture->m_usedSize;
+        m_direct3D9Window->SetBlend(true);
         m_direct3D9Window->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, m_updateFrameVertices);
     }
 }
