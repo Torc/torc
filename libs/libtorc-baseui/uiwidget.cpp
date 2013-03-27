@@ -491,7 +491,7 @@ bool UIWidget::ParseWidget(UIWidget *Root, UIWidget *Parent, QDomElement *Elemen
 
     QString type = Element->tagName();
     QString name = Element->attribute("name");
-    QString from = Element->attribute("from");
+    QString from = Element->attribute("inherits");
     QString temp = Element->attribute("template");
     QString rect = Element->attribute("position");
     QString deco = Element->attribute("decoration");
@@ -561,7 +561,7 @@ bool UIWidget::ParseFont(UIWidget *Root, QDomElement *Element)
     QString face  = Element->attribute("face");
     QString name  = Element->attribute("name");
     QString style = Element->attribute("stylehint");
-    QString from  = Element->attribute("from");
+    QString from  = Element->attribute("inherits");
 
     if (name.isEmpty())
     {

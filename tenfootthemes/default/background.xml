@@ -58,26 +58,26 @@
             <scroll speed="1000" easingcurve="outquad"/>
         </group>
     </window>
-    <window name="gridmenu" from="basewindow">
+    <window name="gridmenu" inherits="basewindow">
         <group name="gridmenu_menu" position="200,0,600,800">
             <effect><effect hreflection="800" alpha="0.3"/></effect>
             <clip rect="-100,0,1000,800"/>
             <layout type="grid" fixedwidth="300" fixedheight="100" selectrange="0,0,600,800"/>
             <scroll speed="1000" easingcurve="linear"/>
-            <button name="gridmenu_menu_1" from="templates_button">
+            <button name="gridmenu_menu_1" inherits="templates_button">
                 <message>Close</message>
                 <connect signal="Released" slot="SetAsRootWidget" receiver="topmenu"/>
             </button>
-            <button name="gridmenu_menu_2" from="templates_button">
+            <button name="gridmenu_menu_2" inherits="templates_button">
                 <message>A</message>
             </button>
-            <button name="gridmenu_menu_calc" from="templates_button">
+            <button name="gridmenu_menu_calc" inherits="templates_button">
                 <message>B</message>
             </button>
-            <button name="gridmenu_menu_41" from="templates_button">
+            <button name="gridmenu_menu_41" inherits="templates_button">
                 <message>C</message>
             </button>
-            <button name="gridmenu_menu_42" from="templates_button">
+            <button name="gridmenu_menu_42" inherits="templates_button">
                 <checkbox/>
                 <connect signal="Pushed"   slot="Show" receiver="gridmenu_menu_42_toggle"/>
                 <connect signal="Released" slot="Hide" receiver="gridmenu_menu_42_toggle"/>
@@ -90,133 +90,133 @@
                 </shape>
                 <message>Push Me</message>
             </button>
-            <button name="gridmenu_menu_43" from="templates_button">
+            <button name="gridmenu_menu_43" inherits="templates_button">
                 <message>D</message>
             </button>
-            <button name="gridmenu_menu_44" from="templates_button">
+            <button name="gridmenu_menu_44" inherits="templates_button">
                 <message>E</message>
             </button>
-            <button name="gridmenu_menu_45" from="templates_button">
+            <button name="gridmenu_menu_45" inherits="templates_button">
                 <message>F</message>
             </button>
-            <button name="gridmenu_menu_5" from="templates_button">
+            <button name="gridmenu_menu_5" inherits="templates_button">
                 <message>GG</message>
             </button>
-            <button name="gridmenu_menu_6" from="templates_button">
+            <button name="gridmenu_menu_6" inherits="templates_button">
                 <message>H</message>
             </button>
-            <button name="gridmenu_menu_6b" from="templates_button">
+            <button name="gridmenu_menu_6b" inherits="templates_button">
                 <message>J</message>
             </button>
-            <button name="gridmenu_menu_6c" from="templates_button">
+            <button name="gridmenu_menu_6c" inherits="templates_button">
                 <message>K</message>
             </button>
-            <button name="gridmenu_menu_6d" from="templates_button">
+            <button name="gridmenu_menu_6d" inherits="templates_button">
                 <message>L</message>
             </button>
-            <button name="gridmenu_menu_7" from="templates_button">
+            <button name="gridmenu_menu_7" inherits="templates_button">
                 <message>q</message>
             </button>
-            <button name="gridmenu_menu_8" from="templates_button">
+            <button name="gridmenu_menu_8" inherits="templates_button">
                 <message>w</message>
             </button>
-            <button name="gridmenu_menu_9" from="templates_button">
+            <button name="gridmenu_menu_9" inherits="templates_button">
                 <message>er</message>
             </button>
-            <button name="gridmenu_menu_10" from="templates_button">
+            <button name="gridmenu_menu_10" inherits="templates_button">
                 <message>r</message>
             </button>
-            <button name="gridmenu_menu_11" from="templates_button">
+            <button name="gridmenu_menu_11" inherits="templates_button">
                 <message>y</message>
             </button>
-            <button name="gridmenu_menu_12" from="templates_button">
+            <button name="gridmenu_menu_12" inherits="templates_button">
                 <message>n</message>
             </button>
-            <button name="gridmenu_menu_13" from="templates_button">
+            <button name="gridmenu_menu_13" inherits="templates_button">
                 <message>v</message>
             </button>
-            <button name="gridmenu_menu_14" from="templates_button">
+            <button name="gridmenu_menu_14" inherits="templates_button">
                 <message>d</message>
             </button>
-            <button name="gridmenu_menu_15" from="templates_button">
+            <button name="gridmenu_menu_15" inherits="templates_button">
                 <message>t</message>
             </button>
-            <button name="gridmenu_menu_16" from="templates_button">
+            <button name="gridmenu_menu_16" inherits="templates_button">
                 <message>k</message>
             </button>
-            <button name="gridmenu_menu_17" from="templates_button">
+            <button name="gridmenu_menu_17" inherits="templates_button">
                 <message>l</message>
             </button>
-            <button name="gridmenu_menu_18" from="templates_button">
+            <button name="gridmenu_menu_18" inherits="templates_button">
                 <message>y</message>
             </button>
-            <button name="gridmenu_menu_19" from="templates_button">
+            <button name="gridmenu_menu_19" inherits="templates_button">
                 <message>i</message>
             </button>
-            <button name="gridmenu_menu_20" from="templates_button">
+            <button name="gridmenu_menu_20" inherits="templates_button">
                 <message>-</message>
             </button>
-            <button name="gridmenu_menu_21" from="templates_button">
+            <button name="gridmenu_menu_21" inherits="templates_button">
                 <message>qw</message>
             </button>
-            <button name="gridmenu_menu_22" from="templates_button">
+            <button name="gridmenu_menu_22" inherits="templates_button">
                 <message>vz</message>
             </button>
-            <button name="gridmenu_menu_23" from="templates_button">
+            <button name="gridmenu_menu_23" inherits="templates_button">
                 <message>z</message>
             </button>
-            <button name="gridmenu_menu_24" from="templates_button">
+            <button name="gridmenu_menu_24" inherits="templates_button">
                 <message>jy</message>
             </button>
-            <button name="gridmenu_menu_25" from="templates_button">
+            <button name="gridmenu_menu_25" inherits="templates_button">
                 <message>hw</message>
             </button>
-            <button name="gridmenu_menu_26" from="templates_button">
+            <button name="gridmenu_menu_26" inherits="templates_button">
                 <message>qt</message>
             </button>
-            <button name="gridmenu_menu_27" from="templates_button">
+            <button name="gridmenu_menu_27" inherits="templates_button">
                 <message>te</message>
             </button>
-            <button name="gridmenu_menu_28" from="templates_button">
+            <button name="gridmenu_menu_28" inherits="templates_button">
                 <message>cd</message>
             </button>
-            <button name="gridmenu_menu_29" from="templates_button">
+            <button name="gridmenu_menu_29" inherits="templates_button">
                 <message>jb</message>
             </button>
-            <button name="gridmenu_menu_30" from="templates_button">
+            <button name="gridmenu_menu_30" inherits="templates_button">
                 <message>q</message>
             </button>
-            <button name="gridmenu_menu_31" from="templates_button">
+            <button name="gridmenu_menu_31" inherits="templates_button">
                 <message>qqw</message>
             </button>
-            <button name="gridmenu_menu_32" from="templates_button">
+            <button name="gridmenu_menu_32" inherits="templates_button">
                 <message>bfgr</message>
             </button>
-            <button name="gridmenu_menu_33" from="templates_button">
+            <button name="gridmenu_menu_33" inherits="templates_button">
                 <message>111</message>
             </button>
-            <button name="gridmenu_menu_34" from="templates_button">
+            <button name="gridmenu_menu_34" inherits="templates_button">
                 <message>222</message>
             </button>
-            <button name="gridmenu_menu_35" from="templates_button">
+            <button name="gridmenu_menu_35" inherits="templates_button">
                 <message>333</message>
             </button>
-            <button name="gridmenu_menu_36" from="templates_button">
+            <button name="gridmenu_menu_36" inherits="templates_button">
                 <message>444</message>
             </button>
-            <button name="gridmenu_menu_37" from="templates_button">
+            <button name="gridmenu_menu_37" inherits="templates_button">
                 <message>555</message>
             </button>
-            <button name="gridmenu_menu_38" from="templates_button">
+            <button name="gridmenu_menu_38" inherits="templates_button">
                 <message>666</message>
             </button>
-            <button name="gridmenu_menu_39" from="templates_button">
+            <button name="gridmenu_menu_39" inherits="templates_button">
                 <message>777</message>
             </button>
-            <button name="gridmenu_menu_40" from="templates_button">
+            <button name="gridmenu_menu_40" inherits="templates_button">
                 <message>888</message>
             </button>
-            <button name="gridmenu_menu_51" from="templates_button">
+            <button name="gridmenu_menu_51" inherits="templates_button">
                 <message>999</message>
             </button>
         </group>
