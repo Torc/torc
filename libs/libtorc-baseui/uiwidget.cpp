@@ -502,10 +502,22 @@ bool UIWidget::ParseWidget(UIWidget *Root, UIWidget *Parent, QDomElement *Elemen
     if (!deco.isEmpty() && GetBool(deco))
         flags += WidgetFlagDecoration;
 
+    // if the widget is unnamed, christen it. It will not be 'addressable'
+    // by the rest of the theme however.
+    if (name.isEmpty() && Root && Parent)
+    {
+        static quint32 number = 0;
+        while (Root->FindWidget(name = QString("%1_UI%2").arg(Parent->objectName()).arg(number++))) { }
+        LOG(VB_GENERAL, LOG_INFO, name);
+    }
+    else if (Parent && Root && Parent != Root)
+    {
+        name = Parent->objectName() + "_" + name;
+    }
+
     if (name.isEmpty())
     {
-        LOG(VB_GENERAL, LOG_ERR, QString("Widget needs a name (type '%1')")
-            .arg(type));
+        LOG(VB_GENERAL, LOG_ERR, QString("Widget needs a name (type '%1')").arg(type));
         return false;
     }
 
