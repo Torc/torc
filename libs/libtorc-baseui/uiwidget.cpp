@@ -508,7 +508,6 @@ bool UIWidget::ParseWidget(UIWidget *Root, UIWidget *Parent, QDomElement *Elemen
     {
         static quint32 number = 0;
         while (Root->FindWidget(name = QString("%1_UI%2").arg(Parent->objectName()).arg(number++))) { }
-        LOG(VB_GENERAL, LOG_INFO, name);
     }
     else if (Parent && Root && Parent != Root)
     {
