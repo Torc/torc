@@ -89,8 +89,6 @@ bool TorcSQLiteDB::InitDatabase(void)
     DebugError(&query);
     query.exec("PRAGMA journal_mode = OFF");
     DebugError(&query);
-    query.exec("PRAGMA locking_mode = EXCLUSIVE");
-    DebugError(&query);
     query.exec("PRAGMA synchronous = OFF");
     DebugError(&query);
 
