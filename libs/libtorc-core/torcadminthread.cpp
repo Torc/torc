@@ -140,7 +140,7 @@ void TorcAdminObject::CreateObjects(void)
 {
     QMutexLocker lock(gTorcAdminObjectsLock);
 
-    // only call this once, otherwise call TorcAdminThread::AddObject
+    // only call this once
     static bool objectscreated = false;
     if (objectscreated)
         return;
