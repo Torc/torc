@@ -292,7 +292,7 @@ static class TorcUSBObject : public TorcAdminObject
     void Create(void)
     {
         Destroy();
-        if (gLocalContext->GetFlag(Torc::USB))
+        if (gLocalContext->FlagIsSet(Torc::USB))
             m_usb = new TorcUSB();
     }
 

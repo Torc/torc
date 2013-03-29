@@ -62,7 +62,7 @@ static void ExitHandler(int Sig)
 class TorcLocalContextPriv
 {
   public:
-    TorcLocalContextPriv(int ApplicatinFlags);
+    TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFlags);
    ~TorcLocalContextPriv();
 
     bool    Init                 (void);
@@ -73,7 +73,7 @@ class TorcLocalContextPriv
 
     void    PrintSessionSettings (void);
 
-    int                   m_flags;
+    Torc::ApplicationFlags m_flags;
     TorcSQLiteDB         *m_sqliteDB;
     QMap<QString,QString> m_localSettings;
     QMap<QString,QString> m_sessionSettings;
@@ -85,7 +85,7 @@ class TorcLocalContextPriv
     TorcLanguage          m_language;
 };
 
-TorcLocalContextPriv::TorcLocalContextPriv(int ApplicationFlags)
+TorcLocalContextPriv::TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFlags)
   : m_flags(ApplicationFlags),
     m_sqliteDB(NULL),
     m_localSettingsLock(new QReadWriteLock(QReadWriteLock::Recursive)),
@@ -269,7 +269,7 @@ int Torc::StringToAction(const QString &Action)
     return metaEnum.keyToValue(Action.toLatin1());
 }
 
-qint16 TorcLocalContext::Create(TorcCommandLineParser* CommandLine, int ApplicationFlags)
+qint16 TorcLocalContext::Create(TorcCommandLineParser* CommandLine, Torc::ApplicationFlags ApplicationFlags)
 {
     QMutexLocker locker(gLocalContextLock);
     if (gLocalContext)
@@ -342,7 +342,7 @@ void TorcLocalContext::SendMessage(int Type, int Destination, int Timeout,
     gLocalContext->Notify(event);
 }
 
-TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine, int ApplicationFlags)
+TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine, Torc::ApplicationFlags ApplicationFlags)
   : QObject(),
     m_priv(new TorcLocalContextPriv(ApplicationFlags))
 {
@@ -509,7 +509,7 @@ void TorcLocalContext::CloseDatabaseConnections(void)
         m_priv->m_sqliteDB->CloseThreadConnection();
 }
 
-bool TorcLocalContext::GetFlag(int Flag)
+bool TorcLocalContext::FlagIsSet(Torc::ApplicationFlag Flag)
 {
     return m_priv->m_flags & Flag;
 }

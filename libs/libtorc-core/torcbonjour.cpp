@@ -867,7 +867,7 @@ static class TorcBrowserObject : public TorcAdminObject
 
         // start browsing early for other Torc applications
         // Torc::Client implies it is a consumer of media - may need revisiting
-        if (gLocalContext && gLocalContext->GetFlag(Torc::Client) &&
+        if (gLocalContext && gLocalContext->FlagIsSet(Torc::Client) &&
             gLocalContext->GetSetting(TORC_CORE + "BrowseForTorc", true))
         {
             m_browserReference = TorcBonjour::Instance()->Browse("_torc._tcp.");
@@ -903,7 +903,7 @@ static class TorcAnnounceObject : public TorcAdminObject
     {
         Destroy();
 
-        if (gLocalContext && gLocalContext->GetFlag(Torc::Server) &&
+        if (gLocalContext && gLocalContext->FlagIsSet(Torc::Server) &&
             gLocalContext->GetSetting(TORC_CORE + "AdvertiseService", true))
         {
             QByteArray dummy;

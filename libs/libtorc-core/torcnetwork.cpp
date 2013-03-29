@@ -118,7 +118,7 @@ TorcNetwork::TorcNetwork()
 
     // N.B. networkAccessible is true by default
     bool allowed = gLocalContext->GetSetting(TORC_CORE + "NetworkEnabled", true) &&
-                   gLocalContext->GetFlag(Torc::Network);
+                   gLocalContext->FlagIsSet(Torc::Network);
     SetAllowed(allowed);
 
     UpdateConfiguration(true);
@@ -149,7 +149,7 @@ bool TorcNetwork::IsAllowedPriv(void)
 
 void TorcNetwork::SetAllowed(bool Allow)
 {
-    if (Allow && !gLocalContext->GetFlag(Torc::Network))
+    if (Allow && !gLocalContext->FlagIsSet(Torc::Network))
         Allow = false;
 
     if (m_allow == Allow)

@@ -22,13 +22,14 @@ class TorcAdminObject;
 class TORC_CORE_PUBLIC Torc
 {
     Q_GADGET
+    Q_FLAGS(ApplicationFlags)
     Q_ENUMS(Actions)
     Q_ENUMS(MessageTypes)
     Q_ENUMS(MessageDestinations)
     Q_ENUMS(MessageTimeouts)
 
   public:
-    enum ApplicationFlags
+    enum ApplicationFlag
     {
         NoFlags     = (0 << 0),
         Database    = (1 << 0),
@@ -39,6 +40,8 @@ class TORC_CORE_PUBLIC Torc
         USB         = (1 << 5),
         Network     = (1 << 6)
     };
+
+    Q_DECLARE_FLAGS(ApplicationFlags, ApplicationFlag);
 
     enum MessageTypes
     {
@@ -187,6 +190,8 @@ class TORC_CORE_PUBLIC Torc
     static int     StringToAction(const QString &Action);
 };
 
+Q_DECLARE_OPERATORS_FOR_FLAGS(Torc::ApplicationFlags);
+
 class TorcLocalContextPriv;
 class QMutex;
 class QReadWriteLock;
@@ -196,7 +201,7 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     Q_OBJECT
 
   public:
-    static qint16 Create      (TorcCommandLineParser* CommandLine, int ApplicationFlags);
+    static qint16 Create      (TorcCommandLineParser* CommandLine, Torc::ApplicationFlags ApplicationFlags);
     static void   TearDown    (void);
 
     Q_INVOKABLE static void  NotifyEvent   (int Event);
@@ -215,16 +220,16 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     Q_INVOKABLE   void       SetPreference (const QString &Name, const QString &Value);
     Q_INVOKABLE   void       SetPreference (const QString &Name, const bool    &Value);
     Q_INVOKABLE   void       SetPreference (const QString &Name, const int     &Value);
-
+    Q_INVOKABLE   bool       FlagIsSet     (Torc::ApplicationFlag Flag);
     Q_INVOKABLE   QObject*   GetUIObject   (void);
 
     QLocale::Language        GetLanguage   (void);
     void                     SetUIObject   (QObject* UI);
     void                     CloseDatabaseConnections (void);
-    bool                     GetFlag       (int Flag);
+
 
   private:
-    TorcLocalContext(TorcCommandLineParser* CommandLine, int ApplicationFlags);
+    TorcLocalContext(TorcCommandLineParser* CommandLine, Torc::ApplicationFlags ApplicationFlags);
    ~TorcLocalContext();
 
     bool          Init(void);

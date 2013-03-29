@@ -370,7 +370,7 @@ static class TorcPowerObject : public TorcAdminObject
 
     void Create(void)
     {
-        if (gLocalContext->GetFlag(Torc::Power))
+        if (gLocalContext->FlagIsSet(Torc::Power))
             TorcPower::Create();
     }
 

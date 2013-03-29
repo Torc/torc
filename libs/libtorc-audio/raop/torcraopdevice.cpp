@@ -49,7 +49,7 @@ TorcRAOPDevice* TorcRAOPDevice::gTorcRAOPDevice = NULL;
 
 void TorcRAOPDevice::Enable(bool Enable)
 {
-    bool allow = gLocalContext->GetFlag(Torc::Server) &&
+    bool allow = gLocalContext->FlagIsSet(Torc::Server) &&
                  gLocalContext->GetSetting(TORC_AUDIO + "RAOPEnabled", false) &&
                  TorcRAOPConnection::LoadKey();
 
