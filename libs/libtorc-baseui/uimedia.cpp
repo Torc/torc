@@ -164,6 +164,11 @@ void UIMedia::SetProperty(int Property, const QVariant Value)
     m_player->SetProperty((TorcPlayer::PlayerProperty)Property, Value);
 }
 
+bool UIMedia::IsPropertyAvailable(int Property)
+{
+    return m_player->IsPropertyAvailable((TorcPlayer::PlayerProperty)Property);
+}
+
 void UIMedia::PlayerStateChanged(TorcPlayer::PlayerState NewState)
 {
     LOG(VB_GENERAL, LOG_INFO, QString("Player state '%1'").arg(TorcPlayer::StateToString(NewState)));
@@ -172,6 +177,16 @@ void UIMedia::PlayerStateChanged(TorcPlayer::PlayerState NewState)
 void UIMedia::PlayerPropertyChanged(TorcPlayer::PlayerProperty Property, const QVariant &Value)
 {
     emit PropertyChanged(Property, Value);
+}
+
+void UIMedia::PlayerPropertyAvailable(TorcPlayer::PlayerProperty Property)
+{
+    emit PropertyAvailable(Property);
+}
+
+void UIMedia::PlayerPropertyUnavailable(TorcPlayer::PlayerProperty Property)
+{
+    emit PropertyUnavailable(Property);
 }
 
 static class UIMediaFactory : public WidgetFactory

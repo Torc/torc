@@ -48,57 +48,64 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
         Contrast,
         Saturation,
         Hue,
+        HQScaling,
         // state
         Speed = 0x2000
     };
 
   public:
-    static TorcPlayer* Create(QObject *Parent, int PlaybackFlags, int DecoderFlags);
-    static QString     StateToString(PlayerState State);
-    static QString     PropertyToString (PlayerProperty Property);
+    static TorcPlayer* Create              (QObject *Parent, int PlaybackFlags, int DecoderFlags);
+    static QString     StateToString       (PlayerState State);
+    static QString     PropertyToString    (PlayerProperty Property);
     static PlayerProperty StringToProperty (const QString &Property);
 
     virtual ~TorcPlayer();
 
-    virtual bool    Refresh            (quint64 TimeNow, const QSizeF &Size);
-    virtual void    Render             (quint64 TimeNow);
-    virtual QVariant GetProperty       (PlayerProperty Property);
-    virtual void    SetProperty        (PlayerProperty Property, QVariant Value);
+    virtual bool    Refresh                (quint64 TimeNow, const QSizeF &Size);
+    virtual void    Render                 (quint64 TimeNow);
+    virtual QVariant GetProperty           (PlayerProperty Property);
+    virtual void    SetProperty            (PlayerProperty Property, QVariant Value);
+    bool            IsPropertyAvailable    (PlayerProperty Property);
 
-    void            Reset              (void);
-    bool            HandleEvent        (QEvent *Event);
-    virtual bool    HandleAction       (int Action);
-    bool            IsSwitching        (void);
-    PlayerState     GetState           (void);
-    PlayerState     GetNextState       (void);
+    void            Reset                  (void);
+    bool            HandleEvent            (QEvent *Event);
+    virtual bool    HandleAction           (int Action);
+    bool            IsSwitching            (void);
+    PlayerState     GetState               (void);
+    PlayerState     GetNextState           (void);
 
-    virtual void*   GetAudio           (void) = 0;
-    void            SendUserMessage    (const QString &Message);
-    int             GetPlayerFlags     (void);
-    int             GetDecoderFlags    (void);
+    virtual void*   GetAudio               (void) = 0;
+    void            SendUserMessage        (const QString &Message);
+    int             GetPlayerFlags         (void);
+    int             GetDecoderFlags        (void);
 
   public slots:
-    virtual bool    PlayMedia          (const QString &URI, bool StartPaused);
-    bool            Play               (void);
-    bool            Stop               (void);
-    bool            Pause              (void);
-    bool            Unpause            (void);
-    bool            TogglePause        (void);
+    virtual bool    PlayMedia              (const QString &URI, bool StartPaused);
+    bool            Play                   (void);
+    bool            Stop                   (void);
+    bool            Pause                  (void);
+    bool            Unpause                (void);
+    bool            TogglePause            (void);
+    void            SetPropertyAvailable   (TorcPlayer::PlayerProperty Property);
+    void            SetPropertyUnavailable (TorcPlayer::PlayerProperty Property);
+
 
   signals:
-    void            StateChanged       (TorcPlayer::PlayerState NewState);
+    void            StateChanged           (TorcPlayer::PlayerState NewState);
+    void            PropertyAvailable      (TorcPlayer::PlayerProperty Property);
+    void            PropertyUnavailable    (TorcPlayer::PlayerProperty Property);
 
   protected:
     TorcPlayer(QObject *Parent, int PlaybackFlags, int DecoderFlags);
-    virtual void    Teardown           (void);
+    virtual void    Teardown               (void);
 
   protected:
-    void            SetState           (PlayerState NewState);
-    void            StartTimer         (int &Timer, int Timeout);
-    void            KillTimer          (int &Timer);
-    void            DestroyNextDecoder (void);
-    void            DestroyOldDecoder  (void);
-    bool            event              (QEvent* Event);
+    void            SetState               (PlayerState NewState);
+    void            StartTimer             (int &Timer, int Timeout);
+    void            KillTimer              (int &Timer);
+    void            DestroyNextDecoder     (void);
+    void            DestroyOldDecoder      (void);
+    bool            event                  (QEvent* Event);
 
   protected:
     int             m_playerFlags;
@@ -122,6 +129,8 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 
     TorcDecoder    *m_oldDecoder;
     int             m_oldDecoderStopTimer;
+
+    QList<PlayerProperty> m_supportedProperties;
 
 };
 

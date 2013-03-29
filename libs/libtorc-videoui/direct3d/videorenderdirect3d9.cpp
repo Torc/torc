@@ -76,7 +76,6 @@ VideoRenderDirect3D9::VideoRenderDirect3D9(VideoColourSpace *ColourSpace, UIDire
     m_rgbVideoTexture(NULL),
     m_yuvShader(NULL)
 {
-    m_allowHighQualityScaling = false;
 }
 
 VideoRenderDirect3D9::~VideoRenderDirect3D9()

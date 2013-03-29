@@ -3,8 +3,10 @@
 
 // Qt
 #include <QRectF>
+#include <QObject>
 
 // Torc
+#include "torcplayer.h"
 #include "videoframe.h"
 
 extern "C" {
@@ -17,30 +19,38 @@ class UIDisplay;
 class VideoPlayer;
 class VideoColourSpace;
 
-class VideoRenderer
+class VideoRenderer : public QObject
 {
+    Q_OBJECT
+
   public:
     static VideoRenderer*  Create(VideoColourSpace *ColourSpace);
+
+  signals:
+    void                   PropertyAvailable         (TorcPlayer::PlayerProperty Property);
+    void                   PropertyUnavailable       (TorcPlayer::PlayerProperty Property);
+    void                   ColourPropertyAvailable   (TorcPlayer::PlayerProperty Property);
+    void                   ColourPropertyUnavailable (TorcPlayer::PlayerProperty Property);
 
   public:
     VideoRenderer          (VideoColourSpace *ColourSpace, UIWindow *Window);
     virtual ~VideoRenderer ();
 
-    virtual void           RefreshFrame         (VideoFrame* Frame, const QSizeF &Size) = 0;
-    virtual void           RenderFrame          (void) = 0;
-    virtual bool           DisplayReset         (void);
-    AVPixelFormat          PreferredPixelFormat (void);
-    void                   PlaybackFinished     (void);
+    virtual void           RefreshFrame              (VideoFrame* Frame, const QSizeF &Size) = 0;
+    virtual void           RenderFrame               (void) = 0;
+    virtual bool           DisplayReset              (void);
+    QList<TorcPlayer::PlayerProperty>
+                           GetSupportedProperties    (void);
+    AVPixelFormat          PreferredPixelFormat      (void);
+    void                   PlaybackFinished          (void);
 
-    bool                   GetHighQualityScaling     (void);
-    bool                   SetHighQualityScaling     (bool Enable);
-    bool                   HighQualityScalingAllowed (void);
-    bool                   HighQualityScalingEnabled (void);
+    QVariant               GetProperty               (TorcPlayer::PlayerProperty Property);
+    bool                   SetProperty               (TorcPlayer::PlayerProperty Property, QVariant Value);
 
   protected:
-    virtual void           ResetOutput          (void);
-    void                   UpdateRefreshRate    (VideoFrame* Frame);
-    bool                   UpdatePosition       (VideoFrame* Frame, const QSizeF &Size);
+    virtual void           ResetOutput               (void);
+    void                   UpdateRefreshRate         (VideoFrame* Frame);
+    bool                   UpdatePosition            (VideoFrame* Frame, const QSizeF &Size);
 
   protected:
     UIWindow               *m_window;
@@ -56,9 +66,9 @@ class VideoRenderer
     VideoColourSpace       *m_colourSpace;
     bool                    m_updateFrameVertices;
     bool                    m_wantHighQualityScaling;
-    bool                    m_allowHighQualityScaling;
     bool                    m_usingHighQualityScaling;
     SwsContext             *m_conversionContext;
+    QList<TorcPlayer::PlayerProperty> m_supportedProperties;
 };
 
 class RenderFactory

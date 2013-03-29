@@ -40,7 +40,8 @@
 */
 
 VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
-  : m_window(Window),
+  : QObject(),
+    m_window(Window),
     m_outputFormat(AV_PIX_FMT_UYVY422),
     m_lastInputFormat(AV_PIX_FMT_NONE),
     m_validVideoFrame(false),
@@ -51,7 +52,6 @@ VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
     m_colourSpace(ColourSpace),
     m_updateFrameVertices(true),
     m_wantHighQualityScaling(false),
-    m_allowHighQualityScaling(false),
     m_usingHighQualityScaling(false),
     m_conversionContext(NULL)
 {
@@ -81,26 +81,32 @@ void VideoRenderer::PlaybackFinished(void)
         m_window->SetRefreshRate(m_display->GetDefaultRefreshRate(), m_display->GetDefaultMode());
 }
 
-bool VideoRenderer::HighQualityScalingAllowed(void)
+QVariant VideoRenderer::GetProperty(TorcPlayer::PlayerProperty Property)
 {
-    return m_allowHighQualityScaling;
+    switch (Property)
+    {
+        case TorcPlayer::HQScaling:
+            return m_wantHighQualityScaling;
+        default: break;
+    }
+
+    return QVariant();
 }
 
-bool VideoRenderer::HighQualityScalingEnabled(void)
+bool VideoRenderer::SetProperty(TorcPlayer::PlayerProperty Property, QVariant Value)
 {
-    return m_usingHighQualityScaling;
-}
+    switch (Property)
+    {
+        case TorcPlayer::HQScaling:
+        {
+            m_wantHighQualityScaling = Value.toBool();
+            gLocalContext->SetPreference(TORC_VIDEO + "BicubicScaling", m_wantHighQualityScaling);
+            return true;
+        }
+        default: break;
+    }
 
-bool VideoRenderer::GetHighQualityScaling(void)
-{
-    return m_wantHighQualityScaling;
-}
-
-bool VideoRenderer::SetHighQualityScaling(bool Enable)
-{
-    m_wantHighQualityScaling = Enable;
-    gLocalContext->SetPreference(TORC_VIDEO + "BicubicScaling", m_wantHighQualityScaling);
-    return true;
+    return false;
 }
 
 bool VideoRenderer::DisplayReset(void)
@@ -108,6 +114,11 @@ bool VideoRenderer::DisplayReset(void)
     m_colourSpace->SetChanged();
     m_validVideoFrame = false;
     return true;
+}
+
+QList<TorcPlayer::PlayerProperty> VideoRenderer::GetSupportedProperties(void)
+{
+    return m_supportedProperties;
 }
 
 void VideoRenderer::ResetOutput(void)
@@ -176,13 +187,14 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame, const QSizeF &Size)
     }
 
     // enable/disable high quality scaling
-    if (Frame && m_wantHighQualityScaling && m_allowHighQualityScaling && !m_usingHighQualityScaling &&
-        (Frame->m_rawWidth < width || Frame->m_rawHeight < height))
+    if (Frame && m_wantHighQualityScaling && !m_usingHighQualityScaling && (Frame->m_rawWidth < width || Frame->m_rawHeight < height) &&
+        m_supportedProperties.contains(TorcPlayer::HQScaling))
     {
         LOG(VB_GENERAL, LOG_INFO, "Enabling high quality scaling");
         m_usingHighQualityScaling = true;
     }
-    else if (Frame && m_usingHighQualityScaling && (!(Frame->m_rawWidth < Size.width() || Frame->m_rawHeight < Size.height()) || !m_wantHighQualityScaling))
+    else if (Frame && m_usingHighQualityScaling &&
+             (!(Frame->m_rawWidth < Size.width() || Frame->m_rawHeight < Size.height()) || !m_wantHighQualityScaling || !m_supportedProperties.contains(TorcPlayer::HQScaling)))
     {
         LOG(VB_GENERAL, LOG_INFO, "Disabling high quality scaling");
         m_usingHighQualityScaling = false;

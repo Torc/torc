@@ -382,6 +382,29 @@ bool TorcPlayer::TogglePause(void)
     return true;
 }
 
+bool TorcPlayer::IsPropertyAvailable(PlayerProperty Property)
+{
+    return m_supportedProperties.contains(Property);
+}
+
+void TorcPlayer::SetPropertyAvailable(TorcPlayer::PlayerProperty Property)
+{
+    if (!m_supportedProperties.contains(Property))
+    {
+        m_supportedProperties << Property;
+        emit PropertyAvailable(Property);
+    }
+}
+
+void TorcPlayer::SetPropertyUnavailable(TorcPlayer::PlayerProperty Property)
+{
+    if (m_supportedProperties.contains(Property))
+    {
+        m_supportedProperties.removeAll(Property);
+        emit PropertyUnavailable(Property);
+    }
+}
+
 void TorcPlayer::SetState(PlayerState NewState)
 {
     m_state = NewState;

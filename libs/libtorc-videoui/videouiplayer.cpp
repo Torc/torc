@@ -52,7 +52,6 @@
  * \todo Add Property getter/setter functions for HTTP interface
  */
 
-
 void VideoUIPlayer::Initialise(void)
 {
 #if CONFIG_X11BASE
@@ -74,9 +73,36 @@ VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags
     m_buffers.SetDisplayFormat(m_render ? m_render->PreferredPixelFormat() : PIX_FMT_YUV420P);
     m_manualAVSyncAdjustment = gLocalContext->GetSetting(TORC_VIDEO + "AVSyncAdj", (int)0);
 
+    // setup supported player properties
+    m_supportedProperties << m_colourSpace->GetSupportedProperties();
+
+    if (m_render)
+        m_supportedProperties << m_render->GetSupportedProperties();
+
     // connect VideoColourSpace to the UI
     connect(m_colourSpace, SIGNAL(PropertyChanged(TorcPlayer::PlayerProperty,QVariant)),
-            parent(), SLOT(PlayerPropertyChanged(TorcPlayer::PlayerProperty,QVariant)));
+            parent(),      SLOT(PlayerPropertyChanged(TorcPlayer::PlayerProperty,QVariant)));
+
+    // connect VideoColourSpace to the player
+    connect(m_colourSpace, SIGNAL(PropertyAvailable(TorcPlayer::PlayerProperty)),
+            this,          SLOT(SetPropertyAvailable(TorcPlayer::PlayerProperty)));
+    connect(m_colourSpace, SIGNAL(PropertyUnavailable(TorcPlayer::PlayerProperty)),
+            this,          SLOT(SetPropertyUnavailable(TorcPlayer::PlayerProperty)));
+
+    if (m_render)
+    {
+        // connect VideoRender to VideoColourSpace to notify availability of colour controls
+        connect(m_render,      SIGNAL(ColourPropertyAvailable(TorcPlayer::PlayerProperty)),
+                m_colourSpace, SLOT(SetPropertyAvailable(TorcPlayer::PlayerProperty)));
+        connect(m_render,      SIGNAL(ColourPropertyUnavailable(TorcPlayer::PlayerProperty)),
+                m_colourSpace, SLOT(SetPropertyUnavailable(TorcPlayer::PlayerProperty)));
+
+        // connect VideoRender to the player
+        connect(m_render,      SIGNAL(PropertyAvailable(TorcPlayer::PlayerProperty)),
+                this,          SLOT(SetPropertyAvailable(TorcPlayer::PlayerProperty)));
+        connect(m_render,      SIGNAL(PropertyUnavailable(TorcPlayer::PlayerProperty)),
+                this,          SLOT(SetPropertyUnavailable(TorcPlayer::PlayerProperty)));
+    }
 }
 
 VideoUIPlayer::~VideoUIPlayer()
@@ -226,24 +252,24 @@ bool VideoUIPlayer::HandleAction(int Action)
                  Action == Torc::DisableHighQualityScaling ||
                  Action == Torc::ToggleHighQualityScaling)
         {
-            if (m_render->HighQualityScalingAllowed())
+            if (IsPropertyAvailable(HQScaling))
             {
                 if (Action == Torc::EnableHighQualityScaling)
                 {
                     SendUserMessage(QObject::tr("Requested high quality scaling"));
-                    return m_render->SetHighQualityScaling(true);
+                    return m_render->SetProperty(TorcPlayer::HQScaling, QVariant(true));
                 }
                 else if (Action == Torc::DisableHighQualityScaling)
                 {
                     SendUserMessage(QObject::tr("Disabled high quality scaling"));
-                    return m_render->SetHighQualityScaling(false);
+                    return m_render->SetProperty(TorcPlayer::HQScaling, QVariant(false));
                 }
                 else if (Action == Torc::ToggleHighQualityScaling)
                 {
-                    bool enabled = !m_render->GetHighQualityScaling();
+                    bool enabled = !(m_render->GetProperty(TorcPlayer::HQScaling).toBool());
                     SendUserMessage(enabled ? QObject::tr("Requested high quality scaling") :
                                               QObject::tr("Disabled high quality scaling"));
-                    return m_render->SetHighQualityScaling(enabled);
+                    return m_render->SetProperty(TorcPlayer::HQScaling, QVariant(enabled));
                 }
             }
             else
@@ -253,35 +279,35 @@ bool VideoUIPlayer::HandleAction(int Action)
         }
         else if (Action == Torc::DecreaseBrightness)
         {
-            m_colourSpace->ChangeBrightness(false);
+            m_colourSpace->ChangeProperty(Brightness, false);
         }
         else if (Action == Torc::IncreaseBrightness)
         {
-            m_colourSpace->ChangeBrightness(true);
+            m_colourSpace->ChangeProperty(Brightness, true);
         }
         else if (Action == Torc::DecreaseContrast)
         {
-            m_colourSpace->ChangeContrast(false);
+            m_colourSpace->ChangeProperty(Contrast, false);
         }
         else if (Action == Torc::IncreaseContrast)
         {
-            m_colourSpace->ChangeContrast(true);
+            m_colourSpace->ChangeProperty(Contrast, true);
         }
         else if (Action == Torc::DecreaseSaturation)
         {
-            m_colourSpace->ChangeSaturation(false);
+            m_colourSpace->ChangeProperty(Saturation, false);
         }
         else if (Action == Torc::IncreaseSaturation)
         {
-            m_colourSpace->ChangeSaturation(true);
+            m_colourSpace->ChangeProperty(Saturation, true);
         }
         else if (Action == Torc::DecreaseHue)
         {
-            m_colourSpace->ChangeHue(false);
+            m_colourSpace->ChangeProperty(Hue, false);
         }
         else if (Action == Torc::IncreaseHue)
         {
-            m_colourSpace->ChangeHue(true);
+            m_colourSpace->ChangeProperty(Hue, true);
         }
     }
 
@@ -292,10 +318,15 @@ QVariant VideoUIPlayer::GetProperty(PlayerProperty Property)
 {
     switch (Property)
     {
-        case Brightness: return QVariant((int)m_colourSpace->GetBrightness());
-        case Saturation: return QVariant((int)m_colourSpace->GetSaturation());
-        case Hue:        return QVariant((int)m_colourSpace->GetHue());
-        case Contrast:   return QVariant((int)m_colourSpace->GetContrast());
+        case Brightness:
+        case Saturation:
+        case Hue:
+        case Contrast:
+           return QVariant(m_colourSpace->GetProperty(Property));
+        case HQScaling:
+            if (m_render)
+                return m_render->GetProperty(TorcPlayer::HQScaling);
+            return QVariant();
         default: break;
     }
 
@@ -307,17 +338,10 @@ void VideoUIPlayer::SetProperty(PlayerProperty Property, QVariant Value)
     switch (Property)
     {
         case Brightness:
-            m_colourSpace->SetBrightness(Value.toInt());
-            return;
         case Contrast:
-            m_colourSpace->SetContrast(Value.toInt());
-            return;
         case Saturation:
-            m_colourSpace->SetSaturation(Value.toInt());
-            return;
         case Hue:
-            m_colourSpace->SetHue(Value.toInt());
-            return;
+            m_colourSpace->SetProperty(Property, Value.toInt());
         default:
             break;
     }

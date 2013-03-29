@@ -37,10 +37,18 @@ class VideoColourSpace : public QObject
 
   signals:
     void           PropertyChanged      (TorcPlayer::PlayerProperty Property, QVariant Value);
+    void           PropertyAvailable    (TorcPlayer::PlayerProperty Property);
+    void           PropertyUnavailable  (TorcPlayer::PlayerProperty Property);
+
+  public slots:
+    void           SetPropertyAvailable (TorcPlayer::PlayerProperty Property);
+    void           SetPropertyUnavailable (TorcPlayer::PlayerProperty Property);
 
   public:
     explicit VideoColourSpace(AVColorSpace ColourSpace);
     ~VideoColourSpace();
+
+    QList<TorcPlayer::PlayerProperty> GetSupportedProperties (void);
 
     void           SetChanged           (void);
     bool           HasChanged           (void);
@@ -48,31 +56,20 @@ class VideoColourSpace : public QObject
 
     AVColorSpace   GetColourSpace       (void);
     AVColorRange   GetColourRange       (void);
-    int            GetBrightness        (void);
-    int            GetContrast          (void);
-    int            GetSaturation        (void);
-    int            GetHue               (void);
     bool           GetStudioLevels      (void);
-
-    void           ChangeBrightness     (bool Increase);
-    void           ChangeContrast       (bool Increase);
-    void           ChangeSaturation     (bool Increase);
-    void           ChangeHue            (bool Increase);
-
     void           SetColourSpace       (AVColorSpace ColourSpace);
     void           SetColourRange       (AVColorRange ColourRange);
-    void           SetBrightness        (int  Value);
-    void           SetContrast          (int  Value);
-    void           SetHue               (int  Value);
-    void           SetSaturation        (int  Value);
     void           SetStudioLevels      (bool Value);
+
+    QVariant       GetProperty          (TorcPlayer::PlayerProperty Property);
+    void           ChangeProperty       (TorcPlayer::PlayerProperty Property, bool Increase);
+    void           SetProperty          (TorcPlayer::PlayerProperty Property, int Value);
 
   private:
     void           SetBrightnessPriv    (int Value, bool UpdateMatrix, bool UpdateSettings);
     void           SetContrastPriv      (int Value, bool UpdateMatrix, bool UpdateSettings);
     void           SetHuePriv           (int Value, bool UpdateMatrix, bool UpdateSettings);
     void           SetSaturationPriv    (int Value, bool UpdateMatrix, bool UpdateSettings);
-
     void           SetStudioLevelsPriv  (bool Studio, bool UpdateMatrix);
     void           SetMatrix            (void);
 
@@ -86,6 +83,7 @@ class VideoColourSpace : public QObject
     float          m_saturation;
     float          m_hue;
     Matrix         m_matrix;
+    QList<TorcPlayer::PlayerProperty> m_supportedProperties;
 };
 
 #endif // VIDEOCOLOURSPACE_H

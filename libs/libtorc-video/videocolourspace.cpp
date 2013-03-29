@@ -148,6 +148,8 @@ VideoColourSpace::VideoColourSpace(AVColorSpace ColourSpace)
     SetContrastPriv(gLocalContext->GetPreference(TORC_VIDEO + "Contrast", 50), false, false);
     SetSaturationPriv(gLocalContext->GetPreference(TORC_VIDEO + "Saturation", 50), false, false);
     SetHuePriv(gLocalContext->GetPreference(TORC_VIDEO + "Hue", 0), true, false);
+
+    m_supportedProperties << TorcPlayer::Brightness << TorcPlayer::Contrast << TorcPlayer::Saturation << TorcPlayer::Hue;
 }
 
 VideoColourSpace::~VideoColourSpace()
@@ -180,24 +182,18 @@ AVColorRange VideoColourSpace::GetColourRange(void)
     return m_colourRange;
 }
 
-int VideoColourSpace::GetBrightness(void)
+QVariant VideoColourSpace::GetProperty(TorcPlayer::PlayerProperty Property)
 {
-    return 0.5f + ((m_brightness + 1.0f) / 0.02f);
-}
+    switch (Property)
+    {
+        case TorcPlayer::Brightness:   return QVariant((int)(0.5f + ((m_brightness + 1.0f) / 0.02f)));
+        case TorcPlayer::Contrast:     return QVariant((int)(0.5f + (m_contrast / 0.02f)));
+        case TorcPlayer::Saturation:   return QVariant((int)(0.5f + (m_saturation / 0.02f)));
+        case TorcPlayer::Hue:          return QVariant((int)(0.5f + ((m_hue * 180.0f) / (-3.6f * M_PI))));
+        default: break;
+    }
 
-int VideoColourSpace::GetContrast(void)
-{
-    return 0.5f + (m_contrast / 0.02f);
-}
-
-int VideoColourSpace::GetSaturation(void)
-{
-    return 0.5f + (m_saturation / 0.02f);
-}
-
-int VideoColourSpace::GetHue(void)
-{
-    return 0.5f + ((m_hue * 180.0f) / (-3.6f * M_PI));
+    return QVariant();
 }
 
 bool VideoColourSpace::GetStudioLevels(void)
@@ -205,52 +201,73 @@ bool VideoColourSpace::GetStudioLevels(void)
     return m_studioLevels;
 }
 
-void VideoColourSpace::ChangeBrightness(bool Increase)
+void VideoColourSpace::SetPropertyAvailable(TorcPlayer::PlayerProperty Property)
 {
-    int current = GetBrightness();
-    current += Increase ? 1 : -1;
-    SetBrightness(current);
+    if (!m_supportedProperties.contains(Property))
+    {
+        m_supportedProperties << Property;
+        emit PropertyAvailable(Property);
+    }
 }
 
-void VideoColourSpace::ChangeContrast(bool Increase)
+void VideoColourSpace::SetPropertyUnavailable(TorcPlayer::PlayerProperty Property)
 {
-    int current = GetContrast();
-    current += Increase ? 1 : -1;
-    SetContrast(current);
+    if (m_supportedProperties.contains(Property))
+    {
+        m_supportedProperties.removeAll(Property);
+        emit PropertyUnavailable(Property);
+    }
 }
 
-void VideoColourSpace::ChangeSaturation(bool Increase)
+QList<TorcPlayer::PlayerProperty> VideoColourSpace::GetSupportedProperties(void)
 {
-    int current = GetSaturation();
-    current += Increase ? 1 : -1;
-    SetSaturation(current);
+    return m_supportedProperties;
 }
 
-void VideoColourSpace::ChangeHue(bool Increase)
+void VideoColourSpace::ChangeProperty(TorcPlayer::PlayerProperty Property, bool Increase)
 {
-    int current = GetHue();
-    current += Increase ? 1 : -1;
-    SetHue(current);
+    int delta = Increase ? 1 : -1;
+
+    switch (Property)
+    {
+        case TorcPlayer::Brightness:
+            SetProperty(TorcPlayer::Brightness, delta + GetProperty(TorcPlayer::Brightness).toInt());
+            break;
+        case TorcPlayer::Contrast:
+            SetProperty(TorcPlayer::Contrast, delta + GetProperty(TorcPlayer::Contrast).toInt());
+            break;
+        case TorcPlayer::Saturation:
+            SetProperty(TorcPlayer::Saturation, delta + GetProperty(TorcPlayer::Saturation).toInt());
+            break;
+        case TorcPlayer::Hue:
+            SetProperty(TorcPlayer::Hue, delta + GetProperty(TorcPlayer::Hue).toInt());
+            break;
+        default: break;
+    }
 }
 
-void VideoColourSpace::SetBrightness(int Value)
+void VideoColourSpace::SetProperty(TorcPlayer::PlayerProperty Property, int Value)
 {
-    SetBrightnessPriv(Value, true, true);
-}
-
-void VideoColourSpace::SetContrast(int Value)
-{
-    SetContrastPriv(Value, true, true);
-}
-
-void VideoColourSpace::SetSaturation(int Value)
-{
-    SetSaturationPriv(Value, true, true);
-}
-
-void VideoColourSpace::SetHue(int Value)
-{
-    SetHuePriv(Value, true, true);
+    switch (Property)
+    {
+        case TorcPlayer::Brightness:
+            if (m_supportedProperties.contains(TorcPlayer::Brightness))
+                SetBrightnessPriv(Value, true, true);
+            break;
+        case TorcPlayer::Contrast:
+            if (m_supportedProperties.contains(TorcPlayer::Contrast))
+                SetContrastPriv(Value, true, true);
+            break;
+        case TorcPlayer::Saturation:
+            if (m_supportedProperties.contains(TorcPlayer::Saturation))
+                SetSaturationPriv(Value, true, true);
+            break;
+        case TorcPlayer::Hue:
+            if (m_supportedProperties.contains(TorcPlayer::Hue))
+                SetHuePriv(Value, true, true);
+            break;
+        default: break;
+    }
 }
 
 void VideoColourSpace::SetStudioLevels(bool Value)

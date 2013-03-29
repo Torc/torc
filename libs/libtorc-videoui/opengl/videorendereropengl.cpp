@@ -160,7 +160,8 @@ VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGL
     m_bicubicShader(0)
 {
     m_rgbVideoTextureFormat   = m_openglWindow->GetRectTextureType();
-    m_allowHighQualityScaling = m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat);
+    if (m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat))
+        m_supportedProperties << TorcPlayer::HQScaling;
 }
 
 VideoRendererOpenGL::~VideoRendererOpenGL()
@@ -225,7 +226,17 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
                 else
                     m_rgbVideoTextureFormat = m_openglWindow->GetRectTextureType();
 
-                m_allowHighQualityScaling = m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat);
+                bool allowHighQualityScaling = m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat);
+                if (allowHighQualityScaling && !m_supportedProperties.contains(TorcPlayer::HQScaling))
+                {
+                    m_supportedProperties.removeAll(TorcPlayer::HQScaling);
+                    emit PropertyAvailable(TorcPlayer::HQScaling);
+                }
+                else if (!allowHighQualityScaling && m_supportedProperties.contains(TorcPlayer::HQScaling))
+                {
+                    m_supportedProperties << TorcPlayer::HQScaling;
+                    emit PropertyUnavailable(TorcPlayer::HQScaling);
+                }
             }
         }
 
