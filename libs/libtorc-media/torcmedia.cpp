@@ -37,7 +37,8 @@ TorcMedia::TorcMedia(const QString Name,
                      const QString URL,
                      TorcMediaType Type,
                      TorcMetadata *Metadata)
-  : m_name(Name),
+  : m_valid(true),
+    m_name(Name),
     m_url(URL),
     m_type(Type),
     m_metadata(Metadata)
@@ -48,6 +49,16 @@ TorcMedia::~TorcMedia()
 {
     if (m_metadata)
         delete m_metadata;
+}
+
+bool TorcMedia::IsValid(void)
+{
+    return m_valid;
+}
+
+void TorcMedia::Invalidate(void)
+{
+    m_valid = false;
 }
 
 QString TorcMedia::GetName(void)

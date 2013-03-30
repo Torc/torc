@@ -27,19 +27,25 @@ class TORC_MEDIA_PUBLIC TorcMedia : public TorcReferenceCounter
   public:
     TorcMedia(const QString Name = "", const QString URL = "", TorcMediaType Type = kMediaTypeNone,
               TorcMetadata *Metadata = NULL);
+
+    bool          IsValid          (void);
+    void          Invalidate       (void);
+
+    QString       GetName          (void);
+    QString       GetURL           (void);
+    TorcMetadata* GetMetadata      (void);
+    TorcMediaType GetMediaType     (void);
+
+    void          SetName          (const QString &Name);
+    void          SetURL           (const QString &Name);
+    void          SetMetadata      (TorcMetadata *Metadata);
+    void          SetMediaType     (TorcMediaType Type);
+
+  protected:
     virtual ~TorcMedia();
 
-    QString       GetName (void);
-    QString       GetURL  (void);
-    TorcMetadata* GetMetadata (void);
-    TorcMediaType GetMediaType (void);
-
-    void          SetName (const QString &Name);
-    void          SetURL  (const QString &Name);
-    void          SetMetadata (TorcMetadata *Metadata);
-    void          SetMediaType (TorcMediaType Type);
-
   private:
+    bool          m_valid;
     QString       m_name;
     QString       m_url;
     TorcMediaType m_type;
