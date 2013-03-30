@@ -12,8 +12,10 @@ QT -= gui
 
 INCLUDEPATH += ../../libs/libtorc-core
 INCLUDEPATH += ../../libs/libtorc-audio
+INCLUDEPATH += ../../libs/libtorc-media
 LIBS += -L../../libs/libtorc-core -ltorc-core-$$LIBVERSION
 LIBS += -L../../libs/libtorc-audio -ltorc-audio-$$LIBVERSION
+LIBS += -L../../libs/libtorc-media -ltorc-media-$$LIBVERSION
 
 setting.path = $${PREFIX}/share/$${PROJECTNAME}/
 setting.extra = -ldconfig

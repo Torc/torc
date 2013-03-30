@@ -20,11 +20,13 @@ INCLUDEPATH += ../../libs/libtorc-audio
 INCLUDEPATH += ../../libs/libtorc-video
 INCLUDEPATH += ../../libs/libtorc-videoui
 INCLUDEPATH += ../../libs/libtorc-av
+INCLUDEPATH += ../../libs/libtorc-media
 LIBS += -L../../libs/libtorc-baseui -ltorc-baseui-$$LIBVERSION
 LIBS += -L../../libs/libtorc-tenfootui -ltorc-tenfootui-$$LIBVERSION
 LIBS += -L../../libs/libtorc-audio -ltorc-audio-$$LIBVERSION
 LIBS += -L../../libs/libtorc-video -ltorc-video-$$LIBVERSION
 LIBS += -L../../libs/libtorc-videoui -ltorc-videoui-$$LIBVERSION
+LIBS += -L../../libs/libtorc-media -ltorc-media-$$LIBVERSION
 
 setting.path = $${PREFIX}/share/$${PROJECTNAME}/
 setting.extra = -ldconfig
