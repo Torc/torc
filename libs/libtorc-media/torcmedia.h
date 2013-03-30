@@ -19,7 +19,8 @@ enum TorcMediaType {
     kMediaTypeHomeMovie,
     kMediaTypeMusicVideo,
     kMediaTypeMusic,
-    kMediaTypeAudiobook
+    kMediaTypeAudiobook,
+    kMediaTypePicture
 };
 
 class TORC_MEDIA_PUBLIC TorcMedia : public TorcReferenceCounter
