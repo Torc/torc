@@ -19,12 +19,18 @@ QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 QT += sql
 QT -= gui
 
-HEADERS += torcmedia.h   torcmetadata.h
+HEADERS += torcmedia.h
+HEADERS += torcmetadata.h
+HEADERS += torcmediasource.h
 
-SOURCES += torcmedia.cpp torcmetadata.cpp
+SOURCES += torcmedia.cpp
+SOURCES += torcmetadata.cpp
+SOURCES += torcmediasource.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
-inc.files  = torcmedia.h     torcmetadata.h
+inc.files  = torcmedia.h
+inc.files += torcmetadata.h
+inc.files += torcmediasource.cpp
 
 # Allow both #include <blah.h> and #include <libxx/blah.h>
 inc2.path  = $${PREFIX}/include/$${PROJECTNAME}/lib$${THIS_LIB}
