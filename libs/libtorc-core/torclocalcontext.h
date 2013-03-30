@@ -161,6 +161,10 @@ class TORC_CORE_PUBLIC Torc
         DiskRemoved,
         DiskCanBeSafelyRemoved,
         DiskEjected,
+        EnableStorage,
+        DisableStorage,
+        StorageEnabled,
+        StorageDisabled,
         // jumps
         ShowSearch = 5000,
         HideSearch,
