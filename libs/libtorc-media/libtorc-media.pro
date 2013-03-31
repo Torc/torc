@@ -22,10 +22,12 @@ QT -= gui
 HEADERS += torcmedia.h
 HEADERS += torcmetadata.h
 HEADERS += torcmediasource.h
+HEADERS += torcmediasourcedirectory.h
 
 SOURCES += torcmedia.cpp
 SOURCES += torcmetadata.cpp
 SOURCES += torcmediasource.cpp
+SOURCES += torcmediasourcedirectory.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files  = torcmedia.h
