@@ -23,24 +23,16 @@ class TORC_BASEUI_PUBLIC UIImageTracker
     virtual ~UIImageTracker();
 
     void         UpdateImages         (void);
-    UIImage*     AllocateImage        (const QString &Name,
-                                       const QSize   &Size,
-                                       const QString &FileName = QString(""));
-    void         ReleaseImage         (UIImage       *Image);
-    UIImage*     GetSimpleTextImage   (const QString &Text,
-                                       const QRectF  *Rect,
-                                       UIFont        *Font,
-                                       int            Flags,
-                                       int            Blur);
-    UIImage*     GetShapeImage        (UIShapePath  *Path,
-                                       const QRectF  *Rect);
+    UIImage*     AllocateImage        (const QString &Name, const QSize &Size, const QString &FileName = QString(""));
+    void         ReleaseImage         (UIImage *Image);
+    UIImage*     GetSimpleTextImage   (const QString &Text, const QRectF *Rect, UIFont *Font, int Flags, int Blur);
+    UIImage*     GetShapeImage        (UIShapePath  *Path, const QRectF  *Rect);
     void         LoadImageFromFile    (UIImage *Image);
-    void         ImageCompleted       (UIImage *Image, QImage *Text);
+    void         ImageCompleted       (UIImage *Image, QImage *Completed);
 
   protected:
     void         ExpireImages         (bool ExpireAll = false);
-    void         SetMaximumCacheSizes (quint8  Hardware, quint8 Software,
-                                       quint64 ExpirableItems);
+    void         SetMaximumCacheSizes (quint8  Hardware, quint8 Software, quint64 ExpirableItems);
 
   protected:
     bool                    m_synchronous;

@@ -297,18 +297,18 @@ void UIImageTracker::LoadImageFromFile(UIImage *Image)
     }
 }
 
-void UIImageTracker::ImageCompleted(UIImage *Image, QImage *Text)
+void UIImageTracker::ImageCompleted(UIImage *Image, QImage *Completed)
 {
     m_completedImagesLock->lock();
 
     if (m_completedImages.contains(Image))
     {
         LOG(VB_GENERAL, LOG_ERR, "Image already loaded. Discarding..");
-        delete Text;
+        delete Completed;
     }
     else
     {
-        m_completedImages.insert(Image, Text);
+        m_completedImages.insert(Image, Completed);
     }
 
     m_completedImagesLock->unlock();
