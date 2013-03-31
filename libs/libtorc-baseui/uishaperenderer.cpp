@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -56,7 +56,6 @@ void UIShapeRenderer::RenderShape(QPaintDevice *Device, UIShapePath *Path)
         Path->RenderPath(Device);
 }
 
-#include "torclogging.h"
 void UIShapeRenderer::run(void)
 {
     QSize size((int)m_size.width(), (int)m_size.height());
