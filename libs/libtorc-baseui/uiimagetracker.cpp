@@ -33,8 +33,6 @@
 #include "uishaperenderer.h"
 #include "uiimagetracker.h"
 
-#define LOC QString("UIImageTracker: ")
-
 UIImageTracker::UIImageTracker()
   : m_synchronous(false),
     m_hardwareCacheSize(0),
@@ -81,8 +79,7 @@ UIImageTracker::~UIImageTracker()
     // Sanity check our ref counting
     if (!m_allocatedImages.isEmpty())
     {
-        LOG(VB_GENERAL, LOG_WARNING, LOC +
-            QString("%1 images not de-allocated (cache size %2).")
+        LOG(VB_GENERAL, LOG_WARNING, QString("%1 images not de-allocated (cache size %2).")
                 .arg(m_allocatedImages.size())
                 .arg(m_softwareCacheSize));
     }
@@ -94,8 +91,7 @@ void UIImageTracker::SetMaximumCacheSizes(quint8 Hardware, quint8 Software,
     m_maxHardwareCacheSize  = 1024 * 1024 * Hardware;
     m_maxSoftwareCacheSize  = 1024 * 1024 * Software;
     m_maxExpireListSize = ExpirableItems;
-    LOG(VB_GENERAL, LOG_INFO, LOC +
-        QString("Cache sizes: Hardware %1Mb, Software %2Mb Software items %3")
+    LOG(VB_GENERAL, LOG_INFO, QString("Cache sizes: Hardware %1Mb, Software %2Mb Software items %3")
         .arg(Hardware).arg(Software).arg(ExpirableItems));
 }
 
@@ -276,13 +272,13 @@ void UIImageTracker::LoadImageFromFile(UIImage *Image)
     if (state == UIImage::ImageLoaded ||
         state == UIImage::ImageUploadedToGPU)
     {
-        LOG(VB_GENERAL, LOG_WARNING, LOC + ("Image already loaded. Ignoring"));
+        LOG(VB_GENERAL, LOG_WARNING, "Image already loaded. Ignoring");
         return;
     }
 
     if (state == UIImage::ImageLoading)
     {
-        LOG(VB_GENERAL, LOG_ERR, LOC + ("Image already loading. Not reloading."));
+        LOG(VB_GENERAL, LOG_ERR, "Image already loading. Not reloading.");
         return;
     }
 
@@ -307,7 +303,7 @@ void UIImageTracker::ImageCompleted(UIImage *Image, QImage *Text)
 
     if (m_completedImages.contains(Image))
     {
-        LOG(VB_GENERAL, LOG_ERR, LOC + "Image already loaded. Discarding..");
+        LOG(VB_GENERAL, LOG_ERR, "Image already loaded. Discarding..");
         delete Text;
     }
     else
