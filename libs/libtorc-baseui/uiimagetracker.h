@@ -50,7 +50,6 @@ class TORC_BASEUI_PUBLIC UIImageTracker
     quint64                 m_maxSoftwareCacheSize;
     QList<UIImage*>         m_allocatedImages;
     QList<QString>          m_allocatedFileImages;
-    QMutex                 *m_allocatedImageLock; // Is this needed?
     QHash<QString,UIImage*> m_imageHash;
     QList<UIImage*>         m_expireList;
     qint64                  m_maxExpireListSize;

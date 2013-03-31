@@ -41,7 +41,6 @@ UIImageTracker::UIImageTracker()
     m_softwareCacheSize(0),
     m_maxHardwareCacheSize(0),
     m_maxSoftwareCacheSize(0),
-    m_allocatedImageLock(new QMutex(QMutex::Recursive)),
     m_maxExpireListSize(0),
     m_completedImagesLock(new QMutex(QMutex::Recursive))
 {
@@ -78,9 +77,6 @@ UIImageTracker::~UIImageTracker()
                 .arg(m_allocatedImages.size())
                 .arg(m_softwareCacheSize));
     }
-
-    delete m_allocatedImageLock;
-    m_allocatedImageLock = NULL;
 }
 
 void UIImageTracker::SetMaximumCacheSizes(quint8 Hardware, quint8 Software,
@@ -122,31 +118,23 @@ UIImage* UIImageTracker::AllocateImage(const QString &Name,
     UIImage* image = new UIImage(this, Name, Size, FileName);
     if (image)
     {
-        m_allocatedImageLock->lock();
-
         if (file)
             m_allocatedFileImages.append(FileName);
 
         m_allocatedImages.append(image);
         m_softwareCacheSize += image->byteCount();
-        m_allocatedImageLock->unlock();
     }
     return image;
 }
 
 void UIImageTracker::ReleaseImage(UIImage *Image)
 {
-    if (!Image)
-        return;
-
-    m_allocatedImageLock->lock();
-    while (m_allocatedImages.contains(Image))
+    while (Image && m_allocatedImages.contains(Image))
     {
         m_allocatedImages.removeOne(Image);
         m_softwareCacheSize -= Image->byteCount();
         m_allocatedFileImages.removeOne(Image->GetFilename());
     }
-    m_allocatedImageLock->unlock();
 }
 
 UIImage* UIImageTracker::GetSimpleTextImage(const QString &Text,
