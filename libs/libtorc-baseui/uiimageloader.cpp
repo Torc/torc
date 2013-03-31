@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -20,10 +20,6 @@
 * USA.
 */
 
-// TODO
-// - preserve aspect ratio
-// - remote files (QImageLoader etc)
-
 // Qt
 #include <QFile>
 
@@ -33,7 +29,23 @@
 #include "uiimagetracker.h"
 #include "uiimageloader.h"
 
-#define LOC QString("ImageLoader: ")
+/*! \class UIImageLoader
+ *  \brief A simple asynchronous image loader.
+ *
+ * UIImageLoader loads an image file into a UIImage from within a QRunnable.
+ * It holds a reference to the UIImage until it is complete and notifies the parent
+ * UIImageTracker when it is finished.
+ *
+ * Image format is currently restricted to png.
+ *
+ * \sa UIImageTracker
+ * \sa UIShapeRenderer
+ * \sa UITextRenderer
+ *
+ * \todo Preserve aspect ratio
+ * \todo Remote files
+ * \todo Check support for formats other than png (do they load?)
+*/
 
 UIImageLoader::UIImageLoader(UIImageTracker *Parent, UIImage *Image)
   : QRunnable(),
@@ -58,29 +70,22 @@ void UIImageLoader::run(void)
 
     if (filename.isEmpty())
     {
-        LOG(VB_GENERAL, LOG_ERR, LOC + "No file name.");
+        LOG(VB_GENERAL, LOG_ERR, "No file name.");
         return;
     }
 
     if (!QFile::exists(filename))
     {
-        LOG(VB_GENERAL, LOG_ERR, LOC + QString("Image '%1' does not exist.")
-            .arg(filename));
+        LOG(VB_GENERAL, LOG_ERR, QString("Image '%1' does not exist.").arg(filename));
         return;
     }
 
     QImage *image = new QImage(filename, "png");
 
     if (image->isNull())
-    {
-        LOG(VB_GENERAL, LOG_WARNING, LOC +
-            QString("Failed to load '%1'").arg(filename));
-    }
-    else if (image->width() > m_image->GetMaxSize().width() ||
-             image->height() > m_image->GetMaxSize().height())
-    {
+        LOG(VB_GENERAL, LOG_WARNING, QString("Failed to load '%1'").arg(filename));
+    else if (image->width() > m_image->GetMaxSize().width() || image->height() > m_image->GetMaxSize().height())
         *image = image->scaled(m_image->GetMaxSize(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-    }
 
     m_parent->ImageCompleted(m_image, image);
 }
