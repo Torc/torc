@@ -54,6 +54,7 @@ class TORC_BASEUI_PUBLIC UIImageTracker
     QList<UIImage*>         m_expireList;
     qint64                  m_maxExpireListSize;
 
+    QList<UIImage*>         m_outstandingImages;
     QHash<UIImage*,QImage*> m_completedImages;
     QMutex                 *m_completedImagesLock;
 };

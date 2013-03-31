@@ -49,6 +49,15 @@ UIImageTracker::UIImageTracker()
 
 UIImageTracker::~UIImageTracker()
 {
+    // wait for any outstanding render requests. The QRunnable will call this
+    // object to notify completion.
+    int count = 0;
+    while (!m_outstandingImages.isEmpty() && count++ < 100)
+        usleep(50000);
+
+    if (!m_outstandingImages.isEmpty())
+        LOG(VB_GENERAL, LOG_ERR, QString("Waited for 5 seconds and %1 images still not complete").arg(m_outstandingImages.size()));
+
     // Force deallocation of any remaining images
     ExpireImages(true);
 
@@ -183,6 +192,8 @@ UIImage* UIImageTracker::GetSimpleTextImage(const QString &Text,
     ExpireImages();
 
     UITextRenderer *render = new UITextRenderer(this, image, Text, Rect->size(), Font, Flags, Blur);
+    m_outstandingImages << image;
+    image->UpRef();
     if (m_synchronous)
     {
         render->run();
@@ -239,6 +250,9 @@ UIImage* UIImageTracker::GetShapeImage(UIShapePath *Path, const QRectF *Rect)
     ExpireImages();
 
     UIShapeRenderer *render = new UIShapeRenderer(this, image, Path, Rect->size());
+    m_outstandingImages << image;
+    image->UpRef();
+
     if (m_synchronous)
     {
         render->run();
@@ -273,6 +287,9 @@ void UIImageTracker::LoadImageFromFile(UIImage *Image)
     }
 
     UIImageLoader *loader = new UIImageLoader(this, Image);
+    m_outstandingImages << Image;
+    Image->UpRef();
+
     if (m_synchronous)
     {
         loader->run();
@@ -317,6 +334,10 @@ void UIImageTracker::UpdateImages(void)
             QImage& image = *(it.value());
             it.key()->Assign(image);
         }
+
+        it.key()->DownRef();
+        m_outstandingImages.removeAll(it.key());
+
         delete it.value();
         m_softwareCacheSize += it.key()->byteCount();
     }
