@@ -25,6 +25,7 @@
 #include <QThreadPool>
 
 // Torc
+#include "torccoreutils.h"
 #include "torclogging.h"
 #include "uiimage.h"
 #include "uifont.h"
@@ -51,7 +52,7 @@ UIImageTracker::~UIImageTracker()
     // object to notify completion.
     int count = 0;
     while (!m_outstandingImages.isEmpty() && count++ < 100)
-        usleep(50000);
+        TorcUSleep(50000);
 
     if (!m_outstandingImages.isEmpty())
         LOG(VB_GENERAL, LOG_ERR, QString("Waited for 5 seconds and %1 images still not complete").arg(m_outstandingImages.size()));
