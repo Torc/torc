@@ -82,6 +82,7 @@ class VideoColourSpace : public QObject
     float          m_contrast;
     float          m_saturation;
     float          m_hue;
+    int            m_hueOffset;
     Matrix         m_matrix;
     QList<TorcPlayer::PlayerProperty> m_supportedProperties;
 };

@@ -112,6 +112,7 @@ void Matrix::debug(void)
  *
  * \todo Return matrix data
  * \todo Double to float conversion
+ * \todo Adjust hue offset for AMD
 */
 
 QString VideoColourSpace::ColourSpaceToString(AVColorSpace ColorSpace)
@@ -142,12 +143,13 @@ VideoColourSpace::VideoColourSpace(AVColorSpace ColourSpace)
     m_brightness(0.0f),
     m_contrast(1.0f),
     m_saturation(1.0),
-    m_hue(0.0f)
+    m_hue(0.0f),
+    m_hueOffset(50)
 {
     SetBrightnessPriv(gLocalContext->GetPreference(TORC_VIDEO + "Brightness", 50), false, false);
     SetContrastPriv(gLocalContext->GetPreference(TORC_VIDEO + "Contrast", 50), false, false);
     SetSaturationPriv(gLocalContext->GetPreference(TORC_VIDEO + "Saturation", 50), false, false);
-    SetHuePriv(gLocalContext->GetPreference(TORC_VIDEO + "Hue", 0), true, false);
+    SetHuePriv(gLocalContext->GetPreference(TORC_VIDEO + "Hue", 50), true, false);
 
     m_supportedProperties << TorcPlayer::Brightness << TorcPlayer::Contrast << TorcPlayer::Saturation << TorcPlayer::Hue;
 }
@@ -189,7 +191,7 @@ QVariant VideoColourSpace::GetProperty(TorcPlayer::PlayerProperty Property)
         case TorcPlayer::Brightness:   return QVariant((int)(0.5f + ((m_brightness + 1.0f) / 0.02f)));
         case TorcPlayer::Contrast:     return QVariant((int)(0.5f + (m_contrast / 0.02f)));
         case TorcPlayer::Saturation:   return QVariant((int)(0.5f + (m_saturation / 0.02f)));
-        case TorcPlayer::Hue:          return QVariant((int)(0.5f + ((m_hue * 180.0f) / (-3.6f * M_PI))));
+        case TorcPlayer::Hue:          return QVariant((int)((0.5f + ((m_hue * 180.0f) / (-3.6f * M_PI))) + m_hueOffset));
         default: break;
     }
 
@@ -337,7 +339,7 @@ void VideoColourSpace::SetSaturationPriv(int Value, bool UpdateMatrix, bool Upda
 void VideoColourSpace::SetHuePriv(int Value, bool UpdateMatrix, bool UpdateSettings)
 {
     int value = std::max(0, std::min(Value, 100));
-    float hue = value * (-3.6f * M_PI / 180.0f);
+    float hue = (value - m_hueOffset) * (-3.6f * M_PI / 180.0f);
     bool changed = !qFuzzyCompare(hue + 1, m_hue + 1);
     m_hue = hue;
 
