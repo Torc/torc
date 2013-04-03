@@ -2,6 +2,7 @@
 #define VIDEORENDERER_H
 
 // Qt
+#include <QSet>
 #include <QRectF>
 #include <QObject>
 
@@ -39,7 +40,7 @@ class VideoRenderer : public QObject
     virtual void           RefreshFrame              (VideoFrame* Frame, const QSizeF &Size) = 0;
     virtual void           RenderFrame               (void) = 0;
     virtual bool           DisplayReset              (void);
-    QList<TorcPlayer::PlayerProperty>
+    QSet<TorcPlayer::PlayerProperty>
                            GetSupportedProperties    (void);
     AVPixelFormat          PreferredPixelFormat      (void);
     void                   PlaybackFinished          (void);
@@ -68,7 +69,7 @@ class VideoRenderer : public QObject
     bool                    m_wantHighQualityScaling;
     bool                    m_usingHighQualityScaling;
     SwsContext             *m_conversionContext;
-    QList<TorcPlayer::PlayerProperty> m_supportedProperties;
+    QSet<TorcPlayer::PlayerProperty> m_supportedProperties;
 };
 
 class RenderFactory

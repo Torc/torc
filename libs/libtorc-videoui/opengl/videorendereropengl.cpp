@@ -229,7 +229,7 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
                 bool allowHighQualityScaling = m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat);
                 if (allowHighQualityScaling && !m_supportedProperties.contains(TorcPlayer::HQScaling))
                 {
-                    m_supportedProperties.removeAll(TorcPlayer::HQScaling);
+                    m_supportedProperties.remove(TorcPlayer::HQScaling);
                     emit PropertyAvailable(TorcPlayer::HQScaling);
                 }
                 else if (!allowHighQualityScaling && m_supportedProperties.contains(TorcPlayer::HQScaling))

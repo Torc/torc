@@ -400,7 +400,7 @@ void TorcPlayer::SetPropertyUnavailable(TorcPlayer::PlayerProperty Property)
 {
     if (m_supportedProperties.contains(Property))
     {
-        m_supportedProperties.removeAll(Property);
+        m_supportedProperties.remove(Property);
         emit PropertyUnavailable(Property);
     }
 }

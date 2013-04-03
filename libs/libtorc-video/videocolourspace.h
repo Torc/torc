@@ -48,7 +48,7 @@ class VideoColourSpace : public QObject
     explicit VideoColourSpace(AVColorSpace ColourSpace);
     ~VideoColourSpace();
 
-    QList<TorcPlayer::PlayerProperty> GetSupportedProperties (void);
+    QSet<TorcPlayer::PlayerProperty> GetSupportedProperties (void);
 
     void           SetChanged           (void);
     bool           HasChanged           (void);
@@ -84,7 +84,7 @@ class VideoColourSpace : public QObject
     float          m_hue;
     int            m_hueOffset;
     Matrix         m_matrix;
-    QList<TorcPlayer::PlayerProperty> m_supportedProperties;
+    QSet<TorcPlayer::PlayerProperty> m_supportedProperties;
 };
 
 #endif // VIDEOCOLOURSPACE_H

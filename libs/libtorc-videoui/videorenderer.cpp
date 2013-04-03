@@ -116,7 +116,7 @@ bool VideoRenderer::DisplayReset(void)
     return true;
 }
 
-QList<TorcPlayer::PlayerProperty> VideoRenderer::GetSupportedProperties(void)
+QSet<TorcPlayer::PlayerProperty> VideoRenderer::GetSupportedProperties(void)
 {
     return m_supportedProperties;
 }

@@ -216,12 +216,12 @@ void VideoColourSpace::SetPropertyUnavailable(TorcPlayer::PlayerProperty Propert
 {
     if (m_supportedProperties.contains(Property))
     {
-        m_supportedProperties.removeAll(Property);
+        m_supportedProperties.remove(Property);
         emit PropertyUnavailable(Property);
     }
 }
 
-QList<TorcPlayer::PlayerProperty> VideoColourSpace::GetSupportedProperties(void)
+QSet<TorcPlayer::PlayerProperty> VideoColourSpace::GetSupportedProperties(void)
 {
     return m_supportedProperties;
 }

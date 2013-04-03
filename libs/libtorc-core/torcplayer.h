@@ -2,6 +2,7 @@
 #define TORCPLAYER_H
 
 // Qt
+#include <QSet>
 #include <QSize>
 #include <QObject>
 #include <QString>
@@ -133,7 +134,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
     TorcDecoder    *m_oldDecoder;
     int             m_oldDecoderStopTimer;
 
-    QList<PlayerProperty> m_supportedProperties;
+    QSet<PlayerProperty> m_supportedProperties;
 
 };
 

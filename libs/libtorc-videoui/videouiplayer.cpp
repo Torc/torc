@@ -74,10 +74,10 @@ VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags
     m_manualAVSyncAdjustment = gLocalContext->GetSetting(TORC_VIDEO + "AVSyncAdj", (int)0);
 
     // setup supported player properties
-    m_supportedProperties << m_colourSpace->GetSupportedProperties();
+    m_supportedProperties.unite(m_colourSpace->GetSupportedProperties());
 
     if (m_render)
-        m_supportedProperties << m_render->GetSupportedProperties();
+        m_supportedProperties.unite(m_render->GetSupportedProperties());
 
     // connect VideoColourSpace to the UI
     connect(m_colourSpace, SIGNAL(PropertyChanged(TorcPlayer::PlayerProperty,QVariant)),
