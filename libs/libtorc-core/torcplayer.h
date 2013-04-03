@@ -49,6 +49,9 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
         Saturation,
         Hue,
         HQScaling,
+        BasicDeinterlacing,
+        MediumDeinterlacing,
+        AdvancedDeinterlacing,
         // state
         Speed = 0x2000
     };
