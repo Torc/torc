@@ -730,7 +730,7 @@ bool VideoVAAPI::InitialiseContext(void)
     }
 
     // vendor
-    if (vendorstr.contains("intel", Qt::CaseInsensitive))
+    if (vendorstr.contains("intel", Qt::CaseInsensitive) || vendorstr.contains("i965", Qt::CaseInsensitive))
     {
         m_vendor = INTEL;
     }
