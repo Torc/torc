@@ -3386,7 +3386,7 @@ for thread in $THREADS_LIST; do
 done
 
 check_lib math.h sin -lm && LIBM="-lm"
-enabled vaapi && check_lib vaapi va/va.h vaInitialize -lva
+enabled vaapi && check_lib va/va.h vaInitialize -lva
 
 for func in $MATH_FUNCS; do
     check_mathfunc $func
