@@ -1853,6 +1853,7 @@ disable static
 disable doc
 enable shared
 enable x11base
+enable vaapi
 
 # Torc configurable options
 enable libcrypto
@@ -3385,7 +3386,7 @@ for thread in $THREADS_LIST; do
 done
 
 check_lib math.h sin -lm && LIBM="-lm"
-enabled vaapi && require vaapi va/va.h vaInitialize -lva
+enabled vaapi && check_lib vaapi va/va.h vaInitialize -lva
 
 for func in $MATH_FUNCS; do
     check_mathfunc $func
