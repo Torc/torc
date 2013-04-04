@@ -73,12 +73,6 @@ VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags
     m_buffers.SetDisplayFormat(m_render ? m_render->PreferredPixelFormat() : PIX_FMT_YUV420P);
     m_manualAVSyncAdjustment = gLocalContext->GetSetting(TORC_VIDEO + "AVSyncAdj", (int)0);
 
-    // setup supported player properties
-    m_supportedProperties.unite(m_colourSpace->GetSupportedProperties());
-
-    if (m_render)
-        m_supportedProperties.unite(m_render->GetSupportedProperties());
-
     // connect VideoColourSpace to the UI
     connect(m_colourSpace, SIGNAL(PropertyChanged(TorcPlayer::PlayerProperty,QVariant)),
             parent(),      SLOT(PlayerPropertyChanged(TorcPlayer::PlayerProperty,QVariant)));
@@ -102,6 +96,9 @@ VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags
                 this,          SLOT(SetPropertyAvailable(TorcPlayer::PlayerProperty)));
         connect(m_render,      SIGNAL(PropertyUnavailable(TorcPlayer::PlayerProperty)),
                 this,          SLOT(SetPropertyUnavailable(TorcPlayer::PlayerProperty)));
+
+        // initialise AFTER the signals and slots have been initialised
+        m_render->Initialise();
     }
 }
 

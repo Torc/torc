@@ -20,6 +20,7 @@ class VideoRenderDirect3D9 : public VideoRenderer
     VideoRenderDirect3D9(VideoColourSpace *ColourSpace, UIDirect3D9Window *Window);
     virtual ~VideoRenderDirect3D9();
 
+    void               Initialise           (void);
     void               RefreshFrame         (VideoFrame *Frame, const QSizeF &Size);
     void               RenderFrame          (void);
     bool               DisplayReset         (void);

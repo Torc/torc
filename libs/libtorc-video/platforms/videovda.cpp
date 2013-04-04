@@ -155,4 +155,12 @@ class VDAAcceleration : public AccelerationFactory
         return false;
     }
 
+    bool SupportedProperties(VideoFrame *Frame, QSet<TorcPlayer::PlayerProperty> &Properties)
+    {
+        // support the defaults (VDA frame is returned as a software frame)
+        (void)Frame;
+        (void)Properties;
+        return false;
+    }
+
 } VDAAcceleration;

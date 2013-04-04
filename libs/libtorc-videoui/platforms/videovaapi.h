@@ -83,6 +83,8 @@ class VideoVAAPI : public TorcReferenceCounter
     Vendor             GetVendor              (void);
     bool               CopySurfaceToTexture   (VideoFrame *Frame, VAAPISurface *Surface,
                                                GLTexture *Texture, VideoColourSpace *ColourSpace);
+    QSet<TorcPlayer::PlayerProperty>
+                       GetSupportedProperties (void);
 
   protected:
     VideoVAAPI(AVCodecContext *Context, bool OpenGL, AVPixelFormat TestFormat = AV_PIX_FMT_NONE);
@@ -99,7 +101,7 @@ class VideoVAAPI : public TorcReferenceCounter
     VAProfile          m_profile;
     Display           *m_xDisplay;
     VADisplay          m_vaDisplay;
-    bool               m_deinterlacingAvailable;
+    QSet<TorcPlayer::PlayerProperty> m_supportedProperties;
     int                m_numSurfaces;
     VASurfaceID       *m_surfaces;
     VAAPISurface      *m_surfaceData;

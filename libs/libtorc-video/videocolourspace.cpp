@@ -150,8 +150,6 @@ VideoColourSpace::VideoColourSpace(AVColorSpace ColourSpace)
     SetContrastPriv(gLocalContext->GetPreference(TORC_VIDEO + "Contrast", 50), false, false);
     SetSaturationPriv(gLocalContext->GetPreference(TORC_VIDEO + "Saturation", 50), false, false);
     SetHuePriv(gLocalContext->GetPreference(TORC_VIDEO + "Hue", 50), true, false);
-
-    m_supportedProperties << TorcPlayer::Brightness << TorcPlayer::Contrast << TorcPlayer::Saturation << TorcPlayer::Hue;
 }
 
 VideoColourSpace::~VideoColourSpace()

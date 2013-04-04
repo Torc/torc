@@ -76,11 +76,17 @@ VideoRenderDirect3D9::VideoRenderDirect3D9(VideoColourSpace *ColourSpace, UIDire
     m_rgbVideoTexture(NULL),
     m_yuvShader(NULL)
 {
+    m_defaultProperties << TorcPlayer::Brightness << TorcPlayer::Contrast << TorcPlayer::Saturation << TorcPlayer::Hue;
 }
 
 VideoRenderDirect3D9::~VideoRenderDirect3D9()
 {
     ResetOutput();
+}
+
+void VideoRenderDirect3D9::Initialise(void)
+{
+    UpdateSupportedProperties(m_defaultProperties);
 }
 
 bool VideoRenderDirect3D9::DisplayReset(void)

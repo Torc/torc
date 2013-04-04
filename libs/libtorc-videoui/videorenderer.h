@@ -37,6 +37,7 @@ class VideoRenderer : public QObject
     VideoRenderer          (VideoColourSpace *ColourSpace, UIWindow *Window);
     virtual ~VideoRenderer ();
 
+    virtual void           Initialise                (void) = 0;
     virtual void           RefreshFrame              (VideoFrame* Frame, const QSizeF &Size) = 0;
     virtual void           RenderFrame               (void) = 0;
     virtual bool           DisplayReset              (void);
@@ -52,6 +53,7 @@ class VideoRenderer : public QObject
     virtual void           ResetOutput               (void);
     void                   UpdateRefreshRate         (VideoFrame* Frame);
     bool                   UpdatePosition            (VideoFrame* Frame, const QSizeF &Size);
+    void                   UpdateSupportedProperties (const QSet<TorcPlayer::PlayerProperty> &Properties);
 
   protected:
     UIWindow               *m_window;
@@ -70,6 +72,7 @@ class VideoRenderer : public QObject
     bool                    m_usingHighQualityScaling;
     SwsContext             *m_conversionContext;
     QSet<TorcPlayer::PlayerProperty> m_supportedProperties;
+    QSet<TorcPlayer::PlayerProperty> m_defaultProperties;
 };
 
 class RenderFactory

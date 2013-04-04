@@ -329,7 +329,6 @@ VideoVAAPI::VideoVAAPI(AVCodecContext *Context, bool OpenGL, AVPixelFormat TestF
     m_profile(VAProfileMPEG2Simple),
     m_xDisplay(NULL),
     m_vaDisplay(NULL),
-    m_deinterlacingAvailable(false),
     m_numSurfaces(0),
     m_surfaces(NULL),
     m_surfaceData(NULL),
@@ -726,7 +725,7 @@ bool VideoVAAPI::InitialiseContext(void)
         if ((major > 1) || (major == 1 && minor > 0) || (major == 1 && minor == 0 && micro >= 17))
         {
             LOG(VB_GENERAL, LOG_INFO, "Deinterlacing support available in driver");
-            m_deinterlacingAvailable = true;
+            m_supportedProperties << TorcPlayer::BasicDeinterlacing;
         }
     }
 
@@ -738,7 +737,8 @@ bool VideoVAAPI::InitialiseContext(void)
     else if (vendorstr.contains("nvidia", Qt::CaseInsensitive) || vendorstr.contains("vdpau", Qt::CaseInsensitive))
     {
         m_vendor = NVIDIA;
-        m_deinterlacingAvailable = true;
+        // there's no mechanism to enable anything other than basic (bob)
+        m_supportedProperties << TorcPlayer::BasicDeinterlacing;
     }
     else if (vendorstr.contains("xvba", Qt::CaseInsensitive))
     {
@@ -761,6 +761,24 @@ bool VideoVAAPI::InitialiseContext(void)
                 .arg(attributes[i].value)
                 .arg(attributes[i].min_value)
                 .arg(attributes[i].max_value));
+
+            switch (attributes[i].type)
+            {
+                case VADisplayAttribBrightness:
+                    m_supportedProperties << TorcPlayer::Brightness;
+                    break;
+                case VADisplayAttribContrast:
+                    m_supportedProperties << TorcPlayer::Contrast;
+                    break;
+                case VADisplayAttribSaturation:
+                    m_supportedProperties << TorcPlayer::Saturation;
+                    break;
+                case VADisplayAttribHue:
+                    m_supportedProperties << TorcPlayer::Hue;
+                    break;
+                default:
+                    break;
+            }
         }
     }
     else
@@ -804,8 +822,6 @@ VideoVAAPI::Vendor VideoVAAPI::GetVendor(void)
 bool VideoVAAPI::CopySurfaceToTexture(VideoFrame *Frame, VAAPISurface *Surface,
                                       GLTexture *Texture, VideoColourSpace *ColourSpace)
 {
-    (void)ColourSpace;
-
     if (m_state == Context && m_opengl && Surface && Texture)
     {
         if (m_surfaceTexture != Texture && m_glxSurface)
@@ -835,7 +851,7 @@ bool VideoVAAPI::CopySurfaceToTexture(VideoFrame *Frame, VAAPISurface *Surface,
 
         // deinterlacing
         int flags = VA_FRAME_PICTURE;
-        if (m_deinterlacingAvailable && (Frame->m_field != VideoFrame::Frame))
+        if (m_supportedProperties.contains(TorcPlayer::BasicDeinterlacing) && (Frame->m_field != VideoFrame::Frame))
             flags = Frame->m_field == VideoFrame::TopField ? VA_TOP_FIELD : VA_BOTTOM_FIELD;
 
         // colourspace - NB no support for full range YUV or studio levels
@@ -871,6 +887,11 @@ bool VideoVAAPI::CopySurfaceToTexture(VideoFrame *Frame, VAAPISurface *Surface,
     }
 
     return false;
+}
+
+QSet<TorcPlayer::PlayerProperty> VideoVAAPI::GetSupportedProperties(void)
+{
+    return m_supportedProperties;
 }
 
 class VAAPIFactory : public AccelerationFactory
@@ -1052,6 +1073,22 @@ class VAAPIFactory : public AccelerationFactory
                         return true;
                     }
                 }
+            }
+        }
+
+        return false;
+    }
+
+    bool SupportedProperties(VideoFrame *Frame, QSet<TorcPlayer::PlayerProperty> &Properties)
+    {
+        if (Frame && Frame->m_pixelFormat == AV_PIX_FMT_VAAPI_VLD &&
+            Frame->m_acceleratedBuffer && VideoVAAPI::VAAPIAvailable(true))
+        {
+            VAAPISurface *vaapi = (VAAPISurface*)Frame->m_acceleratedBuffer;
+            if (vaapi && vaapi->m_owner)
+            {
+                Properties.unite(vaapi->m_owner->GetSupportedProperties());
+                return true;
             }
         }
 

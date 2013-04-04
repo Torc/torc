@@ -159,14 +159,24 @@ VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGL
     m_rgbShader(0),
     m_bicubicShader(0)
 {
-    m_rgbVideoTextureFormat   = m_openglWindow->GetRectTextureType();
-    if (m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat))
-        m_supportedProperties << TorcPlayer::HQScaling;
+    m_defaultProperties << TorcPlayer::Brightness << TorcPlayer::Contrast << TorcPlayer::Saturation << TorcPlayer::Hue;
 }
 
 VideoRendererOpenGL::~VideoRendererOpenGL()
 {
     ResetOutput();
+}
+
+void VideoRendererOpenGL::Initialise(void)
+{
+    m_rgbVideoTextureFormat = m_openglWindow->GetRectTextureType();
+
+    QSet<TorcPlayer::PlayerProperty> properties = m_defaultProperties;
+
+    if (m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat))
+        properties << TorcPlayer::HQScaling;
+
+    UpdateSupportedProperties(properties);
 }
 
 void VideoRendererOpenGL::ResetOutput(void)
@@ -213,6 +223,7 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
 
             if (Frame->m_pixelFormat != m_lastInputFormat)
             {
+                // agree custom surface format for hardware acceleration
                 int customformat = 0;
                 AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
                 for ( ; factory; factory = factory->NextFactory())
@@ -221,22 +232,28 @@ void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
                         break;
                 }
 
-                if (customformat != 0)
-                    m_rgbVideoTextureFormat = customformat;
-                else
-                    m_rgbVideoTextureFormat = m_openglWindow->GetRectTextureType();
+                m_rgbVideoTextureFormat = customformat != 0 ? customformat : m_openglWindow->GetRectTextureType();
 
-                bool allowHighQualityScaling = m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat);
-                if (allowHighQualityScaling && !m_supportedProperties.contains(TorcPlayer::HQScaling))
+                QSet<TorcPlayer::PlayerProperty> properties;
+                if (m_openglWindow->IsRectTexture(m_rgbVideoTextureFormat))
+                    properties << TorcPlayer::HQScaling;
+
+                // agree supported render properties for hardware acceleration
+                bool customproperties = false;
+                factory = AccelerationFactory::GetAccelerationFactory();
+                for ( ; factory; factory = factory->NextFactory())
                 {
-                    m_supportedProperties.remove(TorcPlayer::HQScaling);
-                    emit PropertyAvailable(TorcPlayer::HQScaling);
+                    if (factory->SupportedProperties(Frame, properties))
+                    {
+                        customproperties = true;
+                        break;
+                    }
                 }
-                else if (!allowHighQualityScaling && m_supportedProperties.contains(TorcPlayer::HQScaling))
-                {
-                    m_supportedProperties << TorcPlayer::HQScaling;
-                    emit PropertyUnavailable(TorcPlayer::HQScaling);
-                }
+
+                if (!customproperties)
+                    properties.unite(m_defaultProperties);
+
+               UpdateSupportedProperties(properties);
             }
         }
 

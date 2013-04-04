@@ -37,6 +37,7 @@
  *
  * \todo Handle frame rate doubling for interlaced material
  * \todo Extend positioning for zoom etc
+ * \todo Remove ColourPropertyAvailable/Unavailable signals (but need to prevent double signal to UI)
 */
 
 VideoRenderer::VideoRenderer(VideoColourSpace *ColourSpace, UIWindow *Window)
@@ -201,6 +202,42 @@ bool VideoRenderer::UpdatePosition(VideoFrame* Frame, const QSizeF &Size)
     }
 
     return changed;
+}
+
+void VideoRenderer::UpdateSupportedProperties(const QSet<TorcPlayer::PlayerProperty> &Properties)
+{
+    QSet<TorcPlayer::PlayerProperty> removed = m_supportedProperties- Properties;
+    QSet<TorcPlayer::PlayerProperty> added   = Properties - m_supportedProperties;
+
+    foreach (TorcPlayer::PlayerProperty property, removed)
+    {
+        m_supportedProperties.remove(property);
+
+        if (property == TorcPlayer::Brightness || property == TorcPlayer::Contrast ||
+            property == TorcPlayer::Saturation || property == TorcPlayer::Hue)
+        {
+            emit ColourPropertyUnavailable(property);
+        }
+        else
+        {
+            emit PropertyUnavailable(property);
+        }
+    }
+
+    foreach (TorcPlayer::PlayerProperty property, added)
+    {
+        m_supportedProperties.insert(property);
+
+        if (property == TorcPlayer::Brightness || property == TorcPlayer::Contrast ||
+            property == TorcPlayer::Saturation || property == TorcPlayer::Hue)
+        {
+            emit ColourPropertyAvailable(property);
+        }
+        else
+        {
+            emit PropertyAvailable(property);
+        }
+    }
 }
 
 VideoRenderer* VideoRenderer::Create(VideoColourSpace *ColourSpace)
