@@ -1406,9 +1406,6 @@ bool UIWidget::Connect(const QString &Sender, const QString &Signal,
         return false;
     }
 
-    // FIXME - move to QMetaMethod in Qt 4.8
-    signal = "2" + signal;
-
     UIWidget* receiver = Receiver.isEmpty() ? this : FindWidget(Receiver);
     if (!receiver)
     {
@@ -1421,7 +1418,6 @@ bool UIWidget::Connect(const QString &Sender, const QString &Signal,
         LOG(VB_GENERAL, LOG_ERR, "Trying to send signal to template.");
         return false;
     }
-
 
     QByteArray slot = Slot.trimmed().toLatin1() + "()";
 
@@ -1438,7 +1434,7 @@ bool UIWidget::Connect(const QString &Sender, const QString &Signal,
                 QScriptValue receivervalue = engine->globalObject().property(receiver->objectName());
                 // Should this check isObject or isQObject as well?
                 if (receivervalue.isValid())
-                    return qScriptConnect(sender, signal, receivervalue, function);
+                    return qScriptConnect(sender, "2" + signal, receivervalue, function);
             }
 
             LOG(VB_GENERAL, LOG_ERR, QString("No script function named '%1'")
@@ -1450,10 +1446,7 @@ bool UIWidget::Connect(const QString &Sender, const QString &Signal,
         return false;
     }
 
-    // FIXME - move to QMetaMethod in Qt 4.8
-    slot = "1" + slot;
-
-    return connect(sender, signal, receiver, slot);
+    return connect(sender, sender->metaObject()->method(signalidx), receiver, receiver->metaObject()->method(slotidx));
 }
 
 void UIWidget::AutoConnect(void)
