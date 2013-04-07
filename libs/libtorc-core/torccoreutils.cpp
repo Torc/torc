@@ -20,6 +20,9 @@
 * USA.
 */
 
+// Qt
+#include <QStringList>
+
 // Std
 #include <time.h>
 #include <errno.h>
@@ -77,4 +80,20 @@ void TorcUSleep(int USecs)
 #elif HAVE_SLEEP
     Sleep(USecs / 1000);
 #endif
+}
+
+QString EnumsToScript(const QMetaObject &MetaObject)
+{
+    QString name   = MetaObject.className();
+    QString result = QString("%1 = new Object();\n").arg(name);
+
+    for (int i = 0; i < MetaObject.enumeratorCount(); ++i)
+    {
+        QMetaEnum metaenum = MetaObject.enumerator(i);
+
+        for (int j = 0; j < metaenum.keyCount(); ++j)
+            result += QString("%1.%2 = %3;\n").arg(name).arg(metaenum.key(j)).arg(metaenum.value(j));
+    }
+
+    return result;
 }

@@ -25,6 +25,7 @@
 #include <QDomElement>
 
 // Torc
+#include "torccoreutils.h"
 #include "torclogging.h"
 #include "torclocalcontext.h"
 #include "torcplayer.h"
@@ -150,17 +151,13 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
             factory->RegisterConstructor(m_engine);
 
         // register Qt:: ('Qt')
-        QScriptValue Qt = m_engine->newQMetaObject(&this->staticQtMetaObject);
-        m_engine->globalObject().setProperty("Qt", Qt);
+        AddScriptProperty(QString("Qt"), EnumsToScript(this->staticQtMetaObject));
 
         // register Torc:: ('Torc')
-        QScriptValue torc = m_engine->newQMetaObject(&Torc::staticMetaObject);
-        m_engine->globalObject().setProperty("Torc", torc);
+        AddScriptProperty(QString("Torc"), EnumsToScript(Torc::staticMetaObject));
 
         // register TorcPlayer:: ('TorcPlayer') for PlayerProperty
-        // add TorcPlayer statics to script environment
-        QScriptValue torcplayer = m_engine->newQMetaObject(&TorcPlayer::staticMetaObject);
-        m_engine->globalObject().setProperty("TorcPlayer", torcplayer);
+        AddScriptProperty(QString("TorcPlayer"), EnumsToScript(TorcPlayer::staticMetaObject));
 
         // register the log function ('Log')
         QScriptValue log = m_engine->newFunction(ScriptDebug);
