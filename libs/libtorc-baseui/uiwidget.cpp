@@ -58,14 +58,9 @@ static QScriptValue UIWidgetConstructor(QScriptContext *context, QScriptEngine *
     return WidgetConstructor<UIWidget>(context, engine);
 }
 
-static QScriptValue ScriptDebug(QScriptContext *context, QScriptEngine *engine)
+void UIWidget::ScriptLog(const QString &Message)
 {
-    QString message;
-    for (int i = 0; i < context->argumentCount(); ++i)
-        message.append(context->argument(i).toString());
-
-    LOG(VB_GENERAL, LOG_INFO, message);
-    return engine->undefinedValue();
+    LOG(VB_GENERAL, LOG_INFO, Message);
 }
 
 int UIWidget::RegisterWidgetType(void)
@@ -124,12 +119,7 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
     setObjectName(Name);
     RegisterWidget(this);
 
-    // register as child
-    if (m_parent)
-    {
-        m_parent->AddChild(this);
-    }
-    else
+    if (!m_parent)
     {
         // no parent, must be root
         LOG(VB_GENERAL, LOG_INFO, "Creating root widget with script engine.");
@@ -159,13 +149,19 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
         // register TorcPlayer:: ('TorcPlayer') for PlayerProperty
         AddScriptProperty(QString("TorcPlayer"), EnumsToScript(TorcPlayer::staticMetaObject));
 
-        // register the log function ('Log')
-        QScriptValue log = m_engine->newFunction(ScriptDebug);
-        m_engine->globalObject().setProperty("Log", log);
-    }
+        // add this widget to the script environment
+        AddScriptObject(this);
 
-    // add this widget to the script environment
-    AddScriptObject(this);
+        // register 'Log' function
+        m_engine->globalObject().setProperty(QString("Log"), m_engine->globalObject().property(objectName()).property("ScriptLog"));
+    }
+    else
+    {
+        m_parent->AddChild(this);
+
+        // add this widget to the script environment
+        AddScriptObject(this);
+    }
 }
 
 UIWidget::~UIWidget()

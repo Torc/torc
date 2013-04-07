@@ -131,6 +131,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     int             GetCentre           (void);
     qreal           GetHorizontalReflection (void);
     qreal           GetVerticalReflection   (void);
+    void            ScriptLog           (const QString &Message);
 
     void            SetEnabled          (bool    Enabled);
     void            SetVisible          (bool    Visible);
