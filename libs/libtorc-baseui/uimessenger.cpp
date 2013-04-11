@@ -56,9 +56,9 @@ bool UIMessenger::Finalise(void)
     if (m_template)
         return true;
 
-    m_messageTemplate = FindChildByName(objectName() + "_template");
+    m_messageTemplate = FindChildByName("template");
 
-    UIWidget *group = FindChildByName(objectName() + "_group");
+    UIWidget *group = FindChildByName("group");
     if (group && group->Type() == UIGroup::kUIGroupType)
         m_messageGroup = dynamic_cast<UIGroup*>(group);
 
@@ -128,7 +128,7 @@ bool UIMessenger::event(QEvent *Event)
         message->CopyFrom(m_messageTemplate);
 
         // make sure the widget is deleted when it's been displayed
-        UIWidget *deactivated = message->FindChildByName(name + "_Deactivated");
+        UIWidget *deactivated = message->FindChildByName("Deactivated");
         if (deactivated)
             message->Connect(name + "_Deactivated", "Finished", name, "Close");
         else

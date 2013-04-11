@@ -1150,9 +1150,11 @@ UIWidget* UIWidget::FindWidget(const QString &Name)
 
 UIWidget* UIWidget::FindChildByName(const QString &Name, bool Recursive)
 {
+    QString name = !m_parent ? Name : objectName() + "_" + Name;
+
     foreach (UIWidget* child, m_children)
     {
-        if (child->objectName() == Name)
+        if (child->objectName() == name)
             return child;
 
         if (Recursive)

@@ -95,7 +95,7 @@ bool UIButton::Finalise(void)
     if (m_template)
         return true;
 
-    UIWidget* child = FindChildByName(objectName() + "_text");
+    UIWidget* child = FindChildByName("text");
 
     if (child && child->Type() == UIText::kUITextType)
     {

@@ -171,14 +171,14 @@ bool UITextEditor::Finalise(void)
 
     if (!m_textWidget)
     {
-        UIWidget *text = FindChildByName(objectName() + "_text");
+        UIWidget *text = FindChildByName("text");
         if (text && text->Type() == UIText::kUITextType)
             m_textWidget = static_cast<UIText*>(text);
     }
 
     if (!m_cursor && m_textWidget)
     {
-        m_cursor = FindChildByName(objectName() + "_text_cursor", true);
+        m_cursor = FindChildByName("cursor", true);
         if (m_cursor)
         {
             connect(this, SIGNAL(Selected()),   m_cursor, SLOT(Show()));

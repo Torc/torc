@@ -154,17 +154,17 @@ bool TenfootClock::Finalise(void)
         return true;
 
     if (!m_secondHand)
-        m_secondHand = FindChildByName(objectName() + "_secondhand");
+        m_secondHand = FindChildByName("secondhand");
 
     if (!m_minuteHand)
-        m_minuteHand = FindChildByName(objectName() + "_minutehand");
+        m_minuteHand = FindChildByName("minutehand");
 
     if (!m_hourHand)
-        m_hourHand = FindChildByName(objectName() + "_hourhand");
+        m_hourHand = FindChildByName("hourhand");
 
     if (!m_text)
     {
-        UIWidget *text = FindChildByName(objectName() + "_text");
+        UIWidget *text = FindChildByName("text");
         if (text && text->Type() == UIText::kUITextType)
             m_text = dynamic_cast<UIText*>(text);
     }
