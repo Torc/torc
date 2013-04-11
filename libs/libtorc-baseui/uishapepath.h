@@ -2,6 +2,7 @@
 #define UISHAPEPATH_H
 
 // Qt
+#include <QObject>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
@@ -27,8 +28,10 @@ class UIPath
     int           m_blur;
 };
 
-class UIShapePath : public TorcReferenceCounter
+class UIShapePath : public QObject, public TorcReferenceCounter
 {
+    Q_OBJECT
+
   public:
     UIShapePath(UIWidget *Parent);
     virtual ~UIShapePath();

@@ -37,7 +37,8 @@ UIPath::UIPath()
 }
 
 UIShapePath::UIShapePath(UIWidget *Parent)
-  : TorcReferenceCounter(),
+  : QObject(),
+    TorcReferenceCounter(),
     m_parent(Parent),
     m_currentIndex(-1),
     m_finalised(false),
@@ -356,7 +357,7 @@ bool UIShapePath::ParsePath(QDomElement *Element)
 
             if (!styles.isEmpty())
             {
-                const QMetaObject &mo = m_parent->staticQtMetaObject;
+                const QMetaObject &mo = staticQtMetaObject;
                 int enum_index        = mo.indexOfEnumerator("PenStyle");
                 QMetaEnum metaEnum    = mo.enumerator(enum_index);
                 SetPenStyle(metaEnum.keyToValue(styles.toLatin1()));
