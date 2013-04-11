@@ -15,9 +15,10 @@ class UIGroup : public UIWidget
     UIGroup(UIWidget *Root, UIWidget* Parent, const QString &Name, int Flags);
     virtual         ~UIGroup();
     bool            HandleAction      (int       Action);
-    void            CopyFrom          (UIWidget *Other);
+    virtual UIWidget* CreateCopy      (UIWidget *Parent, const QString &Newname = QString(""));
+    virtual void    CopyFrom          (UIWidget *Other);
     bool            Draw              (quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal YOffset);
-    bool            Finalise          (void);
+    virtual bool    Finalise          (void);
     bool            AutoSelectFocusWidget (int Index);
 
     Q_PROPERTY      (int   grouptype   READ GetGroupType      WRITE SetType)
@@ -50,7 +51,6 @@ class UIGroup : public UIWidget
 
   protected:
     virtual bool    InitialisePriv    (QDomElement *Element);
-    virtual void    CreateCopy        (UIWidget *Parent);
     void            Validate          (void);
     UIWidget*       FirstFocusWidget  (void);
     UIWidget*       LastFocusWidget   (void);

@@ -15,11 +15,12 @@ class UIMessenger : public UIWidget
     UIMessenger(UIWidget *Root, UIWidget* Parent, const QString &Name, int Flags);
     virtual         ~UIMessenger();
 
+    UIWidget*       CreateCopy         (UIWidget *Parent, const QString &Newname = QString(""));
     bool            Finalise           (void);
 
   protected:
     bool            event              (QEvent      *Event);
-    void            CreateCopy         (UIWidget *Parent);
+
 
   private:
     QMap<int,UIWidget*> m_timeouts;

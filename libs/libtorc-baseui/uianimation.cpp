@@ -124,12 +124,13 @@ void UIAnimation::CopyFrom(UIWidget *Other)
     UIWidget::CopyFrom(Other);
 }
 
-void UIAnimation::CreateCopy(UIWidget* Parent)
+UIWidget* UIAnimation::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
     UIAnimation* animation = new UIAnimation(m_rootParent, Parent,
-                                             GetDerivedWidgetName(Parent->objectName()),
+                                             Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
                                              WidgetFlagNone);
     animation->CopyFrom(this);
+    return animation;
 }
 
 void UIAnimation::CopyAnimation(QAbstractAnimation *Parent, QAbstractAnimation *Other)

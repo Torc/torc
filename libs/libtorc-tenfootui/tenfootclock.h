@@ -24,6 +24,7 @@ class TenfootClock : public UIWidget
     virtual bool Refresh        (quint64 TimeNow);
     virtual bool DrawSelf       (UIWindow* Window, qreal XOffset, qreal YOffset);
     virtual bool Finalise       (void);
+    virtual UIWidget* CreateCopy (UIWidget *Parent, const QString &Newname = QString(""));
     virtual void CopyFrom       (UIWidget *Other);
 
   public slots:
@@ -32,7 +33,6 @@ class TenfootClock : public UIWidget
 
   protected:
     virtual bool InitialisePriv (QDomElement *Element);
-    virtual void CreateCopy     (UIWidget *Parent);
 
   protected:
     bool         m_smooth;

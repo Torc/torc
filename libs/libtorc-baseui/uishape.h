@@ -15,6 +15,7 @@ class UIShape : public UIWidget
     virtual ~UIShape();
 
     virtual     bool  DrawSelf          (UIWindow* Window, qreal XOffset, qreal YOffset);
+    virtual     UIWidget* CreateCopy    (UIWidget *Parent, const QString &Newname = QString(""));
     virtual     void  CopyFrom          (UIWidget *Other);
 
     Q_INVOKABLE void  ClosePath         (void);
@@ -50,7 +51,6 @@ class UIShape : public UIWidget
   protected:
     // UIWidget
     virtual     bool  InitialisePriv    (QDomElement *Element);
-    virtual     void  CreateCopy        (UIWidget *Parent);
 
     UIShapePath*      GetPath           (void);
 

@@ -1013,12 +1013,15 @@ void UIWidget::CopyFrom(UIWidget *Other)
     Finalise();
 }
 
-void UIWidget::CreateCopy(UIWidget* Parent)
+
+UIWidget* UIWidget::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
+
     UIWidget* widget = new UIWidget(m_rootParent, Parent,
-                                    GetDerivedWidgetName(Parent->objectName()),
+                                    Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
                                     WidgetFlagNone);
     widget->CopyFrom(this);
+    return widget;
 }
 
 QString UIWidget::GetDerivedWidgetName(const QString &NewParentName)

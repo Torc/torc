@@ -89,12 +89,13 @@ void TenfootClock::CopyFrom(UIWidget *Other)
     UIWidget::CopyFrom(Other);
 }
 
-void TenfootClock::CreateCopy(UIWidget* Parent)
+UIWidget* TenfootClock::CreateCopy(UIWidget* Parent, const QString &Newname)
 {
     TenfootClock* clock = new TenfootClock(m_rootParent, Parent,
-                                           GetDerivedWidgetName(Parent->objectName()),
+                                           Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
                                            WidgetFlagNone);
     clock->CopyFrom(this);
+    return clock;
 }
 
 bool TenfootClock::Refresh(quint64 TimeNow)

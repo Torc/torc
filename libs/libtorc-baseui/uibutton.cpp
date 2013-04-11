@@ -151,12 +151,13 @@ void UIButton::CopyFrom(UIWidget *Other)
     UIWidget::CopyFrom(Other);
 }
 
-void UIButton::CreateCopy(UIWidget *Parent)
+UIWidget* UIButton::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
     UIButton* button = new UIButton(m_rootParent, Parent,
-                                    GetDerivedWidgetName(Parent->objectName()),
+                                    Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
                                     WidgetFlagNone);
     button->CopyFrom(this);
+    return button;
 }
 
 void UIButton::AutoConnect(void)

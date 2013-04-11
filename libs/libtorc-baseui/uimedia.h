@@ -15,6 +15,7 @@ class UIMedia : public UIWidget, public TorcPlayerInterface
     virtual         ~UIMedia();
 
     bool            HandleAction              (int Action);
+    UIWidget*       CreateCopy                (UIWidget *Parent, const QString &Newname = QString(""));
     void            CopyFrom                  (UIWidget *Other);
     bool            Refresh                   (quint64 TimeNow);
     bool            Finalise                  (void);
@@ -45,7 +46,6 @@ class UIMedia : public UIWidget, public TorcPlayerInterface
     bool            DrawSelf                  (UIWindow* Window, qreal XOffset, qreal YOffset);
     bool            event                     (QEvent      *Event);
     bool            InitialisePriv            (QDomElement *Element);
-    void            CreateCopy                (UIWidget *Parent);
 
   private:
     Q_DISABLE_COPY(UIMedia);

@@ -44,6 +44,8 @@ UIMedia::UIMedia(UIWidget *Root, UIWidget *Parent, const QString &Name, int Flag
         m_parent->IncreaseFocusableChildCount();
 
     gLocalContext->AddObserver(this);
+
+    SetURI("/Users/mark/Dropbox/Videos/test3.mpg");
 }
 
 UIMedia::~UIMedia()
@@ -146,12 +148,13 @@ bool UIMedia::event(QEvent *Event)
     return false;
 }
 
-void UIMedia::CreateCopy(UIWidget *Parent)
+UIWidget* UIMedia::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
     UIMedia* media = new UIMedia(m_rootParent, Parent,
-                                 GetDerivedWidgetName(Parent->objectName()),
+                                 Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
                                  WidgetFlagFocusable);
     media->CopyFrom(this);
+    return media;
 }
 
 QVariant UIMedia::GetProperty(int Property)

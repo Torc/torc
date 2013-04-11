@@ -19,6 +19,7 @@ class TORC_BASEUI_PUBLIC UIButton : public UIWidget
 
     virtual bool   Finalise         (void);
     virtual bool   HandleAction     (int Action);
+    UIWidget*      CreateCopy       (UIWidget *Parent, const QString &Newname = QString(""));
     virtual void   CopyFrom         (UIWidget *Other);
 
     Q_PROPERTY    (bool    m_pushed READ IsPushed WRITE SetPushed)
@@ -45,7 +46,6 @@ class TORC_BASEUI_PUBLIC UIButton : public UIWidget
 
   protected:
     bool           InitialisePriv   (QDomElement *Element);
-    void           CreateCopy       (UIWidget *Parent);
     virtual void   AutoConnect      (void);
 
   protected:

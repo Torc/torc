@@ -68,12 +68,13 @@ bool UIMessenger::Finalise(void)
     return UIWidget::Finalise();
 }
 
-void UIMessenger::CreateCopy(UIWidget *Parent)
+UIWidget* UIMessenger::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
     UIMessenger* messenger = new UIMessenger(m_rootParent, Parent,
-                                             GetDerivedWidgetName(Parent->objectName()),
+                                             Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
                                              WidgetFlagNone);
     messenger->CopyFrom(this);
+    return messenger;
 }
 
 bool UIMessenger::event(QEvent *Event)

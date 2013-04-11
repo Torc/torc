@@ -20,6 +20,7 @@ class TORC_BASEUI_PUBLIC UIText : public UIWidget
     virtual bool DrawSelf    (UIWindow* Window, qreal XOffset, qreal YOffset);
     virtual bool Finalise    (void);
     virtual void CopyFrom    (UIWidget *Other);
+    virtual UIWidget* CreateCopy (UIWidget *Parent, const QString &Newname = QString(""));
 
     Q_PROPERTY  (QString text  READ GetText  WRITE SetText)
     Q_PROPERTY  (QString font  READ GetFont  WRITE SetFont)
@@ -39,7 +40,6 @@ class TORC_BASEUI_PUBLIC UIText : public UIWidget
 
   protected:
     virtual bool InitialisePriv (QDomElement *Element);
-    virtual void CreateCopy     (UIWidget *Parent);
 
     void         UpdateFont     (void);
 

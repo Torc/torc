@@ -118,12 +118,13 @@ void UIShape::CopyFrom(UIWidget *Other)
     UIWidget::CopyFrom(Other);
 }
 
-void UIShape::CreateCopy(UIWidget* Parent)
+UIWidget* UIShape::CreateCopy(UIWidget* Parent, const QString &Newname)
 {
     UIShape* shape = new UIShape(m_rootParent, Parent,
-                                 GetDerivedWidgetName(Parent->objectName()),
+                                 Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
                                  WidgetFlagNone);
     shape->CopyFrom(this);
+    return shape;
 }
 
 void UIShape::ClosePath(void)

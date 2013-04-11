@@ -19,6 +19,7 @@ class TORC_BASEUI_PUBLIC UIAnimation : public UIWidget
     static    int              kUIAnimationType;
     UIAnimation(UIWidget *Root, UIWidget *Parent, const QString &Name, int Flags);
     virtual ~UIAnimation();
+    UIWidget* CreateCopy       (UIWidget *Parent, const QString &Newname = QString(""));
     virtual   void             CopyFrom (UIWidget *Other);
     virtual   bool             Finalise (void);
 
@@ -34,7 +35,6 @@ class TORC_BASEUI_PUBLIC UIAnimation : public UIWidget
 
   protected:
     bool      InitialisePriv   (QDomElement *Element);
-    void      CreateCopy       (UIWidget *Parent);
     void      CopyAnimation    (QAbstractAnimation *Parent, QAbstractAnimation *Other);
 
 

@@ -17,6 +17,7 @@ class UIImageWidget : public UIWidget
 
     // UIWidget
     virtual bool DrawSelf       (UIWindow* Window, qreal XOffset, qreal YOffset);
+    virtual UIWidget* CreateCopy (UIWidget *Parent, const QString &Newname = QString(""));
     virtual void CopyFrom       (UIWidget *Other);
 
     Q_PROPERTY  (QString file READ GetFile WRITE SetFile)
@@ -27,8 +28,6 @@ class UIImageWidget : public UIWidget
 
   protected:
     virtual bool InitialisePriv (QDomElement *Element);
-    virtual void CreateCopy     (UIWidget *Parent);
-
     void         UpdateFile(void);
 
   protected:

@@ -264,13 +264,13 @@ void UITextEditor::CopyFrom(UIWidget *Other)
     UIWidget::CopyFrom(Other);
 }
 
-void UITextEditor::CreateCopy(UIWidget *Parent)
+UIWidget* UITextEditor::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
     UITextEditor* text = new UITextEditor(m_rootParent, Parent,
-                                          GetDerivedWidgetName(Parent->objectName()),
+                                          Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
                                           WidgetFlagNone);
     text->CopyFrom(this);
-
+    return text;
 }
 
 bool UITextEditor::InitialisePriv(QDomElement *Element)

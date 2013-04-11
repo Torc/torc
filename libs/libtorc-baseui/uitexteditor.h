@@ -22,6 +22,7 @@ class TORC_BASEUI_PUBLIC UITextEditor : public UIWidget
     bool     HandleAction     (int Action);
     bool     HandleTextInput  (QKeyEvent *Event);
     bool     Finalise         (void);
+    UIWidget* CreateCopy      (UIWidget *Parent, const QString &Newname = QString(""));
     void     CopyFrom         (UIWidget *Other);
 
   public slots:
@@ -34,7 +35,6 @@ class TORC_BASEUI_PUBLIC UITextEditor : public UIWidget
 
   protected:
     bool     InitialisePriv   (QDomElement *Element);
-    void     CreateCopy       (UIWidget *Parent);
     void     UpdateCursor     (void);
 
   protected:

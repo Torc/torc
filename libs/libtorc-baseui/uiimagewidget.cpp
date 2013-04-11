@@ -110,12 +110,13 @@ void UIImageWidget::CopyFrom(UIWidget *Other)
     UIWidget::CopyFrom(Other);
 }
 
-void UIImageWidget::CreateCopy(UIWidget* Parent)
+UIWidget* UIImageWidget::CreateCopy(UIWidget* Parent, const QString &Newname)
 {
     UIImageWidget* image = new UIImageWidget(m_rootParent, Parent,
-                                             GetDerivedWidgetName(Parent->objectName()),
+                                             Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
                                              WidgetFlagNone);
     image->CopyFrom(this);
+    return image;
 }
 
 bool UIImageWidget::DrawSelf(UIWindow *Window, qreal XOffset, qreal YOffset)

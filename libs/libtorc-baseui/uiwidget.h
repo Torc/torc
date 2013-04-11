@@ -66,6 +66,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     int             GetDirection        (void);
     void            SetDirection        (int Direction);
     virtual bool    HandleAction        (int       Action);
+    virtual UIWidget* CreateCopy        (UIWidget *Parent, const QString &Newname = QString(""));
     virtual void    CopyFrom            (UIWidget *Other);
     UIWidget*       GetRootWidget       (void);
     int             Type                (void);
@@ -189,7 +190,6 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
   protected:
     virtual bool    DrawSelf            (UIWindow* Window, qreal XOffset, qreal YOffset);
     virtual bool    InitialisePriv      (QDomElement *Element);
-    virtual void    CreateCopy          (UIWidget *Parent);
     QString         GetDerivedWidgetName(const QString &NewParentName);
     void            AddChild            (UIWidget *Widget);
     void            RemoveChild         (UIWidget *Widget);
