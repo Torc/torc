@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -29,6 +29,14 @@
 #include "uigroup.h"
 #include "uitext.h"
 #include "uimessenger.h"
+
+#define MESSAGE_TYPE_ERROR    QString("MESSAGETYPEERROR")
+#define MESSAGE_TYPE_WARNING  QString("MESSAGETYPEWARNING")
+#define MESSAGE_TYPE_CRITICAL QString("MESSAGETYPECRITICAL")
+#define MESSAGE_TYPE_EXTERNAL QString("MESSAGETYPEEXTERNAL")
+#define MESSAGE_TYPE_INTERNAL QString("MESSAGETYPEINTERNAL")
+#define MESSAGE_HEADER        QString("MESSAGEHEADER")
+#define MESSAGE_BODY          QString("MESSAGEBODY")
 
 int UIMessenger::kUIMessengerType = UIWidget::RegisterWidgetType();
 
@@ -123,10 +131,8 @@ bool UIMessenger::event(QEvent *Event)
         if (header.isEmpty() && body.isEmpty())
             return false;
 
-        QString name = QString("%1_%2").arg(objectName()).arg(uuid);
-        UIWidget *message = new UIWidget(m_rootParent, m_messageGroup,
-                                         name, WidgetFlagNone);
-        message->CopyFrom(m_messageTemplate);
+        QString name = objectName() + "_" + uuid;
+        UIWidget *message = m_messageTemplate->CreateCopy(m_messageGroup, name);
 
         // make sure the widget is deleted when it's been displayed
         UIWidget *deactivated = message->FindChildByName("Deactivated");
@@ -138,30 +144,30 @@ bool UIMessenger::event(QEvent *Event)
         QString widget;
         switch (type)
         {
-            case Torc::GenericError:    widget = "_error";    break;
-            case Torc::GenericWarning:  widget = "_warning";  break;
-            case Torc::CriticalError:   widget = "_critical"; break;
-            case Torc::ExternalMessage: widget = "_external"; break;
-            default:                    widget = "_internal"; break;
+            case Torc::GenericError:    widget = MESSAGE_TYPE_ERROR;    break;
+            case Torc::GenericWarning:  widget = MESSAGE_TYPE_WARNING;  break;
+            case Torc::CriticalError:   widget = MESSAGE_TYPE_CRITICAL; break;
+            case Torc::ExternalMessage: widget = MESSAGE_TYPE_EXTERNAL; break;
+            default:                    widget = MESSAGE_TYPE_INTERNAL; break;
         }
 
-        UIWidget *typewidget = FindWidget(message->objectName() + widget);
-        if (!typewidget && widget != "_internal")
-            typewidget = FindWidget(message->objectName() + "_internal");
+        UIWidget *typewidget = message->FindChildByName(widget, true);
+        if (!typewidget && widget != MESSAGE_TYPE_INTERNAL)
+            typewidget = FindChildByName(MESSAGE_TYPE_INTERNAL);
 
         if (typewidget)
             typewidget->Show();
 
         if (!header.isEmpty())
         {
-            UIWidget *headerwidget = FindWidget(message->objectName() + "_header");
+            UIWidget *headerwidget = FindChildByName(MESSAGE_HEADER, true);
             if (headerwidget && headerwidget->Type() == UIText::kUITextType)
                 dynamic_cast<UIText*>(headerwidget)->SetText(header);
         }
 
         if (!body.isEmpty())
         {
-            UIWidget *bodywidget   = FindWidget(message->objectName() + "_body");
+            UIWidget *bodywidget   = FindChildByName(MESSAGE_BODY, true);
             if (bodywidget && bodywidget->Type() == UIText::kUITextType)
                 dynamic_cast<UIText*>(bodywidget)->SetText(body);
         }
