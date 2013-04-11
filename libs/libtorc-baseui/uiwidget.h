@@ -26,12 +26,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
 {
     Q_OBJECT
 
-    friend class UITheme;
-    friend class TenfootTheme;
-    friend class UIShapePath;
     friend class UIGroup;
-    friend class UIMessenger;
-    friend class UITextEditor;
 
   public:
     enum WidgetFlags
@@ -56,6 +51,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     void            AddFont             (const QString &FontName, UIFont* Font);
     UIFont*         GetFont             (const QString &FontName);
     UIWidget*       FindWidget          (const QString &Name);
+    UIWidget*       FindChildByName     (const QString &Name, bool Recursive = false);
     virtual bool    AutoSelectFocusWidget (int Index);
     UIWidget*       GetFocusWidget      (void);
     void            SetLastChildWithFocus (UIWidget *Widget);
@@ -73,6 +69,10 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     void            SetAsTemplate       (bool Template);
     bool            IsTemplate          (void);
     bool            IsDecoration        (void);
+    qreal           GetXScale           (void);
+    qreal           GetYScale           (void);
+    bool            Connect             (const QString &Sender, const QString &Signal,
+                                         const QString &Receiver, const QString &Slot);
 
     // Theme parsing
     static bool     ParseWidget         (UIWidget *Root, UIWidget *Parent, QDomElement *Element);
@@ -195,10 +195,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     void            RemoveChild         (UIWidget *Widget);
     void            RegisterWidget      (UIWidget *Widget);
     void            DeregisterWidget    (UIWidget *Widget);
-    UIWidget*       FindChildByName     (const QString &Name, bool Recursive = false);
 
-    bool            Connect             (const QString &Sender, const QString &Signal,
-                                         const QString &Receiver, const QString &Slot);
     virtual void    AutoConnect         (void);
 
     QScriptEngine*  GetScriptEngine     (void);
@@ -209,8 +206,6 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
 
     void            Debug               (int Depth = 0);
     void            SetScaledPosition   (const QPointF &Position);
-    qreal           GetXScale           (void);
-    qreal           GetYScale           (void);
 
   protected:
     int             m_type;
