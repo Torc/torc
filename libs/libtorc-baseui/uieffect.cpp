@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 */
 
 // Torc
+#include "uiwidget.h"
 #include "uieffect.h"
 
 UIEffect::UIEffect()
@@ -33,7 +34,8 @@ UIEffect::UIEffect()
     m_hReflecting(false),
     m_hReflection(0.0),
     m_vReflecting(false),
-    m_vReflection(0.0)
+    m_vReflection(0.0),
+    m_detached(false)
 {
 }
 
@@ -51,6 +53,7 @@ void UIEffect::ParseEffect(QDomElement &Element, UIEffect *Effect)
     QString centres = Element.attribute("centre").toLower();
     QString hrefls  = Element.attribute("hreflection");
     QString vrefls  = Element.attribute("vreflection");
+    QString detach  = Element.attribute("detached");
 
     bool ok = false;
 
@@ -131,6 +134,11 @@ void UIEffect::ParseEffect(QDomElement &Element, UIEffect *Effect)
             Effect->m_vReflecting = true;
             Effect->m_vReflection = vrefl;
         }
+    }
+
+    if (!detach.isEmpty())
+    {
+        Effect->m_detached = UIWidget::GetBool(detach);
     }
 }
 

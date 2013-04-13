@@ -108,6 +108,7 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
     vreflection(0.0),
     position(0.0, 0.0),
     size(0.0, 0.0),
+    detached(false),
     m_engine(NULL),
     m_globalFocusWidget(NULL),
     m_direction(Torc::Down)
@@ -221,8 +222,8 @@ bool UIWidget::Draw(quint64 TimeNow, UIWindow *Window, qreal XOffset, qreal YOff
     if (!m_visible || !Window || m_template)
         return false;
 
-    XOffset += m_scaledRect.left();
-    YOffset += m_scaledRect.top();
+    qreal xoffset = m_scaledRect.left() + (m_effect->m_detached ? 0.0 : XOffset);
+    qreal yoffset = m_scaledRect.top()  + (m_effect->m_detached ? 0.0 : YOffset);
 
     Window->PushEffect(m_effect, &m_scaledRect);
 
@@ -233,19 +234,19 @@ bool UIWidget::Draw(quint64 TimeNow, UIWindow *Window, qreal XOffset, qreal YOff
             QRect clip(m_clipRect.translated(m_scaledRect.left(), m_scaledRect.top()));
 
             if (m_secondaryEffect->m_hReflecting)
-                clip.moveTop(YOffset + m_secondaryEffect->m_hReflection + (YOffset + m_secondaryEffect->m_hReflection - clip.top() - clip.height()));
+                clip.moveTop(yoffset + m_secondaryEffect->m_hReflection + (yoffset + m_secondaryEffect->m_hReflection - clip.top() - clip.height()));
             else if (m_secondaryEffect->m_vReflecting)
-                clip.moveLeft(XOffset + m_secondaryEffect->m_vReflection + (XOffset + m_secondaryEffect->m_vReflection - clip.left() - clip.width()));
+                clip.moveLeft(xoffset + m_secondaryEffect->m_vReflection + (xoffset + m_secondaryEffect->m_vReflection - clip.left() - clip.width()));
 
             Window->PushClip(clip);
         }
 
         QRectF rect(0, 0, m_scaledRect.width(), m_scaledRect.height());
         Window->PushEffect(m_secondaryEffect, &rect);
-        DrawSelf(Window, XOffset, YOffset);
+        DrawSelf(Window, xoffset, yoffset);
 
         foreach (UIWidget* child, m_children)
-            child->Draw(TimeNow, Window, XOffset, YOffset);
+            child->Draw(TimeNow, Window, xoffset, yoffset);
 
         if (m_clipping)
             Window->PopClip();
@@ -258,17 +259,17 @@ bool UIWidget::Draw(quint64 TimeNow, UIWindow *Window, qreal XOffset, qreal YOff
         QRect clip(m_clipRect.translated(m_scaledRect.left(), m_scaledRect.top()));
 
         if (m_effect->m_hReflecting)
-            clip.moveTop(YOffset + m_effect->m_hReflection + (YOffset + m_effect->m_hReflection - clip.top() - clip.height()));
+            clip.moveTop(yoffset + m_effect->m_hReflection + (yoffset + m_effect->m_hReflection - clip.top() - clip.height()));
         else if (m_effect->m_vReflecting)
-            clip.moveLeft(XOffset + m_effect->m_vReflection + (XOffset + m_effect->m_vReflection - clip.left() - clip.width()));
+            clip.moveLeft(xoffset + m_effect->m_vReflection + (xoffset + m_effect->m_vReflection - clip.left() - clip.width()));
 
         Window->PushClip(clip);
     }
 
-    DrawSelf(Window, XOffset, YOffset);
+    DrawSelf(Window, xoffset, yoffset);
 
     foreach (UIWidget* child, m_children)
-        child->Draw(TimeNow, Window, XOffset, YOffset);
+        child->Draw(TimeNow, Window, xoffset, yoffset);
 
     if (m_clipping)
         Window->PopClip();
@@ -371,6 +372,7 @@ bool UIWidget::Initialise(QDomElement *Element, const QString &Position)
             hreflection    = m_effect->m_hReflection;
             vreflecting    = m_effect->m_vReflecting;
             vreflection    = m_effect->m_vReflection;
+            detached       = m_effect->m_detached;
         }
         else if (element.tagName() == "connect")
         {
@@ -490,8 +492,10 @@ bool UIWidget::ParseWidget(UIWidget *Root, UIWidget *Parent, QDomElement *Elemen
     QString deco = Element->attribute("decoration");
 
     int flags = WidgetFlagNone;
+
     if (!temp.isEmpty() && GetBool(temp))
         flags += WidgetFlagTemplate;
+
     if (!deco.isEmpty() && GetBool(deco))
         flags += WidgetFlagDecoration;
 
@@ -949,6 +953,7 @@ void UIWidget::CopyFrom(UIWidget *Other)
     SetHorizontalZoom(Other->GetHorizontalZoom());
     SetVerticalZoom(Other->GetVerticalZoom());
     SetCentre(Other->GetCentre());
+    SetDetached(Other->IsDetached());
 
     if (Other->m_effect->m_hReflecting)
         SetHorizontalReflection(Other->m_effect->m_hReflection / Other->GetYScale());
@@ -984,6 +989,7 @@ void UIWidget::CopyFrom(UIWidget *Other)
     vreflection    = Other->vreflection;
     position       = Other->position;
     size           = Other->size;
+    detached       = Other->detached;
 
     // avoid scaling twice
     m_scaledRect   = Other->m_scaledRect;
@@ -1652,6 +1658,11 @@ qreal UIWidget::GetVerticalReflection(void)
     return m_effect->m_vReflection / m_rootParent->GetXScale();
 }
 
+bool UIWidget::IsDetached(void)
+{
+    return m_effect->m_detached;
+}
+
 qreal UIWidget::GetHorizontalReflection(void)
 {
     return m_effect->m_hReflection / m_rootParent->GetYScale();
@@ -1958,6 +1969,11 @@ void UIWidget::SetHorizontalReflecting(bool Reflecting)
 void UIWidget::SetVerticalReflecting(bool Reflecting)
 {
     m_effect->m_vReflecting = Reflecting;
+}
+
+void UIWidget::SetDetached(bool Detached)
+{
+    m_effect->m_detached = Detached;
 }
 
 void UIWidget::SetScaledPosition(const QPointF &Position)

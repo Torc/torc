@@ -112,6 +112,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     Q_PROPERTY      (int     centre            READ GetCentre           WRITE SetCentre)
     Q_PROPERTY      (qreal   hreflection       READ GetHorizontalReflection WRITE SetHorizontalReflection)
     Q_PROPERTY      (qreal   vreflection       READ GetVerticalReflection   WRITE SetVerticalReflection)
+    Q_PROPERTY      (bool    detached          READ IsDetached          WRITE SetDetached)
 
   public slots:
     bool            IsFocusable         (void);
@@ -132,6 +133,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     int             GetCentre           (void);
     qreal           GetHorizontalReflection (void);
     qreal           GetVerticalReflection   (void);
+    bool            IsDetached          (void);
     void            ScriptLog           (const QString &Message);
 
     void            SetEnabled          (bool    Enabled);
@@ -150,6 +152,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     void            SetVerticalReflection   (qreal Reflect);
     void            SetHorizontalReflecting (bool  Reflecting);
     void            SetVerticalReflecting   (bool  Reflecting);
+    void            SetDetached         (bool    Detached);
     void            SetPosition         (QPointF Position);
     void            SetPosition         (qreal   Left, qreal Top);
     void            SetSize             (QSizeF  Size);
@@ -252,6 +255,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     qreal           vreflection;
     QPointF         position;
     QSizeF          size;
+    bool            detached;
 
   private:
     void            SetFocusWidget       (UIWidget *Widget);

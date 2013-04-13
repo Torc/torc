@@ -145,7 +145,8 @@ bool UIOpenGLView::PushTransformation(const UIEffect *Effect,
     }
 
     matrix.translate(Dest->left(), Dest->top());
-    matrix *= m_transforms[m_currentTransformIndex];
+    if (!Effect->m_detached)
+        matrix *= m_transforms[m_currentTransformIndex];
     m_transforms[++m_currentTransformIndex] = matrix;
 
     return true;

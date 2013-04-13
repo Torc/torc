@@ -244,7 +244,7 @@ void UIGroup::GetGridPosition(UIWidget* Widget, int &Row, int &Column, int &Tota
     int visibleindex = 0;
     for (int i = 0; i < (int)m_children.size(); ++i)
     {
-        if (!m_children.at(i)->IsTemplate() && !m_children.at(i)->IsDecoration())
+        if (!m_children.at(i)->IsTemplate() && !m_children.at(i)->IsDecoration() && !m_children.at(i)->IsDetached())
         {
             visiblecount++;
             if (i < index)
@@ -684,8 +684,8 @@ bool UIGroup::Draw(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal YOffs
     if (!m_visible || !Window)
         return false;
 
-    XOffset += m_scaledRect.left();
-    YOffset += m_scaledRect.top();
+    qreal xoffset = m_scaledRect.left() + (m_effect->m_detached ? 0.0 : XOffset);
+    qreal yoffset = m_scaledRect.top()  + (m_effect->m_detached ? 0.0 : YOffset);
 
     // find the selected widget (if any)
     UIWidget* focuswidget = GetFocusWidget();
@@ -724,16 +724,16 @@ bool UIGroup::Draw(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal YOffs
             QRect clip(m_clipRect.translated(m_scaledRect.left(), m_scaledRect.top()));
 
             if (m_secondaryEffect->m_hReflecting)
-                clip.moveTop(YOffset + m_secondaryEffect->m_hReflection + (YOffset + m_secondaryEffect->m_hReflection - clip.top() - clip.height()));
+                clip.moveTop(yoffset + m_secondaryEffect->m_hReflection + (yoffset + m_secondaryEffect->m_hReflection - clip.top() - clip.height()));
             else if (m_secondaryEffect->m_vReflecting)
-                clip.moveLeft(XOffset + m_secondaryEffect->m_vReflection + (XOffset + m_secondaryEffect->m_vReflection - clip.left() - clip.width()));
+                clip.moveLeft(xoffset + m_secondaryEffect->m_vReflection + (xoffset + m_secondaryEffect->m_vReflection - clip.left() - clip.width()));
 
             Window->PushClip(clip);
         }
 
         QRectF rect(0, 0, m_scaledRect.width(), m_scaledRect.height());
         Window->PushEffect(m_secondaryEffect, &rect);
-        DrawGroup(TimeNow, Window, XOffset, YOffset, focusindex, focuswidget);
+        DrawGroup(TimeNow, Window, xoffset, yoffset, focusindex, focuswidget);
         Window->PopEffect();
 
         if (m_clipping)
@@ -745,14 +745,14 @@ bool UIGroup::Draw(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal YOffs
         QRect clip(m_clipRect.translated(m_scaledRect.left(), m_scaledRect.top()));
 
         if (m_effect->m_hReflecting)
-            clip.moveTop(YOffset + m_effect->m_hReflection + (YOffset + m_effect->m_hReflection - clip.top() - clip.height()));
+            clip.moveTop(yoffset + m_effect->m_hReflection + (yoffset + m_effect->m_hReflection - clip.top() - clip.height()));
         else if (m_effect->m_vReflecting)
-            clip.moveLeft(XOffset + m_effect->m_vReflection + (XOffset + m_effect->m_vReflection - clip.left() - clip.width()));
+            clip.moveLeft(xoffset + m_effect->m_vReflection + (xoffset + m_effect->m_vReflection - clip.left() - clip.width()));
 
         Window->PushClip(clip);
     }
 
-    DrawGroup(TimeNow, Window, XOffset, YOffset, focusindex, focuswidget);
+    DrawGroup(TimeNow, Window, xoffset, yoffset, focusindex, focuswidget);
 
     // revert effects
     if (m_clipping)
@@ -772,7 +772,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
 
     // draw decoration widgets (i.e. background)
     foreach (UIWidget* child, m_children)
-        if (child->IsDecoration())
+        if (child->IsDecoration() || child->IsDetached())
             child->Draw(TimeNow, Window, XOffset, YOffset);
 
     QPointF position(0.0, 0.0);
@@ -802,7 +802,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
         {
             UIWidget* child = m_children.at(i);
 
-            if (child->IsTemplate() || child->IsDecoration())
+            if (child->IsTemplate() || child->IsDecoration() || child->IsDetached())
                 continue;
 
             qreal width = m_fixedWidth > 1.0 ? m_fixedWidth : (child->m_scaledRect.size().width() * child->GetHorizontalZoom()) + m_spacingX;
@@ -871,7 +871,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
         {
             UIWidget* child = m_children.at(i);
 
-            if (child->IsTemplate() || child->IsDecoration())
+            if (child->IsTemplate() || child->IsDecoration() || child->IsDetached())
                 continue;
 
             UIEffect::Centre centre = (UIEffect::Centre)child->GetCentre();
@@ -943,7 +943,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
         {
             UIWidget* child = m_children.at(i);
 
-            if (child->IsTemplate() || child->IsDecoration())
+            if (child->IsTemplate() || child->IsDecoration() || child->IsDetached())
                 continue;
 
             qreal height = m_fixedHeight > 1.0 ? m_fixedHeight : (child->m_scaledRect.size().height() * child->GetVerticalZoom()) + m_spacingY;
@@ -1012,7 +1012,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
         {
             UIWidget* child = m_children.at(i);
 
-            if (child->IsTemplate() || child->IsDecoration())
+            if (child->IsTemplate() || child->IsDecoration() || child->IsDetached())
                 continue;
 
             UIEffect::Centre centre = (UIEffect::Centre)child->GetCentre();
@@ -1172,7 +1172,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
         {
             UIWidget* child = m_children.at(i);
 
-            if (child->IsTemplate() || child->IsDecoration())
+            if (child->IsTemplate() || child->IsDecoration() || child->IsDetached())
                 continue;
 
             // centre the child within the bounding rect
@@ -1245,7 +1245,7 @@ bool UIGroup::Finalise(void)
     {
         foreach (UIWidget* child, m_children)
         {
-            if (!child->IsTemplate() && !child->IsDecoration())
+            if (!child->IsTemplate() && !child->IsDecoration() && !child->IsDetached())
                 child->SetPosition(0.0, 0.0);
         }
     }

@@ -158,7 +158,8 @@ bool UIDirect3D9View::PushTransformation(const UIEffect *Effect, const QRectF *D
     }
 
     m_D3DXMatrixMultiply(&matrix.m, &matrix.m, m_D3DXMatrixTranslation(&translate, Dest->left(), Dest->top(), 0.0));
-    m_D3DXMatrixMultiply(&matrix.m, &matrix.m, &m_transforms[m_currentTransformIndex].m);
+    if (!Effect->m_detached)
+        m_D3DXMatrixMultiply(&matrix.m, &matrix.m, &m_transforms[m_currentTransformIndex].m);
     m_transforms[++m_currentTransformIndex] = matrix;
 
     return true;
