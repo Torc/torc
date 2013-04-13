@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -31,6 +31,9 @@
 #include "uieffect.h"
 #include "uianimation.h"
 #include "uigroup.h"
+
+#define NOT_VISIBLE(WIDGET) (WIDGET->m_template || WIDGET->m_decoration || WIDGET->m_effect->m_detached || !WIDGET->m_visible || WIDGET->m_type == UIAnimation::kUIAnimationType)
+#define IS_DETACHED(WIDGET) (WIDGET->m_decoration || WIDGET->m_effect->m_detached)
 
 int UIGroup::kUIGroupType = UIWidget::RegisterWidgetType();
 
@@ -244,12 +247,12 @@ void UIGroup::GetGridPosition(UIWidget* Widget, int &Row, int &Column, int &Tota
     int visibleindex = 0;
     for (int i = 0; i < (int)m_children.size(); ++i)
     {
-        if (!m_children.at(i)->IsTemplate() && !m_children.at(i)->IsDecoration() && !m_children.at(i)->IsDetached())
-        {
-            visiblecount++;
-            if (i < index)
-                visibleindex++;
-        }
+        if (NOT_VISIBLE(m_children.at(i)))
+            continue;
+
+        visiblecount++;
+        if (i < index)
+            visibleindex++;
     }
 
     TotalColumns = (int)(m_scaledRect.size().width()  / m_fixedWidth);
@@ -772,7 +775,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
 
     // draw decoration widgets (i.e. background)
     foreach (UIWidget* child, m_children)
-        if (child->IsDecoration() || child->IsDetached())
+        if (IS_DETACHED(child))
             child->Draw(TimeNow, Window, XOffset, YOffset);
 
     QPointF position(0.0, 0.0);
@@ -802,7 +805,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
         {
             UIWidget* child = m_children.at(i);
 
-            if (child->IsTemplate() || child->IsDecoration() || child->IsDetached())
+            if (NOT_VISIBLE(child))
                 continue;
 
             qreal width = m_fixedWidth > 1.0 ? m_fixedWidth : (child->m_scaledRect.size().width() * child->GetHorizontalZoom()) + m_spacingX;
@@ -871,7 +874,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
         {
             UIWidget* child = m_children.at(i);
 
-            if (child->IsTemplate() || child->IsDecoration() || child->IsDetached())
+            if (NOT_VISIBLE(child))
                 continue;
 
             UIEffect::Centre centre = (UIEffect::Centre)child->GetCentre();
@@ -943,7 +946,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
         {
             UIWidget* child = m_children.at(i);
 
-            if (child->IsTemplate() || child->IsDecoration() || child->IsDetached())
+            if (NOT_VISIBLE(child))
                 continue;
 
             qreal height = m_fixedHeight > 1.0 ? m_fixedHeight : (child->m_scaledRect.size().height() * child->GetVerticalZoom()) + m_spacingY;
@@ -1012,7 +1015,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
         {
             UIWidget* child = m_children.at(i);
 
-            if (child->IsTemplate() || child->IsDecoration() || child->IsDetached())
+            if (NOT_VISIBLE(child))
                 continue;
 
             UIEffect::Centre centre = (UIEffect::Centre)child->GetCentre();
@@ -1172,7 +1175,7 @@ void UIGroup::DrawGroup(quint64 TimeNow, UIWindow* Window, qreal XOffset, qreal 
         {
             UIWidget* child = m_children.at(i);
 
-            if (child->IsTemplate() || child->IsDecoration() || child->IsDetached())
+            if (NOT_VISIBLE(child))
                 continue;
 
             // centre the child within the bounding rect
