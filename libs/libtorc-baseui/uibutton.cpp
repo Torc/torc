@@ -100,8 +100,7 @@ bool UIButton::Finalise(void)
     if (child && child->Type() == UIText::kUITextType)
     {
         m_textWidget = dynamic_cast<UIText*>(child);
-        if (m_textWidget && !text.isEmpty())
-            m_textWidget->SetText(text);
+        SetText(text);
     }
     else
     {
