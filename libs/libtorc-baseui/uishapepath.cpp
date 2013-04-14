@@ -365,7 +365,7 @@ bool UIShapePath::ParsePath(QDomElement *Element)
 
             if (!joins.isEmpty())
             {
-                const QMetaObject &mo = m_parent->staticQtMetaObject;
+                const QMetaObject &mo = staticQtMetaObject;
                 int enum_index        = mo.indexOfEnumerator("PenJoinStyle");
                 QMetaEnum metaEnum    = mo.enumerator(enum_index);
                 SetPenJoinStyle(metaEnum.keyToValue(joins.toLatin1()));
@@ -373,7 +373,7 @@ bool UIShapePath::ParsePath(QDomElement *Element)
 
             if (!caps.isEmpty())
             {
-                const QMetaObject &mo = m_parent->staticQtMetaObject;
+                const QMetaObject &mo = staticQtMetaObject;
                 int enum_index        = mo.indexOfEnumerator("PenCapStyle");
                 QMetaEnum metaEnum    = mo.enumerator(enum_index);
                 SetPenCapStyle(metaEnum.keyToValue(caps.toLatin1()));
@@ -391,7 +391,7 @@ bool UIShapePath::ParsePath(QDomElement *Element)
 
             if (!styles.isEmpty())
             {
-                const QMetaObject &mo = m_parent->staticQtMetaObject;
+                const QMetaObject &mo = staticQtMetaObject;
                 int enum_index        = mo.indexOfEnumerator("BrushStyle");
                 QMetaEnum metaEnum    = mo.enumerator(enum_index);
                 SetBrushStyle(metaEnum.keyToValue(styles.toLatin1()));
