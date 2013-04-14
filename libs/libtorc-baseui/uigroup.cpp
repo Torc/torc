@@ -509,14 +509,10 @@ bool UIGroup::HandleAction(int Action)
                 UIWidget* child = SelectChildInGrid(action, row, col, rows, cols,
                                                     wrapvertical, wraphorizontal, pass);
                 if (child)
-                {
-                    focuswidget->Deselect();
                     child->Select();
-                }
                 else if (pass && m_parent && m_parent->IsFocusable())
-                {
                     return m_parent->HandleAction(Action);
-                }
+
                 return true;
             }
         }
