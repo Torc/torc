@@ -51,9 +51,11 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     void            AddFont             (const QString &FontName, UIFont* Font);
     UIFont*         GetFont             (const QString &FontName);
     UIWidget*       FindWidget          (const QString &Name);
+    bool            HasChild            (UIWidget *Child, bool Recursive = false);
     UIWidget*       FindChildByName     (const QString &Name, bool Recursive = false);
     virtual bool    AutoSelectFocusWidget (int Index);
     UIWidget*       GetFocusWidget      (void);
+    UIWidget*       GetNextFocusWidget  (void);
     void            SetLastChildWithFocus (UIWidget *Widget);
     UIWidget*       GetLastChildWithFocus (void);
     bool            HasChildWithFocus   (void);
@@ -186,6 +188,8 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     void            Deactivated         (void);
     void            Selected            (void);
     void            Deselected          (void);
+    void            GroupSelected       (void);
+    void            GroupDeselected     (void);
 
   protected slots:
     void            ScriptException     (void);
@@ -259,6 +263,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
 
   private:
     void            SetFocusWidget       (UIWidget *Widget);
+    void            SetNextFocusWidget   (UIWidget *Widget);
     void            SetHasChildWithFocus (bool HasFocus);
 
   private:
@@ -267,6 +272,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     QHash<QString,UIFont*>   m_fonts;
     QScriptEngine           *m_engine;
     UIWidget                *m_globalFocusWidget;
+    UIWidget                *m_nextFocusWidget;
     int                      m_direction;
 };
 

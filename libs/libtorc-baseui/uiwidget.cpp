@@ -111,6 +111,7 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
     detached(false),
     m_engine(NULL),
     m_globalFocusWidget(NULL),
+    m_nextFocusWidget(NULL),
     m_direction(Torc::Down)
 {
     // set the type - which MUST be overridden by a subclass
@@ -491,6 +492,7 @@ bool UIWidget::ParseWidget(UIWidget *Root, UIWidget *Parent, QDomElement *Elemen
     QString rect = Element->attribute("position");
     QString deco = Element->attribute("decoration");
 
+    // NB widget flags are not inherited
     int flags = WidgetFlagNone;
 
     if (!temp.isEmpty() && GetBool(temp))
@@ -971,7 +973,6 @@ void UIWidget::CopyFrom(UIWidget *Other)
             m_secondaryEffect->m_vReflection = (m_secondaryEffect->m_vReflection / Other->GetXScale()) * m_rootParent->GetXScale();
     }
 
-
     m_scaleX = Other->GetXScale();
     m_scaleY = Other->GetYScale();
 
@@ -1157,6 +1158,21 @@ UIWidget* UIWidget::FindWidget(const QString &Name)
     return NULL;
 }
 
+bool UIWidget::HasChild(UIWidget *Child, bool Recursive)
+{
+    if (m_children.contains(Child))
+        return true;
+
+    if (Recursive)
+    {
+        foreach (UIWidget *child, m_children)
+            if (child->HasChild(Child, true))
+                return true;
+    }
+
+    return false;
+}
+
 UIWidget* UIWidget::FindChildByName(const QString &Name, bool Recursive)
 {
     QString name = !m_parent ? Name : objectName() + "_" + Name;
@@ -1202,6 +1218,14 @@ UIWidget* UIWidget::GetFocusWidget(void)
     return m_globalFocusWidget;
 }
 
+UIWidget* UIWidget::GetNextFocusWidget(void)
+{
+    if (m_parent && m_rootParent)
+        return m_rootParent->GetNextFocusWidget();
+
+    return m_nextFocusWidget;
+}
+
 void UIWidget::SetFocusWidget(UIWidget *Widget)
 {
     if (m_parent && m_rootParent)
@@ -1230,6 +1254,14 @@ void UIWidget::SetFocusWidget(UIWidget *Widget)
     m_globalFocusWidget = Widget;
 }
 
+void UIWidget::SetNextFocusWidget(UIWidget *Widget)
+{
+    if (m_parent && m_rootParent)
+        m_rootParent->SetNextFocusWidget(Widget);
+
+    m_nextFocusWidget = Widget;
+}
+
 void UIWidget::SetLastChildWithFocus(UIWidget *Widget)
 {
     m_lastChildWithFocus = Widget;
@@ -1242,7 +1274,15 @@ UIWidget* UIWidget::GetLastChildWithFocus(void)
 
 void UIWidget::SetHasChildWithFocus(bool HasFocus)
 {
-    m_childHasFocus = HasFocus;
+    bool childhadfocus = m_childHasFocus;
+    UIWidget *next     = GetNextFocusWidget();
+    bool sameparent    = next ? HasChild(next, true) : false;
+    m_childHasFocus    = HasFocus;
+
+    if (!m_childHasFocus && childhadfocus && !sameparent)
+        emit GroupDeselected();
+    else if (m_childHasFocus && !childhadfocus)
+        emit GroupSelected();
 
     // TODO != UIButton::kUIButtonType might be more flexible
     // TODO or just if (m_parent)...
@@ -1326,6 +1366,7 @@ bool UIWidget::HandleAction(int Action)
 
             if (m_children.at(i)->IsFocusable())
             {
+                SetNextFocusWidget(m_children.at(i));
                 SetFocusWidget(NULL);
                 m_children.at(i)->Select();
                 return true;
@@ -1345,6 +1386,7 @@ bool UIWidget::HandleAction(int Action)
 
             if (m_children.at(i)->IsFocusable())
             {
+                SetNextFocusWidget(m_children.at(i));
                 SetFocusWidget(NULL);
                 m_children.at(i)->Select();
                 return true;
@@ -1778,12 +1820,15 @@ void UIWidget::SetSelected(bool Selected)
 
 void UIWidget::Select(void)
 {
+    SetNextFocusWidget(this);
+
     // check for groups with focusable children
     if (!m_focusable && m_focusableChildCount)
     {
         AutoSelectFocusWidget(0);
         if (m_parent)
             m_parent->SetLastChildWithFocus(this);
+        SetNextFocusWidget(NULL);
         return;
     }
 
@@ -1804,6 +1849,8 @@ void UIWidget::Select(void)
 
         emit Selected();
     }
+
+    SetNextFocusWidget(NULL);
 }
 
 void UIWidget::Deselect(void)
