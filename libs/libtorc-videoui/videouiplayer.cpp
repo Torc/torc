@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -64,9 +64,11 @@ void VideoUIPlayer::Initialise(void)
 #endif
 }
 
+#define BLACKLIST QString("SetPropertyAvailable,SetPropertyUnavailable")
+
 VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : VideoPlayer(Parent, PlaybackFlags, DecodeFlags),
-    TorcHTTPService(this, "/player", tr("Player"), VideoUIPlayer::staticMetaObject),
+    TorcHTTPService(this, "/player", tr("Player"), VideoUIPlayer::staticMetaObject, BLACKLIST),
     m_colourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED))
 {
     m_render = VideoRenderer::Create(m_colourSpace);
