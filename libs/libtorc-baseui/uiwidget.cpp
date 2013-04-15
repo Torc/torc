@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -1407,9 +1407,19 @@ int UIWidget::Type(void)
     return m_type;
 }
 
+/** \fn UIWidget::SetAsTemplate(bool)
+ *  \brief Mark this widget and all of its children as templates.
+ *
+ * 'Template' status is not inherited (as it would defeat the purpose of the template)
+ * but when dealing with complex, nested templates (e.g. for menus), we need to
+ * programatically mark copied widgets as templates to prevent them being rendered.
+*/
 void UIWidget::SetAsTemplate(bool Template)
 {
     m_template = Template;
+
+    foreach (UIWidget *child, m_children)
+        child->SetAsTemplate(Template);
 }
 
 bool UIWidget::IsTemplate(void)
