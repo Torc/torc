@@ -35,6 +35,7 @@ class UIEffect
     bool   m_vReflecting;
     qreal  m_vReflection;
     bool   m_detached;
+    bool   m_decoration;
 };
 
 #endif // UIEFFECT_H

@@ -35,7 +35,8 @@ UIEffect::UIEffect()
     m_hReflection(0.0),
     m_vReflecting(false),
     m_vReflection(0.0),
-    m_detached(false)
+    m_detached(false),
+    m_decoration(false)
 {
 }
 
@@ -54,6 +55,7 @@ void UIEffect::ParseEffect(QDomElement &Element, UIEffect *Effect)
     QString hrefls  = Element.attribute("hreflection");
     QString vrefls  = Element.attribute("vreflection");
     QString detach  = Element.attribute("detached");
+    QString decore  = Element.attribute("decoration");
 
     bool ok = false;
 
@@ -139,6 +141,11 @@ void UIEffect::ParseEffect(QDomElement &Element, UIEffect *Effect)
     if (!detach.isEmpty())
     {
         Effect->m_detached = UIWidget::GetBool(detach);
+    }
+
+    if (!decore.isEmpty())
+    {
+        Effect->m_decoration = UIWidget::GetBool(decore);
     }
 }
 

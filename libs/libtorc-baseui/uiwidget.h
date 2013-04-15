@@ -33,8 +33,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     {
         WidgetFlagNone       = 0x00,
         WidgetFlagTemplate   = 0x01,
-        WidgetFlagFocusable  = 0x02,
-        WidgetFlagDecoration = 0x04
+        WidgetFlagFocusable  = 0x02
     };
 
     static  int     kUIWidgetType;
@@ -70,7 +69,6 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     int             Type                (void);
     void            SetAsTemplate       (bool Template);
     bool            IsTemplate          (void);
-    bool            IsDecoration        (void);
     qreal           GetXScale           (void);
     qreal           GetYScale           (void);
     bool            Connect             (const QString &Sender, const QString &Signal,
@@ -115,6 +113,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     Q_PROPERTY      (qreal   hreflection       READ GetHorizontalReflection WRITE SetHorizontalReflection)
     Q_PROPERTY      (qreal   vreflection       READ GetVerticalReflection   WRITE SetVerticalReflection)
     Q_PROPERTY      (bool    detached          READ IsDetached          WRITE SetDetached)
+    Q_PROPERTY      (bool    decoration        READ IsDecoration        WRITE SetDecoration)
 
   public slots:
     bool            IsFocusable         (void);
@@ -136,6 +135,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     qreal           GetHorizontalReflection (void);
     qreal           GetVerticalReflection   (void);
     bool            IsDetached          (void);
+    bool            IsDecoration        (void);
     void            ScriptLog           (const QString &Message);
 
     void            SetEnabled          (bool    Enabled);
@@ -155,6 +155,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     void            SetHorizontalReflecting (bool  Reflecting);
     void            SetVerticalReflecting   (bool  Reflecting);
     void            SetDetached         (bool    Detached);
+    void            SetDecoration       (bool    Decoration);
     void            SetPosition         (QPointF Position);
     void            SetPosition         (qreal   Left, qreal Top);
     void            SetSize             (QSizeF  Size);
@@ -223,7 +224,6 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     bool            m_childHasFocus;
     int             m_focusableChildCount;
     bool            m_template;
-    bool            m_decoration;
     QRectF          m_unscaledRect;
 
     // resources
@@ -260,6 +260,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     QPointF         position;
     QSizeF          size;
     bool            detached;
+    bool            decoration;
 
   private:
     void            SetFocusWidget       (UIWidget *Widget);

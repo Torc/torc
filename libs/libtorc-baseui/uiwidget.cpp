@@ -82,7 +82,6 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
     m_childHasFocus(false),
     m_focusableChildCount(0),
     m_template(Flags & WidgetFlagTemplate),
-    m_decoration(Flags & WidgetFlagDecoration),
     m_unscaledRect(0.0, 0.0, 0.0, 0.0),
     m_enabled(true),
     m_visible(true),
@@ -374,6 +373,7 @@ bool UIWidget::Initialise(QDomElement *Element, const QString &Position)
             vreflecting    = m_effect->m_vReflecting;
             vreflection    = m_effect->m_vReflection;
             detached       = m_effect->m_detached;
+            decoration     = m_effect->m_decoration;
         }
         else if (element.tagName() == "connect")
         {
@@ -497,9 +497,6 @@ bool UIWidget::ParseWidget(UIWidget *Root, UIWidget *Parent, QDomElement *Elemen
 
     if (!temp.isEmpty() && GetBool(temp))
         flags += WidgetFlagTemplate;
-
-    if (!deco.isEmpty() && GetBool(deco))
-        flags += WidgetFlagDecoration;
 
     // if the widget is unnamed, christen it. It will not be 'addressable'
     // by the rest of the theme however.
@@ -956,6 +953,7 @@ void UIWidget::CopyFrom(UIWidget *Other)
     SetVerticalZoom(Other->GetVerticalZoom());
     SetCentre(Other->GetCentre());
     SetDetached(Other->IsDetached());
+    SetDecoration(Other->IsDecoration());
 
     if (Other->m_effect->m_hReflecting)
         SetHorizontalReflection(Other->m_effect->m_hReflection / Other->GetYScale());
@@ -991,6 +989,7 @@ void UIWidget::CopyFrom(UIWidget *Other)
     position       = Other->position;
     size           = Other->size;
     detached       = Other->detached;
+    decoration     = Other->decoration;
 
     // avoid scaling twice
     m_scaledRect   = Other->m_scaledRect;
@@ -1427,11 +1426,6 @@ bool UIWidget::IsTemplate(void)
     return m_template;
 }
 
-bool UIWidget::IsDecoration(void)
-{
-    return m_decoration;
-}
-
 bool UIWidget::Connect(const QString &Sender, const QString &Signal,
                        const QString &Receiver, const QString &Slot)
 {
@@ -1713,6 +1707,11 @@ qreal UIWidget::GetVerticalReflection(void)
 bool UIWidget::IsDetached(void)
 {
     return m_effect->m_detached;
+}
+
+bool UIWidget::IsDecoration(void)
+{
+    return m_effect->m_decoration;
 }
 
 qreal UIWidget::GetHorizontalReflection(void)
@@ -2031,6 +2030,11 @@ void UIWidget::SetVerticalReflecting(bool Reflecting)
 void UIWidget::SetDetached(bool Detached)
 {
     m_effect->m_detached = Detached;
+}
+
+void UIWidget::SetDecoration(bool Decoration)
+{
+    m_effect->m_decoration = Decoration;
 }
 
 void UIWidget::SetScaledPosition(const QPointF &Position)

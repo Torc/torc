@@ -32,8 +32,8 @@
 #include "uianimation.h"
 #include "uigroup.h"
 
-#define NOT_VISIBLE(WIDGET) (WIDGET->m_template || WIDGET->m_decoration || WIDGET->m_effect->m_detached || !WIDGET->m_visible || WIDGET->m_type == UIAnimation::kUIAnimationType)
-#define IS_DETACHED(WIDGET) (WIDGET->m_decoration || WIDGET->m_effect->m_detached)
+#define NOT_VISIBLE(WIDGET) (WIDGET->m_template || WIDGET->m_effect->m_decoration || WIDGET->m_effect->m_detached || !WIDGET->m_visible || WIDGET->m_type == UIAnimation::kUIAnimationType)
+#define IS_DETACHED(WIDGET) (WIDGET->m_effect->m_decoration || WIDGET->m_effect->m_detached)
 
 int UIGroup::kUIGroupType = UIWidget::RegisterWidgetType();
 
