@@ -213,11 +213,12 @@ void UIText::CopyFrom(UIWidget *Other)
     UIWidget::CopyFrom(Other);
 }
 
-UIWidget* UIText::CreateCopy(UIWidget* Parent, const QString &Newname)
+UIWidget* UIText::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
+    bool isnew = !Newname.isEmpty();
     UIText* text = new UIText(m_rootParent, Parent,
-                              Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
-                              WidgetFlagNone);
+                              isnew ? Newname : GetDerivedWidgetName(Parent->objectName()),
+                              (!isnew && IsTemplate()) ? WidgetFlagTemplate : WidgetFlagNone);
     text->CopyFrom(this);
     return text;
 }

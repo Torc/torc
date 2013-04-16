@@ -150,9 +150,10 @@ bool UIMedia::event(QEvent *Event)
 
 UIWidget* UIMedia::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
+    bool isnew = !Newname.isEmpty();
     UIMedia* media = new UIMedia(m_rootParent, Parent,
-                                 Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
-                                 WidgetFlagFocusable);
+                                 isnew ? Newname : GetDerivedWidgetName(Parent->objectName()),
+                                 (!isnew && IsTemplate()) ? WidgetFlagTemplate : WidgetFlagNone);
     media->CopyFrom(this);
     return media;
 }

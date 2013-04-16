@@ -554,11 +554,12 @@ void UIGroup::CopyFrom(UIWidget *Other)
     UIWidget::CopyFrom(Other);
 }
 
-UIWidget* UIGroup::CreateCopy(UIWidget* Parent, const QString &Newname)
+UIWidget* UIGroup::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
+    bool isnew = !Newname.isEmpty();
     UIGroup* group = new UIGroup(m_rootParent, Parent,
-                                 Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
-                                 WidgetFlagNone);
+                                 isnew ? Newname : GetDerivedWidgetName(Parent->objectName()),
+                                 (!isnew && IsTemplate()) ? WidgetFlagTemplate : WidgetFlagNone);
     group->CopyFrom(this);
     return group;
 }

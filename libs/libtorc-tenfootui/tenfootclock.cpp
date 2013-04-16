@@ -89,11 +89,12 @@ void TenfootClock::CopyFrom(UIWidget *Other)
     UIWidget::CopyFrom(Other);
 }
 
-UIWidget* TenfootClock::CreateCopy(UIWidget* Parent, const QString &Newname)
+UIWidget* TenfootClock::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
+    bool isnew = !Newname.isEmpty();
     TenfootClock* clock = new TenfootClock(m_rootParent, Parent,
-                                           Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
-                                           WidgetFlagNone);
+                                           isnew ? Newname : GetDerivedWidgetName(Parent->objectName()),
+                                           (!isnew && IsTemplate()) ? WidgetFlagTemplate : WidgetFlagNone);
     clock->CopyFrom(this);
     return clock;
 }

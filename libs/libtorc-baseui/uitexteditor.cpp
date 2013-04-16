@@ -266,9 +266,10 @@ void UITextEditor::CopyFrom(UIWidget *Other)
 
 UIWidget* UITextEditor::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
+    bool isnew = !Newname.isEmpty();
     UITextEditor* text = new UITextEditor(m_rootParent, Parent,
-                                          Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
-                                          WidgetFlagNone);
+                                          isnew ? Newname : GetDerivedWidgetName(Parent->objectName()),
+                                          (!isnew && IsTemplate()) ? WidgetFlagTemplate : WidgetFlagNone);
     text->CopyFrom(this);
     return text;
 }

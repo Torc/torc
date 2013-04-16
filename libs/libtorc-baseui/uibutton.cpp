@@ -152,9 +152,10 @@ void UIButton::CopyFrom(UIWidget *Other)
 
 UIWidget* UIButton::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
+    bool isnew = !Newname.isEmpty();
     UIButton* button = new UIButton(m_rootParent, Parent,
-                                    Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
-                                    WidgetFlagNone);
+                                    isnew ? Newname : GetDerivedWidgetName(Parent->objectName()),
+                                    (!isnew && IsTemplate()) ? WidgetFlagTemplate : WidgetFlagNone);
     button->CopyFrom(this);
     return button;
 }

@@ -493,10 +493,7 @@ bool UIWidget::ParseWidget(UIWidget *Root, UIWidget *Parent, QDomElement *Elemen
     QString deco = Element->attribute("decoration");
 
     // NB widget flags are not inherited
-    int flags = WidgetFlagNone;
-
-    if (!temp.isEmpty() && GetBool(temp))
-        flags += WidgetFlagTemplate;
+    bool istemplate = !temp.isEmpty() && GetBool(temp);
 
     // if the widget is unnamed, christen it. It will not be 'addressable'
     // by the rest of the theme however.
@@ -528,7 +525,7 @@ bool UIWidget::ParseWidget(UIWidget *Root, UIWidget *Parent, QDomElement *Elemen
     WidgetFactory* factory = WidgetFactory::GetWidgetFactory();
     for ( ; factory; factory = factory->NextFactory())
     {
-        newwidget = factory->Create(type, Root, Parent, name, flags);
+        newwidget = factory->Create(type, Root, Parent, name, istemplate ? WidgetFlagTemplate : WidgetFlagNone);
         if (newwidget)
             break;
     }
@@ -1022,10 +1019,10 @@ void UIWidget::CopyFrom(UIWidget *Other)
 
 UIWidget* UIWidget::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
-
+    bool isnew = !Newname.isEmpty();
     UIWidget* widget = new UIWidget(m_rootParent, Parent,
-                                    Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
-                                    WidgetFlagNone);
+                                    isnew ? Newname : GetDerivedWidgetName(Parent->objectName()),
+                                    (!isnew && IsTemplate()) ? WidgetFlagTemplate : WidgetFlagNone);
     widget->CopyFrom(this);
     return widget;
 }

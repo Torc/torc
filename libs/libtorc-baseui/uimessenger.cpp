@@ -78,9 +78,10 @@ bool UIMessenger::Finalise(void)
 
 UIWidget* UIMessenger::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
+    bool isnew = !Newname.isEmpty();
     UIMessenger* messenger = new UIMessenger(m_rootParent, Parent,
-                                             Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
-                                             WidgetFlagNone);
+                                             isnew ? Newname : GetDerivedWidgetName(Parent->objectName()),
+                                             (!isnew && IsTemplate()) ? WidgetFlagTemplate : WidgetFlagNone);
     messenger->CopyFrom(this);
     return messenger;
 }

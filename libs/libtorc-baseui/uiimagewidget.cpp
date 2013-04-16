@@ -110,11 +110,12 @@ void UIImageWidget::CopyFrom(UIWidget *Other)
     UIWidget::CopyFrom(Other);
 }
 
-UIWidget* UIImageWidget::CreateCopy(UIWidget* Parent, const QString &Newname)
+UIWidget* UIImageWidget::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
+    bool isnew = !Newname.isEmpty();
     UIImageWidget* image = new UIImageWidget(m_rootParent, Parent,
-                                             Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
-                                             WidgetFlagNone);
+                                             isnew ? Newname : GetDerivedWidgetName(Parent->objectName()),
+                                             (!isnew && IsTemplate()) ? WidgetFlagTemplate : WidgetFlagNone);
     image->CopyFrom(this);
     return image;
 }

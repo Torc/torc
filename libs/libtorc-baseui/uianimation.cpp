@@ -126,9 +126,10 @@ void UIAnimation::CopyFrom(UIWidget *Other)
 
 UIWidget* UIAnimation::CreateCopy(UIWidget *Parent, const QString &Newname)
 {
+    bool isnew = !Newname.isEmpty();
     UIAnimation* animation = new UIAnimation(m_rootParent, Parent,
-                                             Newname.isEmpty() ? GetDerivedWidgetName(Parent->objectName()) : Newname,
-                                             WidgetFlagNone);
+                                             isnew ? Newname : GetDerivedWidgetName(Parent->objectName()),
+                                             (!isnew && IsTemplate()) ? WidgetFlagTemplate : WidgetFlagNone);
     animation->CopyFrom(this);
     return animation;
 }
