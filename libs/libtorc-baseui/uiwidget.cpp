@@ -1404,18 +1404,13 @@ int UIWidget::Type(void)
 }
 
 /** \fn UIWidget::SetAsTemplate(bool)
- *  \brief Mark this widget and all of its children as templates.
+ *  \brief Mark this widget as a template.
  *
- * 'Template' status is not inherited (as it would defeat the purpose of the template)
- * but when dealing with complex, nested templates (e.g. for menus), we need to
- * programatically mark copied widgets as templates to prevent them being rendered.
+ * Templates are not rendered and are not Finalised.
 */
 void UIWidget::SetAsTemplate(bool Template)
 {
     m_template = Template;
-
-    foreach (UIWidget *child, m_children)
-        child->SetAsTemplate(Template);
 }
 
 bool UIWidget::IsTemplate(void)
