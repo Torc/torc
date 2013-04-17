@@ -603,8 +603,7 @@ void TorcPlayer::SendUserMessage(const QString &Message)
 {
     if (!Message.isEmpty())
     {
-        TorcLocalContext::SendMessage(Torc::GenericError, Torc::Internal,
-                                      Torc::DefaultTimeout, QString(),
+        TorcLocalContext::SendMessage(Torc::GenericError, Torc::Internal,Torc::DefaultTimeout, 
                                       QObject::tr("Playback"), Message);
     }
 }

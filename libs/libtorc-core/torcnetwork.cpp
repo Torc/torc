@@ -254,7 +254,7 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
         LOG(VB_GENERAL, LOG_INFO, "Network up");
         gLocalContext->NotifyEvent(Torc::NetworkAvailable);
         gLocalContext->SendMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout,
-                                   "", tr("Network"), tr("Network available"));
+                                   tr("Network"), tr("Network available"));
     }
     else if (wasonline && !m_online)
     {
@@ -262,7 +262,7 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
         CloseConnections();
         gLocalContext->NotifyEvent(Torc::NetworkUnavailable);
         gLocalContext->SendMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout,
-                                   "", tr("Network"), tr("Network unavailable"));
+                                   tr("Network"), tr("Network unavailable"));
     }
 }
 
