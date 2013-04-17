@@ -1504,9 +1504,10 @@ void UIWidget::AutoConnect(void)
 
         QString signal = name.mid(objectName().size() + 1);
 
-        if (signal == "Shown"     || signal == "Hidden" ||
-            signal == "Activated" || signal == "Deactivated" ||
-            signal == "Selected"  || signal == "Deselected")
+        if (signal == "Shown"         || signal == "Hidden" ||
+            signal == "Activated"     || signal == "Deactivated" ||
+            signal == "Selected"      || signal == "Deselected" ||
+            signal == "GroupSelected" || signal == "GroupDeselected")
         {
             Connect("", signal, name, "Start");
         }
