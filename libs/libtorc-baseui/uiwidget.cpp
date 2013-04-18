@@ -1418,13 +1418,78 @@ bool UIWidget::IsTemplate(void)
     return m_template;
 }
 
+QString UIWidget::ValidateObjectPath(const QString &Path)
+{
+    // this
+    if (Path.isEmpty() || Path == ".")
+        return QString();
+
+    // absolute address
+    if (Path.startsWith("/"))
+        return Path.mid(1);
+
+    // 'up'
+    if (Path.startsWith(".."))
+    {
+        int count = Path.count("..");
+        QStringList objects = objectName().split("_");
+
+        QString subpath = Path;
+        while (true)
+        {
+            if (subpath.startsWith("."))
+            {
+                subpath = subpath.mid(1);
+                continue;
+            }
+
+            if (subpath.startsWith("/"))
+            {
+                subpath = subpath.mid(1);
+                continue;
+            }
+
+            break;
+        }
+
+        if (count > objects.size())
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Invalid object reference '%1'").arg(Path));
+            return Path;
+        }
+        else
+        {
+            QString path;
+            bool first = true;
+            for (int i = 0; i < (objects.size() - count); ++i)
+            {
+                if (!first)
+                    path += "_";
+                path += objects.at(i);
+                first = false;
+            }
+
+            if (!subpath.isEmpty())
+                path += "_" + subpath;
+
+            return path;
+        }
+    }
+
+    // down
+    return objectName() + "_" + Path;
+}
+
 bool UIWidget::Connect(const QString &Sender, const QString &Signal,
                        const QString &Receiver, const QString &Slot)
 {
-    UIWidget* sender = Sender.isEmpty() ? this : FindWidget(Sender);
+    QString fullsender   = ValidateObjectPath(Sender);
+    QString fullreceiver = ValidateObjectPath(Receiver);
+
+    UIWidget* sender = fullsender.isEmpty() ? this : FindWidget(fullsender);
     if (!sender)
     {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to find sender.");
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to find sender '%1'").arg(fullsender));
         return false;
     }
 
@@ -1444,14 +1509,14 @@ bool UIWidget::Connect(const QString &Sender, const QString &Signal,
     if (signalidx < 0)
     {
         LOG(VB_GENERAL, LOG_ERR, QString("Widget '%1' has no signal named '%2'")
-            .arg(Sender).arg(Signal));
+            .arg(fullsender).arg(Signal));
         return false;
     }
 
-    UIWidget* receiver = Receiver.isEmpty() ? this : FindWidget(Receiver);
+    UIWidget* receiver = fullreceiver.isEmpty() ? this : FindWidget(fullreceiver);
     if (!receiver)
     {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to find receiver.");
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to find receiver '%1'").arg(fullreceiver));
         return false;
     }
 
@@ -1503,6 +1568,8 @@ void UIWidget::AutoConnect(void)
             continue;
 
         QString signal = name.mid(objectName().size() + 1);
+
+        name = "/" + name;
 
         if (signal == "Shown"         || signal == "Hidden" ||
             signal == "Activated"     || signal == "Deactivated" ||

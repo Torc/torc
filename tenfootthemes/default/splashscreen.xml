@@ -24,8 +24,8 @@
         </scriptfunction>
         <connect signal="Shown" slot="Startup" />
         <connect signal="Disabled" slot="Close"/>
-        <connect sender="splash_bg_zoom" signal="Finished" receiver="topmenu" slot="Activate" />
-        <connect sender="splash_bg_zoom" signal="Finished" slot="Disable" />
+        <connect sender="bg_zoom" signal="Finished" receiver="/topmenu" slot="Activate" />
+        <connect sender="bg_zoom" signal="Finished" slot="Disable" />
         <shape name="line" position="0,795,1920,10">
             <path>
                  <pen style="SolidLine" width="1" color="FFA000FF"/>
@@ -36,7 +36,7 @@
             </path>
         </shape>
         <shape name="bg" position="400,440,1120,200">
-        <effect zoom="0.5" alpha="0"/>
+            <effect zoom="0.5" alpha="0"/>
             <animation name="zoom">
                 <element property="alpha" endvalue="1.0" duration="3000" easingcurve="outquad"/>
                 <element property="zoom" endvalue="1.5" duration="3000" easingcurve="outquad"/>

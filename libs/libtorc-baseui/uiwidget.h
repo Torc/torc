@@ -199,6 +199,7 @@ class TORC_BASEUI_PUBLIC UIWidget : public QObject, public TorcReferenceCounter
     virtual bool    DrawSelf            (UIWindow* Window, qreal XOffset, qreal YOffset);
     virtual bool    InitialisePriv      (QDomElement *Element);
     QString         GetDerivedWidgetName(const QString &NewParentName);
+    QString         ValidateObjectPath  (const QString &Path);
     void            AddChild            (UIWidget *Widget);
     void            RemoveChild         (UIWidget *Widget);
     void            RegisterWidget      (UIWidget *Widget);

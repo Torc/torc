@@ -5,7 +5,7 @@
         <animation name="Activated">
             <element duration="250" property="alpha" endvalue="1" easingcurve="outquad"/>
         </animation>
-        <connect signal="Finished" sender="basewindow_Deactivated" slot="Disable"/>
+        <connect signal="Finished" sender="Deactivated" slot="Disable"/>
         <animation name="Deactivated">
             <element duration="250" property="alpha" endvalue="0" easingcurve="outquad"/>
         </animation>
@@ -14,9 +14,9 @@
         <state disabled="1"/>
         <button name="button" position="0,0,300,100" template="true">
             <effect alpha="0.5" centre="middle"/>
-            <connect signal="Selected"   slot="Start" receiver="templates_button_glow_show"/>
-            <connect signal="Deselected" slot="Start" receiver="templates_button_glow_hide"/>
-            <connect signal="Deselected" slot="Stop"  receiver="templates_button_glow_show"/>
+            <connect signal="Selected"   slot="Start" receiver="glow_show"/>
+            <connect signal="Deselected" slot="Start" receiver="glow_hide"/>
+            <connect signal="Deselected" slot="Stop"  receiver="glow_show"/>
             <animation name="Selected">
                 <element property="zoom"  endvalue="1.1" easingcurve="OutQuad" duration="250"/>
                 <element property="alpha" endvalue="1.0" easingcurve="OutQuad" duration="250"/>
@@ -53,10 +53,6 @@
                 <font name="main" alignment="center"/>
             </text>
         </button>
-        <group name="horizontalgroup" position="0,700,1920,100" template="1">
-            <layout type="horizontal" selectrange="100,0,1720,100"/>
-            <scroll speed="1000" easingcurve="outquad"/>
-        </group>
     </window>
 </torctheme>
 
