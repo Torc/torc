@@ -250,7 +250,7 @@ void UIButton::Push(void)
 
     bool signal = !m_pushed;
     m_pushed = true;
-    Select();
+
     if (signal)
     {
         m_toggled = 2;
