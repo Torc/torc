@@ -85,7 +85,7 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
     m_unscaledRect(0.0, 0.0, 0.0, 0.0),
     m_enabled(true),
     m_visible(true),
-    m_active(false),
+    m_active(true),
     m_selected(false),
     m_effect(new UIEffect()),
     m_secondaryEffect(NULL),
@@ -1197,13 +1197,12 @@ UIWidget* UIWidget::FindChildByName(const QString &Name, bool Recursive)
 
 bool UIWidget::IsFocusable(void)
 {
-    // FIXME this needs to be m_active and not m_visible
-    return m_visible && (m_focusable || m_focusableChildCount) && !m_template;
+    return m_active && (m_focusable || m_focusableChildCount) && !m_template;
 }
 
 bool UIWidget::IsButton(void)
 {
-    return m_visible && m_focusable && !m_template;
+    return m_active && m_focusable && !m_template;
 }
 
 UIWidget* UIWidget::GetFocusWidget(void)
