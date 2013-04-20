@@ -102,6 +102,10 @@ VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags
         // initialise AFTER the signals and slots have been initialised
         m_render->Initialise();
     }
+
+    // allow gpu hardware acceleration such as VDPAU, DXVA2 and VAAPI
+    if (VideoPlayer::gAllowGPUAcceleration)
+        VideoPlayer::gAllowGPUAcceleration->SetActive(true);
 }
 
 VideoUIPlayer::~VideoUIPlayer()

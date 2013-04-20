@@ -299,13 +299,18 @@ AVPixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const AVPi
         LOG(VB_GENERAL, LOG_INFO, QString("Testing pixel format: %1").arg(av_get_pix_fmt_name(format)));
 
         bool accelerate = false;
-        AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
-        for ( ; factory; factory = factory->NextFactory())
+
+        if (VideoPlayer::gEnableAcceleration && VideoPlayer::gEnableAcceleration->IsActive() &&
+            VideoPlayer::gEnableAcceleration->GetValue().toBool())
         {
-            if (factory->CanAccelerate(Context, format))
+            AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+            for ( ; factory; factory = factory->NextFactory())
             {
-                accelerate = true;
-                break;
+                if (factory->CanAccelerate(Context, format))
+                {
+                    accelerate = true;
+                    break;
+                }
             }
         }
 

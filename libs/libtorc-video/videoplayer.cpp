@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -21,10 +21,92 @@
 */
 
 // Torc
+#include "torcadminthread.h"
 #include "torclogging.h"
 #include "torcdecoder.h"
 #include "videoframe.h"
 #include "videoplayer.h"
+
+TorcSetting* VideoPlayer::gEnableAcceleration = NULL;
+TorcSetting* VideoPlayer::gAllowGPUAcceleration = NULL;
+TorcSetting* VideoPlayer::gAllowOtherAcceleration = NULL;
+
+/*! \class TorcVideoPlayerSettings
+ *  \brief Creates the video playback settings
+ *
+ * TorcPlayer::gVideoSettings is created by TorcPlayerSettings (with high priority) so
+ * is already extant when this class is called.
+ *
+ * \sa TorcSetting
+ * \sa TorcPlayer
+ * \sa TorcPlayerSettings
+*/
+class TorcVideoPlayerSettings : public TorcAdminObject
+{
+  public:
+    TorcVideoPlayerSettings()
+      : TorcAdminObject(TORC_ADMIN_MED_PRIORITY),
+        m_created(false)
+    {
+    }
+
+    void Create()
+    {
+        if (!TorcPlayer::gVideoSettings)
+            return;
+
+        VideoPlayer::gEnableAcceleration = new TorcSetting(TorcPlayer::gVideoSettings,
+                                                          TORC_VIDEO + "AllowAcceleration",
+                                                          QObject::tr("Enable accelerated video decoding"),
+                                                          true, QVariant((bool)true));
+
+        // allow crystalhd/vda etc
+        VideoPlayer::gAllowOtherAcceleration = new TorcSetting(VideoPlayer::gEnableAcceleration,
+                                                               TORC_VIDEO + "AllowOtherAcceleration",
+                                                               QObject::tr("Allow non GPU video acceleration"),
+                                                               true, QVariant((bool)true));
+        // GPU based acceleration
+        VideoPlayer::gAllowGPUAcceleration = new TorcSetting(VideoPlayer::gEnableAcceleration,
+                                                             TORC_VIDEO + "AllowGPUAcceleration",
+                                                             QObject::tr("Allow GPU video acceleration"),
+                                                             true, QVariant((bool)true));
+
+        // default to no GPU based acceleration for non-UI applications.
+        // VideoUIPlayer (or other) will call SetActive(true)
+        VideoPlayer::gAllowGPUAcceleration->SetActiveThreshold(2);
+        // but allow acceleration that returns a software frame (VDA, crystalhd etc)
+        VideoPlayer::gAllowOtherAcceleration->SetActiveThreshold(1);
+
+        // setup dependencies
+        VideoPlayer::gAllowOtherAcceleration->SetActive(VideoPlayer::gEnableAcceleration->GetValue().toBool());
+        VideoPlayer::gAllowGPUAcceleration->SetActive(VideoPlayer::gEnableAcceleration->GetValue().toBool());
+        QObject::connect(VideoPlayer::gEnableAcceleration, SIGNAL(ValueChanged(bool)), VideoPlayer::gAllowOtherAcceleration, SLOT(SetActive(bool)));
+        QObject::connect(VideoPlayer::gEnableAcceleration, SIGNAL(ValueChanged(bool)), VideoPlayer::gAllowGPUAcceleration, SLOT(SetActive(bool)));
+
+        m_created = true;
+    }
+
+    void Destroy(void)
+    {
+        if (m_created)
+        {
+            VideoPlayer::gAllowOtherAcceleration->Remove();
+            VideoPlayer::gAllowOtherAcceleration->DownRef();
+            VideoPlayer::gAllowGPUAcceleration->Remove();
+            VideoPlayer::gAllowGPUAcceleration->DownRef();
+            VideoPlayer::gEnableAcceleration->Remove();
+            VideoPlayer::gEnableAcceleration->DownRef();
+        }
+
+        VideoPlayer::gEnableAcceleration = NULL;
+        VideoPlayer::gAllowOtherAcceleration = NULL;
+        VideoPlayer::gAllowGPUAcceleration = NULL;
+    }
+
+  private:
+    bool m_created;
+
+} TorcVideoPlayerSettings;
 
 VideoPlayer::VideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : TorcPlayer(Parent, PlaybackFlags, DecodeFlags),

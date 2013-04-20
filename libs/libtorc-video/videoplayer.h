@@ -5,6 +5,7 @@
 #include <QObject>
 
 // Torc
+#include "torcsetting.h"
 #include "audiowrapper.h"
 #include "torcvideoexport.h"
 #include "videobuffers.h"
@@ -13,6 +14,11 @@
 class VideoPlayer : public TorcPlayer
 {
     Q_OBJECT
+
+  public:
+    static TorcSetting* gEnableAcceleration;
+    static TorcSetting* gAllowGPUAcceleration;
+    static TorcSetting* gAllowOtherAcceleration;
 
   public:
     VideoPlayer(QObject* Parent, int PlaybackFlags, int DecodeFlags);
