@@ -73,7 +73,6 @@ TorcSetting::TorcSetting(TorcSetting *Parent, const QString &DBName, const QStri
     else if (type == QVariant::Bool)
     {
         m_value = m_persistent ? gLocalContext->GetSetting(m_dbName, (bool)m_default.toBool()) : m_default.toBool();
-        LOG(VB_GENERAL, LOG_INFO, QString("%1 loaded %2").arg(objectName()).arg(m_value.toString()));
     }
     else if (type == QVariant::String)
     {
@@ -224,22 +223,18 @@ void TorcSetting::SetActiveThreshold(int Threshold)
 
 void TorcSetting::SetTrue(void)
 {
-    LOG(VB_GENERAL, LOG_INFO, "True");
     if (m_default.type() == QVariant::Bool)
         SetValue(QVariant((bool)true));
 }
 
 void TorcSetting::SetFalse(void)
 {
-    LOG(VB_GENERAL, LOG_INFO, "False");
     if (m_default.type() == QVariant::Bool)
         SetValue(QVariant((bool)false));
 }
 
 void TorcSetting::SetValue(const QVariant &Value)
 {
-    LOG(VB_GENERAL, LOG_INFO, QString("Set %1: active %2 value %3").arg(objectName()).arg(IsActive()).arg(Value.toString()));
-
     if (m_value == Value || !IsActive())
         return;
 
@@ -259,7 +254,7 @@ void TorcSetting::SetValue(const QVariant &Value)
         bool value = m_value.toBool();
         if (m_persistent)
             gLocalContext->SetSetting(m_dbName, (bool)value);
-        LOG(VB_GENERAL, LOG_INFO, QString("%1 set %2").arg(objectName()).arg(value));
+
         emit ValueChanged(value);
     }
     else if (type == QVariant::String)
