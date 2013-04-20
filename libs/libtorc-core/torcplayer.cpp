@@ -30,6 +30,7 @@
 
 // Torc
 #include "torclocalcontext.h"
+#include "torcadminthread.h"
 #include "torccoreutils.h"
 #include "torclogging.h"
 #include "torcdecoder.h"
@@ -38,6 +39,58 @@
 #define DECODER_START_TIMEOUT 20000
 #define DECODER_STOP_TIMEOUT  3000
 #define DECODER_PAUSE_TIMEOUT 1000
+
+TorcSetting* TorcPlayer::gAudioSettings = NULL;
+TorcSetting* TorcPlayer::gVideoSettings = NULL;
+
+/*! \class TorcPlayeSettings
+ *  \brief A class to create the global audo and video objects
+ *
+ * There are no global or static instances of TorcPlayer, hence we need
+ * to trigger creation of the audio and video setting groups.
+ *
+ * \sa TorcSetting
+ * \sa TorcAdminObject
+*/
+
+class TorcPlayerSettings : public TorcAdminObject
+{
+  public:
+    TorcPlayerSettings()
+      : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY)
+    {
+    }
+
+    void Create(void)
+    {
+        static bool created = false;
+        if (created || !gRootSetting)
+            return;
+
+        TorcPlayer::gAudioSettings = new TorcSettingGroup(gRootSetting, QObject::tr("Audio"));
+        TorcPlayer::gVideoSettings = new TorcSettingGroup(gRootSetting, QObject::tr("Video"));
+
+        created = true;
+    }
+
+    void Destroy(void)
+    {
+        if (TorcPlayer::gAudioSettings)
+        {
+            TorcPlayer::gAudioSettings->Remove();
+            TorcPlayer::gAudioSettings->DownRef();
+        }
+
+        if (TorcPlayer::gVideoSettings)
+        {
+            TorcPlayer::gVideoSettings->Remove();
+            TorcPlayer::gVideoSettings->DownRef();
+        }
+
+        TorcPlayer::gAudioSettings = NULL;
+        TorcPlayer::gVideoSettings = NULL;
+    }
+} TorcPlayerSettings;
 
 /*! \class TorcPlayer
   * \brief The base media player class for Torc.

@@ -10,6 +10,7 @@
 
 // Torc
 #include "torccoreexport.h"
+#include "torcsetting.h"
 
 class TorcDecoder;
 
@@ -56,6 +57,10 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
         // state
         Speed = 0x2000
     };
+
+  public:
+    static TorcSetting *gAudioSettings;
+    static TorcSetting *gVideoSettings;
 
   public:
     static TorcPlayer* Create              (QObject *Parent, int PlaybackFlags, int DecoderFlags);
@@ -173,5 +178,4 @@ class TORC_CORE_PUBLIC  TorcPlayerInterface
     bool           m_pausedForSuspend;
     bool           m_pausedForInactiveSource;
 };
-
 #endif // TORCPLAYER_H
