@@ -9,6 +9,7 @@
 #include "torclocaldefs.h"
 #include "torcconfig.h"
 #include "torccoreexport.h"
+#include "torcsetting.h"
 #include "torclanguage.h"
 #include "torcobservable.h"
 #include "torccommandlineparser.h"
@@ -245,5 +246,6 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
 extern TORC_CORE_PUBLIC TorcLocalContext *gLocalContext;
 extern TORC_CORE_PUBLIC QMutex           *gLocalContextLock;
 extern TORC_CORE_PUBLIC QMutex           *gAVCodecLock;
+extern TORC_CORE_PUBLIC TorcSetting      *gRootSetting;
 
 #endif // TORCLOCALCONTEXT_H

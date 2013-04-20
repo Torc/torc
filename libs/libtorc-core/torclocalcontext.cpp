@@ -49,6 +49,7 @@
 TorcLocalContext *gLocalContext = NULL;
 QMutex*       gLocalContextLock = new QMutex(QMutex::Recursive);
 QMutex*            gAVCodecLock = new QMutex(QMutex::Recursive);
+TorcSetting       *gRootSetting = NULL;
 
 static void ExitHandler(int Sig)
 {
@@ -109,6 +110,11 @@ TorcLocalContextPriv::~TorcLocalContextPriv()
     // wait for threads to exit
     QThreadPool::globalInstance()->waitForDone();
 
+    // remove root setting
+    gRootSetting->Remove();
+    gRootSetting->DownRef();
+    gRootSetting = NULL;
+
     // delete the database connection(s)
     delete m_sqliteDB;
     m_sqliteDB = NULL;
@@ -163,6 +169,9 @@ bool TorcLocalContextPriv::Init(void)
     {
         LOG(VB_GENERAL, LOG_INFO, "Running without database");
     }
+
+    // Create the root settings object
+    gRootSetting = new TorcSettingGroup(NULL, QString("RootSetting"));
 
     // don't expire threads
     QThreadPool::globalInstance()->setExpiryTimeout(-1);
