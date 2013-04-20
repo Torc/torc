@@ -315,12 +315,15 @@ bool UIGroup::HandleAction(int Action)
         }
     }
 
+    bool focusableparent  = m_parent && m_parent->IsFocusable();
+    UIWidget* focuswidget = GetFocusWidget();
+
     if (m_groupType == Vertical)
     {
         // pass left/right to parent group if it exists
         if (action == Torc::Left || action == Torc::Right)
         {
-            if (m_parent && m_parent->IsFocusable())
+            if (focusableparent)
                 return m_parent->HandleAction(action);
             return false;
         }
@@ -328,12 +331,12 @@ bool UIGroup::HandleAction(int Action)
         // handle end of list
         if (action == Torc::Up)
         {
-            if (GetFocusWidget() == FirstFocusWidget())
+            if (focuswidget == FirstFocusWidget())
             {
                 if (!wrapvertical)
                 {
                     // pass to parent group or ignore
-                    if (m_parent && m_parent->IsFocusable())
+                    if (focusableparent && !IsDetached())
                         return m_parent->HandleAction(Action);
                     return false;
                 }
@@ -346,11 +349,11 @@ bool UIGroup::HandleAction(int Action)
         }
         else if (action == Torc::Down)
         {
-            if (GetFocusWidget() == LastFocusWidget())
+            if (focuswidget == LastFocusWidget())
             {
                 if (!wrapvertical)
                 {
-                    if (m_parent && m_parent->IsFocusable())
+                    if (focusableparent && !IsDetached())
                         return m_parent->HandleAction(Action);
                     return false;
                 }
@@ -366,7 +369,7 @@ bool UIGroup::HandleAction(int Action)
         // pass up/down to parent group if it exists
         if (action == Torc::Up || action == Torc::Down)
         {
-            if (m_parent && m_parent->IsFocusable())
+            if (focusableparent)
                 return m_parent->HandleAction(action);
             return false;
         }
@@ -374,12 +377,12 @@ bool UIGroup::HandleAction(int Action)
         // handle end of list
         if (action == Torc::Left)
         {
-            if (GetFocusWidget() == FirstFocusWidget())
+            if (focuswidget == FirstFocusWidget())
             {
-                if (!wraphorizontal)
+                if (!wraphorizontal && !IsDetached())
                 {
                     // pass to parent group or ignore
-                    if (m_parent && m_parent->IsFocusable())
+                    if (focusableparent)
                         return m_parent->HandleAction(Action);
                     return false;
                 }
@@ -392,11 +395,11 @@ bool UIGroup::HandleAction(int Action)
         }
         else if (action == Torc::Right)
         {
-            if (GetFocusWidget() == LastFocusWidget())
+            if (focuswidget == LastFocusWidget())
             {
-                if (!wraphorizontal)
+                if (!wraphorizontal && !IsDetached())
                 {
-                    if (m_parent && m_parent->IsFocusable())
+                    if (focusableparent)
                         return m_parent->HandleAction(Action);
                     return false;
                 }
@@ -409,8 +412,6 @@ bool UIGroup::HandleAction(int Action)
     }
     else if (m_groupType == Grid && m_fixedWidth >= 1.0 && m_fixedHeight >= 1.0)
     {
-        // find the selected widget (if any)
-        UIWidget* focuswidget = GetFocusWidget();
         bool found = m_children.contains(focuswidget);
 
         // check if focus widget is in nested group
@@ -440,7 +441,7 @@ bool UIGroup::HandleAction(int Action)
                     if (!wraphorizontal)
                     {
                         // pass action to parent group
-                        if (m_parent && m_parent->IsFocusable())
+                        if (focusableparent)
                             return m_parent->HandleAction(Action);
                         return false;
                     }
@@ -457,7 +458,7 @@ bool UIGroup::HandleAction(int Action)
                 {
                     if (!wraphorizontal)
                     {
-                        if (m_parent && m_parent->IsFocusable())
+                        if (focusableparent)
                             return m_parent->HandleAction(Action);
                         return false;
                     }
@@ -474,7 +475,7 @@ bool UIGroup::HandleAction(int Action)
                 {
                     if (!wrapvertical)
                     {
-                        if (m_parent && m_parent->IsFocusable())
+                        if (focusableparent)
                             return m_parent->HandleAction(Action);
                         return false;
                     }
@@ -491,7 +492,7 @@ bool UIGroup::HandleAction(int Action)
                 {
                     if (!wrapvertical)
                     {
-                        if (m_parent && m_parent->IsFocusable())
+                        if (focusableparent)
                             return m_parent->HandleAction(Action);
                         return false;
                     }
@@ -510,7 +511,7 @@ bool UIGroup::HandleAction(int Action)
                                                     wrapvertical, wraphorizontal, pass);
                 if (child)
                     child->Select();
-                else if (pass && m_parent && m_parent->IsFocusable())
+                else if (pass && focusableparent)
                     return m_parent->HandleAction(Action);
 
                 return true;
