@@ -22,6 +22,7 @@
 
 // Torc
 #include "torclogging.h"
+#include "videoplayer.h"
 #include "videodecoder.h"
 #include "videovda.h"
 
@@ -58,7 +59,13 @@ class VDAAcceleration : public AccelerationFactory
 {
     bool CanAccelerate(AVCodecContext *Context, AVPixelFormat Format)
     {
-        return VideoVDA::CanAccelerate(Context, Format);
+        if (VideoPlayer::gAllowOtherAcceleration && VideoPlayer::gAllowOtherAcceleration->IsActive() &&
+            VideoPlayer::gAllowOtherAcceleration->GetValue().toBool())
+        {
+            return VideoVDA::CanAccelerate(Context, Format);
+        }
+
+        return false;
     }
 
     void DeinitialiseDecoder(AVCodecContext *Context)
