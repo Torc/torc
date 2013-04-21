@@ -79,16 +79,16 @@ TorcPowerWin::TorcPowerWin(TorcPower *Parent)
 
     if (privileged && GetPwrCapabilities(&capabilities))
     {
-        m_canHibernate = capabilities.SystemS4;
-        m_canSuspend   = capabilities.SystemS1 || capabilities.SystemS2 || capabilities.SystemS3;
+        m_canHibernate->SetValue(QVariant((bool)capabilities.SystemS4));
+        m_canSuspend->SetValue(QVariant((bool)capabilities.SystemS1 || capabilities.SystemS2 || capabilities.SystemS3));
     }
     else
     {
         LOG(VB_GENERAL, LOG_WARNING, "Failed to retrieve power capabilities");
     }
 
-    m_canRestart   = privileged;
-    m_canShutdown  = privileged;
+    m_canRestart->SetValue(QVariant((bool)privileged));
+    m_canShutdown->SetValue(QVariant((bool)privileged));
 
     // start the battery state timer - update once a minute
     Refresh();
@@ -104,7 +104,7 @@ TorcPowerWin::~TorcPowerWin()
 
 bool TorcPowerWin::Restart(void)
 {
-    if (m_canRestart && ExitWindowsEx(EWX_REBOOT  | EWX_FORCE, SHTDN_REASON_MAJOR_OPERATINGSYSTEM | SHTDN_REASON_MINOR_UPGRADE | SHTDN_REASON_FLAG_PLANNED))
+    if (m_canRestart->GetValue().toBool() && ExitWindowsEx(EWX_REBOOT  | EWX_FORCE, SHTDN_REASON_MAJOR_OPERATINGSYSTEM | SHTDN_REASON_MINOR_UPGRADE | SHTDN_REASON_FLAG_PLANNED))
         return true;
 
     LOG(VB_GENERAL, LOG_ERR, "Failed to restart");
@@ -113,7 +113,7 @@ bool TorcPowerWin::Restart(void)
 
 bool TorcPowerWin::Shutdown(void)
 {
-    if (m_canShutdown && ExitWindowsEx(EWX_SHUTDOWN | EWX_FORCE, SHTDN_REASON_MAJOR_OPERATINGSYSTEM | SHTDN_REASON_MINOR_UPGRADE | SHTDN_REASON_FLAG_PLANNED))
+    if (m_canShutdown->GetValue().toBool() && ExitWindowsEx(EWX_SHUTDOWN | EWX_FORCE, SHTDN_REASON_MAJOR_OPERATINGSYSTEM | SHTDN_REASON_MINOR_UPGRADE | SHTDN_REASON_FLAG_PLANNED))
         return true;
 
     LOG(VB_GENERAL, LOG_ERR, "Failed to shutdown");
@@ -122,7 +122,7 @@ bool TorcPowerWin::Shutdown(void)
 
 bool TorcPowerWin::Suspend(void)
 {
-    if (m_canSuspend && SetSuspendState(false, true, false))
+    if (m_canSuspend->GetValue().toBool() && SetSuspendState(false, true, false))
     {
         ((TorcPower*)parent())->Suspending();
         return true;
@@ -134,7 +134,7 @@ bool TorcPowerWin::Suspend(void)
 
 bool TorcPowerWin::Hibernate(void)
 {
-    if (m_canHibernate && SetSuspendState(true, true, false))
+    if (m_canHibernate->GetValue().toBool() && SetSuspendState(true, true, false))
     {
         ((TorcPower*)parent())->Hibernating();
         return true;

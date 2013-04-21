@@ -7,6 +7,7 @@
 
 // Torc
 #include "torccoreexport.h"
+#include "torcsetting.h"
 #include "http/torchttpservice.h"
 
 #define TORC_AC_POWER         -1
@@ -19,32 +20,29 @@ class TorcPowerPriv : public QObject
 {
     Q_OBJECT
 
+    friend class TorcPower;
+
   public:
     static TorcPowerPriv* Create(TorcPower *Parent);
 
     TorcPowerPriv(TorcPower *Parent);
     virtual ~TorcPowerPriv();
 
-    virtual bool Shutdown        (void) = 0;
-    virtual bool Suspend         (void) = 0;
-    virtual bool Hibernate       (void) = 0;
-    virtual bool Restart         (void) = 0;
-    virtual void Refresh         (void) = 0;
+    virtual bool        Shutdown        (void) = 0;
+    virtual bool        Suspend         (void) = 0;
+    virtual bool        Hibernate       (void) = 0;
+    virtual bool        Restart         (void) = 0;
+    virtual void        Refresh         (void) = 0;
 
-    bool         CanShutdown     (void);
-    bool         CanSuspend      (void);
-    bool         CanHibernate    (void);
-    bool         CanRestart      (void);
-    int          GetBatteryLevel (void);
-
-    void         Debug           (void);
+    int                 GetBatteryLevel (void);
+    void                Debug           (void);
 
   protected:
-    bool         m_canShutdown;
-    bool         m_canSuspend;
-    bool         m_canHibernate;
-    bool         m_canRestart;
-    int          m_batteryLevel;
+    TorcSetting    *m_canShutdown;
+    TorcSetting    *m_canSuspend;
+    TorcSetting    *m_canHibernate;
+    TorcSetting    *m_canRestart;
+    int                 m_batteryLevel;
 };
 
 class TORC_CORE_PUBLIC PowerFactory
@@ -100,12 +98,14 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
     TorcPower();
 
   private:
-    bool           m_allowShutdown;
-    bool           m_allowSuspend;
-    bool           m_allowHibernate;
-    bool           m_allowRestart;
-    int            m_lastBatteryLevel;
-    TorcPowerPriv *m_priv;
+    TorcSettingGroup     *m_powerGroupItem;
+    TorcSetting          *m_powerEnabled;
+    TorcSetting          *m_allowShutdown;
+    TorcSetting          *m_allowSuspend;
+    TorcSetting          *m_allowHibernate;
+    TorcSetting          *m_allowRestart;
+    int                   m_lastBatteryLevel;
+    TorcPowerPriv        *m_priv;
 };
 
 extern TORC_CORE_PUBLIC TorcPower *gPower;

@@ -91,10 +91,10 @@ TorcPowerOSX::TorcPowerOSX(TorcPower *Parent)
     }
 
     // Set capabilities
-    m_canShutdown  = true;
-    m_canSuspend   = IOPMSleepEnabled();
-    m_canHibernate = true;
-    m_canRestart   = true;
+    m_canShutdown->SetValue(QVariant((bool)true));
+    m_canSuspend->SetValue(QVariant((bool)IOPMSleepEnabled()));
+    m_canHibernate->SetValue(QVariant((bool)true));
+    m_canRestart->SetValue(QVariant((bool)true));
 }
 
 TorcPowerOSX::~TorcPowerOSX()

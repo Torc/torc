@@ -62,36 +62,32 @@ TorcPowerPriv* TorcPowerPriv::Create(TorcPower *Parent)
 
 TorcPowerPriv::TorcPowerPriv(TorcPower *Parent)
   : QObject(static_cast<QObject*>(Parent)),
-    m_canShutdown(false),
-    m_canSuspend(false),
-    m_canHibernate(false),
-    m_canRestart(false),
     m_batteryLevel(TORC_UNKNOWN_POWER)
 {
+    m_canShutdown  = new TorcSetting(NULL, QString("CanShutdown"),  QString(), false, QVariant((bool)false));
+    m_canSuspend   = new TorcSetting(NULL, QString("CanSuspend"),   QString(), false, QVariant((bool)false));
+    m_canHibernate = new TorcSetting(NULL, QString("CanHibernate"), QString(), false, QVariant((bool)false));
+    m_canRestart   = new TorcSetting(NULL, QString("CanRestart"),   QString(), false, QVariant((bool)false));
 }
 
 TorcPowerPriv::~TorcPowerPriv()
 {
-}
+    if (m_canShutdown)
+        m_canShutdown->DownRef();
 
-bool TorcPowerPriv::CanShutdown(void)
-{
-    return m_canShutdown;
-}
+    if (m_canSuspend)
+        m_canSuspend->DownRef();
 
-bool TorcPowerPriv::CanSuspend(void)
-{
-    return m_canSuspend;
-}
+    if (m_canHibernate)
+        m_canHibernate->DownRef();
 
-bool TorcPowerPriv::CanHibernate(void)
-{
-    return m_canHibernate;
-}
+    if (m_canRestart)
+        m_canRestart->DownRef();
 
-bool TorcPowerPriv::CanRestart(void)
-{
-    return m_canRestart;
+    m_canShutdown  = NULL;
+    m_canSuspend   = NULL;
+    m_canHibernate = NULL;
+    m_canRestart   = NULL;
 }
 
 int TorcPowerPriv::GetBatteryLevel(void)
@@ -103,13 +99,13 @@ void TorcPowerPriv::Debug(void)
 {
     QString caps;
 
-    if (m_canShutdown)
+    if (m_canShutdown->GetValue().toBool())
         caps += "Shutdown ";
-    if (m_canSuspend)
+    if (m_canSuspend->GetValue().toBool())
         caps += "Suspend ";
-    if (m_canHibernate)
+    if (m_canHibernate->GetValue().toBool())
         caps += "Hibernate ";
-    if (m_canRestart)
+    if (m_canRestart->GetValue().toBool())
         caps += "Restart ";
 
     if (caps.isEmpty())
@@ -133,10 +129,6 @@ class TorcPowerNull : public TorcPowerPriv
     bool Hibernate       (void) { return false; }
     bool Restart         (void) { return false; }
     void Refresh         (void) {               }
-    bool CanShutdown     (void) { return false; }
-    bool CanSuspend      (void) { return false; }
-    bool CanHibernate    (void) { return false; }
-    bool CanRestart      (void) { return false; }
 };
 
 class PowerFactoryNull : public PowerFactory
@@ -227,17 +219,52 @@ void TorcPower::TearDown(void)
 TorcPower::TorcPower()
   : QObject(),
     TorcHTTPService(this, "/power", tr("Power"), TorcPower::staticMetaObject, "ShuttingDown,Suspending,Hibernating,Restarting,WokeUp,LowBattery"),
-    m_allowShutdown(false),
-    m_allowSuspend(false),
-    m_allowHibernate(false),
-    m_allowRestart(false),
     m_lastBatteryLevel(TORC_UNKNOWN_POWER),
     m_priv(TorcPowerPriv::Create(this))
 {
-    m_allowShutdown  = gLocalContext->GetSetting(TORC_CORE + "AllowShutdown", true);
-    m_allowSuspend   = gLocalContext->GetSetting(TORC_CORE + "AllowSuspend", true);
-    m_allowHibernate = gLocalContext->GetSetting(TORC_CORE + "AllowHibernate", true);
-    m_allowRestart   = gLocalContext->GetSetting(TORC_CORE + "AllowRestart", true);
+    m_powerGroupItem = new TorcSettingGroup(gRootSetting, tr("Power"));
+    m_powerEnabled   = new TorcSetting(m_powerGroupItem, QString(TORC_CORE + "EnablePower"),
+                                       tr("Enable power management"),
+                                       true, QVariant((bool)true));
+    m_allowShutdown  = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowShutdown"),
+                                       tr("Allow Torc to shutdown the system."),
+                                       true, QVariant((bool)true));
+    m_allowSuspend   = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowSuspend"),
+                                       tr("Allow Torc to suspend the system."),
+                                       true, QVariant((bool)true));
+    m_allowHibernate = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowHibernate"),
+                                       tr("Allow Torc to hibernate the system."),
+                                       true, QVariant((bool)true));
+    m_allowRestart   = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowRestart"),
+                                       tr("Allow Torc to restart the system."),
+                                       true, QVariant((bool)true));
+
+    // 'allow' depends on both underlying platform capabilities and top level setting
+    m_allowShutdown->SetActiveThreshold(2);
+    m_allowSuspend->SetActiveThreshold(2);
+    m_allowHibernate->SetActiveThreshold(2);
+    m_allowRestart->SetActiveThreshold(2);
+
+    m_allowShutdown->SetActive(m_priv->m_canShutdown->GetValue().toBool());
+    m_allowSuspend->SetActive(m_priv->m_canSuspend->GetValue().toBool());
+    m_allowHibernate->SetActive(m_priv->m_canHibernate->GetValue().toBool());
+    m_allowRestart->SetActive(m_priv->m_canRestart->GetValue().toBool());
+
+    m_allowShutdown->SetActive(m_powerEnabled->GetValue().toBool());
+    m_allowSuspend->SetActive(m_powerEnabled->GetValue().toBool());
+    m_allowHibernate->SetActive(m_powerEnabled->GetValue().toBool());
+    m_allowRestart->SetActive(m_powerEnabled->GetValue().toBool());
+
+    // listen for changes
+    connect(m_priv->m_canShutdown,  SIGNAL(ValueChanged(bool)), m_allowShutdown,  SLOT(SetActive(bool)));
+    connect(m_priv->m_canSuspend,   SIGNAL(ValueChanged(bool)), m_allowSuspend,   SLOT(SetActive(bool)));
+    connect(m_priv->m_canHibernate, SIGNAL(ValueChanged(bool)), m_allowHibernate, SLOT(SetActive(bool)));
+    connect(m_priv->m_canRestart,   SIGNAL(ValueChanged(bool)), m_allowRestart,   SLOT(SetActive(bool)));
+
+    connect(m_powerEnabled,         SIGNAL(ValueChanged(bool)), m_allowShutdown,  SLOT(SetActive(bool)));
+    connect(m_powerEnabled,         SIGNAL(ValueChanged(bool)), m_allowSuspend,   SLOT(SetActive(bool)));
+    connect(m_powerEnabled,         SIGNAL(ValueChanged(bool)), m_allowHibernate, SLOT(SetActive(bool)));
+    connect(m_powerEnabled,         SIGNAL(ValueChanged(bool)), m_allowRestart,   SLOT(SetActive(bool)));
 
     if (m_priv)
         m_priv->Debug();
@@ -245,9 +272,44 @@ TorcPower::TorcPower()
 
 TorcPower::~TorcPower()
 {
+    if (m_allowShutdown)
+    {
+        m_allowShutdown->Remove();
+        m_allowShutdown->DownRef();
+    }
+
+    if (m_allowRestart)
+    {
+        m_allowRestart->Remove();
+        m_allowRestart->DownRef();
+    }
+
+    if (m_allowHibernate)
+    {
+        m_allowHibernate->Remove();
+        m_allowHibernate->DownRef();
+    }
+
+    if (m_allowSuspend)
+    {
+        m_allowSuspend->Remove();
+        m_allowSuspend->DownRef();
+    }
+
+    if (m_powerEnabled)
+    {
+        m_powerEnabled->Remove();
+        m_powerEnabled->DownRef();
+    }
+
     if (m_priv)
         m_priv->deleteLater();
-    m_priv = NULL;
+
+    m_allowShutdown  = NULL;
+    m_allowRestart   = NULL;
+    m_allowHibernate = NULL;
+    m_allowSuspend   = NULL;
+    m_priv           = NULL;
 }
 
 void TorcPower::BatteryUpdated(int Level)
@@ -265,49 +327,48 @@ void TorcPower::BatteryUpdated(int Level)
     else
         LOG(VB_GENERAL, LOG_INFO, QString("Battery level %1%").arg(m_lastBatteryLevel));
 
-
     if (!wasalreadylow && (m_lastBatteryLevel >= 0 && m_lastBatteryLevel <= TORC_LOWBATTERY_LEVEL))
         LowBattery();
 }
 
 bool TorcPower::Shutdown(void)
 {
-    return m_allowShutdown ? m_priv->Shutdown() : false;
+    return (m_allowShutdown->GetValue().toBool() && m_allowShutdown->IsActive()) ? m_priv->Shutdown() : false;
 }
 
 bool TorcPower::Suspend(void)
 {
-    return m_allowSuspend ? m_priv->Suspend() : false;
+    return (m_allowSuspend->GetValue().toBool() && m_allowSuspend->IsActive()) ? m_priv->Suspend() : false;
 }
 
 bool TorcPower::Hibernate(void)
 {
-    return m_allowHibernate ? m_priv->Hibernate() : false;
+    return (m_allowHibernate->GetValue().toBool() && m_allowHibernate->IsActive()) ? m_priv->Hibernate() : false;
 }
 
 bool TorcPower::Restart(void)
 {
-    return m_allowRestart ? m_priv->Restart() : false;
+    return (m_allowRestart->GetValue().toBool() && m_allowRestart->IsActive()) ? m_priv->Restart() : false;
 }
 
 bool TorcPower::CanShutdown(void)
 {
-    return m_allowShutdown && m_priv->CanShutdown();
+    return m_allowShutdown->GetValue().toBool() && m_allowShutdown->IsActive();
 }
 
 bool TorcPower::CanSuspend(void)
 {
-    return m_allowSuspend && m_priv->CanSuspend();
+    return m_allowSuspend->GetValue().toBool() && m_allowSuspend->IsActive();
 }
 
 bool TorcPower::CanHibernate(void)
 {
-    return m_allowHibernate && m_priv->CanHibernate();
+    return m_allowHibernate->GetValue().toBool() && m_allowHibernate->IsActive();
 }
 
 bool TorcPower::CanRestart(void)
 {
-    return m_allowRestart && m_priv->CanRestart();
+    return m_allowRestart->GetValue().toBool() && m_allowRestart->IsActive();
 }
 
 int TorcPower::GetBatteryLevel(void)

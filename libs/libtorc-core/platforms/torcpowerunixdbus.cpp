@@ -100,11 +100,11 @@ TorcPowerUnixDBus::TorcPowerUnixDBus(TorcPower *Parent)
     {
         QDBusReply<bool> shutdown = m_consoleInterface->call(QLatin1String("CanStop"));
         if (shutdown.isValid() && shutdown.value())
-            m_canShutdown = true;
+            m_canShutdown->SetValue(QVariant((bool)true));
 
         QDBusReply<bool> restart = m_consoleInterface->call(QLatin1String("CanRestart"));
         if (restart.isValid() && restart.value())
-            m_canRestart = true;
+            m_canRestart->SetValue(QVariant((bool)true));
     }
 
     // populate devices
@@ -183,7 +183,7 @@ TorcPowerUnixDBus::~TorcPowerUnixDBus()
 
 bool TorcPowerUnixDBus::Shutdown(void)
 {
-    if (m_consoleInterface && m_canShutdown)
+    if (m_consoleInterface && m_canShutdown->GetValue().toBool())
     {
         QList<QVariant> dummy;
         if (m_upowerInterface->callWithCallback(QLatin1String("Stop"), dummy, (QObject*)this, SLOT(DBusCallback()), SLOT(DBusError(QDBusError))))
@@ -197,7 +197,7 @@ bool TorcPowerUnixDBus::Shutdown(void)
 
 bool TorcPowerUnixDBus::Suspend(void)
 {
-    if (m_upowerInterface && m_canSuspend)
+    if (m_upowerInterface && m_canSuspend->GetValue().toBool())
     {
         QList<QVariant> dummy;
         if (m_upowerInterface->callWithCallback(QLatin1String("AboutToSleep"), dummy, (QObject*)this, SLOT(DBusCallback()), SLOT(DBusError(QDBusError))))
@@ -212,7 +212,7 @@ bool TorcPowerUnixDBus::Suspend(void)
 
 bool TorcPowerUnixDBus::Hibernate(void)
 {
-    if (m_upowerInterface && m_canHibernate)
+    if (m_upowerInterface && m_canHibernate->GetValue().toBool())
     {
         QList<QVariant> dummy;
         if (m_upowerInterface->callWithCallback(QLatin1String("AboutToSleep"), dummy, (QObject*)this, SLOT(DBusCallback()), SLOT(DBusError(QDBusError))))
@@ -227,7 +227,7 @@ bool TorcPowerUnixDBus::Hibernate(void)
 
 bool TorcPowerUnixDBus::Restart(void)
 {
-    if (m_consoleInterface && m_canRestart)
+    if (m_consoleInterface && m_canRestart->GetValue().toBool())
     {
         QList<QVariant> dummy;
         if (m_upowerInterface->callWithCallback(QLatin1String("Restart"), dummy, (QObject*)this, SLOT(DBusCallback()), SLOT(DBusError(QDBusError))))
@@ -372,19 +372,19 @@ int TorcPowerUnixDBus::GetBatteryLevel(const QString &Path)
 
 void TorcPowerUnixDBus::UpdateProperties(void)
 {
-    m_canSuspend   = false;
-    m_canHibernate = false;
-    m_onBattery    = false;
+    m_canSuspend->SetValue(QVariant((bool)false));
+    m_canHibernate->SetValue(QVariant((bool)false));
+    m_onBattery = false;
 
     if (m_upowerInterface)
     {
         QVariant cansuspend = m_upowerInterface->property("CanSuspend");
         if (cansuspend.isValid() && cansuspend.toBool() == true)
-            m_canSuspend = true;
+            m_canSuspend->SetValue(QVariant((bool)true));
 
         QVariant canhibernate = m_upowerInterface->property("CanHibernate");
         if (canhibernate.isValid() && canhibernate.toBool() == true)
-            m_canHibernate = true;
+            m_canHibernate->SetValue(QVariant((bool)true));
 
         QVariant onbattery = m_upowerInterface->property("OnBattery");
         if (onbattery.isValid() && onbattery.toBool() == true)
