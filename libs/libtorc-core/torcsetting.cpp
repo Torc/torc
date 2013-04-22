@@ -47,14 +47,17 @@
  */
 
 TorcSetting::TorcSetting(TorcSetting *Parent, const QString &DBName, const QString &UIName,
-                         bool Persistent, const QVariant &Default)
+                         Type SettingType, bool Persistent, const QVariant &Default)
   : QObject(),
     m_parent(Parent),
-    m_type(Checkbox),
+    m_type(SettingType),
     m_persistent(Persistent),
     m_dbName(DBName),
     m_uiName(UIName),
     m_default(Default),
+    m_begin(0),
+    m_end(1),
+    m_step(1),
     m_active(0),
     m_activeThreshold(0),
     m_childrenLock(new QMutex(QMutex::Recursive))
@@ -66,11 +69,11 @@ TorcSetting::TorcSetting(TorcSetting *Parent, const QString &DBName, const QStri
 
     QVariant::Type type = m_default.type();
 
-    if (type == QVariant::Int)
+    if (type == QVariant::Int && m_type == Integer)
     {
         m_value = m_persistent ? gLocalContext->GetSetting(m_dbName, (int)m_default.toInt()) : m_default.toInt();
     }
-    else if (type == QVariant::Bool)
+    else if (type == QVariant::Bool && m_type == Checkbox)
     {
         m_value = m_persistent ? gLocalContext->GetSetting(m_dbName, (bool)m_default.toBool()) : m_default.toBool();
     }
@@ -193,6 +196,21 @@ QString TorcSetting::GetHelpText(void)
     return m_helpText;
 }
 
+int TorcSetting::GetBegin(void)
+{
+    return m_begin;
+}
+
+int TorcSetting::GetEnd(void)
+{
+    return m_end;
+}
+
+int TorcSetting::GetStep(void)
+{
+    return m_step;
+}
+
 void TorcSetting::SetActive(bool Value)
 {
     bool wasactive = IsActive();
@@ -245,9 +263,12 @@ void TorcSetting::SetValue(const QVariant &Value)
     if (type == QVariant::Int)
     {
         int value = m_value.toInt();
-        if (m_persistent)
-            gLocalContext->SetSetting(m_dbName, (int)value);
-        emit ValueChanged(value);
+        if (value >= m_begin && value <= m_end)
+        {
+            if (m_persistent)
+                gLocalContext->SetSetting(m_dbName, (int)value);
+            emit ValueChanged(value);
+        }
     }
     else if (type == QVariant::Bool)
     {
@@ -273,6 +294,23 @@ void TorcSetting::SetValue(const QVariant &Value)
     }
 }
 
+void TorcSetting::SetRange(int Begin, int End, int Step)
+{
+    if (m_type != Integer)
+        return;
+
+    if (Begin >= End || Step < 1)
+    {
+        LOG(VB_GENERAL, LOG_ERR, QString("Invalid setting range: begin %1 end %2 step %3")
+            .arg(Begin).arg(End).arg(Step));
+        return;
+    }
+
+    m_begin = Begin;
+    m_end   = End;
+    m_step  = Step;
+}
+
 void TorcSetting::SetDescription(const QString &Description)
 {
     m_description = Description;
@@ -295,6 +333,6 @@ QVariant TorcSetting::GetValue(void)
 */
 
 TorcSettingGroup::TorcSettingGroup(TorcSetting *Parent, const QString &UIName)
-  : TorcSetting(Parent, UIName, UIName, false, QVariant())
+  : TorcSetting(Parent, UIName, UIName, Checkbox, false, QVariant())
 {
 }

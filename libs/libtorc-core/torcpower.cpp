@@ -64,10 +64,10 @@ TorcPowerPriv::TorcPowerPriv(TorcPower *Parent)
   : QObject(static_cast<QObject*>(Parent)),
     m_batteryLevel(TORC_UNKNOWN_POWER)
 {
-    m_canShutdown  = new TorcSetting(NULL, QString("CanShutdown"),  QString(), false, QVariant((bool)false));
-    m_canSuspend   = new TorcSetting(NULL, QString("CanSuspend"),   QString(), false, QVariant((bool)false));
-    m_canHibernate = new TorcSetting(NULL, QString("CanHibernate"), QString(), false, QVariant((bool)false));
-    m_canRestart   = new TorcSetting(NULL, QString("CanRestart"),   QString(), false, QVariant((bool)false));
+    m_canShutdown  = new TorcSetting(NULL, QString("CanShutdown"),  QString(), TorcSetting::Checkbox, false, QVariant((bool)false));
+    m_canSuspend   = new TorcSetting(NULL, QString("CanSuspend"),   QString(), TorcSetting::Checkbox, false, QVariant((bool)false));
+    m_canHibernate = new TorcSetting(NULL, QString("CanHibernate"), QString(), TorcSetting::Checkbox, false, QVariant((bool)false));
+    m_canRestart   = new TorcSetting(NULL, QString("CanRestart"),   QString(), TorcSetting::Checkbox, false, QVariant((bool)false));
 }
 
 TorcPowerPriv::~TorcPowerPriv()
@@ -225,19 +225,19 @@ TorcPower::TorcPower()
     m_powerGroupItem = new TorcSettingGroup(gRootSetting, tr("Power"));
     m_powerEnabled   = new TorcSetting(m_powerGroupItem, QString(TORC_CORE + "EnablePower"),
                                        tr("Enable power management"),
-                                       true, QVariant((bool)true));
+                                       TorcSetting::Checkbox, true, QVariant((bool)true));
     m_allowShutdown  = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowShutdown"),
                                        tr("Allow Torc to shutdown the system."),
-                                       true, QVariant((bool)true));
+                                       TorcSetting::Checkbox, true, QVariant((bool)true));
     m_allowSuspend   = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowSuspend"),
                                        tr("Allow Torc to suspend the system."),
-                                       true, QVariant((bool)true));
+                                       TorcSetting::Checkbox, true, QVariant((bool)true));
     m_allowHibernate = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowHibernate"),
                                        tr("Allow Torc to hibernate the system."),
-                                       true, QVariant((bool)true));
+                                       TorcSetting::Checkbox, true, QVariant((bool)true));
     m_allowRestart   = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowRestart"),
                                        tr("Allow Torc to restart the system."),
-                                       true, QVariant((bool)true));
+                                       TorcSetting::Checkbox, true, QVariant((bool)true));
 
     // 'allow' depends on both underlying platform capabilities and top level setting
     m_allowShutdown->SetActiveThreshold(2);

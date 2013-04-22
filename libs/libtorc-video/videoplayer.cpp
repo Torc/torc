@@ -58,18 +58,18 @@ class TorcVideoPlayerSettings : public TorcAdminObject
         VideoPlayer::gEnableAcceleration = new TorcSetting(TorcPlayer::gVideoSettings,
                                                           TORC_VIDEO + "AllowAcceleration",
                                                           QObject::tr("Enable accelerated video decoding"),
-                                                          true, QVariant((bool)true));
+                                                          TorcSetting::Checkbox, true, QVariant((bool)true));
 
         // allow crystalhd/vda etc
         VideoPlayer::gAllowOtherAcceleration = new TorcSetting(VideoPlayer::gEnableAcceleration,
                                                                TORC_VIDEO + "AllowOtherAcceleration",
                                                                QObject::tr("Allow non GPU video acceleration"),
-                                                               true, QVariant((bool)true));
+                                                               TorcSetting::Checkbox, true, QVariant((bool)true));
         // GPU based acceleration
         VideoPlayer::gAllowGPUAcceleration = new TorcSetting(VideoPlayer::gEnableAcceleration,
                                                              TORC_VIDEO + "AllowGPUAcceleration",
                                                              QObject::tr("Allow GPU video acceleration"),
-                                                             true, QVariant((bool)true));
+                                                             TorcSetting::Checkbox, true, QVariant((bool)true));
 
         // default to no GPU based acceleration for non-UI applications.
         // VideoUIPlayer (or other) will call SetActive(true)
