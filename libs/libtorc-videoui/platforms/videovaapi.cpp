@@ -33,6 +33,7 @@
 #include "videocolourspace.h"
 #include "opengl/uiopenglwindow.h"
 #include "opengl/uiopengltextures.h"
+#include "videoplayer.h"
 #include "videovaapi.h"
 
 #include <GL/glx.h>
@@ -899,6 +900,12 @@ class VAAPIFactory : public AccelerationFactory
   public:
     bool CanAccelerate(AVCodecContext *Context, AVPixelFormat Format)
     {
+        if (!(VideoPlayer::gAllowGPUAcceleration && VideoPlayer::gAllowGPUAcceleration->IsActive() &&
+            VideoPlayer::gAllowGPUAcceleration->GetValue().toBool()))
+        {
+            return false;
+        }
+
         if (!VideoVAAPI::CanAccelerate(Context, Format))
             return false;
 
