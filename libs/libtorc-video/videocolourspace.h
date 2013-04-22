@@ -50,7 +50,7 @@ class VideoColourSpace : public QObject
 
     QSet<TorcPlayer::PlayerProperty> GetSupportedProperties (void);
 
-    void           SetChanged           (void);
+    void           SetChanged           (bool Changed);
     bool           HasChanged           (void);
     float*         Data                 (void);
 

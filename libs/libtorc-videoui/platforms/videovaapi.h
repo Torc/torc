@@ -102,6 +102,7 @@ class VideoVAAPI : public TorcReferenceCounter
     Display           *m_xDisplay;
     VADisplay          m_vaDisplay;
     QSet<TorcPlayer::PlayerProperty> m_supportedProperties;
+    QVector<VADisplayAttribute> m_supportedAttributes;
     int                m_numSurfaces;
     VASurfaceID       *m_surfaces;
     VAAPISurface      *m_surfaceData;

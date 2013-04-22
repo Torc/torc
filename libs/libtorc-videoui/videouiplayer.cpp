@@ -232,7 +232,7 @@ void VideoUIPlayer::Reset(void)
 {
     if (TorcThread::IsMainThread())
     {
-        m_colourSpace->SetChanged();
+        m_colourSpace->SetChanged(true);
         if (m_render)
             m_render->PlaybackFinished();
         VideoPlayer::Reset();

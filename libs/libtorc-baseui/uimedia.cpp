@@ -45,7 +45,7 @@ UIMedia::UIMedia(UIWidget *Root, UIWidget *Parent, const QString &Name, int Flag
 
     gLocalContext->AddObserver(this);
 
-    SetURI("/Users/mark/Dropbox/Videos/test3.mpg");
+    SetURI("/home/mark/Dropbox/Videos/bourne.mp4");
 }
 
 UIMedia::~UIMedia()

@@ -112,7 +112,7 @@ bool VideoRenderer::SetProperty(TorcPlayer::PlayerProperty Property, QVariant Va
 
 bool VideoRenderer::DisplayReset(void)
 {
-    m_colourSpace->SetChanged();
+    m_colourSpace->SetChanged(true);
     m_validVideoFrame = false;
     return true;
 }
@@ -124,7 +124,7 @@ QSet<TorcPlayer::PlayerProperty> VideoRenderer::GetSupportedProperties(void)
 
 void VideoRenderer::ResetOutput(void)
 {
-    m_colourSpace->SetChanged();
+    m_colourSpace->SetChanged(true);
     m_validVideoFrame = false;
     m_usingHighQualityScaling = false;
 }

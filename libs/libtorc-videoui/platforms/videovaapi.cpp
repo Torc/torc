@@ -763,19 +763,26 @@ bool VideoVAAPI::InitialiseContext(void)
                 .arg(attributes[i].min_value)
                 .arg(attributes[i].max_value));
 
+            if (!(attributes[i].flags & VA_DISPLAY_ATTRIB_SETTABLE))
+                continue;
+
             switch (attributes[i].type)
             {
                 case VADisplayAttribBrightness:
                     m_supportedProperties << TorcPlayer::Brightness;
+                    m_supportedAttributes << attributes[i];
                     break;
                 case VADisplayAttribContrast:
                     m_supportedProperties << TorcPlayer::Contrast;
+                    m_supportedAttributes << attributes[i];
                     break;
                 case VADisplayAttribSaturation:
                     m_supportedProperties << TorcPlayer::Saturation;
+                    m_supportedAttributes << attributes[i];
                     break;
                 case VADisplayAttribHue:
                     m_supportedProperties << TorcPlayer::Hue;
+                    m_supportedAttributes << attributes[i];
                     break;
                 default:
                     break;
@@ -872,6 +879,37 @@ bool VideoVAAPI::CopySurfaceToTexture(VideoFrame *Frame, VAAPISurface *Surface,
             case AVCOL_SPC_YCOCG:
             default:
                 flags |= VA_SRC_BT601;
+        }
+
+        if (!m_supportedAttributes.isEmpty() && ColourSpace->HasChanged())
+        {
+            for (int i = 0; i < m_supportedAttributes.size(); ++i)
+            {
+                int newvalue = -1;
+
+                if (m_supportedAttributes.at(i).type == VADisplayAttribBrightness)
+                    newvalue = ColourSpace->GetProperty(TorcPlayer::Brightness).toInt();
+                else if (m_supportedAttributes.at(i).type == VADisplayAttribContrast)
+                    newvalue = ColourSpace->GetProperty(TorcPlayer::Contrast).toInt();
+                else if (m_supportedAttributes.at(i).type == VADisplayAttribSaturation)
+                    newvalue = ColourSpace->GetProperty(TorcPlayer::Saturation).toInt();
+                else if (m_supportedAttributes.at(i).type == VADisplayAttribHue)
+                    newvalue = ColourSpace->GetProperty(TorcPlayer::Hue).toInt();
+
+                if (newvalue >= 0)
+                {
+                    newvalue = m_supportedAttributes.at(i).min_value + (int)(((float)(newvalue % 100) / 100.0) *
+                                                                       (m_supportedAttributes.at(i).max_value - m_supportedAttributes.at(i).min_value));
+
+                }
+            }
+
+            VAStatus status = vaSetDisplayAttributes(m_vaDisplay, m_supportedAttributes.data(), m_supportedAttributes.size());
+
+            if (status != VA_STATUS_SUCCESS)
+                VA_ERROR(status, "Failed to set display attributes");
+
+            ColourSpace->SetChanged(false);
         }
 
         m_lock->lock();

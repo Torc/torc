@@ -156,9 +156,9 @@ VideoColourSpace::~VideoColourSpace()
 {
 }
 
-void VideoColourSpace::SetChanged(void)
+void VideoColourSpace::SetChanged(bool Changed)
 {
-    m_changed = true;
+    m_changed = Changed;
 }
 
 bool VideoColourSpace::HasChanged(void)
