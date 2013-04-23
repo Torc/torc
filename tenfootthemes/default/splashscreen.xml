@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <torctheme>
     <window name="splash" position="0,0,1920,1080">
+        <scriptglobal name="globals">
+            var gTheme = new Object();
+            gTheme.skipsplash = LocalContext.GetSetting('GUI_SkipSplashScreen', 'no');
+        </scriptglobal>
         <state visible="false" />
         <scriptfunction name="Startup">
             var start = true;
-            if (LocalContext.GetSetting('GUI_SkipSplashScreen', 'no') == 'yes')
+            if (gTheme.skipsplash == 'yes')
             {
                 Log('Disabling splash screen');
                 if (ThemeRoot.SetRootWidget('topmenu'))

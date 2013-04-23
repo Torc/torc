@@ -426,6 +426,18 @@ bool UIWidget::Initialise(QDomElement *Element, const QString &Position)
                 AddScriptProperty(name, function);
             }
         }
+        else if (element.tagName() == "scriptglobal")
+        {
+            QString name = element.attribute("name");
+            if (name.isEmpty())
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Scriptglobal must have a name");
+            }
+            else
+            {
+                AddScriptProperty(name, GetText(&element));
+            }
+        }
         else
         {
             ParseWidget(m_rootParent, this, &element);
