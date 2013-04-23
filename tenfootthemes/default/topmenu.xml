@@ -42,10 +42,10 @@
     <window name="media" inherits="/basewindow">
         <media name="media" position="0,0,1920,1080">
             <scriptfunction name="Finalise">
-                SetProperty(TorcPlayer.Brightness, media_media.GetProperty(TorcPlayer.Brightness));
-                SetProperty(TorcPlayer.Contrast, media_media.GetProperty(TorcPlayer.Contrast));
-                SetProperty(TorcPlayer.Saturation, media_media.GetProperty(TorcPlayer.Saturation));
-                SetProperty(TorcPlayer.Hue, media_media.GetProperty(TorcPlayer.Hue));
+                SetProperty(TorcPlayer.Brightness, this.GetProperty(TorcPlayer.Brightness));
+                SetProperty(TorcPlayer.Contrast,   this.GetProperty(TorcPlayer.Contrast));
+                SetProperty(TorcPlayer.Saturation, this.GetProperty(TorcPlayer.Saturation));
+                SetProperty(TorcPlayer.Hue,        this.GetProperty(TorcPlayer.Hue));
                 media_media_colourcontrols.Hide();
             </scriptfunction>
             <scriptfunction name="SetProperty" arguments="Property,Value">
