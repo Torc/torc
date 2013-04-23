@@ -7,24 +7,18 @@
         </scriptglobal>
         <state visible="false" />
         <scriptfunction name="Startup">
-            var start = true;
-            if (gTheme.skipsplash == 'yes')
+        <![CDATA[
+            if (gTheme.skipsplash == 'yes' && ThemeRoot.SetRootWidget('topmenu'))
             {
                 Log('Disabling splash screen');
-                if (ThemeRoot.SetRootWidget('topmenu'))
-                    start = false;
+                this.Disable();
+                return;
             }
 
-            if (start)
-            {
-                splash_bg_zoom.Start();
-                splash_circles_zoom.Start();
-                splash_text_zoom.Start();
-            }
-            else
-            {
-                this.Disable();
-            }
+            splash_bg_zoom.Start();
+            splash_circles_zoom.Start();
+            splash_text_zoom.Start();
+        ]]>
         </scriptfunction>
         <connect signal="Shown" slot="Startup" />
         <connect signal="Disabled" slot="Close"/>
