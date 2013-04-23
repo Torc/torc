@@ -62,7 +62,7 @@ class VideoVAAPI : public TorcReferenceCounter
 
     static VideoVAAPI* GetVideoVAAPI          (AVCodecContext *Context, bool OpenGL);
     static bool        VAAPIAvailable         (bool OpenGL);
-    static bool        CanAccelerate          (AVCodecContext *Context, AVPixelFormat Format);
+    static bool        InitialiseDecoder      (AVCodecContext *Context, AVPixelFormat Format);
     static void        DeinitialiseDecoder    (AVCodecContext *Context);
 
   public:

@@ -306,7 +306,7 @@ AVPixelFormat VideoDecoder::AgreePixelFormat(AVCodecContext *Context, const AVPi
             AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
             for ( ; factory; factory = factory->NextFactory())
             {
-                if (factory->CanAccelerate(Context, format))
+                if (factory->InitialiseDecoder(Context, format))
                 {
                     accelerate = true;
                     break;

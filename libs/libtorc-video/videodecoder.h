@@ -76,7 +76,7 @@ class AccelerationFactory
     static AccelerationFactory* GetAccelerationFactory  (void);
     AccelerationFactory*        NextFactory             (void) const;
 
-    virtual bool                CanAccelerate           (AVCodecContext *Context, AVPixelFormat Format) = 0;
+    virtual bool                InitialiseDecoder       (AVCodecContext *Context, AVPixelFormat Format) = 0;
     virtual void                DeinitialiseDecoder     (AVCodecContext *Context) = 0;
     virtual bool                InitialiseBuffer        (AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame) = 0;
     virtual void                DeinitialiseBuffer      (AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame) = 0;

@@ -19,7 +19,7 @@ extern "C" {
 class VideoVDA
 {
   public:
-    static bool CanAccelerate (AVCodecContext *Context, AVPixelFormat Format);
+    static bool InitialiseDecoder (AVCodecContext *Context, AVPixelFormat Format);
 };
 
 #endif // VIDEOVDA_H

@@ -26,7 +26,7 @@
 #include "videodecoder.h"
 #include "videovda.h"
 
-bool VideoVDA::CanAccelerate(AVCodecContext *Context, AVPixelFormat Format)
+bool VideoVDA::InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
 {
     // NB this is currently disabled by default as it is not stable
     if (Format == AV_PIX_FMT_VDA_VLD && Context->codec_id == AV_CODEC_ID_H264)
@@ -57,12 +57,12 @@ bool VideoVDA::CanAccelerate(AVCodecContext *Context, AVPixelFormat Format)
 
 class VDAAcceleration : public AccelerationFactory
 {
-    bool CanAccelerate(AVCodecContext *Context, AVPixelFormat Format)
+    bool InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
     {
         if (VideoPlayer::gAllowOtherAcceleration && VideoPlayer::gAllowOtherAcceleration->IsActive() &&
             VideoPlayer::gAllowOtherAcceleration->GetValue().toBool())
         {
-            return VideoVDA::CanAccelerate(Context, Format);
+            return VideoVDA::InitialiseDecoder(Context, Format);
         }
 
         return false;

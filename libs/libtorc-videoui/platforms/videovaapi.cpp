@@ -282,7 +282,7 @@ bool VideoVAAPI::VAAPIAvailable(bool OpenGL)
     return OpenGL ? glavailable : x11available;
 }
 
-bool VideoVAAPI::CanAccelerate(AVCodecContext *Context, AVPixelFormat Format)
+bool VideoVAAPI::InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
 {
     if (!Context || Format != AV_PIX_FMT_VAAPI_VLD)
         return false;
@@ -936,7 +936,7 @@ QSet<TorcPlayer::PlayerProperty> VideoVAAPI::GetSupportedProperties(void)
 class VAAPIFactory : public AccelerationFactory
 {
   public:
-    bool CanAccelerate(AVCodecContext *Context, AVPixelFormat Format)
+    bool InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
     {
         if (!(VideoPlayer::gAllowGPUAcceleration && VideoPlayer::gAllowGPUAcceleration->IsActive() &&
             VideoPlayer::gAllowGPUAcceleration->GetValue().toBool()))
@@ -944,7 +944,7 @@ class VAAPIFactory : public AccelerationFactory
             return false;
         }
 
-        if (!VideoVAAPI::CanAccelerate(Context, Format))
+        if (!VideoVAAPI::InitialiseDecoder(Context, Format))
             return false;
 
         if (Context->hwaccel_context)
