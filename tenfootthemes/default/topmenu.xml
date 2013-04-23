@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <torctheme>
-    <window name="topmenu" inherits="basewindow">
+    <window name="topmenu" inherits="/basewindow">
         <messenger name="messages" position="100,100,600,880">
             <group name="group" position="0,0,600,880">
                 <layout type="vertical" alignment="top"/>
@@ -29,17 +29,17 @@
         <group name="menu" position="0,700,1920,100">
             <layout type="horizontal" selectrange="100,0,1720,100"/>
             <scroll speed="1000" easingcurve="outquad"/>
-            <button name="media" inherits="templates_button">
+            <button name="media" inherits="/templates_button">
                 <message>Media</message>
                 <connect signal="Released" slot="SetAsRootWidget" receiver="/media"/>
             </button>
-            <button name="settings" inherits="templates_button">
+            <button name="settings" inherits="/templates_button">
                 <message>Settings</message>
                 <connect signal="Released" slot="SetAsRootWidget" receiver="/settings"/>
             </button>
         </group>
     </window>
-    <window name="media" inherits="basewindow">
+    <window name="media" inherits="/basewindow">
         <media name="media" position="0,0,1920,1080">
             <scriptfunction name="Finalise">
                 SetProperty(TorcPlayer.Brightness, media_media.GetProperty(TorcPlayer.Brightness));
@@ -122,7 +122,7 @@
                     <element duration="400" property="verticalzoom" endvalue="0.5"/>
                 </animation>
                 <layout type="horizontal" alignment="left"/>
-                <text name="knob" position="0,0,200,200" inherits="templates_button_text" template="1">
+                <text name="knob" position="0,0,200,200" inherits="/templates_button_text" template="1">
                     <shape name="switch" position="0,0,200,200">
                         <path>
                             <pen color="DDDDDDFF" width="3"/>
@@ -142,18 +142,18 @@
                         </path>
                     </shape>
                 </text>
-                <text name="brightness" inherits="media_media_colourcontrols_knob" />
-                <text name="contrast"   inherits="media_media_colourcontrols_knob" />
-                <text name="saturation" inherits="media_media_colourcontrols_knob" />
-                <text name="hue"        inherits="media_media_colourcontrols_knob" />
+                <text name="brightness" inherits="../knob" />
+                <text name="contrast"   inherits="../knob" />
+                <text name="saturation" inherits="../knob" />
+                <text name="hue"        inherits="../knob" />
             </group>
         </media>
-        <button name="top_1" inherits="templates_button">
+        <button name="top_1" inherits="/templates_button">
             <message>Close</message>
             <connect signal="Released" slot="SetAsRootWidget" receiver="/topmenu"/>
         </button>
     </window>
-    <window name="settings" inherits="basewindow">
+    <window name="settings" inherits="/basewindow">
         <connect signal="Shown"  slot="CreateSettings"  receiver="menu"/>
         <connect signal="Hidden" slot="DestroySettings" receiver="menu"/>
         <setting name="menu" position="0,0,400,1080">
@@ -162,7 +162,7 @@
                 <layout type="horizontal" alignment="left"/>
                 <connect signal="GroupSelected" slot="Activate" receiver="SETTINGITEM"/>
                 <connect signal="GroupDeselected" slot="Deactivate" receiver="SETTINGITEM"/>
-                <button name="SETTINGNAME" inherits="templates_button"/>
+                <button name="SETTINGNAME" inherits="/templates_button"/>
                 <group name="SETTINGITEM" position="400,0,1520,1080">
                     <layout type="vertical" spacingx="5" wrapselection="1"/>
                     <state visible="false"/>
@@ -180,7 +180,7 @@
                     <animation name="Deactivated">
                         <element property="alpha" duration="0" endvalue="0.0"/>
                     </animation>
-                    <button name="CHECKBOX" inherits="templates_button" template="1">
+                    <button name="CHECKBOX" inherits="/templates_button" template="1">
                         <checkbox/>
                         <effect alpha="0.5" centre="left"/>
                         <connect signal="Pushed"   slot="Show" receiver="toggle"/>
@@ -204,7 +204,7 @@
                     </button>
                 </group>
             </group>
-            <button name="closeme" inherits="templates_button">
+            <button name="closeme" inherits="/templates_button">
                 <message>Close</message>
                 <connect signal="Released" slot="SetAsRootWidget" receiver="/topmenu"/>
             </button>

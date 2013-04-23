@@ -539,7 +539,7 @@ bool UIWidget::ParseWidget(UIWidget *Root, UIWidget *Parent, QDomElement *Elemen
 
     if (!from.isEmpty())
     {
-        UIWidget* base = Root->FindWidget(from);
+        UIWidget* base = Root->FindWidget(newwidget->ValidateObjectPath(from));
         if (base)
             newwidget->CopyFrom(base);
         else
