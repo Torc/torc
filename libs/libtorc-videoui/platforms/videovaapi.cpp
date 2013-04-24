@@ -944,14 +944,14 @@ class VAAPIFactory : public AccelerationFactory
             return false;
         }
 
-        if (!VideoVAAPI::InitialiseDecoder(Context, Format))
-            return false;
-
         if (Context->hwaccel_context)
         {
             LOG(VB_GENERAL, LOG_ERR, "AVCodecContext already has a hardware acceleration context. Aborting");
             return false;
         }
+
+        if (!VideoVAAPI::InitialiseDecoder(Context, Format))
+            return false;
 
         AVPixelFormat oldformat = Context->pix_fmt;
         Context->pix_fmt = AV_PIX_FMT_VAAPI_VLD;
