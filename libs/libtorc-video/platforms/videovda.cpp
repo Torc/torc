@@ -57,6 +57,11 @@ bool VideoVDA::InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
 
 class VDAAcceleration : public AccelerationFactory
 {
+    AVCodec* SelectAVCodec(AVCodecContext *Context)
+    {
+        return NULL;
+    }
+
     bool InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
     {
         if (VideoPlayer::gAllowOtherAcceleration && VideoPlayer::gAllowOtherAcceleration->IsActive() &&

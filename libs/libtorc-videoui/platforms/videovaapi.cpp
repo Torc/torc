@@ -936,6 +936,11 @@ QSet<TorcPlayer::PlayerProperty> VideoVAAPI::GetSupportedProperties(void)
 class VAAPIFactory : public AccelerationFactory
 {
   public:
+    AVCodec* SelectAVCodec(AVCodecContext *Context)
+    {
+        return NULL;
+    }
+
     bool InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
     {
         if (!(VideoPlayer::gAllowGPUAcceleration && VideoPlayer::gAllowGPUAcceleration->IsActive() &&

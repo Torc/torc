@@ -38,7 +38,7 @@ class VideoDecoder : public AudioDecoder
     bool         FilterAudioFrames   (qint64 Timecode);
     bool         VideoBufferStatus   (int &Unused, int &Inuse, int &Held);
     void         ProcessVideoPacket  (AVFormatContext *Context, AVStream *Stream, AVPacket *Packet);
-    void         PreInitVideoDecoder (AVFormatContext *Context, AVStream *Stream);
+    AVCodec*     PreInitVideoDecoder (AVFormatContext *Context, AVStream *Stream);
     void         PostInitVideoDecoder(AVCodecContext *Context);
     void         CleanupVideoDecoder (AVStream *Stream);
     void         FlushVideoBuffers   (bool Stopped);
@@ -76,6 +76,7 @@ class AccelerationFactory
     static AccelerationFactory* GetAccelerationFactory  (void);
     AccelerationFactory*        NextFactory             (void) const;
 
+    virtual AVCodec*            SelectAVCodec           (AVCodecContext *Context) = 0;
     virtual bool                InitialiseDecoder       (AVCodecContext *Context, AVPixelFormat Format) = 0;
     virtual void                DeinitialiseDecoder     (AVCodecContext *Context) = 0;
     virtual bool                InitialiseBuffer        (AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame) = 0;

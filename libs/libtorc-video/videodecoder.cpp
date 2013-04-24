@@ -443,12 +443,12 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
         m_firstVideoTimecode = frame->m_pts;
 }
 
-void VideoDecoder::PreInitVideoDecoder(AVFormatContext *Context, AVStream *Stream)
+AVCodec* VideoDecoder::PreInitVideoDecoder(AVFormatContext *Context, AVStream *Stream)
 {
     (void)Context;
 
     if (!Stream || (Stream && !Stream->codec))
-        return;
+        return NULL;
 
     int threads = 1;
 
@@ -471,6 +471,17 @@ void VideoDecoder::PreInitVideoDecoder(AVFormatContext *Context, AVStream *Strea
 
     AVCodec *codec = avcodec_find_decoder(context->codec_id);
 
+    AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+    for ( ; factory; factory = factory->NextFactory())
+    {
+        AVCodec* override = factory->SelectAVCodec(context);
+        if (override)
+        {
+            codec = override;
+            break;
+        }
+    }
+
     if (codec && (codec->capabilities & CODEC_CAP_DR1))
     {
         context->flags            |= CODEC_FLAG_EMU_EDGE;
@@ -488,6 +499,8 @@ void VideoDecoder::PreInitVideoDecoder(AVFormatContext *Context, AVStream *Strea
         m_firstVideoTimecode = AV_NOPTS_VALUE;
     }
     m_streamLock->unlock();
+
+    return codec;
 }
 
 void VideoDecoder::PostInitVideoDecoder(AVCodecContext *Context)
@@ -604,5 +617,13 @@ AccelerationFactory* AccelerationFactory::GetAccelerationFactory(void)
 AccelerationFactory* AccelerationFactory::NextFactory(void) const
 {
     return nextAccelerationFactory;
+}
+
+AVCodec* AccelerationFactory::SelectAVCodec(AVCodecContext *Context)
+{
+    if (!Context)
+        return NULL;
+
+    return avcodec_find_decoder(Context->codec_id);
 }
 
