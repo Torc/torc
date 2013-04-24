@@ -344,7 +344,7 @@ void UIOpenGLWindow::customEvent(QEvent *Event)
 void UIOpenGLWindow::closeEvent(QCloseEvent *Event)
 {
     LOG(VB_GENERAL, LOG_INFO, "Closing window");
-    QWidget::closeEvent(Event);
+    QGLWidget::closeEvent(Event);
 }
 
 bool UIOpenGLWindow::event(QEvent *Event)
