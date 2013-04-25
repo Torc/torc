@@ -47,7 +47,9 @@ contains(CONFIG_X11BASE, yes) {
     contains(CONFIG_VDPAU, yes) {
         DEPENDPATH += ./platforms
         HEADERS += platforms/videovdpau.h
+        HEADERS += platforms/nvidiavdpau.h
         SOURCES += platforms/videovdpau.cpp
+        SOURCES += platforms/nvidiavdpau.cpp
         LIBS    += -lvdpau
     }
 
