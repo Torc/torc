@@ -17,6 +17,7 @@ class UINVControl
     static QByteArray GetNVEDID            (Display *XDisplay, int Screen);
     static void       InitialiseMetaModes  (Display *XDisplay, int Screen);
     static double     GetRateForMode       (Display *XDisplay, int Mode, bool &Interlaced);
+    static int        GetPCIID             (Display *XDisplay, int Screen);
 };
 
 #endif // UINVCONTROL_H

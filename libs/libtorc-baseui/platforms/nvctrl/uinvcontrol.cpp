@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -361,6 +361,45 @@ double UINVControl::GetRateForMode(Display *XDisplay, int Mode, bool &Interlaced
     }
 
     return -1.0f;
+}
+
+int UINVControl::GetPCIID(Display *XDisplay, int Screen)
+{
+    if (!NVControlAvailable(XDisplay))
+        return 0;
+
+    int gpucount = 0;
+    if (!XNVCTRLQueryTargetCount(XDisplay, NV_CTRL_TARGET_TYPE_GPU, &gpucount))
+        return 0;
+
+    for (int i = 0; i < gpucount; ++i)
+    {
+        int length;
+        int *screens = NULL;
+        if (XNVCTRLQueryTargetBinaryData(XDisplay, NV_CTRL_TARGET_TYPE_GPU, i, 0,
+                                         NV_CTRL_BINARY_DATA_XSCREENS_USING_GPU, (unsigned char**)&screens, &length))
+        {
+            for (int j = 1; j <= screens[0]; ++j)
+            {
+                if (screens[j] == Screen)
+                { 
+                    int pciid = 0;
+                    if (XNVCTRLQueryTargetAttribute(XDisplay, NV_CTRL_TARGET_TYPE_GPU, 0, 0, NV_CTRL_PCI_ID, &pciid))
+                    {
+                        char *name;
+                        if (XNVCTRLQueryTargetStringAttribute(XDisplay, NV_CTRL_TARGET_TYPE_GPU, i, 0, NV_CTRL_STRING_PRODUCT_NAME, &name))
+                            LOG(VB_GENERAL, LOG_INFO, QString("GPU '%1' Vender: 0x%2 Product: 0x%3").arg(name).arg(pciid >> 16, 0, 16).arg(pciid & 0xffff, 0, 16));
+                        XFree(screens);
+                        return pciid;
+                    }
+                }
+            }
+
+            XFree(screens);
+        }
+    }
+
+    return 0;
 }
 
 class EDIDFactoryNVControl : public EDIDFactory
