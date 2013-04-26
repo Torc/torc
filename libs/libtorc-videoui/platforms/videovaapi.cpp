@@ -67,9 +67,6 @@
  * Clear?
  *
  * \todo Fix frame ordering with H.264 content
- * \todo Fix colour space handling
- * \todo Add 'hardware decoder' setting (currently just enabled)
- *
 */
 
 static QMutex*  gVAAPILock = new QMutex(QMutex::Recursive);
