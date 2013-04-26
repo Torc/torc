@@ -44,6 +44,7 @@ QString FeatureSetToString(NVVDPAUFeatureSet Set)
     return QString("Unknown");
 }
 
+// NB this probably only needs to track A1/B1 going forward - which aren't going to change
 NVVDPAUFeatureSet GetNVIDIAFeatureSet(int PCIID)
 {
     // list up to date for 313.30
