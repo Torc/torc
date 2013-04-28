@@ -205,8 +205,10 @@ void VideoRendererOpenGL::ResetOutput(void)
     VideoRenderer::ResetOutput();
 }
 
-void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size)
+void VideoRendererOpenGL::RefreshFrame(VideoFrame *Frame, const QSizeF &Size, quint64 TimeNow)
 {
+    (void)TimeNow;
+
     if (!m_openglWindow)
         return;
 
@@ -418,8 +420,10 @@ void VideoRendererOpenGL::RefreshSoftwareFrame(VideoFrame *Frame)
     m_openglWindow->SetViewPort(viewport);
 }
 
-void VideoRendererOpenGL::RenderFrame(void)
+void VideoRendererOpenGL::RenderFrame(VideoFrame *Frame, quint64 TimeNow)
 {
+    (void)TimeNow;
+
     if (m_validVideoFrame && m_openglWindow && m_rgbVideoTexture)
     {
         QSizeF size = m_rgbVideoTexture->m_actualSize;
@@ -430,6 +434,14 @@ void VideoRendererOpenGL::RenderFrame(void)
         {
             m_rgbVideoTexture->m_vboUpdated = false;
             m_updateFrameVertices = false;
+        }
+
+        if (IsHardwarePixelFormat(m_lastInputFormat))
+        {
+            AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+            for ( ; factory; factory = factory->NextFactory())
+                if (factory->MapFrame(Frame, (void*)m_rgbVideoTexture))
+                    break;
         }
 
         if (m_usingHighQualityScaling)
@@ -447,6 +459,14 @@ void VideoRendererOpenGL::RenderFrame(void)
         else
         {
             m_openglWindow->DrawTexture(m_rgbVideoTexture, &m_presentationRect, &size, m_rgbShader);
+        }
+
+        if (IsHardwarePixelFormat(m_lastInputFormat))
+        {
+            AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
+            for ( ; factory; factory = factory->NextFactory())
+                if (factory->UnmapFrame(Frame, (void*)m_rgbVideoTexture))
+                    break;
         }
     }
 }

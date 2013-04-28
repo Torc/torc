@@ -37,6 +37,7 @@ class VideoUIPlayer : public VideoPlayer, public TorcHTTPService
     VideoRenderer     *m_render;
     VideoColourSpace  *m_colourSpace;
     int                m_manualAVSyncAdjustment;
+    VideoFrame        *m_currentFrame;
 };
 
 #endif // VIDEOUIPLAYER_H

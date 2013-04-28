@@ -15,8 +15,8 @@ class VideoRendererOpenGL : public VideoRenderer
     virtual ~VideoRendererOpenGL();
 
     void               Initialise           (void);
-    void               RefreshFrame         (VideoFrame *Frame, const QSizeF &Size);
-    void               RenderFrame          (void);
+    void               RefreshFrame         (VideoFrame *Frame, const QSizeF &Size, quint64 TimeNow);
+    void               RenderFrame          (VideoFrame *Frame, quint64 TimeNow);
     void               CustomiseShader      (QByteArray &Source, GLTexture *Texture);
 
   protected:

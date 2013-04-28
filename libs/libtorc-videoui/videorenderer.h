@@ -38,8 +38,8 @@ class VideoRenderer : public QObject
     virtual ~VideoRenderer ();
 
     virtual void           Initialise                (void) = 0;
-    virtual void           RefreshFrame              (VideoFrame* Frame, const QSizeF &Size) = 0;
-    virtual void           RenderFrame               (void) = 0;
+    virtual void           RefreshFrame              (VideoFrame* Frame, const QSizeF &Size, quint64 TimeNow) = 0;
+    virtual void           RenderFrame               (VideoFrame* Frame, quint64 TimeNow) = 0;
     virtual bool           DisplayReset              (void);
     QSet<TorcPlayer::PlayerProperty>
                            GetSupportedProperties    (void);

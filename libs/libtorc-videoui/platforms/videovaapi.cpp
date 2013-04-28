@@ -1102,6 +1102,20 @@ class VAAPIFactory : public AccelerationFactory
         return false;
     }
 
+    bool MapFrame(VideoFrame *Frame, void *Surface)
+    {
+        (void)Frame;
+        (void)Surface;
+        return false;
+    }
+
+    bool UnmapFrame(VideoFrame *Frame, void *Surface)
+    {
+        (void)Frame;
+        (void)Surface;
+        return false;
+    }
+
     bool NeedsCustomSurfaceFormat(VideoFrame *Frame, void *Format)
     {
         if (Frame && Format && Frame->m_pixelFormat == AV_PIX_FMT_VAAPI_VLD &&

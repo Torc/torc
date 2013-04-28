@@ -69,7 +69,8 @@ void VideoUIPlayer::Initialise(void)
 VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : VideoPlayer(Parent, PlaybackFlags, DecodeFlags),
     TorcHTTPService(this, "/player", tr("Player"), VideoUIPlayer::staticMetaObject, BLACKLIST),
-    m_colourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED))
+    m_colourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED)),
+    m_currentFrame(NULL)
 {
     m_render = VideoRenderer::Create(m_colourSpace);
     m_buffers.SetDisplayFormat(m_render ? m_render->PreferredPixelFormat() : PIX_FMT_YUV420P);
@@ -116,6 +117,10 @@ VideoUIPlayer::~VideoUIPlayer()
 
 void VideoUIPlayer::Teardown(void)
 {
+    if (m_currentFrame)
+        m_buffers.ReleaseFrameFromDisplaying(m_currentFrame, false);
+    m_currentFrame = NULL;
+
     VideoPlayer::Teardown();
 }
 
@@ -124,7 +129,9 @@ bool VideoUIPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
     if (m_reset)
         Reset();
 
-    VideoFrame *frame = NULL;
+    if (m_currentFrame)
+        m_buffers.ReleaseFrameFromDisplaying(m_currentFrame, false);
+    m_currentFrame = NULL;
 
     if (m_decoder && (m_decoder->GetCurrentStream(StreamTypeVideo) != -1))
     {
@@ -176,12 +183,12 @@ bool VideoUIPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
         else
         {
             // get the next available frame. If no video this will be null
-            frame = m_buffers.GetFrameForDisplaying();
+            m_currentFrame = m_buffers.GetFrameForDisplaying();
 
             // sync audio and video - if we have both
-            if (frame && hasaudiostream)
+            if (m_currentFrame && hasaudiostream)
             {
-                videotime = frame->m_pts;
+                videotime = m_currentFrame->m_pts;
                 qint64 drift = audiotime - videotime;
 
                 LOG(VB_GENERAL, LOG_DEBUG, QString("AVSync: %1").arg(drift));
@@ -189,13 +196,13 @@ bool VideoUIPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
                 while (drift > 50)
                 {
                     LOG(VB_GENERAL, LOG_INFO, QString("Audio ahead of video by %1ms - dropping frame %2")
-                        .arg(drift).arg(frame->m_frameNumber));
-                    m_buffers.ReleaseFrameFromDisplaying(frame, false);
-                    frame = m_buffers.GetFrameForDisplaying();
+                        .arg(drift).arg(m_currentFrame->m_frameNumber));
+                    m_buffers.ReleaseFrameFromDisplaying(m_currentFrame, false);
+                    m_currentFrame = m_buffers.GetFrameForDisplaying();
 
-                    if (frame)
+                    if (m_currentFrame)
                     {
-                        videotime = frame->m_pts;
+                        videotime = m_currentFrame->m_pts;
                         drift = audiotime - videotime;
                         continue;
                     }
@@ -211,27 +218,32 @@ bool VideoUIPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
                 m_state == Playing || m_state == Searching ||
                 m_state == Pausing || m_state == Stopping)
             {
-                m_render->RefreshFrame(frame, Size);
+                m_render->RefreshFrame(m_currentFrame, Size, TimeNow);
             }
         }
-
-        if (frame)
-            m_buffers.ReleaseFrameFromDisplaying(frame, false);
     }
 
-    return TorcPlayer::Refresh(TimeNow, Size) && (frame != NULL);
+    return TorcPlayer::Refresh(TimeNow, Size) && (m_currentFrame != NULL);
 }
 
 void VideoUIPlayer::Render(quint64 TimeNow)
 {
     if (m_render)
-        m_render->RenderFrame();
+        m_render->RenderFrame(m_currentFrame, TimeNow);
+
+    if (m_currentFrame)
+        m_buffers.ReleaseFrameFromDisplaying(m_currentFrame, false);
+    m_currentFrame = NULL;
 }
 
 void VideoUIPlayer::Reset(void)
 {
     if (TorcThread::IsMainThread())
     {
+        if (m_currentFrame)
+            m_buffers.ReleaseFrameFromDisplaying(m_currentFrame, false);
+        m_currentFrame = NULL;
+
         m_colourSpace->SetChanged(true);
         if (m_render)
             m_render->PlaybackFinished();
