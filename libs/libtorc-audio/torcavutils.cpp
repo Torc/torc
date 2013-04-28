@@ -391,7 +391,7 @@ QString AVTimeToString(qint64 Time)
 }
 
 
-inline bool IsHardwarePixelFormat(AVPixelFormat Format)
+bool IsHardwarePixelFormat(AVPixelFormat Format)
 {
     return Format == AV_PIX_FMT_XVMC_MPEG2_MC   ||
            Format == AV_PIX_FMT_XVMC_MPEG2_IDCT ||
