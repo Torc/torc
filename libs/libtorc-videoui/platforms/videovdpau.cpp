@@ -56,6 +56,8 @@ class NVInterop
   public:
     NVInterop()
       : m_valid(false),
+        m_initialised(false),
+        m_registeredSurface(0),
         m_init(NULL),
         m_fini(NULL),
         m_registerOutputSurface(NULL),
@@ -75,8 +77,8 @@ class NVInterop
             m_isSurface             = (TORC_ISSURFACE)  UIOpenGLWindow::GetProcAddress("glVDPAUIsSurfaceNV");
             m_unregisterSurface     = (TORC_UNREGSURF)  UIOpenGLWindow::GetProcAddress("glVDPAUUnregisterSurfaceNV");
             m_surfaceAccess         = (TORC_SURFACCESS) UIOpenGLWindow::GetProcAddress("glVDPAUSurfaceAccessNV");
-            m_mapSurface            = (TORC_MAPSURF)    UIOpenGLWindow::GetProcAddress("glVDPAUMapSurfaceNV");
-            m_unmapSurface          = (TORC_UNMAPSURF)  UIOpenGLWindow::GetProcAddress("glVDPAUUnmapSurfaceNV");
+            m_mapSurface            = (TORC_MAPSURF)    UIOpenGLWindow::GetProcAddress("glVDPAUMapSurfacesNV");
+            m_unmapSurface          = (TORC_UNMAPSURF)  UIOpenGLWindow::GetProcAddress("glVDPAUUnmapSurfacesNV");
         }
 
         m_valid = m_init && m_fini && m_registerOutputSurface && m_unregisterSurface &&
@@ -89,6 +91,8 @@ class NVInterop
     }
 
     bool             m_valid;
+    bool             m_initialised;
+    InteropSurface   m_registeredSurface;
     TORC_INITNV      m_init;
     TORC_FININV      m_fini;
     TORC_REGOUTSURF  m_registerOutputSurface;
@@ -289,11 +293,11 @@ static const char* GetErrorString(VdpStatus Error)
 
 /*! \class VideoVDPAU
  *
- * \todo Preemption handling
+ * \todo Fallback when no interop available (texture from pixmap)
+ * \todo Colourspace
+ * \todo Fix mpeg2 playback
  * \todo Video chroma format checks
  * \todo Decoder profile level checks
- * \todo Frame mixing and rendering in UpdateFrame
- * \todo Surface mapping/unmapping for actual display
 */
 
 VideoVDPAU::VideoVDPAU(AVCodecContext *Context)
@@ -307,6 +311,9 @@ VideoVDPAU::VideoVDPAU(AVCodecContext *Context)
     m_device(0),
     m_featureSet(Set_Unknown),
     m_decoder(0),
+    m_lastTexture(NULL),
+    m_outputSurface(0),
+    m_videoMixer(0),
     m_getErrorString(&GetErrorString)
 {
     ResetProcs();
@@ -488,6 +495,133 @@ bool VideoVDPAU::IsDeletingOrErrored(void)
     return m_state == Errored || m_state == Deleting;
 }
 
+bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, GLTexture *Texture, VideoColourSpace *ColourSpace)
+{
+    if (m_state == Errored || !Frame || !Render || !Texture || !ColourSpace || !m_device || !m_avContext)
+        return false;
+
+    if (!m_nvidiaInterop)
+    {
+        m_nvidiaInterop = new NVInterop;
+        if (m_nvidiaInterop->IsValid())
+            LOG(VB_GENERAL, LOG_INFO, "GL_NV_vdpau_interop available");
+    }
+
+    bool interop = m_nvidiaInterop && m_nvidiaInterop->IsValid();
+
+    // initialise interop if present
+    if (interop)
+    {
+        if (!m_nvidiaInterop->m_initialised)
+        {
+            m_nvidiaInterop->m_initialised = true;
+            m_nvidiaInterop->m_init((void*)m_device, (void*)m_getProcAddress);
+        }
+    }
+
+    // create an output surface if needed
+    if (Texture && (m_lastTexture != Texture))
+    {
+        // delete the old
+        if (m_outputSurface && m_outputSurfaceDestroy)
+        {
+            // unregister from interop
+            if (interop && m_nvidiaInterop->m_registeredSurface)
+            {
+                m_nvidiaInterop->m_unregisterSurface(m_nvidiaInterop->m_registeredSurface);
+                m_nvidiaInterop->m_registeredSurface = 0;
+            }
+
+            VdpStatus status = m_outputSurfaceDestroy(m_outputSurface);
+            if (status != VDP_STATUS_OK)
+                VDPAU_ERROR(status, "Failed to delete output surface");
+        }
+
+        m_outputSurface = 0;
+        m_lastTexture = Texture;
+
+        if (m_outputSurfaceCreate)
+        {
+            VdpStatus status = m_outputSurfaceCreate(m_device, VDP_RGBA_FORMAT_B8G8R8A8, m_avContext->width, m_avContext->height, &m_outputSurface);
+            if (status != VDP_STATUS_OK)
+            {
+                VDPAU_ERROR(status, "Failed to create output surface");
+            }
+            else if (interop)
+            {
+                // register interop surface
+                m_nvidiaInterop->m_registeredSurface = m_nvidiaInterop->m_registerOutputSurface((void*)m_outputSurface,
+                                                                                                m_lastTexture->m_type,
+                                                                                                1, &m_lastTexture->m_val);
+                m_nvidiaInterop->m_surfaceAccess(m_nvidiaInterop->m_registeredSurface, GL_READ_ONLY);
+            }
+        }
+    }
+
+    // create a video mixer if needed
+    if (!m_videoMixer && m_videoMixerCreate)
+    {
+        // check mixer support
+        m_supportedMixerAttributes.clear();
+
+        if (m_videoMixerQueryAttributeSupport)
+        {
+            VdpBool supported = false;
+            VdpStatus status = m_videoMixerQueryAttributeSupport(m_device, VDP_VIDEO_MIXER_ATTRIBUTE_CSC_MATRIX, &supported);
+            if (status == VDP_STATUS_OK && supported)
+                m_supportedMixerAttributes << VDP_VIDEO_MIXER_ATTRIBUTE_CSC_MATRIX;
+        }
+
+        VdpVideoMixerParameter parameters[] = { VDP_VIDEO_MIXER_PARAMETER_VIDEO_SURFACE_WIDTH, VDP_VIDEO_MIXER_PARAMETER_VIDEO_SURFACE_HEIGHT };
+
+        void const * values[] = { &m_avContext->width, &m_avContext->height };
+
+        VdpStatus status = m_videoMixerCreate(m_device, 0, NULL, 2, parameters, values, &m_videoMixer);
+        if (status != VDP_STATUS_OK)
+            VDPAU_ERROR(status, "Failed to create video mixer");
+    }
+
+    // and render
+    if (m_outputSurface && m_videoMixer && m_videoMixerRender)
+    {
+        // field selection
+        VdpVideoMixerPictureStructure field = VDP_VIDEO_MIXER_PICTURE_STRUCTURE_FRAME;
+        //if (Frame->m_field != VideoFrame::Frame)
+        //    field = Frame->m_field == VideoFrame::TopField ? VDP_VIDEO_MIXER_PICTURE_STRUCTURE_TOP_FIELD : VDP_VIDEO_MIXER_PICTURE_STRUCTURE_BOTTOM_FIELD;
+
+        VdpStatus status = m_videoMixerRender(m_videoMixer, VDP_INVALID_HANDLE, NULL, field, 0, NULL,
+                                              Render->surface, 0, NULL, NULL, m_outputSurface, NULL, NULL, 0, NULL);
+        if (status != VDP_STATUS_OK)
+            VDPAU_ERROR(status, "Video mixing error");
+    }
+
+    return true;
+}
+
+bool VideoVDPAU::MapFrame(void* Surface)
+{
+    GLTexture *texture = static_cast<GLTexture*>(Surface);
+    if (texture && (texture == m_lastTexture) && m_nvidiaInterop && m_nvidiaInterop->IsValid() &&
+        m_nvidiaInterop->m_initialised && m_nvidiaInterop->m_registeredSurface)
+    {
+        m_nvidiaInterop->m_mapSurface(1, &m_nvidiaInterop->m_registeredSurface);
+    }
+
+    return true;
+}
+
+bool VideoVDPAU::UnmapFrame(void* Surface)
+{
+    GLTexture *texture = static_cast<GLTexture*>(Surface);
+    if (texture && (texture == m_lastTexture) && m_nvidiaInterop && m_nvidiaInterop->IsValid() &&
+        m_nvidiaInterop->m_initialised && m_nvidiaInterop->m_registeredSurface)
+    {
+        m_nvidiaInterop->m_unmapSurface(1, &m_nvidiaInterop->m_registeredSurface);
+    }
+
+    return true;
+}
+
 bool VideoVDPAU::IsFormatSupported(AVCodecContext *Context)
 {
     PREEMPTION_CHECK
@@ -653,6 +787,12 @@ bool VideoVDPAU::GetProcs(void)
     GET_PROC(VDP_FUNC_ID_DECODER_QUERY_CAPABILITIES,   m_decoderQueryCapabilities);
     GET_PROC(VDP_FUNC_ID_VIDEO_SURFACE_CREATE,         m_videoSurfaceCreate);
     GET_PROC(VDP_FUNC_ID_VIDEO_SURFACE_DESTROY,        m_videoSurfaceDestroy);
+    GET_PROC(VDP_FUNC_ID_OUTPUT_SURFACE_CREATE,        m_outputSurfaceCreate);
+    GET_PROC(VDP_FUNC_ID_OUTPUT_SURFACE_DESTROY,       m_outputSurfaceDestroy);
+    GET_PROC(VDP_FUNC_ID_VIDEO_MIXER_CREATE,           m_videoMixerCreate);
+    GET_PROC(VDP_FUNC_ID_VIDEO_MIXER_DESTROY,          m_videoMixerDestroy);
+    GET_PROC(VDP_FUNC_ID_VIDEO_MIXER_QUERY_ATTRIBUTE_SUPPORT, m_videoMixerQueryAttributeSupport);
+    GET_PROC(VDP_FUNC_ID_VIDEO_MIXER_RENDER,           m_videoMixerRender);
 
     if (!valid)
         LOG(VB_GENERAL, LOG_ERR, "Failed to link to VDPAU library");
@@ -760,6 +900,25 @@ void VideoVDPAU::TearDown(void)
     // deregister callback
     RegisterCallback(false);
 
+    // delete output surface
+    if (m_outputSurface && m_outputSurfaceDestroy)
+    {
+        VdpStatus status = m_outputSurfaceDestroy(m_outputSurface);
+        if (status != VDP_STATUS_OK)
+            VDPAU_ERROR(status, "Failed to delete output surface");
+    }
+    m_outputSurface = 0;
+    m_lastTexture   = NULL;
+
+    // delete video mixer
+    if (m_videoMixer && m_videoMixerDestroy)
+    {
+        VdpStatus status = m_videoMixerDestroy(m_videoMixer);
+        if (status != VDP_STATUS_OK)
+            VDPAU_ERROR(status, "Failed to delete video mixer");
+    }
+    m_videoMixer = 0;
+
     // delete video surfaces
     DestroyVideoSurfaces();
 
@@ -832,6 +991,12 @@ void VideoVDPAU::ResetProcs(void)
     m_decoderQueryCapabilities   = NULL;
     m_videoSurfaceCreate         = NULL;
     m_videoSurfaceDestroy        = NULL;
+    m_outputSurfaceCreate        = NULL;
+    m_outputSurfaceDestroy       = NULL;
+    m_videoMixerCreate           = NULL;
+    m_videoMixerDestroy          = NULL;
+    m_videoMixerQueryAttributeSupport = NULL;
+    m_videoMixerRender           = NULL;
 }
 
 bool VideoVDPAU::HandlePreemption(void)
@@ -862,9 +1027,20 @@ bool VideoVDPAU::HandlePreemption(void)
     LOG(VB_GENERAL, LOG_INFO, "Starting preemption recovery");
     bool result = false;
 
+    // FIXME - this may break if there is more than one instance
+    if (m_nvidiaInterop && m_nvidiaInterop->IsValid())
+    {
+        if (m_nvidiaInterop->m_initialised)
+            m_nvidiaInterop->m_fini();
+        m_nvidiaInterop->m_initialised = false;
+    }
+
     ResetProcs();
     m_device = 0;
     m_decoder = 0;
+    m_lastTexture = NULL;
+    m_outputSurface = 0;
+    m_videoMixer = 0;
 
     if (m_state == Test)
     {
@@ -928,7 +1104,7 @@ class VDPAUFactory : public AccelerationFactory
         {
             Context->hwaccel_context = vdpau;
             Context->draw_horiz_band = Decode;
-            Context->flags = SLICE_FLAG_CODED_ORDER | SLICE_FLAG_ALLOW_FIELD;
+            Context->slice_flags     = SLICE_FLAG_CODED_ORDER | SLICE_FLAG_ALLOW_FIELD;
             return true;
         }
 
@@ -1027,14 +1203,14 @@ class VDPAUFactory : public AccelerationFactory
              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG2 || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG4 ||
              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_VC1   || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_WMV3))
         {
-            //struct vdpau_render_state *render = (struct vdpau_render_state *)Frame->m_acceleratedBuffer;
-            //GLTexture                *texture = static_cast<GLTexture*>(Surface);
+            struct vdpau_render_state *render = (struct vdpau_render_state *)Frame->m_acceleratedBuffer;
+            GLTexture                *texture = static_cast<GLTexture*>(Surface);
             VideoVDPAU                 *vdpau = (VideoVDPAU*)Frame->m_priv[0];
 
-            // add rendering here
-
-            if (vdpau)
+            if (render && vdpau && texture)
             {
+                vdpau->RenderFrame(Frame, render, texture, ColourSpace);
+
                 if (vdpau->IsDeletingOrErrored())
                 {
                     Frame->m_priv[0] = NULL;
@@ -1071,6 +1247,45 @@ class VDPAUFactory : public AccelerationFactory
         }
 
         return false;
+    }
+
+    bool MapFrame(VideoFrame *Frame, void *Surface)
+    {
+        if (!Frame)
+            return false;
+
+        if (!(Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_H264  || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG1 ||
+              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG2 || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG4 ||
+              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_VC1   || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_WMV3))
+        {
+            return false;
+        }
+
+        VideoVDPAU *vdpau = (VideoVDPAU*)Frame->m_priv[0];
+        if (vdpau)
+            vdpau->MapFrame(Surface);
+
+        return true;
+    }
+
+    bool UnmapFrame(VideoFrame *Frame, void *Surface)
+    {
+        if (!Frame)
+            return false;
+
+        if (!(Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_H264  || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG1 ||
+              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG2 || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG4 ||
+              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_VC1   || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_WMV3))
+        {
+            return false;
+        }
+
+        VideoVDPAU *vdpau = (VideoVDPAU*)Frame->m_priv[0];
+        if (vdpau)
+            vdpau->UnmapFrame(Surface);
+
+        return true;
+
     }
 
     bool NeedsCustomSurfaceFormat(VideoFrame *Frame, void *Format)

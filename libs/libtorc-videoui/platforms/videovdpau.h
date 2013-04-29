@@ -9,6 +9,7 @@
 // Torc
 #include "torcreferencecounted.h"
 #include "nvidiavdpau.h"
+#include "opengl/videorendereropengl.h"
 
 extern "C" {
 #include "libavutil/pixfmt.h"
@@ -71,6 +72,10 @@ class VideoVDPAU : protected TorcReferenceCounter
     bool                              Dereference            (void);
     void                              SetDeleting            (void);
     bool                              IsDeletingOrErrored    (void);
+    bool                              RenderFrame            (VideoFrame *Frame, struct vdpau_render_state *Render,
+                                                              GLTexture *Texture, VideoColourSpace *ColourSpace);
+    bool                              MapFrame               (void* Surface);
+    bool                              UnmapFrame             (void* Surface);
 
   protected:
     VideoVDPAU                        (AVCodecContext *Context);
@@ -111,6 +116,11 @@ class VideoVDPAU : protected TorcReferenceCounter
     QList<struct vdpau_render_state*> m_createdVideoSurfaces;
     QList<struct vdpau_render_state*> m_allocatedVideoSurfaces;
 
+    GLTexture                        *m_lastTexture;
+    VdpOutputSurface                  m_outputSurface;
+    VdpVideoMixer                     m_videoMixer;
+    QList<VdpVideoMixerAttribute>     m_supportedMixerAttributes;
+
     VdpGetProcAddress                *m_getProcAddress;
     VdpGetErrorString                *m_getErrorString;
     VdpGetApiVersion                 *m_getApiVersion;
@@ -125,6 +135,13 @@ class VideoVDPAU : protected TorcReferenceCounter
     VdpDecoderQueryCapabilities      *m_decoderQueryCapabilities;
     VdpVideoSurfaceCreate            *m_videoSurfaceCreate;
     VdpVideoSurfaceDestroy           *m_videoSurfaceDestroy;
+
+    VdpOutputSurfaceCreate           *m_outputSurfaceCreate;
+    VdpOutputSurfaceDestroy          *m_outputSurfaceDestroy;
+    VdpVideoMixerCreate              *m_videoMixerCreate;
+    VdpVideoMixerDestroy             *m_videoMixerDestroy;
+    VdpVideoMixerQueryAttributeSupport *m_videoMixerQueryAttributeSupport;
+    VdpVideoMixerRender              *m_videoMixerRender;
 };
 
 #endif // VIDEOVDPAU_H
