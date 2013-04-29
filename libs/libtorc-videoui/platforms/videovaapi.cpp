@@ -976,7 +976,7 @@ class VAAPIFactory : public AccelerationFactory
             return false;
         }
 
-        Context->flags = SLICE_FLAG_CODED_ORDER | SLICE_FLAG_ALLOW_FIELD;
+        Context->slice_flags     = SLICE_FLAG_CODED_ORDER | SLICE_FLAG_ALLOW_FIELD;
         Context->hwaccel_context = vaapicontext;
         return true;
     }
