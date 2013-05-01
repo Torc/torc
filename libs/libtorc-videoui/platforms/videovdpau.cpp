@@ -1050,6 +1050,12 @@ class VDPAUFactory : public AccelerationFactory
             return false;
         }
 
+        {
+            QMutexLocker locker(gVDPAULock);
+            if (VideoVDPAU::gVDPAUInstances.size() > 2)
+                LOG(VB_GENERAL, LOG_WARNING, QString("%1 current VideoVDPAU instances").arg(VideoVDPAU::gVDPAUInstances.size()));
+        }
+
         if (!Context || (Context && !Context->codec) || Format != AV_PIX_FMT_VDPAU)
             return false;
 
