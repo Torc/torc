@@ -471,17 +471,6 @@ AVCodec* VideoDecoder::PreInitVideoDecoder(AVFormatContext *Context, AVStream *S
 
     AVCodec *codec = avcodec_find_decoder(context->codec_id);
 
-    AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
-    for ( ; factory; factory = factory->NextFactory())
-    {
-        AVCodec* override = factory->SelectAVCodec(context);
-        if (override)
-        {
-            codec = override;
-            break;
-        }
-    }
-
     if (codec && (codec->capabilities & CODEC_CAP_DR1))
     {
         context->flags            |= CODEC_FLAG_EMU_EDGE;
@@ -617,13 +606,5 @@ AccelerationFactory* AccelerationFactory::GetAccelerationFactory(void)
 AccelerationFactory* AccelerationFactory::NextFactory(void) const
 {
     return nextAccelerationFactory;
-}
-
-AVCodec* AccelerationFactory::SelectAVCodec(AVCodecContext *Context)
-{
-    if (!Context)
-        return NULL;
-
-    return avcodec_find_decoder(Context->codec_id);
 }
 

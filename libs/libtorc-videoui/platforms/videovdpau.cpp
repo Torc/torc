@@ -1042,11 +1042,6 @@ QMap<AVCodecContext*,VideoVDPAU*> VideoVDPAU::gVDPAUInstances;
 
 class VDPAUFactory : public AccelerationFactory
 {
-    AVCodec* SelectAVCodec(AVCodecContext *Context)
-    {
-        return NULL;
-    }
-
     bool InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
     {
         if (!(Context && VideoPlayer::gAllowGPUAcceleration && VideoPlayer::gAllowGPUAcceleration->IsActive() &&
