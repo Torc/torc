@@ -2221,6 +2221,7 @@ disable doc
 enable shared
 enable x11base
 enable vaapi
+enable vdpau
 enable avresample
 
 # Torc configurable options
