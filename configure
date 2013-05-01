@@ -4576,7 +4576,7 @@ RUNPREFIX=$(eval eval c_escape $datadir)
 MANDIR=$mandir
 SRC_PATH=$source_path
 #ifndef MAIN_MAKEFILE
-SRC_PATH:=\$(SRC_PATH:.%=..%)
+#SRC_PATH:=\$(SRC_PATH:.%=..%)
 #endif
 CC_IDENT=$cc_ident
 ARCH=$arch
@@ -4731,7 +4731,7 @@ echo "#endif # FFMPEG_CONFIG_MAK" >> config.mak
 
 tmpfile TMPMAK .mak
 tmpfile TMPMAK2 .mak
-sed -e 's/#SHFLAGS=/SHFLAGS=/' -e 's/#EXTRALIBS=/EXTRALIBS=/' -e 's/#ifndef/ifndef/' -e 's/#endif/endif/' config.mak > $TMPMAK
+sed -e 's/#SHFLAGS=/SHFLAGS=/' -e 's/#EXTRALIBS=/EXTRALIBS=/' -e 's/#ifndef/ifndef/' -e 's/#endif/endif/' -e 's/#SRC_PATH:=/SRC_PATH:=/' config.mak > $TMPMAK
 cp_if_changed $TMPMAK libs/libtorc-av/config.mak
 sed -e 's/^!/#/' config.mak > $TMPMAK2
 cp_if_changed $TMPMAK2 config.mak
