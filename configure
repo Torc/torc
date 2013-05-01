@@ -3319,6 +3319,7 @@ case $target_os in
         strip="strip -d"
         ;;
     darwin)
+        enable vda
         disable x11base
         gas="gas-preprocessor.pl $cc"
         enabled ppc && add_asflags -force_cpusubtype_ALL
