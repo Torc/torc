@@ -465,6 +465,8 @@ bool VideoVDPAU::IsDeletingOrErrored(void)
 
 bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, GLTexture *Texture, VideoColourSpace *ColourSpace)
 {
+    PREEMPTION_CHECK
+
     if (m_state == Errored || !Frame || !Render || !Texture || !ColourSpace || !m_device || !m_avContext)
         return false;
 
