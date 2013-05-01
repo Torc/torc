@@ -199,18 +199,6 @@ bool VDPAUDecoderCapability::IsSupported(uint32_t Width, uint32_t Height)
     return true;
 }
 
-void Decode(struct AVCodecContext *Context, const AVFrame *Avframe, int*, int, int, int)
-{
-    if (!Avframe || !Context)
-        return;
-
-    VideoVDPAU* vdpau = (VideoVDPAU*)Context->hwaccel_context;
-    if (vdpau)
-        vdpau->Decode(Avframe);
-    else
-        LOG(VB_GENERAL, LOG_ERR, "Video decoding error");
-}
-
 bool VideoVDPAU::VDPAUAvailable(void)
 {
     QMutexLocker locker(gVDPAULock);
@@ -295,7 +283,6 @@ static const char* GetErrorString(VdpStatus Error)
  *
  * \todo Fallback when no interop available (texture from pixmap)
  * \todo Colourspace
- * \todo Fix mpeg2 playback
  * \todo Video chroma format checks
  * \todo Decoder profile level checks
 */
@@ -303,6 +290,7 @@ static const char* GetErrorString(VdpStatus Error)
 VideoVDPAU::VideoVDPAU(AVCodecContext *Context)
   : TorcReferenceCounter(),
     m_state(Created),
+    m_vdpauContext(NULL),
     m_callbackLock(new QMutex()),
     m_avContext(Context),
     m_nvidiaInterop(NULL),
@@ -316,6 +304,9 @@ VideoVDPAU::VideoVDPAU(AVCodecContext *Context)
     m_videoMixer(0),
     m_getErrorString(&GetErrorString)
 {
+    m_vdpauContext = new AVVDPAUContext();
+    memset((void*)m_vdpauContext, 0, sizeof(AVVDPAUContext));
+
     ResetProcs();
 }
 
@@ -326,6 +317,7 @@ VideoVDPAU::~VideoVDPAU()
     TearDown();
 
     delete m_callbackLock;
+    delete m_vdpauContext;
 
     LOG(VB_GENERAL, LOG_INFO, "VideoVDPAU destroyed");
 }
@@ -424,35 +416,6 @@ void VideoVDPAU::Preempted(void)
     m_preempted.ref();
 }
 
-void VideoVDPAU::Decode(const AVFrame *Avframe)
-{
-    PREEMPTION_CHECK
-
-    if (!Avframe || !m_decoder || !m_decoderRender ||
-        !(Avframe->format == AV_PIX_FMT_VDPAU_H264  || Avframe->format == AV_PIX_FMT_VDPAU_MPEG1 ||
-          Avframe->format == AV_PIX_FMT_VDPAU_MPEG2 || Avframe->format == AV_PIX_FMT_VDPAU_MPEG4 ||
-          Avframe->format == AV_PIX_FMT_VDPAU_VC1   || Avframe->format == AV_PIX_FMT_VDPAU_WMV3))
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Decode called with invalid frame");
-        return;
-    }
-
-    struct vdpau_render_state *render = (struct vdpau_render_state *)Avframe->data[0];
-    if (!render)
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to retrieve surface");
-        return;
-    }
-
-    VdpStatus status = m_decoderRender(m_decoder, render->surface,
-                                       (VdpPictureInfo const *)&(render->info),
-                                       render->bitstream_buffers_used,
-                                       render->bitstream_buffers);
-
-    if (status != VDP_STATUS_OK)
-        VDPAU_ERROR(status, "Video decoding error");
-}
-
 struct vdpau_render_state* VideoVDPAU::GetSurface(void)
 {
     PREEMPTION_CHECK
@@ -463,6 +426,11 @@ struct vdpau_render_state* VideoVDPAU::GetSurface(void)
     struct vdpau_render_state* vdpau = m_createdVideoSurfaces.takeFirst();
     m_allocatedVideoSurfaces.push_front(vdpau);
     return vdpau;
+}
+
+AVVDPAUContext* VideoVDPAU::GetContext(void)
+{
+    return m_vdpauContext;
 }
 
 void VideoVDPAU::Wake(void)
@@ -709,6 +677,8 @@ bool VideoVDPAU::CreateDecoder(void)
         return false;
     }
 
+    m_vdpauContext->decoder = m_decoder;
+
     return true;
 }
 
@@ -800,6 +770,8 @@ bool VideoVDPAU::GetProcs(void)
     // not critical
     m_getProcAddress(m_device, VDP_FUNC_ID_GET_API_VERSION, (void **)&m_getApiVersion);
     m_getProcAddress(m_device, VDP_FUNC_ID_GET_INFORMATION_STRING, (void **)&m_getInformationString);
+
+    m_vdpauContext->render = m_decoderRender;
 
     return valid;
 }
@@ -1038,9 +1010,11 @@ bool VideoVDPAU::HandlePreemption(void)
     ResetProcs();
     m_device = 0;
     m_decoder = 0;
+    m_vdpauContext->decoder = 0;
     m_lastTexture = NULL;
     m_outputSurface = 0;
     m_videoMixer = 0;
+
 
     if (m_state == Test)
     {
@@ -1062,48 +1036,38 @@ bool VideoVDPAU::HandlePreemption(void)
     return result;
 }
 
+QMap<AVCodecContext*,VideoVDPAU*> VideoVDPAU::gVDPAUInstances;
+
 class VDPAUFactory : public AccelerationFactory
 {
     AVCodec* SelectAVCodec(AVCodecContext *Context)
     {
-        if (Context && VideoPlayer::gAllowGPUAcceleration && VideoPlayer::gAllowGPUAcceleration->IsActive() &&
-            VideoPlayer::gAllowGPUAcceleration->GetValue().toBool() && VideoVDPAU::VDPAUAvailable())
-        {
-            AVCodec* next = NULL;
-            while ((next = av_codec_next(next)))
-            {
-                if (next->id == Context->codec_id && (next->capabilities & CODEC_CAP_HWACCEL_VDPAU))
-                {
-                    if (!VideoVDPAU::CheckHardwareSupport(Context))
-                        return NULL;
-
-                    return next;
-                }
-            }
-        }
-
         return NULL;
     }
 
     bool InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
     {
-        // support and setting should have been checked in SelectAVCodec
-        if (!Context || (Context && !Context->codec))
-            return false;
-
-        if (!(Format == AV_PIX_FMT_VDPAU_H264  || Format == AV_PIX_FMT_VDPAU_MPEG1 || Format == AV_PIX_FMT_VDPAU_MPEG2 ||
-              Format == AV_PIX_FMT_VDPAU_MPEG4 || Format == AV_PIX_FMT_VDPAU_VC1   || Format == AV_PIX_FMT_VDPAU_WMV3) ||
-            !(Context->codec->capabilities & CODEC_CAP_HWACCEL_VDPAU))
+        if (!(Context && VideoPlayer::gAllowGPUAcceleration && VideoPlayer::gAllowGPUAcceleration->IsActive() &&
+              VideoPlayer::gAllowGPUAcceleration->GetValue().toBool() && VideoVDPAU::VDPAUAvailable()))
         {
             return false;
         }
+
+        if (!Context || (Context && !Context->codec) || Format != AV_PIX_FMT_VDPAU)
+            return false;
 
         VideoVDPAU* vdpau = VideoVDPAU::Create(Context);
 
         if (vdpau)
         {
-            Context->hwaccel_context = vdpau;
-            Context->draw_horiz_band = Decode;
+            {
+                gVDPAULock->lock();
+                VideoVDPAU::gVDPAUInstances.insert(Context, vdpau);
+                gVDPAULock->unlock();
+            }
+
+            Context->pix_fmt         = AV_PIX_FMT_VDPAU;
+            Context->hwaccel_context = vdpau->GetContext();
             Context->slice_flags     = SLICE_FLAG_CODED_ORDER | SLICE_FLAG_ALLOW_FIELD;
             return true;
         }
@@ -1113,32 +1077,46 @@ class VDPAUFactory : public AccelerationFactory
 
     void DeinitialiseDecoder(AVCodecContext *Context)
     {
-        if (Context && Context->hwaccel_context && Context->codec && Context->codec->capabilities & CODEC_CAP_HWACCEL_VDPAU)
+        if (Context && Context->hwaccel_context)
         {
-            VideoVDPAU* vdpau = (VideoVDPAU*)Context->hwaccel_context;
+            VideoVDPAU* vdpau = NULL;
+
+            {
+                gVDPAULock->lock();
+                if (VideoVDPAU::gVDPAUInstances.contains(Context))
+                    vdpau = VideoVDPAU::gVDPAUInstances.take(Context);
+                gVDPAULock->unlock();
+            }
+
             if (vdpau)
             {
                 vdpau->SetDeleting();
                 vdpau->Dereference();
                 Context->hwaccel_context = NULL;
+                return;
             }
+
+            LOG(VB_GENERAL, LOG_INFO, "Unknown VDPAU instance");
         }
     }
 
     bool InitialiseBuffer(AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame)
     {
-        if (!Context || !Avframe || !Frame || (Context && !Context->codec))
+        if (!Context || !Avframe || !Frame)
             return false;
 
-        if (!(Avframe->format == AV_PIX_FMT_VDPAU_H264  || Avframe->format == AV_PIX_FMT_VDPAU_MPEG1 ||
-              Avframe->format == AV_PIX_FMT_VDPAU_MPEG2 || Avframe->format == AV_PIX_FMT_VDPAU_MPEG4 ||
-              Avframe->format == AV_PIX_FMT_VDPAU_VC1   || Avframe->format == AV_PIX_FMT_VDPAU_WMV3) ||
-            !(Context->codec->capabilities & CODEC_CAP_HWACCEL_VDPAU) || !Context->hwaccel_context)
-        {
+        if (Avframe->format != AV_PIX_FMT_VDPAU || !Context->hwaccel_context)
             return false;
+
+        VideoVDPAU* vdpau = NULL;
+
+        {
+            gVDPAULock->lock();
+            if (VideoVDPAU::gVDPAUInstances.contains(Context))
+                vdpau = VideoVDPAU::gVDPAUInstances.value(Context);
+            gVDPAULock->unlock();
         }
 
-        VideoVDPAU* vdpau = (VideoVDPAU*)Context->hwaccel_context;
         if (!vdpau)
         {
             LOG(VB_GENERAL, LOG_ERR, "Failed to retrieve VideoVDPAU object from context");
@@ -1157,7 +1135,7 @@ class VDPAUFactory : public AccelerationFactory
             }
 
             Frame->m_acceleratedBuffer = render;
-            Frame->m_priv[0] = (unsigned char*)vdpau;
+            Frame->m_priv[0]           = (unsigned char*)vdpau;
         }
 
         render->state |= FF_VDPAU_STATE_USED_FOR_REFERENCE;
@@ -1165,7 +1143,7 @@ class VDPAUFactory : public AccelerationFactory
         Avframe->data[0]     = (uint8_t*)render;
         Avframe->data[1]     = NULL;
         Avframe->data[2]     = NULL;
-        Avframe->data[3]     = NULL;
+        Avframe->data[3]     = (uint8_t*)render->surface;
         Avframe->linesize[0] = 0;
         Avframe->linesize[1] = 0;
         Avframe->linesize[2] = 0;
@@ -1181,7 +1159,7 @@ class VDPAUFactory : public AccelerationFactory
         if (!Context || !Avframe)
             return;
 
-        if (Context->codec && Context->codec->capabilities & CODEC_CAP_HWACCEL_VDPAU && Avframe->data[0])
+        if (Context->codec && Avframe->data[0])
         {
             struct vdpau_render_state *render = (struct vdpau_render_state *)Avframe->data[0];
             if (render)
@@ -1198,10 +1176,7 @@ class VDPAUFactory : public AccelerationFactory
 
     bool UpdateFrame(VideoFrame *Frame, VideoColourSpace *ColourSpace, void *Surface)
     {
-        if (Frame && Surface && ColourSpace && Frame->m_acceleratedBuffer &&
-            (Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_H264  || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG1 ||
-             Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG2 || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG4 ||
-             Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_VC1   || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_WMV3))
+        if (Frame && Surface && ColourSpace && Frame->m_acceleratedBuffer && Frame->m_pixelFormat == AV_PIX_FMT_VDPAU)
         {
             struct vdpau_render_state *render = (struct vdpau_render_state *)Frame->m_acceleratedBuffer;
             GLTexture                *texture = static_cast<GLTexture*>(Surface);
@@ -1230,12 +1205,8 @@ class VDPAUFactory : public AccelerationFactory
         if (!Frame)
             return false;
 
-        if (!(Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_H264  || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG1 ||
-              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG2 || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG4 ||
-              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_VC1   || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_WMV3))
-        {
+        if (!Frame->m_pixelFormat == AV_PIX_FMT_VDPAU)
             return false;
-        }
 
         VideoVDPAU *vdpau = (VideoVDPAU*)Frame->m_priv[0];
         if (vdpau)
@@ -1254,12 +1225,8 @@ class VDPAUFactory : public AccelerationFactory
         if (!Frame)
             return false;
 
-        if (!(Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_H264  || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG1 ||
-              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG2 || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG4 ||
-              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_VC1   || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_WMV3))
-        {
+        if (!Frame->m_pixelFormat == AV_PIX_FMT_VDPAU)
             return false;
-        }
 
         VideoVDPAU *vdpau = (VideoVDPAU*)Frame->m_priv[0];
         if (vdpau)
@@ -1273,12 +1240,8 @@ class VDPAUFactory : public AccelerationFactory
         if (!Frame)
             return false;
 
-        if (!(Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_H264  || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG1 ||
-              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG2 || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_MPEG4 ||
-              Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_VC1   || Frame->m_pixelFormat == AV_PIX_FMT_VDPAU_WMV3))
-        {
+        if (!Frame->m_pixelFormat == AV_PIX_FMT_VDPAU)
             return false;
-        }
 
         VideoVDPAU *vdpau = (VideoVDPAU*)Frame->m_priv[0];
         if (vdpau)

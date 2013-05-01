@@ -57,6 +57,8 @@ class VideoVDPAU : protected TorcReferenceCounter
     } State;
 
   public:
+    static QMap<AVCodecContext*,VideoVDPAU*>  gVDPAUInstances;
+
     static bool                       VDPAUAvailable         (void);
     static bool                       CheckHardwareSupport   (AVCodecContext *Context);
     static VideoVDPAU*                Create                 (AVCodecContext *Context);
@@ -66,8 +68,8 @@ class VideoVDPAU : protected TorcReferenceCounter
     ~VideoVDPAU();
 
     void                              Preempted              (void);
-    void                              Decode                 (const AVFrame *Avframe);
     struct vdpau_render_state*        GetSurface             (void);
+    AVVDPAUContext*                   GetContext             (void);
     void                              Wake                   (void);
     bool                              Dereference            (void);
     void                              SetDeleting            (void);
@@ -102,6 +104,7 @@ class VideoVDPAU : protected TorcReferenceCounter
   private:
     State                             m_state;
     QAtomicInt                        m_preempted;
+    AVVDPAUContext                   *m_vdpauContext;
     QMutex                           *m_callbackLock;
     QWaitCondition                    m_callbackWait;
     AVCodecContext                   *m_avContext;
