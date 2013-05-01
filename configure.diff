@@ -1,14 +1,14 @@
---- libs/libtorc-av/configure	2012-12-09 20:37:03.000000000 +0000
-+++ configure	2013-04-04 15:31:59.000000000 +0100
+--- libs/libtorc-av/configure	2013-03-15 00:09:16.000000000 +0000
++++ configure	2013-04-30 18:29:23.766461976 +0100
 @@ -1,6 +1,6 @@
  #!/bin/sh
  #
--# Libav configure script
-+# Torc configure script, which extends the Libav configure script
+-# FFmpeg configure script
++# Torc configure script, which extends the FFmpeg configure script
  #
  # Copyright (c) 2000-2002 Fabrice Bellard
  # Copyright (c) 2005-2008 Diego Biurrun
-@@ -285,6 +285,19 @@
+@@ -341,6 +341,19 @@
    --random-seed=VALUE      seed value for --enable/disable-random
  
  NOTE: Object files are built at the place where configure is launched.
@@ -28,17 +28,10 @@
  EOF
    exit 0
  }
-@@ -667,6 +680,29 @@
-     check_cmd $cc $CPPFLAGS $CFLAGS "$@" $CC_C $(cc_o $TMPO) $TMPC
+@@ -750,6 +763,22 @@
+     check_cmd $cxx $CPPFLAGS $CFLAGS $CXXFLAGS "$@" $CXX_C -o $TMPO $TMPCPP
  }
  
-+check_cxx(){
-+    log check_cxx "$@"
-+    cat > $TMPCPP
-+    log_file $TMPCPP
-+    check_cmd $cxx $CPPFLAGS $CXXFLAGS "$@" -c -o $TMPO $TMPCPP
-+}
-+
 +add_cxxflags(){
 +    append ECXXFLAGS "$@"
 +}
@@ -58,41 +51,18 @@
  check_cpp(){
      log check_cpp "$@"
      cat > $TMPC
-@@ -796,17 +832,20 @@
- check_func_headers(){
-     log check_func_headers "$@"
-     headers=$1
--    funcs=$2
-+    func=$2
-     shift 2
--    {
--        for hdr in $headers; do
--            echo "#include <$hdr>"
--        done
--        for func in $funcs; do
--            echo "long check_$func(void) { return (long) $func; }"
--        done
--        echo "int main(void) { return 0; }"
--    } | check_ld "$@" && enable $funcs && enable_safe $headers
-+    disable $func
-+    incs=""
-+    for hdr in $headers; do
-+        incs="$incs
-+#include <$hdr>"
-+    done
-+    check_ld "$@" <<EOF && enable $func && enable_safe $headers
-+$incs
-+int main(int argc, char **argv){
-+    return (long) $func;
-+}
-+EOF
- }
- 
- check_cpp_condition(){
-@@ -1052,6 +1091,11 @@
+@@ -904,6 +933,7 @@
+             echo "#include <$hdr>"
+         done
+         for func in $funcs; do
++            echo "long check_$func(void);"
+             echo "long check_$func(void) { return (long) $func; }"
+         done
+         echo "int main(void) { return 0; }"
+@@ -1252,6 +1282,11 @@
+     thumb
+     version3
      xmm_clobber_test
-     x11grab
-     zlib
 +    libcrypto
 +    libdns_sd
 +    libudev
@@ -101,36 +71,28 @@
  "
  
  THREADS_LIST='
-@@ -1170,6 +1214,8 @@
-     attribute_packed
+@@ -1388,6 +1423,8 @@
      closesocket
      cmov
+     CommandLineToArgvW
 +    cpu_clips_negative
 +    cpu_clips_positive
      cpunop
      CryptGenRandom
      dcbzl
-@@ -1331,6 +1377,7 @@
-     cc
-     cpu
-     cross_prefix
-+    cxx
-     dep_cc
-     extra_version
-     host_cc
-@@ -1345,6 +1392,7 @@
+@@ -1583,6 +1620,7 @@
      nm
      optflags
      pkg_config
 +    qmake
+     progs_suffix
      random_seed
      samples
-     sysinclude
-@@ -1743,15 +1791,17 @@
+@@ -2123,11 +2161,12 @@
  # installation paths
  prefix_default="/usr/local"
  bindir_default='${prefix}/bin'
--datadir_default='${prefix}/share/avconv'
+-datadir_default='${prefix}/share/ffmpeg'
 -incdir_default='${prefix}/include'
 +datadir_default='${prefix}/share/torc'
 +incdir_default='${prefix}/include/torc'
@@ -141,12 +103,7 @@
  
  # toolchain
  ar_default="ar"
- cc_default="gcc"
-+cxx_default="g++"
- host_cc_default="gcc"
- cp_f="cp -f"
- ln_s="ln -sf"
-@@ -1791,14 +1841,35 @@
+@@ -2169,14 +2208,36 @@
  enable static
  enable swscale_alpha
  
@@ -163,6 +120,7 @@
 +enable shared
 +enable x11base
 +enable vaapi
++enable avresample
 +
 +# Torc configurable options
 +enable libcrypto
@@ -173,7 +131,7 @@
 +
  # build settings
  SHFLAGS='-shared -Wl,-soname,$$(@F)'
- AVSERVERLDFLAGS=-Wl,-E
+ FFSERVERLDFLAGS=-Wl,-E
 -LIBPREF="lib"
 +LIBPREF="libtorc-"
  LIBSUF=".a"
@@ -184,15 +142,7 @@
  SLIBSUF=".so"
  SLIBNAME='$(SLIBPREF)$(FULLNAME)$(SLIBSUF)'
  SLIBNAME_WITH_VERSION='$(SLIBNAME).$(LIBVERSION)'
-@@ -1816,6 +1887,7 @@
- CC_C='-c'
- CC_E='-E -o $@'
- CC_O='-o $@'
-+CXX_O='-o $@'
- LD_O='-o $@'
- LD_LIB='-l%'
- LD_PATH='-L'
-@@ -1860,17 +1932,17 @@
+@@ -2241,17 +2302,17 @@
      sed -n "s/^[^#]*$pattern.*([^,]*, *\([^,]*\)\(,.*\)*).*/\1_$thing/p" "$file"
  }
  
@@ -221,16 +171,16 @@
  
  ALL_COMPONENTS="
      $BSF_LIST
-@@ -1933,6 +2005,8 @@
+@@ -2316,6 +2377,8 @@
  for opt do
      optval="${opt#*=}"
      case "$opt" in
-+    --extra-cxxflags=*) add_cxxflags $optval
-+    ;;
-     --extra-ldflags=*) add_ldflags $optval
-     ;;
-     --extra-libs=*) add_extralibs $optval
-@@ -1993,6 +2067,15 @@
++        --extra-cxxflags=*) add_cxxflags $optval
++        ;;
+         --extra-ldflags=*)
+             add_ldflags $optval
+         ;;
+@@ -2391,6 +2454,15 @@
      esac
  done
  
@@ -245,33 +195,17 @@
 +
  disabled logging && logfile=/dev/null
  
- echo "# $0 $LIBAV_CONFIGURATION" > $logfile
-@@ -2007,6 +2090,7 @@
- 
- ar_default="${cross_prefix}${ar_default}"
- cc_default="${cross_prefix}${cc_default}"
-+cxx_default="${cross_prefix}${cxx_default}"
- nm_default="${cross_prefix}${nm_default}"
- pkg_config_default="${cross_prefix}${pkg_config_default}"
- ranlib="${cross_prefix}${ranlib}"
-@@ -2036,7 +2120,7 @@
+ echo "# $0 $FFMPEG_CONFIGURATION" > $logfile
+@@ -2436,7 +2508,7 @@
      ;;
  esac
  
--set_default arch cc pkg_config sysinclude target_os
-+set_default arch cc pkg_config sysinclude target_os cxx qmake
+-set_default arch cc cxx pkg_config strip sysinclude target_os yasmexe
++set_default arch cc cxx pkg_config qmake strip sysinclude target_os yasmexe
  enabled cross_compile || host_cc_default=$cc
  set_default host_cc
  
-@@ -2079,6 +2163,7 @@
- 
- tmpfile TMPASM .asm
- tmpfile TMPC   .c
-+tmpfile TMPCPP .cpp
- tmpfile TMPE   $EXESUF
- tmpfile TMPH   .h
- tmpfile TMPO   .o
-@@ -2419,11 +2504,13 @@
+@@ -2845,11 +2917,13 @@
      case "$cc_type" in
          gcc|llvm_gcc|clang)
              add_cppflags --sysroot="$sysroot"
@@ -285,15 +219,23 @@
          ;;
      esac
  fi
-@@ -2733,6 +2820,7 @@
-         add_extralibs -lpoll -lgnugetopt
+@@ -3144,6 +3218,7 @@
+ 
+ add_cppflags -D_ISOC99_SOURCE
+ add_cxxflags -D__STDC_CONSTANT_MACROS
++add_cxxflags -D__STDC_LIMIT_MACROS
+ check_cflags -std=c99
+ check_cc -D_FILE_OFFSET_BITS=64 <<EOF && add_cppflags -D_FILE_OFFSET_BITS=64
+ #include <stdlib.h>
+@@ -3244,6 +3319,7 @@
+         strip="strip -d"
          ;;
      darwin)
 +        disable x11base
          gas="gas-preprocessor.pl $cc"
          enabled ppc && add_asflags -force_cpusubtype_ALL
          SHFLAGS='-dynamiclib -Wl,-single_module -Wl,-install_name,$(SHLIBDIR)/$(SLIBNAME_WITH_MAJOR),-current_version,$(LIBVERSION),-compatibility_version,$(LIBMAJOR)'
-@@ -2760,7 +2848,6 @@
+@@ -3272,7 +3348,6 @@
              LIBTARGET=arm-wince
          fi
          shlibdir_default="$bindir_default"
@@ -301,7 +243,7 @@
          SLIBSUF=".dll"
          SLIBNAME_WITH_VERSION='$(SLIBPREF)$(FULLNAME)-$(LIBVERSION)$(SLIBSUF)'
          SLIBNAME_WITH_MAJOR='$(SLIBPREF)$(FULLNAME)-$(LIBMAJOR)$(SLIBSUF)'
-@@ -2986,6 +3073,8 @@
+@@ -3523,6 +3598,8 @@
      add_cppflags -DPIC
      add_cflags   -fPIC
      add_asflags  -fPIC
@@ -310,7 +252,7 @@
  }
  
  enabled pic && enable_pic
-@@ -3002,7 +3091,7 @@
+@@ -3539,7 +3616,7 @@
  
  _restrict=
  for restrict_keyword in restrict __restrict__ __restrict; do
@@ -319,24 +261,24 @@
  void foo(char * $restrict_keyword p);
  EOF
  done
-@@ -3247,6 +3336,7 @@
+@@ -3815,6 +3892,7 @@
  check_header dlfcn.h
  check_header dxva.h
- check_header dxva2api.h
+ check_header dxva2api.h -D_WIN32_WINNT=0x0600
 +check_struct dxva2api.h DXVA_PictureParameters wDecodedPictureIndex
  check_header io.h
+ check_header libcrystalhd/libcrystalhd_if.h
  check_header malloc.h
- check_header poll.h
-@@ -3296,7 +3386,7 @@
- done
+@@ -3873,7 +3951,7 @@
  
  check_lib math.h sin -lm && LIBM="-lm"
+ disabled crystalhd || check_lib libcrystalhd/libcrystalhd_if.h DtsCrystalHDVersion -lcrystalhd || disable crystalhd
 -enabled vaapi && require vaapi va/va.h vaInitialize -lva
-+enabled vaapi && check_lib vaapi va/va.h vaInitialize -lva
++enabled vaapi && check_lib va/va.h vaInitialize -lva
  
- for func in $MATH_FUNCS; do
-     check_mathfunc $func
-@@ -3339,6 +3429,9 @@
+ atan2f_args=2
+ ldexpf_args=2
+@@ -3953,6 +4031,9 @@
                          check_lib openssl/ssl.h SSL_library_init -lssl32 -leay32 ||
                          check_lib openssl/ssl.h SSL_library_init -lssl -lcrypto -lws2_32 -lgdi32 ||
                          die "ERROR: openssl not found"; }
@@ -346,26 +288,26 @@
  
  if enabled gnutls; then
      { check_lib nettle/bignum.h nettle_mpz_get_str_256 -lnettle -lhogweed -lgmp && enable nettle; } ||
-@@ -3394,7 +3487,7 @@
+@@ -4033,7 +4114,7 @@
  enabled_any sndio_indev sndio_outdev && check_lib2 sndio.h sio_open -lsndio
  
- enabled libcdio &&
--    check_lib2 "cdio/cdda.h cdio/paranoia.h" cdio_cddap_open -lcdio_paranoia -lcdio_cdda -lcdio
-+    check_lib2 "cdio/cdda.h cdio/paranoia.h" cdio_cddap_open -lcdio_paranoia -lcdio_cdda -lcdio || disable libcdio
+ if enabled libcdio; then
+-    check_lib2 "cdio/cdda.h cdio/paranoia.h" cdio_cddap_open -lcdio_paranoia -lcdio_cdda -lcdio || check_lib2 "cdio/paranoia/cdda.h cdio/paranoia/paranoia.h" cdio_cddap_open -lcdio_paranoia -lcdio_cdda -lcdio
++    check_lib2 "cdio/cdda.h cdio/paranoia.h" cdio_cddap_open -lcdio_paranoia -lcdio_cdda -lcdio || check_lib2 "cdio/paranoia/cdda.h cdio/paranoia/paranoia.h" cdio_cddap_open -lcdio_paranoia -lcdio_cdda -lcdio || disable libcdio
+ fi
  
  enabled x11grab                                           &&
- require X11 X11/Xlib.h XOpenDisplay -lX11                 &&
-@@ -3411,7 +3504,7 @@
-         { echolog "Please upgrade to libvdpau >= 0.2 if you would like vdpau support." && disable vdpau; }
- fi
+@@ -4055,7 +4136,7 @@
+ # Funny iconv installations are not unusual, so check it after all flags have been set
+ disabled iconv || check_func_headers iconv.h iconv || check_lib2 iconv.h iconv -liconv || disable iconv
  
 -enabled debug && add_cflags -g"$debuglevel" && add_asflags -g"$debuglevel"
 +enabled debug && add_cflags -g"$debuglevel" && add_asflags -g"$debuglevel" && add_cxxflags -g"$debuglevel"
+ enabled coverage && add_cflags "-fprofile-arcs -ftest-coverage" && add_ldflags "-fprofile-arcs -ftest-coverage"
+ test -n "$valgrind" && target_exec="$valgrind --error-exitcode=1 --malloc-fill=0x2a --track-origins=yes --leak-check=full --gen-suppressions=all --suppressions=$source_path/tests/fate-valgrind.supp"
  
- # add some useful compiler flags if supported
- check_cflags -Wdeclaration-after-statement
-@@ -3430,6 +3523,13 @@
- check_cflags -Wmissing-prototypes
+@@ -4076,6 +4157,13 @@
+ check_cflags -Wno-pointer-to-int-cast
  check_cflags -Wstrict-prototypes
  enabled extra_warnings && check_cflags -Winline
 +check_cxxflags -Wall
@@ -378,7 +320,7 @@
  
  # add some linker flags
  check_ldflags -Wl,--warn-common
-@@ -3463,11 +3563,16 @@
+@@ -4109,11 +4197,16 @@
  if [ -z "$optflags" ]; then
      if enabled small; then
          optflags=$cflags_size
@@ -390,21 +332,21 @@
          optflags=$cflags_noopt
 +        add_cxxflags $noopt_cflags
      fi
-+else
-+    add_cxxflags $optflags
++    else
++        add_cxxflags $optflags
  fi
  
  check_optflags(){
-@@ -3563,6 +3668,8 @@
- ! enabled_any memalign posix_memalign aligned_malloc &&
-     enabled_any $need_memalign && enable memalign_hack
+@@ -4252,6 +4345,8 @@
+ 
+ merge_deps libavfilter $FILTER_LIST
  
 +#disable $INDEV_LIST
 +
  echo "install prefix            $prefix"
  echo "source path               $source_path"
  echo "C compiler                $cc"
-@@ -3672,6 +3779,112 @@
+@@ -4348,6 +4443,112 @@
  
  echo "License: $license"
  
@@ -517,10 +459,14 @@
  echo "Creating config.mak and config.h..."
  
  test -e Makefile || $ln_s "$source_path/Makefile" .
-@@ -3681,13 +3894,18 @@
+@@ -4358,20 +4559,25 @@
+ 
  cat > config.mak <<EOF
  # Automatically generated by configure - do not modify!
- LIBAV_CONFIGURATION=$LIBAV_CONFIGURATION
+-ifndef FFMPEG_CONFIG_MAK
++#ifndef FFMPEG_CONFIG_MAK
+ FFMPEG_CONFIG_MAK=1
+ FFMPEG_CONFIGURATION=$FFMPEG_CONFIGURATION
 +PREFIX=$prefix
 +BUILD_ROOT="$PWD"
 +SYSROOT=$sysroot
@@ -540,13 +486,19 @@
 +RUNPREFIX=$(eval eval c_escape $datadir)
 +MANDIR=$mandir
  SRC_PATH=$source_path
+-ifndef MAIN_MAKEFILE
++#ifndef MAIN_MAKEFILE
+ SRC_PATH:=\$(SRC_PATH:.%=..%)
+-endif
++#endif
  CC_IDENT=$cc_ident
  ARCH=$arch
-@@ -3718,7 +3936,15 @@
+ CC=$cc
+@@ -4408,7 +4614,15 @@
  DLLTOOL=$dlltool
  LDFLAGS=$LDFLAGS
- LDFLAGS-avserver=$AVSERVERLDFLAGS
--SHFLAGS=$SHFLAGS
+ LDFLAGS-ffserver=$FFSERVERLDFLAGS
+-SHFLAGS=$(echo $($ldflags_filter $SHFLAGS))
 +#SHFLAGS=$SHFLAGS
 +CXX_O=$CXX_O
 +ECXXFLAGS=$ECXXFLAGS
@@ -558,43 +510,47 @@
 +QMAKE_LINK=$cxx
  YASMFLAGS=$YASMFLAGS
  BUILDSUF=$build_suffix
- FULLNAME=$FULLNAME
-@@ -3755,7 +3981,7 @@
- CFLAGS-avplay=$sdl_cflags
+ PROGSSUF=$progs_suffix
+@@ -4448,7 +4662,7 @@
+ CFLAGS-ffplay=$sdl_cflags
  ZLIB=$($ldflags_filter -lz)
  LIB_INSTALL_EXTRA_CMD=$LIB_INSTALL_EXTRA_CMD
 -EXTRALIBS=$extralibs
 +#EXTRALIBS=$extralibs
  COMPAT_OBJS=$compat_objs
  EXEOBJS=$exeobjs
- INSTALL=install
-@@ -3769,13 +3995,13 @@
+ INSTALL=$install
+@@ -4462,14 +4676,14 @@
  SLIB_INSTALL_LINKS=${SLIB_INSTALL_LINKS}
  SLIB_INSTALL_EXTRA_LIB=${SLIB_INSTALL_EXTRA_LIB}
  SLIB_INSTALL_EXTRA_SHLIB=${SLIB_INSTALL_EXTRA_SHLIB}
--SAMPLES:=${samples:-\$(LIBAV_SAMPLES)}
-+#SAMPLES:=${samples:-\$(LIBAV_SAMPLES)}
+-SAMPLES:=${samples:-\$(FATE_SAMPLES)}
++#SAMPLES:=${samples:-\$(FATE_SAMPLES)}
+ NOREDZONE_FLAGS=$noredzone_flags
  EOF
  
  get_version(){
-     lcname=$1
+     lcname=lib${1}
      name=$(toupper $lcname)
 -    file=$source_path/$lcname/version.h
 +    file=$source_path/libs/libtorc-av/$lcname/version.h
      eval $(awk "/#define ${name}_VERSION_M/ { print \$2 \"=\" \$3 }" "$file")
      eval ${name}_VERSION=\$${name}_VERSION_MAJOR.\$${name}_VERSION_MINOR.\$${name}_VERSION_MICRO
      eval echo "${lcname}_VERSION=\$${name}_VERSION" >> config.mak
-@@ -3820,11 +4046,19 @@
+@@ -4513,13 +4727,21 @@
+                                      $ALL_COMPONENTS    \
  
- echo "#endif /* LIBAV_CONFIG_H */" >> $TMPH
- 
+ echo "#endif /* FFMPEG_CONFIG_H */" >> $TMPH
+-echo "endif # FFMPEG_CONFIG_MAK" >> config.mak
++echo "#endif # FFMPEG_CONFIG_MAK" >> config.mak
++
 +tmpfile TMPMAK .mak
 +tmpfile TMPMAK2 .mak
-+sed -e 's/#SHFLAGS=/SHFLAGS=/' -e 's/#EXTRALIBS=/EXTRALIBS=/' config.mak > $TMPMAK
++sed -e 's/#SHFLAGS=/SHFLAGS=/' -e 's/#EXTRALIBS=/EXTRALIBS=/' -e 's/#ifndef/ifndef/' -e 's/#endif/endif/' config.mak > $TMPMAK
 +cp_if_changed $TMPMAK libs/libtorc-av/config.mak
 +sed -e 's/^!/#/' config.mak > $TMPMAK2
 +cp_if_changed $TMPMAK2 config.mak
-+
+ 
  # Do not overwrite an unchanged config.h to avoid superfluous rebuilds.
 -cp_if_changed $TMPH config.h
 -touch .config
@@ -607,14 +563,17 @@
  
  cat > $TMPH <<EOF
  /* Generated by ffconf */
-@@ -3836,57 +4070,6 @@
+@@ -4531,101 +4753,9 @@
  
  echo "#endif /* AVUTIL_AVCONFIG_H */" >> $TMPH
  
 -cp_if_changed $TMPH libavutil/avconfig.h
 +cp_if_changed $TMPH libs/libtorc-av/libavutil/avconfig.h
  
- test -n "$WARNINGS" && printf "\n$WARNINGS"
+ if test -n "$WARNINGS"; then
+     printf "\n$WARNINGS"
+     enabled fatal_warnings && exit 1
+ fi
 -
 -# build pkg-config files
 -
@@ -627,7 +586,7 @@
 -    requires=$5
 -    enabled ${name#lib} || return 0
 -    mkdir -p $name
--    cat <<EOF > $name/$name.pc
+-    cat <<EOF > $name/$name${build_suffix}.pc
 -prefix=$prefix
 -exec_prefix=\${prefix}
 -libdir=$libdir
@@ -643,26 +602,67 @@
 -Libs.private: $(enabled shared && echo $libs)
 -Cflags: -I\${includedir}
 -EOF
--    cat <<EOF > $name/$name-uninstalled.pc
+-
+-mkdir -p doc/examples/pc-uninstalled
+-includedir=${source_path}
+-[ "$includedir" = . ] && includedir="\${pcfiledir}/../../.."
+-    cat <<EOF > doc/examples/pc-uninstalled/$name.pc
 -prefix=
 -exec_prefix=
--libdir=\${pcfiledir}
--includedir=${source_path}
+-libdir=\${pcfiledir}/../../../$name
+-includedir=${includedir}
 -
 -Name: $name
 -Description: $comment
 -Version: $version
 -Requires: $requires
 -Conflicts:
--Libs: \${libdir}/${LIBPREF}${shortname}${LIBSUF} $libs
+-Libs: -L\${libdir} -l${shortname} $(enabled shared || echo $libs)
 -Cflags: -I\${includedir}
 -EOF
 -}
 -
--pkgconfig_generate libavutil "Libav utility library" "$LIBAVUTIL_VERSION" "$LIBM"
--pkgconfig_generate libavcodec "Libav codec library" "$LIBAVCODEC_VERSION" "$extralibs" "libavutil = $LIBAVUTIL_VERSION"
--pkgconfig_generate libavformat "Libav container format library" "$LIBAVFORMAT_VERSION" "$extralibs" "libavcodec = $LIBAVCODEC_VERSION"
--pkgconfig_generate libavdevice "Libav device handling library" "$LIBAVDEVICE_VERSION" "$extralibs" "libavformat = $LIBAVFORMAT_VERSION"
--pkgconfig_generate libavfilter "Libav video filtering library" "$LIBAVFILTER_VERSION" "$extralibs"
--pkgconfig_generate libavresample "Libav audio resampling library" "$LIBAVRESAMPLE_VERSION" "$extralibs"
--pkgconfig_generate libswscale "Libav image rescaling library" "$LIBSWSCALE_VERSION" "$LIBM" "libavutil = $LIBAVUTIL_VERSION"
+-libavfilter_pc_deps="libavutil${build_suffix} = $LIBAVUTIL_VERSION"
+-enabled libavfilter_deps_avcodec    && prepend libavfilter_pc_deps "libavcodec${build_suffix} = $LIBAVCODEC_VERSION,"
+-enabled libavfilter_deps_avformat   && prepend libavfilter_pc_deps "libavformat${build_suffix} = $LIBAVFORMAT_VERSION,"
+-enabled libavfilter_deps_avresample && prepend libavfilter_pc_deps "libavresample${build_suffix} = $LIBAVRESAMPLE_VERSION,"
+-enabled libavfilter_deps_swscale    && prepend libavfilter_pc_deps "libswscale${build_suffix} = $LIBSWSCALE_VERSION,"
+-enabled libavfilter_deps_swresample && prepend libavfilter_pc_deps "libswresample${build_suffix} = $LIBSWRESAMPLE_VERSION,"
+-enabled libavfilter_deps_postproc   && prepend libavfilter_pc_deps "libpostproc${build_suffix} = $LIBPOSTPROC_VERSION,"
+-libavfilter_pc_deps=${libavfilter_pc_deps%, }
+-
+-libavdevice_pc_deps="libavformat${build_suffix} = $LIBAVFORMAT_VERSION"
+-enabled lavfi_indev && prepend libavdevice_pc_deps "libavfilter${build_suffix} = $LIBAVFILTER_VERSION,"
+-
+-pkgconfig_generate libavutil "FFmpeg utility library" "$LIBAVUTIL_VERSION" "$LIBM"
+-pkgconfig_generate libavcodec "FFmpeg codec library" "$LIBAVCODEC_VERSION" "$extralibs" "libavutil${build_suffix} = $LIBAVUTIL_VERSION"
+-pkgconfig_generate libavformat "FFmpeg container format library" "$LIBAVFORMAT_VERSION" "$extralibs" "libavcodec${build_suffix} = $LIBAVCODEC_VERSION"
+-pkgconfig_generate libavdevice "FFmpeg device handling library" "$LIBAVDEVICE_VERSION" "$extralibs" "$libavdevice_pc_deps"
+-pkgconfig_generate libavfilter "FFmpeg audio/video filtering library" "$LIBAVFILTER_VERSION" "$extralibs" "$libavfilter_pc_deps"
+-pkgconfig_generate libpostproc "FFmpeg postprocessing library" "$LIBPOSTPROC_VERSION" "" "libavutil${build_suffix} = $LIBAVUTIL_VERSION"
+-pkgconfig_generate libavresample "Libav audio resampling library" "$LIBAVRESAMPLE_VERSION" "$extralibs" "libavutil${build_suffix} = $LIBAVUTIL_VERSION"
+-pkgconfig_generate libswscale "FFmpeg image rescaling library" "$LIBSWSCALE_VERSION" "$LIBM" "libavutil${build_suffix} = $LIBAVUTIL_VERSION"
+-pkgconfig_generate libswresample "FFmpeg audio resampling library" "$LIBSWRESAMPLE_VERSION" "$LIBM" "libavutil${build_suffix} = $LIBAVUTIL_VERSION"
+-
+-fix_ffmpeg_remote(){
+-    git_remote_from=$1
+-    git_remote_to=$2
+-    fixme_remote=$(git --git-dir=$source_path/.git --work-tree=$source_path remote -v | grep $git_remote_from | cut -f 1 | sort | uniq)
+-    if [ "$fixme_remote" != "" ]; then
+-        echolog "
+-Outdated domain in git config, the official domain for ffmpeg git is since
+-November 2011, source.ffmpeg.org, both the old and the new point to the same
+-repository and server. To update it enter the following commands:
+-"
+-        for remote in $fixme_remote; do
+-            echolog "git remote set-url $remote $git_remote_to"
+-        done
+-    fi
+-}
+-
+-if test -f "$source_path/.git/config"; then
+-    remote_from=git.videolan.org
+-    remote_to=source.ffmpeg.org
+-    fix_ffmpeg_remote git@$remote_from:ffmpeg   git@$remote_to:ffmpeg
+-    fix_ffmpeg_remote git://$remote_from/ffmpeg git://$remote_to/ffmpeg
+-fi

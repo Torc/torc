@@ -37,7 +37,7 @@ $(SUBDIR)$(LIBNAME): $(OBJS)
 	$(AR) $(ARFLAGS) $(AR_O) $^
 	$(RANLIB) $@
 
-install-headers: install-lib$(NAME)-headers install-lib$(NAME)-pkgconfig
+install-headers: install-lib$(NAME)-headers
 
 install-libs-$(CONFIG_STATIC): install-lib$(NAME)-static
 install-libs-$(CONFIG_SHARED): install-lib$(NAME)-shared
@@ -85,10 +85,6 @@ install-lib$(NAME)-static: $(SUBDIR)$(LIBNAME)
 install-lib$(NAME)-headers: $(addprefix $(SUBDIR),$(HEADERS) $(BUILT_HEADERS))
 	$(Q)mkdir -p "$(INCINSTDIR)"
 	$$(INSTALL) -m 644 $$^ "$(INCINSTDIR)"
-
-install-lib$(NAME)-pkgconfig: $(SUBDIR)lib$(FULLNAME).pc
-	$(Q)mkdir -p "$(LIBDIR)/pkgconfig"
-	$$(INSTALL) -m 644 $$^ "$(LIBDIR)/pkgconfig"
 
 uninstall-libs::
 	-$(RM) "$(SHLIBDIR)/$(SLIBNAME_WITH_MAJOR)" \
