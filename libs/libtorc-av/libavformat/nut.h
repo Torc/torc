@@ -2,20 +2,20 @@
  * "NUT" Container Format (de)muxer
  * Copyright (c) 2006 Michael Niedermayer
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -26,7 +26,7 @@
 //#include "libavutil/adler32.h"
 //#include "libavcodec/mpegaudio.h"
 #include "avformat.h"
-#include "riff.h"
+#include "internal.h"
 #include "metadata.h"
 
 #define      MAIN_STARTCODE (0x7A561F5F04ADULL + (((uint64_t)('N'<<8) + 'M')<<48))
@@ -79,6 +79,7 @@ typedef struct StreamContext {
     int msb_pts_shift;
     int max_pts_distance;
     int decode_delay; //FIXME duplicate of has_b_frames
+    int64_t *keyframe_pts;
 } StreamContext;
 
 typedef struct ChapterContext {
@@ -101,11 +102,15 @@ typedef struct NUTContext {
     int header_count;
     AVRational *time_base;
     struct AVTreeNode *syncpoints;
+    int sp_count;
+    int64_t max_pts;
+    AVRational *max_pts_tb;
 } NUTContext;
 
 extern const AVCodecTag ff_nut_subtitle_tags[];
 extern const AVCodecTag ff_nut_video_tags[];
 extern const AVCodecTag ff_nut_audio_tags[];
+extern const AVCodecTag ff_nut_data_tags[];
 
 extern const AVCodecTag * const ff_nut_codec_tags[];
 

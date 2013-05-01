@@ -4,20 +4,20 @@
  * Copyright (c) 2006-2011 Justin Ruggles <justin.ruggles@gmail.com>
  * Copyright (c) 2006-2010 Prakash Punnoor <prakash@punnoor.de>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 
+#include "libavutil/internal.h"
 
 /* prototypes for static functions in ac3enc_fixed.c and ac3enc_float.c */
 
@@ -43,6 +44,9 @@ static void clip_coefficients(DSPContext *dsp, CoefType *coef, unsigned int len)
 
 static CoefType calc_cpl_coord(CoefSumType energy_ch, CoefSumType energy_cpl);
 
+static void sum_square_butterfly(AC3EncodeContext *s, CoefSumType sum[4],
+                                 const CoefType *coef0, const CoefType *coef1,
+                                 int len);
 
 int AC3_NAME(allocate_sample_buffers)(AC3EncodeContext *s)
 {
@@ -66,7 +70,7 @@ alloc_fail:
 
 /*
  * Copy input samples.
- * Channels are reordered from Libav's default order to AC-3 order.
+ * Channels are reordered from FFmpeg's default order to AC-3 order.
  */
 static void copy_input_samples(AC3EncodeContext *s, SampleType **samples)
 {
@@ -129,7 +133,7 @@ static void apply_channel_coupling(AC3EncodeContext *s)
 #else
     int32_t (*fixed_cpl_coords)[AC3_MAX_CHANNELS][16] = cpl_coords;
 #endif
-    int blk, ch, bnd, i, j;
+    int av_uninit(blk), ch, bnd, i, j;
     CoefSumType energy[AC3_MAX_BLOCKS][AC3_MAX_CHANNELS][16] = {{{0}}};
     int cpl_start, num_cpl_coefs;
 
@@ -332,8 +336,8 @@ static void apply_channel_coupling(AC3EncodeContext *s)
 static void compute_rematrixing_strategy(AC3EncodeContext *s)
 {
     int nb_coefs;
-    int blk, bnd, i;
-    AC3Block *block, *block0;
+    int blk, bnd;
+    AC3Block *block, *block0 = NULL;
 
     if (s->channel_mode != AC3_CHMODE_STEREO)
         return;
@@ -360,17 +364,9 @@ static void compute_rematrixing_strategy(AC3EncodeContext *s)
             /* calculate calculate sum of squared coeffs for one band in one block */
             int start = ff_ac3_rematrix_band_tab[bnd];
             int end   = FFMIN(nb_coefs, ff_ac3_rematrix_band_tab[bnd+1]);
-            CoefSumType sum[4] = {0,};
-            for (i = start; i < end; i++) {
-                CoefType lt = block->mdct_coef[1][i];
-                CoefType rt = block->mdct_coef[2][i];
-                CoefType md = lt + rt;
-                CoefType sd = lt - rt;
-                MAC_COEF(sum[0], lt, lt);
-                MAC_COEF(sum[1], rt, rt);
-                MAC_COEF(sum[2], md, md);
-                MAC_COEF(sum[3], sd, sd);
-            }
+            CoefSumType sum[4];
+            sum_square_butterfly(s, sum, block->mdct_coef[1] + start,
+                                 block->mdct_coef[2] + start, end - start);
 
             /* compare sums to determine if rematrixing will be used for this band */
             if (FFMIN(sum[2], sum[3]) < FFMIN(sum[0], sum[1]))
@@ -439,10 +435,8 @@ int AC3_NAME(encode_frame)(AVCodecContext *avctx, AVPacket *avpkt,
 
     ff_ac3_quantize_mantissas(s);
 
-    if ((ret = ff_alloc_packet(avpkt, s->frame_size))) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, s->frame_size)) < 0)
         return ret;
-    }
     ff_ac3_output_frame(s, avpkt->data);
 
     if (frame->pts != AV_NOPTS_VALUE)

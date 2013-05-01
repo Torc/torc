@@ -2,20 +2,20 @@
  * Copyright (C) 2009 Justin Ruggles
  * Copyright (c) 2009 Xuggle Incorporated
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -85,13 +85,14 @@
 #include <speex/speex_header.h>
 #include <speex/speex_stereo.h>
 
-#include "libavutil/audioconvert.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "libavutil/opt.h"
 #include "avcodec.h"
 #include "internal.h"
 #include "audio_frame_queue.h"
 
+/* TODO: Think about converting abr, vad, dtx and such flags to a bit field */
 typedef struct {
     AVClass *class;             ///< AVClass for private options
     SpeexBits bits;             ///< libspeex bitwriter context
@@ -287,7 +288,7 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
             speex_encode_stereo_int(samples, s->header.frame_size, &s->bits);
         speex_encode_int(s->enc_state, samples, &s->bits);
         s->pkt_frame_count++;
-        if ((ret = ff_af_queue_add(&s->afq, frame) < 0))
+        if ((ret = ff_af_queue_add(&s->afq, frame)) < 0)
             return ret;
     } else {
         /* handle end-of-stream */
@@ -303,10 +304,8 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     /* write output if all frames for the packet have been encoded */
     if (s->pkt_frame_count == s->frames_per_packet) {
         s->pkt_frame_count = 0;
-        if ((ret = ff_alloc_packet(avpkt, speex_bits_nbytes(&s->bits)))) {
-            av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+        if ((ret = ff_alloc_packet2(avctx, avpkt, speex_bits_nbytes(&s->bits))) < 0)
             return ret;
-        }
         ret = speex_bits_write(&s->bits, avpkt->data, avpkt->size);
         speex_bits_reset(&s->bits);
 

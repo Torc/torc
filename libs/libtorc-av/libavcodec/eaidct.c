@@ -2,20 +2,20 @@
  * Electronic Arts TGQ/TQI/MAD IDCT algorithm
  * Copyright (c) 2007-2008 Peter Ross <pross@xvid.org>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,7 +25,6 @@
  * @author Peter Ross <pross@xvid.org>
  */
 
-#include "dsputil.h"
 #include "eaidct.h"
 #include "libavutil/common.h"
 
@@ -64,7 +63,7 @@
 #define MUNGE_8BIT(x) av_clip_uint8((x)>>4)
 #define IDCT_ROW(dest,src) IDCT_TRANSFORM(dest,0,1,2,3,4,5,6,7,0,1,2,3,4,5,6,7,MUNGE_8BIT,src)
 
-static inline void ea_idct_col(DCTELEM *dest, const DCTELEM *src) {
+static inline void ea_idct_col(int16_t *dest, const int16_t *src) {
     if ((src[8]|src[16]|src[24]|src[32]|src[40]|src[48]|src[56])==0) {
         dest[0]  =
         dest[8]  =
@@ -78,9 +77,9 @@ static inline void ea_idct_col(DCTELEM *dest, const DCTELEM *src) {
         IDCT_COL(dest, src);
 }
 
-void ff_ea_idct_put_c(uint8_t *dest, int linesize, DCTELEM *block) {
+void ff_ea_idct_put_c(uint8_t *dest, int linesize, int16_t *block) {
     int i;
-    DCTELEM temp[64];
+    int16_t temp[64];
     block[0] += 4;
     for (i=0; i<8; i++)
         ea_idct_col(&temp[i], &block[i]);

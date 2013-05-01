@@ -3,28 +3,28 @@
  * Copyright (c) 2002 Dieter Shirley
  * Copyright (c) 2003-2004 Romain Dolbeau <romain@dolbeau.org>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include <string.h>
 
+#include "libavutil/attributes.h"
 #include "libavutil/cpu.h"
 #include "libavutil/mem.h"
-#include "libavcodec/dsputil.h"
 #include "dsputil_altivec.h"
 
 /* ***** WARNING ***** WARNING ***** WARNING ***** */
@@ -47,7 +47,7 @@ distinguish, and use dcbz (32 bytes) or dcbzl (one cache line) as required.
 see <http://developer.apple.com/technotes/tn/tn2087.html>
 and <http://developer.apple.com/technotes/tn/tn2086.html>
 */
-static void clear_blocks_dcbz32_ppc(DCTELEM *blocks)
+static void clear_blocks_dcbz32_ppc(int16_t *blocks)
 {
     register int misal = ((unsigned long)blocks & 0x00000010);
     register int i = 0;
@@ -58,7 +58,7 @@ static void clear_blocks_dcbz32_ppc(DCTELEM *blocks)
         ((unsigned long*)blocks)[3] = 0L;
         i += 16;
     }
-    for ( ; i < sizeof(DCTELEM)*6*64-31 ; i += 32) {
+    for ( ; i < sizeof(int16_t)*6*64-31 ; i += 32) {
         __asm__ volatile("dcbz %0,%1" : : "b" (blocks), "r" (i) : "memory");
     }
     if (misal) {
@@ -73,7 +73,7 @@ static void clear_blocks_dcbz32_ppc(DCTELEM *blocks)
 /* same as above, when dcbzl clear a whole 128B cache line
    i.e. the PPC970 aka G5 */
 #if HAVE_DCBZL
-static void clear_blocks_dcbz128_ppc(DCTELEM *blocks)
+static void clear_blocks_dcbz128_ppc(int16_t *blocks)
 {
     register int misal = ((unsigned long)blocks & 0x0000007f);
     register int i = 0;
@@ -81,17 +81,17 @@ static void clear_blocks_dcbz128_ppc(DCTELEM *blocks)
         // we could probably also optimize this case,
         // but there's not much point as the machines
         // aren't available yet (2003-06-26)
-        memset(blocks, 0, sizeof(DCTELEM)*6*64);
+        memset(blocks, 0, sizeof(int16_t)*6*64);
     }
     else
-        for ( ; i < sizeof(DCTELEM)*6*64 ; i += 128) {
+        for ( ; i < sizeof(int16_t)*6*64 ; i += 128) {
             __asm__ volatile("dcbzl %0,%1" : : "b" (blocks), "r" (i) : "memory");
         }
 }
 #else
-static void clear_blocks_dcbz128_ppc(DCTELEM *blocks)
+static void clear_blocks_dcbz128_ppc(int16_t *blocks)
 {
-    memset(blocks, 0, sizeof(DCTELEM)*6*64);
+    memset(blocks, 0, sizeof(int16_t)*6*64);
 }
 #endif
 
@@ -137,21 +137,19 @@ static long check_dcbzl_effect(void)
 }
 #endif
 
-static void prefetch_ppc(void *mem, int stride, int h)
-{
-    register const uint8_t *p = mem;
-    do {
-        __asm__ volatile ("dcbt 0,%0" : : "r" (p));
-        p+= stride;
-    } while(--h);
-}
-
-void ff_dsputil_init_ppc(DSPContext* c, AVCodecContext *avctx)
+av_cold void ff_dsputil_init_ppc(DSPContext *c, AVCodecContext *avctx)
 {
     const int high_bit_depth = avctx->bits_per_raw_sample > 8;
+    int mm_flags = av_get_cpu_flags();
+
+    if (avctx->dsp_mask) {
+        if (avctx->dsp_mask & AV_CPU_FLAG_FORCE)
+            mm_flags |= (avctx->dsp_mask & 0xffff);
+        else
+            mm_flags &= ~(avctx->dsp_mask & 0xffff);
+    }
 
     // Common optimizations whether AltiVec is available or not
-    c->prefetch = prefetch_ppc;
     if (!high_bit_depth) {
     switch (check_dcbzl_effect()) {
         case 32:
@@ -166,11 +164,8 @@ void ff_dsputil_init_ppc(DSPContext* c, AVCodecContext *avctx)
     }
 
 #if HAVE_ALTIVEC
-    if(CONFIG_H264_DECODER) ff_dsputil_h264_init_ppc(c, avctx);
-
-    if (av_get_cpu_flags() & AV_CPU_FLAG_ALTIVEC) {
+    if (mm_flags & AV_CPU_FLAG_ALTIVEC) {
         ff_dsputil_init_altivec(c, avctx);
-        ff_float_init_altivec(c, avctx);
         ff_int_init_altivec(c, avctx);
         c->gmc1 = ff_gmc1_altivec;
 
@@ -182,7 +177,7 @@ void ff_dsputil_init_ppc(DSPContext* c, AVCodecContext *avctx)
         }
 #endif //CONFIG_ENCODERS
 
-        if (avctx->bits_per_raw_sample <= 8) {
+        if (avctx->lowres == 0 && avctx->bits_per_raw_sample <= 8) {
             if ((avctx->idct_algo == FF_IDCT_AUTO) ||
                 (avctx->idct_algo == FF_IDCT_ALTIVEC)) {
                 c->idct_put = ff_idct_put_altivec;

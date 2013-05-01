@@ -2,20 +2,20 @@
  * TechSmith Screen Codec 2 (aka Dora) decoder
  * Copyright (c) 2012 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -211,7 +211,7 @@ static int tscc2_decode_slice(TSCC2Context *c, int mb_y,
 }
 
 static int tscc2_decode_frame(AVCodecContext *avctx, void *data,
-                              int *data_size, AVPacket *avpkt)
+                              int *got_frame, AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
@@ -238,7 +238,7 @@ static int tscc2_decode_frame(AVCodecContext *avctx, void *data,
     }
 
     if (frame_type == 0) {
-        *data_size      = sizeof(AVFrame);
+        *got_frame      = 1;
         *(AVFrame*)data = c->pic;
 
         return buf_size;
@@ -322,7 +322,7 @@ static int tscc2_decode_frame(AVCodecContext *avctx, void *data,
         bytestream2_skip(&gb, size);
     }
 
-    *data_size      = sizeof(AVFrame);
+    *got_frame      = 1;
     *(AVFrame*)data = c->pic;
 
     /* always report that the buffer was completely consumed */

@@ -1,10 +1,10 @@
 @chapter Protocols
 @c man begin PROTOCOLS
 
-Protocols are configured elements in Libav which allow to access
+Protocols are configured elements in FFmpeg which allow to access
 resources which require the use of a particular protocol.
 
-When you configure your Libav build, all the supported protocols are
+When you configure your FFmpeg build, all the supported protocols are
 enabled by default. You can list all available ones using the
 configure option "--list-protocols".
 
@@ -18,6 +18,36 @@ The option "-protocols" of the ff* tools will display the list of
 supported protocols.
 
 A description of the currently available protocols follows.
+
+@section bluray
+
+Read BluRay playlist.
+
+The accepted options are:
+@table @option
+
+@item angle
+BluRay angle
+
+@item chapter
+Start chapter (1...N)
+
+@item playlist
+Playlist to read (BDMV/PLAYLIST/?????.mpls)
+
+@end table
+
+Examples:
+
+Read longest playlist from BluRay mounted to /mnt/bluray:
+@example
+bluray:/mnt/bluray
+@end example
+
+Read angle 2 of playlist 4 from BluRay mounted to /mnt/bluray, start from chapter 2:
+@example
+-playlist 4 -angle 2 -chapter 2 bluray:/mnt/bluray
+@end example
 
 @section concat
 
@@ -36,14 +66,23 @@ resource to be concatenated, each one possibly specifying a distinct
 protocol.
 
 For example to read a sequence of files @file{split1.mpeg},
-@file{split2.mpeg}, @file{split3.mpeg} with @command{avplay} use the
+@file{split2.mpeg}, @file{split3.mpeg} with @command{ffplay} use the
 command:
 @example
-avplay concat:split1.mpeg\|split2.mpeg\|split3.mpeg
+ffplay concat:split1.mpeg\|split2.mpeg\|split3.mpeg
 @end example
 
 Note that you may need to escape the character "|" which is special for
 many shells.
+
+@section data
+
+Data in-line in the URI. See @url{http://en.wikipedia.org/wiki/Data_URI_scheme}.
+
+For example, to convert a GIF file given inline with @command{ffmpeg}:
+@example
+ffmpeg -i "data:image/gif;base64,R0lGODdhCAAIAMIEAAAAAAAA//8AAP//AP///////////////ywAAAAACAAIAAADF0gEDLojDgdGiJdJqUX02iB4E8Q9jUMkADs=" smiley.png
+@end example
 
 @section file
 
@@ -51,10 +90,10 @@ File access protocol.
 
 Allow to read from or read to a file.
 
-For example to read from a file @file{input.mpeg} with @command{avconv}
+For example to read from a file @file{input.mpeg} with @command{ffmpeg}
 use the command:
 @example
-avconv -i file:input.mpeg output.mpeg
+ffmpeg -i file:input.mpeg output.mpeg
 @end example
 
 The ff* tools default to the file protocol, that is a resource
@@ -89,6 +128,63 @@ m3u8 files.
 
 HTTP (Hyper Text Transfer Protocol).
 
+This protocol accepts the following options.
+
+@table @option
+@item seekable
+Control seekability of connection. If set to 1 the resource is
+supposed to be seekable, if set to 0 it is assumed not to be seekable,
+if set to -1 it will try to autodetect if it is seekable. Default
+value is -1.
+
+@item chunked_post
+If set to 1 use chunked transfer-encoding for posts, default is 1.
+
+@item headers
+Set custom HTTP headers, can override built in default headers. The
+value must be a string encoding the headers.
+
+@item content_type
+Force a content type.
+
+@item user-agent
+Override User-Agent header. If not specified the protocol will use a
+string describing the libavformat build.
+
+@item multiple_requests
+Use persistent connections if set to 1. By default it is 0.
+
+@item post_data
+Set custom HTTP post data.
+
+@item timeout
+Set timeout of socket I/O operations used by the underlying low level
+operation. By default it is set to -1, which means that the timeout is
+not specified.
+
+@item mime_type
+Set MIME type.
+
+@item cookies
+Set the cookies to be sent in future requests. The format of each cookie is the
+same as the value of a Set-Cookie HTTP response field. Multiple cookies can be
+delimited by a newline character.
+@end table
+
+@subsection HTTP Cookies
+
+Some HTTP requests will be denied unless cookie values are passed in with the
+request. The @option{cookies} option allows these cookies to be specified. At
+the very least, each cookie must specify a value along with a path and domain.
+HTTP requests that match both the domain and path will automatically include the
+cookie value in the HTTP Cookie header field. Multiple cookies can be delimited
+by a newline.
+
+The required syntax to play a stream specifying a cookie is:
+@example
+ffplay -cookies "nlqptid=nltid=tsn; path=/; domain=somedomain.com;" http://somedomain.com/somestream.m3u8
+@end example
+
 @section mmst
 
 MMS (Microsoft Media Server) protocol over TCP.
@@ -113,10 +209,10 @@ be used to test muxers without writing an actual file.
 Some examples follow.
 @example
 # Write the MD5 hash of the encoded AVI file to the file output.avi.md5.
-avconv -i input.flv -f avi -y md5:output.avi.md5
+ffmpeg -i input.flv -f avi -y md5:output.avi.md5
 
 # Write the MD5 hash of the encoded AVI file to stdout.
-avconv -i input.flv -f avi -y md5:
+ffmpeg -i input.flv -f avi -y md5:
 @end example
 
 Note that some formats (typically MOV) require the output protocol to
@@ -138,18 +234,18 @@ pipe (e.g. 0 for stdin, 1 for stdout, 2 for stderr).  If @var{number}
 is not specified, by default the stdout file descriptor will be used
 for writing, stdin for reading.
 
-For example to read from stdin with @command{avconv}:
+For example to read from stdin with @command{ffmpeg}:
 @example
-cat test.wav | avconv -i pipe:0
+cat test.wav | ffmpeg -i pipe:0
 # ...this is the same as...
-cat test.wav | avconv -i pipe:
+cat test.wav | ffmpeg -i pipe:
 @end example
 
-For writing to stdout with @command{avconv}:
+For writing to stdout with @command{ffmpeg}:
 @example
-avconv -i test.wav -f avi pipe:1 | cat > test.avi
+ffmpeg -i test.wav -f avi pipe:1 | cat > test.avi
 # ...this is the same as...
-avconv -i test.wav -f avi pipe: | cat > test.avi
+ffmpeg -i test.wav -f avi pipe: | cat > test.avi
 @end example
 
 Note that some formats (typically MOV), require the output protocol to
@@ -264,10 +360,10 @@ URL of the target stream. Defaults to proto://host[:port]/app.
 
 @end table
 
-For example to read with @command{avplay} a multimedia resource named
+For example to read with @command{ffplay} a multimedia resource named
 "sample" from the application "vod" from an RTMP server "myserver":
 @example
-avplay rtmp://myserver/vod/sample
+ffplay rtmp://myserver/vod/sample
 @end example
 
 @section rtmpe
@@ -340,14 +436,14 @@ meaning as specified for the RTMP native protocol.
 See the librtmp manual page (man 3 librtmp) for more information.
 
 For example, to stream a file in real-time to an RTMP server using
-@command{avconv}:
+@command{ffmpeg}:
 @example
-avconv -re -i myfile -f flv rtmp://myserver/live/mystream
+ffmpeg -re -i myfile -f flv rtmp://myserver/live/mystream
 @end example
 
-To play the same stream using @command{avplay}:
+To play the same stream using @command{ffplay}:
 @example
-avplay "rtmp://myserver/live/mystream live=1"
+ffplay "rtmp://myserver/live/mystream live=1"
 @end example
 
 @section rtp
@@ -370,7 +466,7 @@ The required syntax for a RTSP url is:
 rtsp://@var{hostname}[:@var{port}]/@var{path}
 @end example
 
-The following options (set on the @command{avconv}/@command{avplay} command
+The following options (set on the @command{ffmpeg}/@command{ffplay} command
 line, or set in code via @code{AVOption}s or in @code{avformat_open_input}),
 are supported:
 
@@ -411,7 +507,7 @@ When receiving data over UDP, the demuxer tries to reorder received packets
 can be disabled by setting the maximum demuxing delay to zero (via
 the @code{max_delay} field of AVFormatContext).
 
-When watching multi-bitrate Real-RTSP streams with @command{avplay}, the
+When watching multi-bitrate Real-RTSP streams with @command{ffplay}, the
 streams to display can be chosen with @code{-vst} @var{n} and
 @code{-ast} @var{n} for video and audio respectively, and can be switched
 on the fly by pressing @code{v} and @code{a}.
@@ -421,25 +517,25 @@ Example command lines:
 To watch a stream over UDP, with a max reordering delay of 0.5 seconds:
 
 @example
-avplay -max_delay 500000 -rtsp_transport udp rtsp://server/video.mp4
+ffplay -max_delay 500000 -rtsp_transport udp rtsp://server/video.mp4
 @end example
 
 To watch a stream tunneled over HTTP:
 
 @example
-avplay -rtsp_transport http rtsp://server/video.mp4
+ffplay -rtsp_transport http rtsp://server/video.mp4
 @end example
 
 To send a stream in realtime to a RTSP server, for others to watch:
 
 @example
-avconv -re -i @var{input} -f rtsp -muxdelay 0.1 rtsp://server/live.sdp
+ffmpeg -re -i @var{input} -f rtsp -muxdelay 0.1 rtsp://server/live.sdp
 @end example
 
 To receive a stream in realtime:
 
 @example
-avconv -rtsp_flags listen -i rtsp://ownaddress/live.sdp @var{output}
+ffmpeg -rtsp_flags listen -i rtsp://ownaddress/live.sdp @var{output}
 @end example
 
 @section sap
@@ -491,19 +587,19 @@ Example command lines follow.
 To broadcast a stream on the local subnet, for watching in VLC:
 
 @example
-avconv -re -i @var{input} -f sap sap://224.0.0.255?same_port=1
+ffmpeg -re -i @var{input} -f sap sap://224.0.0.255?same_port=1
 @end example
 
-Similarly, for watching in avplay:
+Similarly, for watching in @command{ffplay}:
 
 @example
-avconv -re -i @var{input} -f sap sap://224.0.0.255
+ffmpeg -re -i @var{input} -f sap sap://224.0.0.255
 @end example
 
-And for watching in avplay, over IPv6:
+And for watching in @command{ffplay}, over IPv6:
 
 @example
-avconv -re -i @var{input} -f sap sap://[ff0e::1:2:3:4]
+ffmpeg -re -i @var{input} -f sap sap://[ff0e::1:2:3:4]
 @end example
 
 @subsection Demuxer
@@ -525,13 +621,13 @@ Example command lines follow.
 To play back the first stream announced on the normal SAP multicast address:
 
 @example
-avplay sap://
+ffplay sap://
 @end example
 
 To play back the first stream announced on one the default IPv6 SAP multicast address:
 
 @example
-avplay sap://[ff0e::2:7ffe]
+ffplay sap://[ff0e::2:7ffe]
 @end example
 
 @section tcp
@@ -548,12 +644,59 @@ tcp://@var{hostname}:@var{port}[?@var{options}]
 @item listen
 Listen for an incoming connection
 
+@item timeout=@var{microseconds}
+In read mode: if no data arrived in more than this time interval, raise error.
+In write mode: if socket cannot be written in more than this time interval, raise error.
+This also sets timeout on TCP connection establishing.
+
 @example
-avconv -i @var{input} -f @var{format} tcp://@var{hostname}:@var{port}?listen
-avplay tcp://@var{hostname}:@var{port}
+ffmpeg -i @var{input} -f @var{format} tcp://@var{hostname}:@var{port}?listen
+ffplay tcp://@var{hostname}:@var{port}
 @end example
 
 @end table
+
+@section tls
+
+Transport Layer Security/Secure Sockets Layer
+
+The required syntax for a TLS/SSL url is:
+@example
+tls://@var{hostname}:@var{port}[?@var{options}]
+@end example
+
+@table @option
+
+@item listen
+Act as a server, listening for an incoming connection.
+
+@item cafile=@var{filename}
+Certificate authority file. The file must be in OpenSSL PEM format.
+
+@item cert=@var{filename}
+Certificate file. The file must be in OpenSSL PEM format.
+
+@item key=@var{filename}
+Private key file.
+
+@item verify=@var{0|1}
+Verify the peer's certificate.
+
+@end table
+
+Example command lines:
+
+To create a TLS/SSL server that serves an input stream.
+
+@example
+ffmpeg -i @var{input} -f @var{format} tls://@var{hostname}:@var{port}?listen&cert=@var{server.crt}&key=@var{server.key}
+@end example
+
+To play back a stream from the TLS/SSL server using @command{ffplay}:
+
+@example
+ffplay tls://@var{hostname}:@var{port}
+@end example
 
 @section udp
 
@@ -564,16 +707,23 @@ The required syntax for a UDP url is:
 udp://@var{hostname}:@var{port}[?@var{options}]
 @end example
 
-@var{options} contains a list of &-seperated options of the form @var{key}=@var{val}.
-Follow the list of supported options.
+@var{options} contains a list of &-separated options of the form @var{key}=@var{val}.
+
+In case threading is enabled on the system, a circular buffer is used
+to store the incoming data, which allows to reduce loss of data due to
+UDP socket buffer overruns. The @var{fifo_size} and
+@var{overrun_nonfatal} options are related to this buffer.
+
+The list of supported options follows.
 
 @table @option
 
 @item buffer_size=@var{size}
-set the UDP buffer size in bytes
+Set the UDP socket buffer size in bytes. This is used both for the
+receiving and the sending buffer size.
 
 @item localport=@var{port}
-override the local UDP port to bind with
+Override the local UDP port to bind with.
 
 @item localaddr=@var{addr}
 Choose the local IP address. This is useful e.g. if sending multicast
@@ -581,13 +731,13 @@ and the host has multiple interfaces, where the user can choose
 which interface to send on by specifying the IP address of that interface.
 
 @item pkt_size=@var{size}
-set the size in bytes of UDP packets
+Set the size in bytes of UDP packets.
 
 @item reuse=@var{1|0}
-explicitly allow or disallow reusing UDP sockets
+Explicitly allow or disallow reusing UDP sockets.
 
 @item ttl=@var{ttl}
-set the time to live value (for multicast only)
+Set the time to live value (for multicast only).
 
 @item connect=@var{1|0}
 Initialize the UDP socket with @code{connect()}. In this case, the
@@ -607,23 +757,34 @@ specified sender IP addresses.
 @item block=@var{address}[,@var{address}]
 Ignore packets sent to the multicast group from the specified
 sender IP addresses.
+
+@item fifo_size=@var{units}
+Set the UDP receiving circular buffer size, expressed as a number of
+packets with size of 188 bytes. If not specified defaults to 7*4096.
+
+@item overrun_nonfatal=@var{1|0}
+Survive in case of UDP receiving circular buffer overrun. Default
+value is 0.
+
+@item timeout=@var{microseconds}
+In read mode: if no data arrived in more than this time interval, raise error.
 @end table
 
-Some usage examples of the udp protocol with @command{avconv} follow.
+Some usage examples of the UDP protocol with @command{ffmpeg} follow.
 
 To stream over UDP to a remote endpoint:
 @example
-avconv -i @var{input} -f @var{format} udp://@var{hostname}:@var{port}
+ffmpeg -i @var{input} -f @var{format} udp://@var{hostname}:@var{port}
 @end example
 
 To stream in mpegts format over UDP using 188 sized UDP packets, using a large input buffer:
 @example
-avconv -i @var{input} -f mpegts udp://@var{hostname}:@var{port}?pkt_size=188&buffer_size=65535
+ffmpeg -i @var{input} -f mpegts udp://@var{hostname}:@var{port}?pkt_size=188&buffer_size=65535
 @end example
 
 To receive over UDP from a remote endpoint:
 @example
-avconv -i udp://[@var{multicast-address}]:@var{port}
+ffmpeg -i udp://[@var{multicast-address}]:@var{port}
 @end example
 
 @c man end PROTOCOLS

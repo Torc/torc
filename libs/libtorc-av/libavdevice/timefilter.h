@@ -5,20 +5,20 @@
  * Author: Olivier Guilyardi <olivier samalyse com>
  *         Michael Niedermayer <michaelni gmx at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -45,16 +45,18 @@ typedef struct TimeFilter TimeFilter;
  *
  * Unless you know what you are doing, you should set these as follow:
  *
- * o = 2 * M_PI * bandwidth * period
- * feedback2_factor = sqrt(2 * o)
+ * o = 2 * M_PI * bandwidth * period_in_seconds
+ * feedback2_factor = sqrt(2) * o
  * feedback3_factor = o * o
  *
  * Where bandwidth is up to you to choose. Smaller values will filter out more
  * of the jitter, but also take a longer time for the loop to settle. A good
  * starting point is something between 0.3 and 3 Hz.
  *
- * @param clock_period period of the hardware clock in seconds
- *        (for example 1.0/44100)
+ * @param time_base   period of the hardware clock in seconds
+ *                    (for example 1.0/44100)
+ * @param period      expected update interval, in input units
+ * @param brandwidth  filtering bandwidth, in Hz
  *
  * For more details about these parameters and background concepts please see:
  * http://www.kokkinizita.net/papers/usingdll.pdf
@@ -78,6 +80,15 @@ TimeFilter * ff_timefilter_new(double clock_period, double feedback2_factor, dou
  * @return the filtered time, in seconds
  */
 double ff_timefilter_update(TimeFilter *self, double system_time, double period);
+
+/**
+ * Evaluate the filter at a specified time
+ *
+ * @param delta  difference between the requested time and the current time
+ *               (last call to ff_timefilter_update).
+ * @return  the filtered time
+ */
+double ff_timefilter_eval(TimeFilter *self, double delta);
 
 /**
  * Reset the filter

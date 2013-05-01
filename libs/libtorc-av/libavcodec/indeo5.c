@@ -2,20 +2,20 @@
  * Indeo Video Interactive v5 compatible decoder
  * Copyright (c) 2009 Maxim Poliakovski
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -59,7 +59,7 @@ enum {
  */
 static int decode_gop_header(IVI45DecContext *ctx, AVCodecContext *avctx)
 {
-    int             result, i, p, tile_size, pic_size_indx, mb_size, blk_size;
+    int             result, i, p, tile_size, pic_size_indx, mb_size, blk_size, is_scalable;
     int             quant_mat, blk_size_changed = 0;
     IVIBandDesc     *band, *band1, *band2;
     IVIPicConfig    pic_conf;
@@ -81,8 +81,8 @@ static int decode_gop_header(IVI45DecContext *ctx, AVCodecContext *avctx)
     /* num_levels * 3 + 1 */
     pic_conf.luma_bands   = get_bits(&ctx->gb, 2) * 3 + 1;
     pic_conf.chroma_bands = get_bits1(&ctx->gb)   * 3 + 1;
-    ctx->is_scalable = pic_conf.luma_bands != 1 || pic_conf.chroma_bands != 1;
-    if (ctx->is_scalable && (pic_conf.luma_bands != 4 || pic_conf.chroma_bands != 1)) {
+    is_scalable = pic_conf.luma_bands != 1 || pic_conf.chroma_bands != 1;
+    if (is_scalable && (pic_conf.luma_bands != 4 || pic_conf.chroma_bands != 1)) {
         av_log(avctx, AV_LOG_ERROR, "Scalability: unsupported subdivision! Luma bands: %d, chroma bands: %d\n",
                pic_conf.luma_bands, pic_conf.chroma_bands);
         return -1;
@@ -120,6 +120,7 @@ static int decode_gop_header(IVI45DecContext *ctx, AVCodecContext *avctx)
             return -1;
         }
         ctx->pic_conf = pic_conf;
+        ctx->is_scalable = is_scalable;
         blk_size_changed = 1; /* force reallocation of the internal structures */
     }
 
@@ -132,6 +133,11 @@ static int decode_gop_header(IVI45DecContext *ctx, AVCodecContext *avctx)
             mb_size  = get_bits1(&ctx->gb);
             blk_size = 8 >> get_bits1(&ctx->gb);
             mb_size  = blk_size << !mb_size;
+
+            if (p==0 && blk_size==4) {
+                av_log(avctx, AV_LOG_ERROR, "4x4 luma blocks are unsupported!\n");
+                return AVERROR_PATCHWELCOME;
+            }
 
             blk_size_changed = mb_size != band->mb_size || blk_size != band->blk_size;
             if (blk_size_changed) {
@@ -150,30 +156,35 @@ static int decode_gop_header(IVI45DecContext *ctx, AVCodecContext *avctx)
                 band->inv_transform = ff_ivi_inverse_slant_8x8;
                 band->dc_transform  = ff_ivi_dc_slant_2d;
                 band->scan          = ff_zigzag_direct;
+                band->transform_size= 8;
                 break;
 
             case 1:
                 band->inv_transform = ff_ivi_row_slant8;
                 band->dc_transform  = ff_ivi_dc_row_slant;
                 band->scan          = ff_ivi_vertical_scan_8x8;
+                band->transform_size= 8;
                 break;
 
             case 2:
                 band->inv_transform = ff_ivi_col_slant8;
                 band->dc_transform  = ff_ivi_dc_col_slant;
                 band->scan          = ff_ivi_horizontal_scan_8x8;
+                band->transform_size= 8;
                 break;
 
             case 3:
                 band->inv_transform = ff_ivi_put_pixels_8x8;
                 band->dc_transform  = ff_ivi_put_dc_pixel_8x8;
                 band->scan          = ff_ivi_horizontal_scan_8x8;
+                band->transform_size= 8;
                 break;
 
             case 4:
                 band->inv_transform = ff_ivi_inverse_slant_4x4;
                 band->dc_transform  = ff_ivi_dc_slant_2d;
                 band->scan          = ff_ivi_direct_scan_4x4;
+                band->transform_size= 4;
                 break;
             }
 
@@ -188,6 +199,10 @@ static int decode_gop_header(IVI45DecContext *ctx, AVCodecContext *avctx)
             }
 
             if (band->blk_size == 8) {
+                if(quant_mat >= 5){
+                    av_log(avctx, AV_LOG_ERROR, "quant_mat %d too large!\n", quant_mat);
+                    return -1;
+                }
                 band->intra_base  = &ivi5_base_quant_8x8_intra[quant_mat][0];
                 band->inter_base  = &ivi5_base_quant_8x8_inter[quant_mat][0];
                 band->intra_scale = &ivi5_scale_quant_8x8_intra[quant_mat][0];
@@ -224,6 +239,7 @@ static int decode_gop_header(IVI45DecContext *ctx, AVCodecContext *avctx)
         band2->inv_transform = band1->inv_transform;
         band2->dc_transform  = band1->dc_transform;
         band2->is_2d_trans   = band1->is_2d_trans;
+        band2->transform_size= band1->transform_size;
     }
 
     /* reallocate internal structures if needed */
@@ -310,6 +326,12 @@ static int decode_pic_hdr(IVI45DecContext *ctx, AVCodecContext *avctx)
             return AVERROR_INVALIDDATA;
         }
         ctx->gop_invalid = 0;
+    }
+
+    if (ctx->frame_type == FRAMETYPE_INTER_SCAL && !ctx->is_scalable) {
+        av_log(avctx, AV_LOG_ERROR, "Scalable inter frame in non scaleable stream\n");
+        ctx->frame_type = FRAMETYPE_INTER;
+        return AVERROR_INVALIDDATA;
     }
 
     if (ctx->frame_type != FRAMETYPE_NULL) {
@@ -418,7 +440,7 @@ static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
                           IVITile *tile, AVCodecContext *avctx)
 {
     int         x, y, mv_x, mv_y, mv_delta, offs, mb_offset,
-                mv_scale, blks_per_mb;
+                mv_scale, blks_per_mb, s;
     IVIMbInfo   *mb, *ref_mb;
     int         row_offset = band->mb_size * band->pitch;
 
@@ -464,7 +486,7 @@ static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
                 }
 
                 mb->mv_x = mb->mv_y = 0; /* no motion vector coded */
-                if (band->inherit_mv){
+                if (band->inherit_mv && ref_mb){
                     /* motion vector inheritance */
                     if (mv_scale) {
                         mb->mv_x = ivi_scale_mv(ref_mb->mv_x, mv_scale);
@@ -475,7 +497,7 @@ static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
                     }
                 }
             } else {
-                if (band->inherit_mv) {
+                if (band->inherit_mv && ref_mb) {
                     mb->type = ref_mb->type; /* copy mb_type from corresponding reference mb */
                 } else if (ctx->frame_type == FRAMETYPE_INTRA) {
                     mb->type = 0; /* mb_type is always INTRA for intra-frames */
@@ -501,7 +523,7 @@ static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
                 if (!mb->type) {
                     mb->mv_x = mb->mv_y = 0; /* there is no motion vector in intra-macroblocks */
                 } else {
-                    if (band->inherit_mv){
+                    if (band->inherit_mv && ref_mb){
                         /* motion vector inheritance */
                         if (mv_scale) {
                             mb->mv_x = ivi_scale_mv(ref_mb->mv_x, mv_scale);
@@ -522,6 +544,15 @@ static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
                         mb->mv_y = mv_y;
                     }
                 }
+            }
+
+            s= band->is_halfpel;
+            if (mb->type)
+            if ( x +  (mb->mv_x   >>s) +                 (y+               (mb->mv_y   >>s))*band->pitch < 0 ||
+                 x + ((mb->mv_x+s)>>s) + band->mb_size - 1
+                   + (y+band->mb_size - 1 +((mb->mv_y+s)>>s))*band->pitch > band->bufsize - 1) {
+                av_log(avctx, AV_LOG_ERROR, "motion vector %d %d outside reference\n", x*s + mb->mv_x, y*s + mb->mv_y);
+                return AVERROR_INVALIDDATA;
             }
 
             mb++;
@@ -612,6 +643,8 @@ static av_cold int decode_init(AVCodecContext *avctx)
     ctx->pic_conf.tile_height   = avctx->height;
     ctx->pic_conf.luma_bands    = ctx->pic_conf.chroma_bands = 1;
 
+    avcodec_get_frame_defaults(&ctx->frame);
+
     result = ff_ivi_init_planes(ctx->planes, &ctx->pic_conf);
     if (result) {
         av_log(avctx, AV_LOG_ERROR, "Couldn't allocate color planes!\n");
@@ -632,7 +665,6 @@ static av_cold int decode_init(AVCodecContext *avctx)
     return 0;
 }
 
-
 AVCodec ff_indeo5_decoder = {
     .name           = "indeo5",
     .type           = AVMEDIA_TYPE_VIDEO,
@@ -642,4 +674,5 @@ AVCodec ff_indeo5_decoder = {
     .close          = ff_ivi_decode_close,
     .decode         = ff_ivi_decode_frame,
     .long_name      = NULL_IF_CONFIG_SMALL("Intel Indeo Video Interactive 5"),
+    .capabilities   = CODEC_CAP_DR1,
 };

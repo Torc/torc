@@ -2,20 +2,20 @@
  * Deluxe Paint Animation demuxer
  * Copyright (c) 2009 Peter Ross
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -86,7 +86,7 @@ static int read_header(AVFormatContext *s)
     avio_skip(pb, 4); /* magic number */
     if (avio_rl16(pb) != MAX_PAGES) {
         av_log_ask_for_sample(s, "max_pages != " AV_STRINGIFY(MAX_PAGES) "\n");
-        return AVERROR_INVALIDDATA;
+        return AVERROR_PATCHWELCOME;
     }
 
     anm->nb_pages   = avio_rl16(pb);
@@ -134,18 +134,17 @@ static int read_header(AVFormatContext *s)
     /* color cycling and palette data */
     st->codec->extradata_size = 16*8 + 4*256;
     st->codec->extradata      = av_mallocz(st->codec->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
-    if (!st->codec->extradata) {
-        ret = AVERROR(ENOMEM);
-        goto fail;
-    }
+    if (!st->codec->extradata)
+        return AVERROR(ENOMEM);
+
     ret = avio_read(pb, st->codec->extradata, st->codec->extradata_size);
     if (ret < 0)
-        goto fail;
+        return ret;
 
     /* read page table */
     ret = avio_seek(pb, anm->page_table_offset, SEEK_SET);
     if (ret < 0)
-        goto fail;
+        return ret;
 
     for (i = 0; i < MAX_PAGES; i++) {
         Page *p = &anm->pt[i];
@@ -156,20 +155,15 @@ static int read_header(AVFormatContext *s)
 
     /* find page of first frame */
     anm->page = find_record(anm, 0);
-    if (anm->page < 0) {
-        ret = anm->page;
-        goto fail;
-    }
+    if (anm->page < 0)
+        return anm->page;
 
     anm->record = -1;
     return 0;
 
 invalid:
     av_log_ask_for_sample(s, NULL);
-    ret = AVERROR_INVALIDDATA;
-
-fail:
-    return ret;
+    return AVERROR_PATCHWELCOME;
 }
 
 static int read_packet(AVFormatContext *s,
@@ -180,7 +174,7 @@ static int read_packet(AVFormatContext *s,
     Page *p;
     int tmp, record_size;
 
-    if (s->pb->eof_reached)
+    if (url_feof(s->pb))
         return AVERROR(EIO);
 
     if (anm->page < 0)

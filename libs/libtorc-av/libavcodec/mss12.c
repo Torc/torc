@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2012 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -448,7 +448,7 @@ static int decode_pivot(SliceContext *sc, ArithCoder *acoder, int base)
         val = acoder->get_number(acoder, (base + 1) / 2 - 2) + 3;
     }
 
-    if (val >= base)
+    if ((unsigned)val >= base)
         return -1;
 
     return inv ? base - val : val;
@@ -586,6 +586,11 @@ av_cold int ff_mss12_decode_init(MSS12Context *c, int version,
                avctx->coded_width, avctx->coded_height);
         return AVERROR_INVALIDDATA;
     }
+    if (avctx->coded_width < 1 || avctx->coded_height < 1) {
+        av_log(avctx, AV_LOG_ERROR, "Frame dimensions %dx%d too small",
+               avctx->coded_width, avctx->coded_height);
+        return AVERROR_INVALIDDATA;
+    }
 
     av_log(avctx, AV_LOG_DEBUG, "Encoder version %d.%d\n",
            AV_RB32(avctx->extradata + 4), AV_RB32(avctx->extradata + 8));
@@ -645,7 +650,7 @@ av_cold int ff_mss12_decode_init(MSS12Context *c, int version,
     }
 
     for (i = 0; i < 256; i++)
-        c->pal[i] = AV_RB24(avctx->extradata + 52 +
+        c->pal[i] = 0xFFU << 24 | AV_RB24(avctx->extradata + 52 +
                             (version ? 8 : 0) + i * 3);
 
     c->mask_stride = FFALIGN(avctx->width, 16);

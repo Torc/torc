@@ -2,20 +2,20 @@
  * AAC encoder
  * Copyright (C) 2008 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,14 +25,16 @@
 #include "libavutil/float_dsp.h"
 #include "avcodec.h"
 #include "put_bits.h"
-#include "dsputil.h"
 
 #include "aac.h"
 #include "audio_frame_queue.h"
 #include "psymodel.h"
 
+#define AAC_CODER_NB 4
+
 typedef struct AACEncOptions {
     int stereo_mode;
+    int aac_coder;
 } AACEncOptions;
 
 struct AACEncContext;
@@ -58,7 +60,6 @@ typedef struct AACEncContext {
     PutBitContext pb;
     FFTContext mdct1024;                         ///< long (1024 samples) frame transform context
     FFTContext mdct128;                          ///< short (128 samples) frame transform context
-    DSPContext  dsp;
     AVFloatDSPContext fdsp;
     float *planar_samples[6];                    ///< saved preprocessed input
 

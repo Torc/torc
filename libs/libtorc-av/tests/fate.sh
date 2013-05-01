@@ -41,10 +41,11 @@ update()(
 
 configure()(
     cd ${build} || return
-    ${src}/configure                                                    \
+    ${shell} ${src}/configure                                           \
         --prefix="${inst}"                                              \
         --samples="${samples}"                                          \
         --enable-gpl                                                    \
+        --enable-memory-poisoning                                       \
         ${arch:+--arch=$arch}                                           \
         ${cpu:+--cpu="$cpu"}                                            \
         ${cross_prefix:+--cross-prefix="$cross_prefix"}                 \

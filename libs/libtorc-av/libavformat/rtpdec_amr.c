@@ -2,23 +2,24 @@
  * RTP AMR Depacketizer, RFC 3267
  * Copyright (c) 2010 Martin Storsjo
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/channel_layout.h"
 #include "avformat.h"
 #include "rtpdec_formats.h"
 #include "libavutil/avstring.h"
@@ -50,13 +51,10 @@ static void amr_free_context(PayloadContext *data)
     av_free(data);
 }
 
-static int amr_handle_packet(AVFormatContext *ctx,
-                             PayloadContext *data,
-                             AVStream *st,
-                             AVPacket * pkt,
-                             uint32_t * timestamp,
-                             const uint8_t * buf,
-                             int len, int flags)
+static int amr_handle_packet(AVFormatContext *ctx, PayloadContext *data,
+                             AVStream *st, AVPacket *pkt, uint32_t *timestamp,
+                             const uint8_t *buf, int len, uint16_t seq,
+                             int flags)
 {
     const uint8_t *frame_sizes = NULL;
     int frames;
@@ -77,6 +75,7 @@ static int amr_handle_packet(AVFormatContext *ctx,
         av_log(ctx, AV_LOG_ERROR, "Only mono AMR is supported\n");
         return AVERROR_INVALIDDATA;
     }
+    st->codec->channel_layout = AV_CH_LAYOUT_MONO;
 
     /* The AMR RTP packet consists of one header byte, followed
      * by one TOC byte for each AMR frame in the packet, followed

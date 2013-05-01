@@ -3,20 +3,20 @@
  * copyright (c) 2000,2001 Fabrice Bellard
  * copyright (c) 2002-2004 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,7 +27,7 @@
 
 #include "mpeg12data.h"
 
-const uint16_t ff_mpeg1_default_intra_matrix[64] = {
+const uint16_t ff_mpeg1_default_intra_matrix[256] = {
         8, 16, 19, 22, 26, 27, 29, 34,
         16, 16, 22, 24, 27, 29, 34, 37,
         19, 22, 26, 27, 29, 34, 34, 38,
@@ -323,6 +323,72 @@ const AVRational ff_mpeg12_frame_rate_tab[16] = {
     {   12,    1},
     {   15,    1},
     {    0,    0},
+};
+
+const AVRational ff_mpeg2_frame_rate_tab[] = {
+    {      1,     1},
+    {      2,     1},
+    {      3,     1},
+    {      4,     1},
+    {      5,     1},
+    {      6,     1},
+    {      8,     1},
+    {      9,     1},
+    {     10,     1},
+    {     12,     1},
+    {     15,     1},
+    {     16,     1},
+    {     18,     1},
+    {     20,     1},
+    {     24,     1},
+    {     25,     1},
+    {     30,     1},
+    {     32,     1},
+    {     36,     1},
+    {     40,     1},
+    {     45,     1},
+    {     48,     1},
+    {     50,     1},
+    {     60,     1},
+    {     72,     1},
+    {     75,     1},
+    {     80,     1},
+    {     90,     1},
+    {     96,     1},
+    {    100,     1},
+    {    120,     1},
+    {    150,     1},
+    {    180,     1},
+    {    200,     1},
+    {    240,     1},
+    {    750,  1001},
+    {    800,  1001},
+    {    960,  1001},
+    {   1000,  1001},
+    {   1200,  1001},
+    {   1250,  1001},
+    {   1500,  1001},
+    {   1600,  1001},
+    {   1875,  1001},
+    {   2000,  1001},
+    {   2400,  1001},
+    {   2500,  1001},
+    {   3000,  1001},
+    {   3750,  1001},
+    {   4000,  1001},
+    {   4800,  1001},
+    {   5000,  1001},
+    {   6000,  1001},
+    {   7500,  1001},
+    {   8000,  1001},
+    {  10000,  1001},
+    {  12000,  1001},
+    {  15000,  1001},
+    {  20000,  1001},
+    {  24000,  1001},
+    {  30000,  1001},
+    {  60000,  1001},
+    {      0,     0},
 };
 
 const float ff_mpeg1_aspect[16]={

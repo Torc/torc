@@ -2,20 +2,20 @@
  * Pictor/PC Paint decoder
  * Copyright (c) 2010 Peter Ross <pross@xvid.org>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -28,6 +28,7 @@
 #include "avcodec.h"
 #include "bytestream.h"
 #include "cga_data.h"
+#include "internal.h"
 
 typedef struct PicContext {
     AVFrame frame;
@@ -96,14 +97,22 @@ static const uint8_t cga_mode45_index[6][4] = {
     [5] = { 0, 11, 12, 15 }, // mode5, high intensity
 };
 
+static av_cold int decode_init(AVCodecContext *avctx)
+{
+    PicContext *s = avctx->priv_data;
+
+    avcodec_get_frame_defaults(&s->frame);
+    return 0;
+}
+
 static int decode_frame(AVCodecContext *avctx,
-                        void *data, int *data_size,
+                        void *data, int *got_frame,
                         AVPacket *avpkt)
 {
     PicContext *s = avctx->priv_data;
     uint32_t *palette;
     int bits_per_plane, bpp, etype, esize, npal, pos_after_pal;
-    int i, x, y, plane, tmp;
+    int i, x, y, plane, tmp, val;
 
     bytestream2_init(&s->g, avpkt->data, avpkt->size);
 
@@ -121,11 +130,11 @@ static int decode_frame(AVCodecContext *avctx,
     s->nb_planes   = (tmp >> 4) + 1;
     bpp            = bits_per_plane * s->nb_planes;
     if (bits_per_plane > 8 || bpp < 1 || bpp > 32) {
-        av_log_ask_for_sample(s, "unsupported bit depth\n");
-        return AVERROR_INVALIDDATA;
+        av_log_ask_for_sample(avctx, "unsupported bit depth\n");
+        return AVERROR_PATCHWELCOME;
     }
 
-    if (bytestream2_peek_byte(&s->g) == 0xFF) {
+    if (bytestream2_peek_byte(&s->g) == 0xFF || bpp == 1 || bpp == 4 || bpp == 8) {
         bytestream2_skip(&s->g, 2);
         etype = bytestream2_get_le16(&s->g);
         esize = bytestream2_get_le16(&s->g);
@@ -146,7 +155,7 @@ static int decode_frame(AVCodecContext *avctx,
             avctx->release_buffer(avctx, &s->frame);
     }
 
-    if (avctx->get_buffer(avctx, &s->frame) < 0){
+    if (ff_get_buffer(avctx, &s->frame) < 0){
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return -1;
     }
@@ -165,7 +174,7 @@ static int decode_frame(AVCodecContext *avctx,
         npal = FFMIN(esize, 16);
         for (i = 0; i < npal; i++) {
             int pal_idx = bytestream2_get_byte(&s->g);
-            palette[i]  = ff_cga_palette[FFMIN(pal_idx, 16)];
+            palette[i]  = ff_cga_palette[FFMIN(pal_idx, 15)];
         }
     } else if (etype == 3) {
         npal = FFMIN(esize, 16);
@@ -175,13 +184,15 @@ static int decode_frame(AVCodecContext *avctx,
         }
     } else if (etype == 4 || etype == 5) {
         npal = FFMIN(esize / 3, 256);
-        for (i = 0; i < npal; i++)
+        for (i = 0; i < npal; i++) {
             palette[i] = bytestream2_get_be24(&s->g) << 2;
+            palette[i] |= 0xFFU << 24 | palette[i] >> 6 & 0x30303;
+        }
     } else {
         if (bpp == 1) {
             npal = 2;
-            palette[0] = 0x000000;
-            palette[1] = 0xFFFFFF;
+            palette[0] = 0xFF000000;
+            palette[1] = 0xFFFFFFFF;
         } else if (bpp == 2) {
             npal = 4;
             for (i = 0; i < npal; i++)
@@ -196,11 +207,12 @@ static int decode_frame(AVCodecContext *avctx,
     // skip remaining palette bytes
     bytestream2_seek(&s->g, pos_after_pal, SEEK_SET);
 
-    x = 0;
+    val = 0;
     y = s->height - 1;
-    plane = 0;
     if (bytestream2_get_le16(&s->g)) {
-        while (bytestream2_get_bytes_left(&s->g) >= 6) {
+        x = 0;
+        plane = 0;
+        while (y >= 0 && bytestream2_get_bytes_left(&s->g) >= 6) {
             int stop_size, marker, t1, t2;
 
             t1        = bytestream2_get_bytes_left(&s->g);
@@ -210,10 +222,10 @@ static int decode_frame(AVCodecContext *avctx,
             bytestream2_skip(&s->g, 2);
             marker    = bytestream2_get_byte(&s->g);
 
-            while (plane < s->nb_planes &&
+            while (plane < s->nb_planes && y >= 0 &&
                    bytestream2_get_bytes_left(&s->g) > stop_size) {
                 int run = 1;
-                int val = bytestream2_get_byte(&s->g);
+                val = bytestream2_get_byte(&s->g);
                 if (val == marker) {
                     run = bytestream2_get_byte(&s->g);
                     if (run == 0)
@@ -225,19 +237,28 @@ static int decode_frame(AVCodecContext *avctx,
 
                 if (bits_per_plane == 8) {
                     picmemset_8bpp(s, val, run, &x, &y);
-                    if (y < 0)
-                        break;
                 } else {
                     picmemset(s, val, run, &x, &y, &plane, bits_per_plane);
                 }
             }
         }
+
+        if (x < avctx->width && y >= 0) {
+            int run = (y + 1) * avctx->width - x;
+            if (bits_per_plane == 8)
+                picmemset_8bpp(s, val, run, &x, &y);
+            else
+                picmemset(s, val, run / (8 / bits_per_plane), &x, &y, &plane, bits_per_plane);
+        }
     } else {
-        av_log_ask_for_sample(s, "uncompressed image\n");
-        return avpkt->size;
+        while (y >= 0 && bytestream2_get_bytes_left(&s->g) > 0) {
+            memcpy(s->frame.data[0] + y * s->frame.linesize[0], s->g.buffer, FFMIN(avctx->width, bytestream2_get_bytes_left(&s->g)));
+            bytestream2_skip(&s->g, avctx->width);
+            y--;
+        }
     }
 
-    *data_size = sizeof(AVFrame);
+    *got_frame      = 1;
     *(AVFrame*)data = s->frame;
     return avpkt->size;
 }
@@ -255,6 +276,7 @@ AVCodec ff_pictor_decoder = {
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = AV_CODEC_ID_PICTOR,
     .priv_data_size = sizeof(PicContext),
+    .init           = decode_init,
     .close          = decode_end,
     .decode         = decode_frame,
     .capabilities   = CODEC_CAP_DR1,

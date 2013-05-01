@@ -2,20 +2,20 @@
  * VMware Screen Codec (VMnc) decoder
  * Copyright (c) 2006 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -285,7 +285,8 @@ static int decode_hextile(VmncContext *c, uint8_t* dst, const uint8_t* src, int 
     return src - ssrc;
 }
 
-static int decode_frame(AVCodecContext *avctx, void *data, int *data_size, AVPacket *avpkt)
+static int decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
+                        AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
@@ -294,7 +295,7 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size, AVPac
     const uint8_t *src = buf;
     int dx, dy, w, h, depth, enc, chunks, res, size_left;
 
-    c->pic.reference = 1;
+    c->pic.reference = 3;
     c->pic.buffer_hints = FF_BUFFER_HINTS_VALID | FF_BUFFER_HINTS_PRESERVE | FF_BUFFER_HINTS_REUSABLE;
     if(avctx->reget_buffer(avctx, &c->pic) < 0){
         av_log(avctx, AV_LOG_ERROR, "reget_buffer() failed\n");
@@ -332,6 +333,10 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size, AVPac
     src += 2;
     chunks = AV_RB16(src); src += 2;
     while(chunks--) {
+        if(buf_size - (src - buf) < 12) {
+            av_log(avctx, AV_LOG_ERROR, "Premature end of data!\n");
+            return -1;
+        }
         dx = AV_RB16(src); src += 2;
         dy = AV_RB16(src); src += 2;
         w  = AV_RB16(src); src += 2;
@@ -341,6 +346,10 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size, AVPac
         size_left = buf_size - (src - buf);
         switch(enc) {
         case MAGIC_WMVd: // cursor
+            if (w*(int64_t)h*c->bpp2 > INT_MAX/2 - 2) {
+                av_log(avctx, AV_LOG_ERROR, "dimensions too large\n");
+                return AVERROR_INVALIDDATA;
+            }
             if(size_left < 2 + w * h * c->bpp2 * 2) {
                 av_log(avctx, AV_LOG_ERROR, "Premature end of data! (need %i got %i)\n", 2 + w * h * c->bpp2 * 2, size_left);
                 return -1;
@@ -446,7 +455,7 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size, AVPac
             put_cursor(outptr, c->pic.linesize[0], c, c->cur_x, c->cur_y);
         }
     }
-    *data_size = sizeof(AVFrame);
+    *got_frame      = 1;
     *(AVFrame*)data = c->pic;
 
     /* always report that the buffer was completely consumed */
@@ -471,6 +480,7 @@ static av_cold int decode_init(AVCodecContext *avctx)
 
     c->bpp = avctx->bits_per_coded_sample;
     c->bpp2 = c->bpp/8;
+    avcodec_get_frame_defaults(&c->pic);
 
     switch(c->bpp){
     case 8:

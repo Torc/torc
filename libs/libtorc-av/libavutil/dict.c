@@ -1,24 +1,23 @@
 /*
  * copyright (c) 2009 Michael Niedermayer
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <ctype.h>
 #include <string.h>
 
 #include "avstring.h"
@@ -50,7 +49,7 @@ av_dict_get(AVDictionary *m, const char *key, const AVDictionaryEntry *prev, int
     for(; i<m->count; i++){
         const char *s= m->elems[i].key;
         if(flags & AV_DICT_MATCH_CASE) for(j=0;         s[j]  ==         key[j]  && key[j]; j++);
-        else                               for(j=0; toupper(s[j]) == toupper(key[j]) && key[j]; j++);
+        else                               for(j=0; av_toupper(s[j]) == av_toupper(key[j]) && key[j]; j++);
         if(key[j])
             continue;
         if(s[j] && !(flags & AV_DICT_IGNORE_SUFFIX))
@@ -87,17 +86,20 @@ int av_dict_set(AVDictionary **pm, const char *key, const char *value, int flags
     }
     if (value) {
         if (flags & AV_DICT_DONT_STRDUP_KEY) {
-            m->elems[m->count].key  = key;
+            m->elems[m->count].key   = (char*)(intptr_t)key;
         } else
         m->elems[m->count].key  = av_strdup(key  );
         if (flags & AV_DICT_DONT_STRDUP_VAL) {
-            m->elems[m->count].value = value;
+            m->elems[m->count].value = (char*)(intptr_t)value;
         } else if (oldval && flags & AV_DICT_APPEND) {
             int len = strlen(oldval) + strlen(value) + 1;
-            if (!(oldval = av_realloc(oldval, len)))
+            char *newval = av_mallocz(len);
+            if (!newval)
                 return AVERROR(ENOMEM);
-            av_strlcat(oldval, value, len);
-            m->elems[m->count].value = oldval;
+            av_strlcat(newval, oldval, len);
+            av_freep(&oldval);
+            av_strlcat(newval, value, len);
+            m->elems[m->count].value = newval;
         } else
             m->elems[m->count].value = av_strdup(value);
         m->count++;
@@ -105,6 +107,53 @@ int av_dict_set(AVDictionary **pm, const char *key, const char *value, int flags
     if (!m->count) {
         av_free(m->elems);
         av_freep(pm);
+    }
+
+    return 0;
+}
+
+static int parse_key_value_pair(AVDictionary **pm, const char **buf,
+                                const char *key_val_sep, const char *pairs_sep,
+                                int flags)
+{
+    char *key = av_get_token(buf, key_val_sep);
+    char *val = NULL;
+    int ret;
+
+    if (key && *key && strspn(*buf, key_val_sep)) {
+        (*buf)++;
+        val = av_get_token(buf, pairs_sep);
+    }
+
+    if (key && *key && val && *val)
+        ret = av_dict_set(pm, key, val, flags);
+    else
+        ret = AVERROR(EINVAL);
+
+    av_freep(&key);
+    av_freep(&val);
+
+    return ret;
+}
+
+int av_dict_parse_string(AVDictionary **pm, const char *str,
+                         const char *key_val_sep, const char *pairs_sep,
+                         int flags)
+{
+    int ret;
+
+    if (!str)
+        return 0;
+
+    /* ignore STRDUP flags */
+    flags &= ~(AV_DICT_DONT_STRDUP_KEY | AV_DICT_DONT_STRDUP_VAL);
+
+    while (*str) {
+        if ((ret = parse_key_value_pair(pm, &str, key_val_sep, pairs_sep, flags)) < 0)
+            return ret;
+
+        if (*str)
+            str++;
     }
 
     return 0;

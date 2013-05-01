@@ -2,20 +2,20 @@
  * MMX and SSE2 optimized snow DSP utils
  * Copyright (c) 2005-2006 Robert Edele <yartrebo@earthlink.net>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -23,7 +23,7 @@
 #include "libavutil/x86/asm.h"
 #include "libavcodec/avcodec.h"
 #include "libavcodec/snow.h"
-#include "libavcodec/dwt.h"
+#include "libavcodec/snow_dwt.h"
 #include "dsputil_mmx.h"
 
 #if HAVE_INLINE_ASM
@@ -675,14 +675,14 @@ static void ff_snow_vertical_compose97i_mmx(IDWTELEM *b0, IDWTELEM *b1, IDWTELEM
 
 #define snow_inner_add_yblock_sse2_end_8\
              "sal $1, %%"REG_c"              \n\t"\
-             "addl $"PTR_SIZE"*2, %1         \n\t"\
+             "add"OPSIZE" $"PTR_SIZE"*2, %1  \n\t"\
              snow_inner_add_yblock_sse2_end_common1\
              "sar $1, %%"REG_c"              \n\t"\
              "sub $2, %2                     \n\t"\
              snow_inner_add_yblock_sse2_end_common2
 
 #define snow_inner_add_yblock_sse2_end_16\
-             "addl $"PTR_SIZE"*1, %1         \n\t"\
+             "add"OPSIZE" $"PTR_SIZE"*1, %1  \n\t"\
              snow_inner_add_yblock_sse2_end_common1\
              "dec %2                         \n\t"\
              snow_inner_add_yblock_sse2_end_common2
@@ -875,7 +875,7 @@ static void ff_snow_inner_add_yblock_mmx(const uint8_t *obmc, const int obmc_str
 
 #endif /* HAVE_INLINE_ASM */
 
-void ff_dwt_init_x86(DWTContext *c)
+void ff_dwt_init_x86(SnowDWTContext *c)
 {
 #if HAVE_INLINE_ASM
     int mm_flags = av_get_cpu_flags();

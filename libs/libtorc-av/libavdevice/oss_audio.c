@@ -2,20 +2,20 @@
  * Linux audio play and grab interface
  * Copyright (c) 2000, 2001 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -38,7 +38,7 @@
 #include "libavutil/opt.h"
 #include "libavutil/time.h"
 #include "libavcodec/avcodec.h"
-#include "libavformat/avformat.h"
+#include "avdevice.h"
 #include "libavformat/internal.h"
 
 #define AUDIO_BLOCK_SIZE 4096
@@ -76,8 +76,11 @@ static int audio_open(AVFormatContext *s1, int is_output, const char *audio_devi
     }
 
     /* non blocking mode */
-    if (!is_output)
-        fcntl(audio_fd, F_SETFL, O_NONBLOCK);
+    if (!is_output) {
+        if (fcntl(audio_fd, F_SETFL, O_NONBLOCK) < 0) {
+            av_log(s1, AV_LOG_WARNING, "%s: Could not enable non block mode (%s)\n", audio_device, strerror(errno));
+        }
+    }
 
     s->frame_size = AUDIO_BLOCK_SIZE;
 

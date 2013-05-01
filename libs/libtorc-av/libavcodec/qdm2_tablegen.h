@@ -3,20 +3,20 @@
  *
  * Copyright (c) 2010 Reimar Döffinger <Reimar.Doeffinger@gmx.de>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -37,7 +37,7 @@
 #include "libavcodec/qdm2_tables.h"
 #else
 static uint16_t softclip_table[HARDCLIP_THRESHOLD - SOFTCLIP_THRESHOLD + 1];
-static float noise_table[4096];
+static float noise_table[4096 + 20];
 static uint8_t random_dequant_index[256][5];
 static uint8_t random_dequant_type24[128][3];
 static float noise_samples[128];
@@ -54,8 +54,7 @@ static av_cold void softclip_table_init(void) {
 // random generated table
 static av_cold void rnd_table_init(void) {
     int i,j;
-    uint32_t ldw,hdw;
-    uint64_t tmp64_1;
+    uint32_t ldw;
     uint64_t random_seed = 0;
     float delta = 1.0 / 16384.0;
     for(i = 0; i < 4096 ;i++) {
@@ -67,22 +66,18 @@ static av_cold void rnd_table_init(void) {
         random_seed = 81;
         ldw = i;
         for (j = 0; j < 5 ;j++) {
-            random_dequant_index[i][j] = (uint8_t)((ldw / random_seed) & 0xFF);
-            ldw = (uint32_t)ldw % (uint32_t)random_seed;
-            tmp64_1 = (random_seed * 0x55555556);
-            hdw = (uint32_t)(tmp64_1 >> 32);
-            random_seed = (uint64_t)(hdw + (ldw >> 31));
+            random_dequant_index[i][j] = ldw / random_seed;
+            ldw %= random_seed;
+            random_seed /= 3;
         }
     }
     for (i = 0; i < 128 ;i++) {
         random_seed = 25;
         ldw = i;
         for (j = 0; j < 3 ;j++) {
-            random_dequant_type24[i][j] = (uint8_t)((ldw / random_seed) & 0xFF);
-            ldw = (uint32_t)ldw % (uint32_t)random_seed;
-            tmp64_1 = (random_seed * 0x66666667);
-            hdw = (uint32_t)(tmp64_1 >> 33);
-            random_seed = hdw + (ldw >> 31);
+            random_dequant_type24[i][j] = ldw / random_seed;
+            ldw %= random_seed;
+            random_seed /= 5;
         }
     }
 }

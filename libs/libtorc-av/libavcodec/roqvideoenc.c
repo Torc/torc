@@ -5,27 +5,27 @@
  * Copyright (C) 2004-2007 Eric Lasota
  *    Based on RoQ specs (C) 2001 Tim Ferguson
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 /**
  * @file
  * id RoQ encoder by Vitor. Based on the Switchblade3 library and the
- * Switchblade3 Libav glue by Eric Lasota.
+ * Switchblade3 FFmpeg glue by Eric Lasota.
  */
 
 /*
@@ -1020,10 +1020,8 @@ static int roq_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     /* 138 bits max per 8x8 block +
      *     256 codebooks*(6 bytes 2x2 + 4 bytes 4x4) + 8 bytes frame header */
     size = ((enc->width * enc->height / 64) * 138 + 7) / 8 + 256 * (6 + 4) + 8;
-    if ((ret = ff_alloc_packet(pkt, size)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet with size %d.\n", size);
+    if ((ret = ff_alloc_packet2(avctx, pkt, size)) < 0)
         return ret;
-    }
     enc->out_buf = pkt->data;
 
     /* Check for I frame */
@@ -1033,8 +1031,8 @@ static int roq_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     if (enc->first_frame) {
         /* Alloc memory for the reconstruction data (we must know the stride
          for that) */
-        if (avctx->get_buffer(avctx, enc->current_frame) ||
-            avctx->get_buffer(avctx, enc->last_frame)) {
+        if (ff_get_buffer(avctx, enc->current_frame) ||
+            ff_get_buffer(avctx, enc->last_frame)) {
             av_log(avctx, AV_LOG_ERROR, "  RoQ: get_buffer() failed\n");
             return -1;
         }

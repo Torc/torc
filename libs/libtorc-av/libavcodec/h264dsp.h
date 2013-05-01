@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2003-2010 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -28,8 +28,6 @@
 #define AVCODEC_H264DSP_H
 
 #include <stdint.h>
-
-#include "dsputil.h"
 
 typedef void (*h264_weight_func)(uint8_t *block, int stride, int height,
                                  int log2_denom, int weight, int offset);
@@ -80,29 +78,33 @@ typedef struct H264DSPContext {
 
     /* IDCT */
     void (*h264_idct_add)(uint8_t *dst /*align 4*/,
-                          DCTELEM *block /*align 16*/, int stride);
+                          int16_t *block /*align 16*/, int stride);
     void (*h264_idct8_add)(uint8_t *dst /*align 8*/,
-                           DCTELEM *block /*align 16*/, int stride);
+                           int16_t *block /*align 16*/, int stride);
     void (*h264_idct_dc_add)(uint8_t *dst /*align 4*/,
-                             DCTELEM *block /*align 16*/, int stride);
+                             int16_t *block /*align 16*/, int stride);
     void (*h264_idct8_dc_add)(uint8_t *dst /*align 8*/,
-                              DCTELEM *block /*align 16*/, int stride);
+                              int16_t *block /*align 16*/, int stride);
 
     void (*h264_idct_add16)(uint8_t *dst /*align 16*/, const int *blockoffset,
-                            DCTELEM *block /*align 16*/, int stride,
+                            int16_t *block /*align 16*/, int stride,
                             const uint8_t nnzc[15 * 8]);
     void (*h264_idct8_add4)(uint8_t *dst /*align 16*/, const int *blockoffset,
-                            DCTELEM *block /*align 16*/, int stride,
+                            int16_t *block /*align 16*/, int stride,
                             const uint8_t nnzc[15 * 8]);
     void (*h264_idct_add8)(uint8_t **dst /*align 16*/, const int *blockoffset,
-                           DCTELEM *block /*align 16*/, int stride,
+                           int16_t *block /*align 16*/, int stride,
                            const uint8_t nnzc[15 * 8]);
     void (*h264_idct_add16intra)(uint8_t *dst /*align 16*/, const int *blockoffset,
-                                 DCTELEM *block /*align 16*/,
+                                 int16_t *block /*align 16*/,
                                  int stride, const uint8_t nnzc[15 * 8]);
-    void (*h264_luma_dc_dequant_idct)(DCTELEM *output,
-                                      DCTELEM *input /*align 16*/, int qmul);
-    void (*h264_chroma_dc_dequant_idct)(DCTELEM *block, int qmul);
+    void (*h264_luma_dc_dequant_idct)(int16_t *output,
+                                      int16_t *input /*align 16*/, int qmul);
+    void (*h264_chroma_dc_dequant_idct)(int16_t *block, int qmul);
+
+    /* bypass-transform */
+    void (*h264_add_pixels8_clear)(uint8_t *dst, int16_t *block, int stride);
+    void (*h264_add_pixels4_clear)(uint8_t *dst, int16_t *block, int stride);
 } H264DSPContext;
 
 void ff_h264dsp_init(H264DSPContext *c, const int bit_depth,

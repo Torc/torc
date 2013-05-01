@@ -2,20 +2,20 @@
  * SGI image encoder
  * Todd Kirby <doubleshot@pacbell.net>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -36,6 +36,11 @@ static av_cold int encode_init(AVCodecContext *avctx)
 {
     SgiContext *s = avctx->priv_data;
 
+    if (avctx->width > 65535 || avctx->height > 65535) {
+        av_log(avctx, AV_LOG_ERROR, "SGI does not support resolutions above 65535x65535\n");
+        return -1;
+    }
+
     avcodec_get_frame_defaults(&s->picture);
     avctx->coded_frame = &s->picture;
 
@@ -49,7 +54,7 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     AVFrame * const p = &s->picture;
     uint8_t *offsettab, *lengthtab, *in_buf, *encode_buf, *buf;
     int x, y, z, length, tablesize, ret;
-    unsigned int width, height, depth, dimension;
+    unsigned int width, height, depth, dimension, bytes_per_channel, pixmax, put_be;
     unsigned char *end_buf;
 
     *p = *frame;
@@ -58,6 +63,9 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
 
     width  = avctx->width;
     height = avctx->height;
+    bytes_per_channel = 1;
+    pixmax = 0xFF;
+    put_be = HAVE_BIGENDIAN;
 
     switch (avctx->pix_fmt) {
     case AV_PIX_FMT_GRAY8:
@@ -72,6 +80,33 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
         dimension = SGI_MULTI_CHAN;
         depth     = SGI_RGBA;
         break;
+    case AV_PIX_FMT_GRAY16LE:
+        put_be = !HAVE_BIGENDIAN;
+    case AV_PIX_FMT_GRAY16BE:
+        avctx->coder_type = FF_CODER_TYPE_RAW;
+        bytes_per_channel = 2;
+        pixmax = 0xFFFF;
+        dimension = SGI_SINGLE_CHAN;
+        depth     = SGI_GRAYSCALE;
+        break;
+    case AV_PIX_FMT_RGB48LE:
+        put_be = !HAVE_BIGENDIAN;
+    case AV_PIX_FMT_RGB48BE:
+        avctx->coder_type = FF_CODER_TYPE_RAW;
+        bytes_per_channel = 2;
+        pixmax = 0xFFFF;
+        dimension = SGI_MULTI_CHAN;
+        depth     = SGI_RGB;
+        break;
+    case AV_PIX_FMT_RGBA64LE:
+        put_be = !HAVE_BIGENDIAN;
+    case AV_PIX_FMT_RGBA64BE:
+        avctx->coder_type = FF_CODER_TYPE_RAW;
+        bytes_per_channel = 2;
+        pixmax = 0xFFFF;
+        dimension = SGI_MULTI_CHAN;
+        depth     = SGI_RGBA;
+        break;
     default:
         return AVERROR_INVALIDDATA;
     }
@@ -83,25 +118,22 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     else // assume ff_rl_encode() produces at most 2x size of input
         length += tablesize * 2 + depth * height * (2 * width + 1);
 
-    if ((ret = ff_alloc_packet(pkt, length)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet of size %d.\n", length);
+    if ((ret = ff_alloc_packet2(avctx, pkt, bytes_per_channel * length)) < 0)
         return ret;
-    }
     buf     = pkt->data;
     end_buf = pkt->data + pkt->size;
 
     /* Encode header. */
     bytestream_put_be16(&buf, SGI_MAGIC);
     bytestream_put_byte(&buf, avctx->coder_type != FF_CODER_TYPE_RAW); /* RLE 1 - VERBATIM 0*/
-    bytestream_put_byte(&buf, 1); /* bytes_per_channel */
+    bytestream_put_byte(&buf, bytes_per_channel);
     bytestream_put_be16(&buf, dimension);
     bytestream_put_be16(&buf, width);
     bytestream_put_be16(&buf, height);
     bytestream_put_be16(&buf, depth);
 
-    /* The rest are constant in this implementation. */
     bytestream_put_be32(&buf, 0L); /* pixmin */
-    bytestream_put_be32(&buf, 255L); /* pixmax */
+    bytestream_put_be32(&buf, pixmax);
     bytestream_put_be32(&buf, 0L); /* dummy */
 
     /* name */
@@ -151,11 +183,19 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
         av_free(encode_buf);
     } else {
         for (z = 0; z < depth; z++) {
-            in_buf = p->data[0] + p->linesize[0] * (height - 1) + z;
+            in_buf = p->data[0] + p->linesize[0] * (height - 1) + z * bytes_per_channel;
 
             for (y = 0; y < height; y++) {
                 for (x = 0; x < width * depth; x += depth)
+                    if (bytes_per_channel == 1) {
                     bytestream_put_byte(&buf, in_buf[x]);
+                    } else {
+                        if (put_be) {
+                            bytestream_put_be16(&buf, ((uint16_t *)in_buf)[x]);
+                        } else {
+                            bytestream_put_le16(&buf, ((uint16_t *)in_buf)[x]);
+                        }
+                    }
 
                 in_buf -= p->linesize[0];
             }
@@ -178,7 +218,11 @@ AVCodec ff_sgi_encoder = {
     .init           = encode_init,
     .encode2        = encode_frame,
     .pix_fmts       = (const enum AVPixelFormat[]){
-        AV_PIX_FMT_RGB24, AV_PIX_FMT_RGBA, AV_PIX_FMT_GRAY8, AV_PIX_FMT_NONE
+        AV_PIX_FMT_RGB24, AV_PIX_FMT_RGBA,
+        AV_PIX_FMT_RGB48LE, AV_PIX_FMT_RGB48BE,
+        AV_PIX_FMT_RGBA64LE, AV_PIX_FMT_RGBA64BE,
+        AV_PIX_FMT_GRAY16LE, AV_PIX_FMT_GRAY16BE,
+        AV_PIX_FMT_GRAY8, AV_PIX_FMT_NONE
     },
     .long_name      = NULL_IF_CONFIG_SMALL("SGI image"),
 };

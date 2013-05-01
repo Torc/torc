@@ -2,28 +2,29 @@
  * iLBC decoder/encoder stub
  * Copyright (c) 2012 Martin Storsjo
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include <ilbc.h>
 
-#include "avcodec.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "libavutil/opt.h"
+#include "avcodec.h"
 #include "internal.h"
 
 static int get_mode(AVCodecContext *avctx)
@@ -40,7 +41,6 @@ static int get_mode(AVCodecContext *avctx)
 
 typedef struct ILBCDecContext {
     const AVClass *class;
-    AVFrame frame;
     iLBC_Dec_Inst_t decoder;
     int enhance;
 } ILBCDecContext;
@@ -51,7 +51,10 @@ static const AVOption ilbc_dec_options[] = {
 };
 
 static const AVClass ilbc_dec_class = {
-    "libilbc", av_default_item_name, ilbc_dec_options, LIBAVUTIL_VERSION_INT
+    .class_name = "libilbc",
+    .item_name  = av_default_item_name,
+    .option     = ilbc_dec_options,
+    .version    = LIBAVUTIL_VERSION_INT,
 };
 
 static av_cold int ilbc_decode_init(AVCodecContext *avctx)
@@ -65,12 +68,11 @@ static av_cold int ilbc_decode_init(AVCodecContext *avctx)
     }
 
     WebRtcIlbcfix_InitDecode(&s->decoder, mode, s->enhance);
-    avcodec_get_frame_defaults(&s->frame);
-    avctx->coded_frame = &s->frame;
 
-    avctx->channels = 1;
-    avctx->sample_rate = 8000;
-    avctx->sample_fmt = AV_SAMPLE_FMT_S16;
+    avctx->channels       = 1;
+    avctx->channel_layout = AV_CH_LAYOUT_MONO;
+    avctx->sample_rate    = 8000;
+    avctx->sample_fmt     = AV_SAMPLE_FMT_S16;
 
     return 0;
 }
@@ -81,6 +83,7 @@ static int ilbc_decode_frame(AVCodecContext *avctx, void *data,
     const uint8_t *buf = avpkt->data;
     int buf_size       = avpkt->size;
     ILBCDecContext *s  = avctx->priv_data;
+    AVFrame *frame     = data;
     int ret;
 
     if (s->decoder.no_of_bytes > buf_size) {
@@ -89,17 +92,16 @@ static int ilbc_decode_frame(AVCodecContext *avctx, void *data,
         return AVERROR_INVALIDDATA;
     }
 
-    s->frame.nb_samples = s->decoder.blockl;
-    if ((ret = avctx->get_buffer(avctx, &s->frame)) < 0) {
+    frame->nb_samples = s->decoder.blockl;
+    if ((ret = ff_get_buffer(avctx, frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
 
-    WebRtcIlbcfix_DecodeImpl((WebRtc_Word16*) s->frame.data[0],
+    WebRtcIlbcfix_DecodeImpl((WebRtc_Word16*) frame->data[0],
                              (const WebRtc_UWord16*) buf, &s->decoder, 1);
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = s->frame;
+    *got_frame_ptr = 1;
 
     return s->decoder.no_of_bytes;
 }
@@ -128,7 +130,10 @@ static const AVOption ilbc_enc_options[] = {
 };
 
 static const AVClass ilbc_enc_class = {
-    "libilbc", av_default_item_name, ilbc_enc_options, LIBAVUTIL_VERSION_INT
+    .class_name = "libilbc",
+    .item_name  = av_default_item_name,
+    .option     = ilbc_enc_options,
+    .version    = LIBAVUTIL_VERSION_INT,
 };
 
 static av_cold int ilbc_encode_init(AVCodecContext *avctx)
@@ -177,10 +182,8 @@ static int ilbc_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     ILBCEncContext *s = avctx->priv_data;
     int ret;
 
-    if ((ret = ff_alloc_packet(avpkt, 50))) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, 50)) < 0)
         return ret;
-    }
 
     WebRtcIlbcfix_EncodeImpl((WebRtc_UWord16*) avpkt->data, (const WebRtc_Word16*) frame->data[0], &s->encoder);
 

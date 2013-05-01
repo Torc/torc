@@ -2,20 +2,20 @@
  * QCELP decoder
  * Copyright (c) 2007 Reynaldo H. Verdejo Pinochet
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -23,16 +23,17 @@
  * @file
  * QCELP decoder
  * @author Reynaldo H. Verdejo Pinochet
- * @remark Libav merging spearheaded by Kenan Gillet
+ * @remark FFmpeg merging spearheaded by Kenan Gillet
  * @remark Development mentored by Benjamin Larson
  */
 
 #include <stddef.h>
 
+#include "libavutil/channel_layout.h"
+#include "libavutil/float_dsp.h"
 #include "avcodec.h"
 #include "internal.h"
 #include "get_bits.h"
-#include "dsputil.h"
 #include "qcelpdata.h"
 #include "celp_filters.h"
 #include "acelp_filters.h"
@@ -52,7 +53,6 @@ typedef enum {
 } qcelp_packet_rate;
 
 typedef struct {
-    AVFrame           avframe;
     GetBitContext     gb;
     qcelp_packet_rate bitrate;
     QCELPFrame        frame;    /**< unpacked data frame */
@@ -89,13 +89,12 @@ static av_cold int qcelp_decode_init(AVCodecContext *avctx)
     QCELPContext *q = avctx->priv_data;
     int i;
 
-    avctx->sample_fmt = AV_SAMPLE_FMT_FLT;
+    avctx->channels       = 1;
+    avctx->channel_layout = AV_CH_LAYOUT_MONO;
+    avctx->sample_fmt     = AV_SAMPLE_FMT_FLT;
 
     for (i = 0; i < 10; i++)
         q->prev_lspf[i] = (i + 1) / 11.;
-
-    avcodec_get_frame_defaults(&q->avframe);
-    avctx->coded_frame = &q->avframe;
 
     return 0;
 }
@@ -397,12 +396,10 @@ static void apply_gain_ctrl(float *v_out, const float *v_ref, const float *v_in)
 {
     int i;
 
-    for (i = 0; i < 160; i += 40)
-        ff_scale_vector_to_given_sum_of_squares(v_out + i, v_in + i,
-                                                ff_scalarproduct_float_c(v_ref + i,
-                                                                         v_ref + i,
-                                                                         40),
-                                                40);
+    for (i = 0; i < 160; i += 40) {
+        float res = avpriv_scalarproduct_float_c(v_ref + i, v_ref + i, 40);
+        ff_scale_vector_to_given_sum_of_squares(v_out + i, v_in + i, res, 40);
+    }
 }
 
 /**
@@ -677,8 +674,9 @@ static void postfilter(QCELPContext *q, float *samples, float *lpc)
     ff_tilt_compensation(&q->postfilter_tilt_mem, 0.3, pole_out + 10, 160);
 
     ff_adaptive_gain_control(samples, pole_out + 10,
-                             ff_scalarproduct_float_c(q->formant_mem + 10,
-                                                      q->formant_mem + 10, 160),
+                             avpriv_scalarproduct_float_c(q->formant_mem + 10,
+                                                          q->formant_mem + 10,
+                                                          160),
                              160, 0.9375, &q->postfilter_agc_mem);
 }
 
@@ -688,6 +686,7 @@ static int qcelp_decode_frame(AVCodecContext *avctx, void *data,
     const uint8_t *buf = avpkt->data;
     int buf_size       = avpkt->size;
     QCELPContext *q    = avctx->priv_data;
+    AVFrame *frame     = data;
     float *outbuffer;
     int   i, ret;
     float quantized_lspf[10], lpc[10];
@@ -695,12 +694,12 @@ static int qcelp_decode_frame(AVCodecContext *avctx, void *data,
     float *formant_mem;
 
     /* get output buffer */
-    q->avframe.nb_samples = 160;
-    if ((ret = avctx->get_buffer(avctx, &q->avframe)) < 0) {
+    frame->nb_samples = 160;
+    if ((ret = ff_get_buffer(avctx, frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
-    outbuffer = (float *)q->avframe.data[0];
+    outbuffer = (float *)frame->data[0];
 
     if ((q->bitrate = determine_bitrate(avctx, buf_size, &buf)) == I_F_Q) {
         warn_insufficient_frame_quality(avctx, "bitrate cannot be determined.");
@@ -783,8 +782,7 @@ erasure:
     memcpy(q->prev_lspf, quantized_lspf, sizeof(q->prev_lspf));
     q->prev_bitrate  = q->bitrate;
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = q->avframe;
+    *got_frame_ptr = 1;
 
     return buf_size;
 }

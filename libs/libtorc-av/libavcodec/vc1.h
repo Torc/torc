@@ -3,20 +3,20 @@
  * Copyright (c) 2006-2007 Konstantin Shishkov
  * Partly based on vc9.c (c) 2005 Anonymous, Alex Beregszaszi, Michael Niedermayer
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -24,6 +24,7 @@
 #define AVCODEC_VC1_H
 
 #include "avcodec.h"
+#include "h264chroma.h"
 #include "mpegvideo.h"
 #include "intrax8.h"
 #include "vc1dsp.h"
@@ -181,6 +182,7 @@ enum FrameCodingMode {
 typedef struct VC1Context{
     MpegEncContext s;
     IntraX8Context x8;
+    H264ChromaContext h264chroma;
     VC1DSPContext vc1dsp;
 
     int bits;
@@ -210,9 +212,6 @@ typedef struct VC1Context{
     int panscanflag;      ///< NUMPANSCANWIN, TOPLEFT{X,Y}, BOTRIGHT{X,Y} present
     int refdist_flag;     ///< REFDIST syntax element present in II, IP, PI or PP field picture headers
     int extended_dmv;     ///< Additional extended dmv range at P/B frame-level
-    int color_prim;       ///< 8bits, chroma coordinates of the color primaries
-    int transfer_char;    ///< 8bits, Opto-electronic transfer characteristics
-    int matrix_coef;      ///< 8bits, Color primaries->YCbCr transform matrix
     int hrd_param_flag;   ///< Presence of Hypothetical Reference
                           ///< Decoder parameters
     int psf;              ///< Progressive Segmented Frame
@@ -225,6 +224,7 @@ typedef struct VC1Context{
     int profile;          ///< 2bits, Profile
     int frmrtq_postproc;  ///< 3bits,
     int bitrtq_postproc;  ///< 5bits, quantized framerate-based postprocessing strength
+    int max_coded_width, max_coded_height;
     int fastuvmc;         ///< Rounding of qpel vector to hpel ? (not in Simple)
     int extended_mv;      ///< Ext MV in P/B (not in Simple)
     int dquant;           ///< How qscale varies with MBs, 2bits (not in Simple)
@@ -349,7 +349,7 @@ typedef struct VC1Context{
     uint8_t fourmvbp;
     uint8_t* fieldtx_plane;
     int fieldtx_is_raw;
-    int8_t zzi_8x8[64];
+    uint8_t zzi_8x8[64];
     uint8_t *blk_mv_type_base, *blk_mv_type;    ///< 0: frame MV, 1: field MV (interlaced frame)
     uint8_t *mv_f_base, *mv_f[2];               ///< 0: MV obtained from same field, 1: opposite field
     uint8_t *mv_f_last_base, *mv_f_last[2];
@@ -370,6 +370,7 @@ typedef struct VC1Context{
     int qs_last;            ///< if qpel has been used in the previous (tr.) picture
     int bmvtype;
     int frfd, brfd;         ///< reference frame distance (forward or backward)
+    int first_pic_header_flag;
     int pic_header_flag;
 
     /** Frame decoding info for sprite modes */
@@ -385,7 +386,7 @@ typedef struct VC1Context{
     int bi_type;
     int x8_type;
 
-    DCTELEM (*block)[6][64];
+    int16_t (*block)[6][64];
     int n_allocated_blks, cur_blk_idx, left_blk_idx, topleft_blk_idx, top_blk_idx;
     uint32_t *cbp_base, *cbp;
     uint8_t *is_intra_base, *is_intra;
@@ -453,9 +454,9 @@ int ff_vc1_parse_frame_header    (VC1Context *v, GetBitContext *gb);
 int ff_vc1_parse_frame_header_adv(VC1Context *v, GetBitContext *gb);
 int ff_vc1_init_common(VC1Context *v);
 
-av_cold int  ff_vc1_decode_init_alloc_tables(VC1Context *v);
-av_cold void ff_vc1_init_transposed_scantables(VC1Context *v);
-av_cold int  ff_vc1_decode_end(AVCodecContext *avctx);
+int  ff_vc1_decode_init_alloc_tables(VC1Context *v);
+void ff_vc1_init_transposed_scantables(VC1Context *v);
+int  ff_vc1_decode_end(AVCodecContext *avctx);
 void ff_vc1_decode_blocks(VC1Context *v);
 
 #endif /* AVCODEC_VC1_H */

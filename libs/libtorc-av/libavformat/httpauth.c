@@ -2,20 +2,20 @@
  * HTTP authentication
  * Copyright (c) 2010 Martin Storsjo
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,7 +27,6 @@
 #include "libavutil/md5.h"
 #include "urldecode.h"
 #include "avformat.h"
-#include <ctype.h>
 
 static void handle_basic_params(HTTPAuthState *state, const char *key,
                                 int key_len, char **dest, int *dest_len)
@@ -80,8 +79,8 @@ static void choose_qop(char *qop, int size)
     char *ptr = strstr(qop, "auth");
     char *end = ptr + strlen("auth");
 
-    if (ptr && (!*end || isspace(*end) || *end == ',') &&
-        (ptr == qop || isspace(ptr[-1]) || ptr[-1] == ',')) {
+    if (ptr && (!*end || av_isspace(*end) || *end == ',') &&
+        (ptr == qop || av_isspace(ptr[-1]) || ptr[-1] == ',')) {
         av_strlcpy(qop, "auth", size);
     } else {
         qop[0] = 0;

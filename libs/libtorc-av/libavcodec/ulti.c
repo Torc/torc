@@ -2,20 +2,20 @@
  * IBM Ultimotion Video Decoder
  * Copyright (C) 2004 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -51,6 +51,7 @@ static av_cold int ulti_decode_init(AVCodecContext *avctx)
     s->blocks = (s->width / 8) * (s->height / 8);
     avctx->pix_fmt = AV_PIX_FMT_YUV410P;
     avctx->coded_frame = &s->frame;
+    avctx->coded_frame = (AVFrame*) &s->frame;
     s->ulti_codebook = ulti_codebook;
 
     return 0;
@@ -209,7 +210,7 @@ static void ulti_grad(AVFrame *frame, int x, int y, uint8_t *Y, int chroma, int 
 }
 
 static int ulti_decode_frame(AVCodecContext *avctx,
-                             void *data, int *data_size,
+                             void *data, int *got_frame,
                              AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
@@ -225,7 +226,7 @@ static int ulti_decode_frame(AVCodecContext *avctx,
     int skip;
     int tmp;
 
-    s->frame.reference = 1;
+    s->frame.reference = 3;
     s->frame.buffer_hints = FF_BUFFER_HINTS_VALID | FF_BUFFER_HINTS_PRESERVE | FF_BUFFER_HINTS_REUSABLE;
     if (avctx->reget_buffer(avctx, &s->frame) < 0) {
         av_log(avctx, AV_LOG_ERROR, "reget_buffer() failed\n");
@@ -406,7 +407,7 @@ static int ulti_decode_frame(AVCodecContext *avctx,
         }
     }
 
-    *data_size=sizeof(AVFrame);
+    *got_frame = 1;
     *(AVFrame*)data= s->frame;
 
     return buf_size;

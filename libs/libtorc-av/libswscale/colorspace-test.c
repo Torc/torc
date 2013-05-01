@@ -1,20 +1,20 @@
 /*
  * Copyright (C) 2002 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -33,7 +33,7 @@
 
 #define FUNC(s, d, n) { s, d, #n, n }
 
-int main(void)
+int main(int argc, char **argv)
 {
     int i, funcNum;
     uint8_t *srcBuffer = av_malloc(SIZE);
@@ -54,6 +54,7 @@ int main(void)
             const char *name;
             void (*func)(const uint8_t *src, uint8_t *dst, int src_size);
         } func_info[] = {
+            FUNC(2, 2, rgb12to15),
             FUNC(2, 2, rgb15to16),
             FUNC(2, 3, rgb15to24),
             FUNC(2, 4, rgb15to32),
@@ -66,6 +67,7 @@ int main(void)
             FUNC(4, 2, rgb32to16),
             FUNC(4, 3, rgb32to24),
             FUNC(2, 2, rgb16to15),
+            FUNC(2, 2, rgb12tobgr12),
             FUNC(2, 2, rgb15tobgr15),
             FUNC(2, 2, rgb15tobgr16),
             FUNC(2, 3, rgb15tobgr24),
@@ -82,6 +84,12 @@ int main(void)
             FUNC(4, 2, rgb32tobgr16),
             FUNC(4, 3, rgb32tobgr24),
             FUNC(4, 4, shuffle_bytes_2103), /* rgb32tobgr32 */
+            FUNC(6, 6, rgb48tobgr48_nobswap),
+            FUNC(6, 6, rgb48tobgr48_bswap),
+            FUNC(8, 6, rgb64to48_nobswap),
+            FUNC(8, 6, rgb64to48_bswap),
+            FUNC(8, 6, rgb64tobgr48_nobswap),
+            FUNC(8, 6, rgb64tobgr48_bswap),
             FUNC(0, 0, NULL)
         };
         int width;

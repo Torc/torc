@@ -4,20 +4,20 @@
  * Copyright (c) 2008 Vladimir Voroshilov
  * Copyright (c) 2009 Vitor Sessak
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,8 +25,8 @@
 
 #include "sipr.h"
 #include "libavutil/common.h"
+#include "libavutil/float_dsp.h"
 #include "libavutil/mathematics.h"
-#include "dsputil.h"
 #include "lsp.h"
 #include "celp_filters.h"
 #include "acelp_vectors.h"
@@ -163,11 +163,11 @@ static float acelp_decode_gain_codef(float gain_corr_factor, const float *fc_v,
                                      const float *ma_prediction_coeff,
                                      int subframe_size, int ma_pred_order)
 {
-    mr_energy +=
-        ff_scalarproduct_float_c(quant_energy, ma_prediction_coeff, ma_pred_order);
+    mr_energy += avpriv_scalarproduct_float_c(quant_energy, ma_prediction_coeff,
+                                              ma_pred_order);
 
     mr_energy = gain_corr_factor * exp(M_LN10 / 20. * mr_energy) /
-        sqrt((0.01 + ff_scalarproduct_float_c(fc_v, fc_v, subframe_size)));
+        sqrt((0.01 + avpriv_scalarproduct_float_c(fc_v, fc_v, subframe_size)));
     return mr_energy;
 }
 

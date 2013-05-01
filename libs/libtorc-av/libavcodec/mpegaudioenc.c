@@ -2,20 +2,20 @@
  * The simplest mpeg audio layer 2 encoder
  * Copyright (c) 2000, 2001 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -24,7 +24,7 @@
  * The simplest mpeg audio layer 2 encoder.
  */
 
-#include "libavutil/audioconvert.h"
+#include "libavutil/channel_layout.h"
 
 #include "avcodec.h"
 #include "internal.h"
@@ -148,16 +148,16 @@ static av_cold int MPA_encode_init(AVCodecContext *avctx)
     }
 
     for(i=0;i<64;i++) {
-        v = (int)(pow(2.0, (3 - i) / 3.0) * (1 << 20));
+        v = (int)(exp2((3 - i) / 3.0) * (1 << 20));
         if (v <= 0)
             v = 1;
         scale_factor_table[i] = v;
 #ifdef USE_FLOATS
-        scale_factor_inv_table[i] = pow(2.0, -(3 - i) / 3.0) / (float)(1 << 20);
+        scale_factor_inv_table[i] = exp2(-(3 - i) / 3.0) / (float)(1 << 20);
 #else
 #define P 15
         scale_factor_shift[i] = 21 - P - (i / 3);
-        scale_factor_mult[i] = (1 << P) * pow(2.0, (i % 3) / 3.0);
+        scale_factor_mult[i] = (1 << P) * exp2((i % 3) / 3.0);
 #endif
     }
     for(i=0;i<128;i++) {
@@ -407,7 +407,7 @@ static void compute_scale_factors(unsigned char scale_code[SBLIMIT],
             av_dlog(NULL, "%2d:%d in=%x %x %d\n",
                     j, i, vmax, scale_factor_table[index], index);
             /* store the scale factor */
-            assert(index >=0 && index <= 63);
+            av_assert2(index >=0 && index <= 63);
             sf[i] = index;
         }
 
@@ -469,7 +469,7 @@ static void compute_scale_factors(unsigned char scale_code[SBLIMIT],
             sf[1] = sf[2] = sf[0];
             break;
         default:
-            assert(0); //cannot happen
+            av_assert2(0); //cannot happen
             code = 0;           /* kill warning */
         }
 
@@ -589,7 +589,7 @@ static void compute_bit_allocation(MpegAudioContext *s,
         }
     }
     *padding = max_frame_size - current_frame_size;
-    assert(*padding >= 0);
+    av_assert0(*padding >= 0);
 }
 
 /*
@@ -704,7 +704,7 @@ static void encode_frame(MpegAudioContext *s,
 #endif
                             if (q[m] >= steps)
                                 q[m] = steps - 1;
-                            assert(q[m] >= 0 && q[m] < steps);
+                            av_assert2(q[m] >= 0 && q[m] < steps);
                         }
                         bits = ff_mpa_quant_bits[qindex];
                         if (bits < 0) {
@@ -754,10 +754,8 @@ static int MPA_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     }
     compute_bit_allocation(s, smr, bit_alloc, &padding);
 
-    if ((ret = ff_alloc_packet(avpkt, MPA_MAX_CODED_FRAME_SIZE))) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, MPA_MAX_CODED_FRAME_SIZE)) < 0)
         return ret;
-    }
 
     init_put_bits(&s->pb, avpkt->data, avpkt->size);
 

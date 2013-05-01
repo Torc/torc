@@ -2,26 +2,26 @@
  * VC-1 and WMV3 decoder - DSP functions AltiVec-optimized
  * Copyright (c) 2006 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/attributes.h"
 #include "libavutil/ppc/types_altivec.h"
 #include "libavutil/ppc/util_altivec.h"
-#include "libavcodec/dsputil.h"
 #include "libavcodec/vc1dsp.h"
 
 // main steps of 8x8 transform
@@ -129,7 +129,7 @@ do { \
 
 /** Do inverse transform on 8x8 block
 */
-static void vc1_inv_trans_8x8_altivec(DCTELEM block[64])
+static void vc1_inv_trans_8x8_altivec(int16_t block[64])
 {
     vector signed short src0, src1, src2, src3, src4, src5, src6, src7;
     vector signed int s0, s1, s2, s3, s4, s5, s6, s7;
@@ -224,7 +224,7 @@ static void vc1_inv_trans_8x8_altivec(DCTELEM block[64])
 
 /** Do inverse transform on 8x4 part of block
 */
-static void vc1_inv_trans_8x4_altivec(uint8_t *dest, int stride, DCTELEM *block)
+static void vc1_inv_trans_8x4_altivec(uint8_t *dest, int stride, int16_t *block)
 {
     vector signed short src0, src1, src2, src3, src4, src5, src6, src7;
     vector signed int s0, s1, s2, s3, s4, s5, s6, s7;
@@ -325,17 +325,17 @@ static void vc1_inv_trans_8x4_altivec(uint8_t *dest, int stride, DCTELEM *block)
 
 #define OP_U8_ALTIVEC                          PUT_OP_U8_ALTIVEC
 #define PREFIX_no_rnd_vc1_chroma_mc8_altivec   put_no_rnd_vc1_chroma_mc8_altivec
-#include "h264_altivec_template.c"
+#include "h264chroma_template.c"
 #undef OP_U8_ALTIVEC
 #undef PREFIX_no_rnd_vc1_chroma_mc8_altivec
 
 #define OP_U8_ALTIVEC                          AVG_OP_U8_ALTIVEC
 #define PREFIX_no_rnd_vc1_chroma_mc8_altivec   avg_no_rnd_vc1_chroma_mc8_altivec
-#include "h264_altivec_template.c"
+#include "h264chroma_template.c"
 #undef OP_U8_ALTIVEC
 #undef PREFIX_no_rnd_vc1_chroma_mc8_altivec
 
-void ff_vc1dsp_init_altivec(VC1DSPContext* dsp)
+av_cold void ff_vc1dsp_init_altivec(VC1DSPContext *dsp)
 {
     if (!(av_get_cpu_flags() & AV_CPU_FLAG_ALTIVEC))
         return;

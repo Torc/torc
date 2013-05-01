@@ -2,20 +2,20 @@
  * Sierra SOL demuxer
  * Copyright Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -23,6 +23,7 @@
  * Based on documents from Game Audio Player and own research
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "internal.h"
@@ -116,6 +117,8 @@ static int sol_read_header(AVFormatContext *s)
     st->codec->codec_tag = id;
     st->codec->codec_id = codec;
     st->codec->channels = channels;
+    st->codec->channel_layout = channels == 1 ? AV_CH_LAYOUT_MONO :
+                                                AV_CH_LAYOUT_STEREO;
     st->codec->sample_rate = rate;
     avpriv_set_pts_info(st, 64, 1, rate);
     return 0;
@@ -128,16 +131,13 @@ static int sol_read_packet(AVFormatContext *s,
 {
     int ret;
 
-    if (s->pb->eof_reached)
+    if (url_feof(s->pb))
         return AVERROR(EIO);
     ret= av_get_packet(s->pb, pkt, MAX_SIZE);
     if (ret < 0)
         return ret;
+    pkt->flags &= ~AV_PKT_FLAG_CORRUPT;
     pkt->stream_index = 0;
-
-    /* note: we need to modify the packet size here to handle the last
-       packet */
-    pkt->size = ret;
     return 0;
 }
 

@@ -2,28 +2,41 @@
  * DVD subtitle decoding
  * Copyright (c) 2005 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "avcodec.h"
 #include "get_bits.h"
 #include "dsputil.h"
 #include "libavutil/colorspace.h"
+#include "libavutil/opt.h"
+#include "libavutil/imgutils.h"
+#include "libavutil/avstring.h"
 
 //#define DEBUG
+
+typedef struct DVDSubContext
+{
+  AVClass *class;
+  uint32_t palette[16];
+  char    *palette_str;
+  int      has_palette;
+  uint8_t  colormap[4];
+  uint8_t  alpha[256];
+} DVDSubContext;
 
 static void yuv_a_to_rgba(const uint8_t *ycbcr, const uint8_t *alpha, uint32_t *rgba, int num_values)
 {
@@ -115,13 +128,28 @@ static int decode_rle(uint8_t *bitmap, int linesize, int w, int h,
     return 0;
 }
 
-static void guess_palette(uint32_t *rgba_palette,
-                          uint8_t *colormap,
-                          uint8_t *alpha,
+static void guess_palette(DVDSubContext* ctx,
+                          uint32_t *rgba_palette,
                           uint32_t subtitle_color)
 {
+    static const uint8_t level_map[4][4] = {
+        // this configuration (full range, lowest to highest) in tests
+        // seemed most common, so assume this
+        {0xff},
+        {0x00, 0xff},
+        {0x00, 0x80, 0xff},
+        {0x00, 0x55, 0xaa, 0xff},
+    };
     uint8_t color_used[16] = { 0 };
     int nb_opaque_colors, i, level, j, r, g, b;
+    uint8_t *colormap = ctx->colormap, *alpha = ctx->alpha;
+
+    if(ctx->has_palette) {
+        for(i = 0; i < 4; i++)
+            rgba_palette[i] = (ctx->palette[colormap[i]] & 0x00ffffff)
+                              | ((alpha[i] * 17U) << 24);
+        return;
+    }
 
     for(i = 0; i < 4; i++)
         rgba_palette[i] = 0;
@@ -137,18 +165,18 @@ static void guess_palette(uint32_t *rgba_palette,
     if (nb_opaque_colors == 0)
         return;
 
-    j = nb_opaque_colors;
+    j = 0;
     memset(color_used, 0, 16);
     for(i = 0; i < 4; i++) {
         if (alpha[i] != 0) {
             if (!color_used[colormap[i]])  {
-                level = (0xff * j) / nb_opaque_colors;
+                level = level_map[nb_opaque_colors][j];
                 r = (((subtitle_color >> 16) & 0xff) * level) >> 8;
                 g = (((subtitle_color >> 8) & 0xff) * level) >> 8;
                 b = (((subtitle_color >> 0) & 0xff) * level) >> 8;
                 rgba_palette[i] = b | (g << 8) | (r << 16) | ((alpha[i] * 17) << 24);
                 color_used[colormap[i]] = (i + 1);
-                j--;
+                j++;
             } else {
                 rgba_palette[i] = (rgba_palette[color_used[colormap[i]] - 1] & 0x00ffffff) |
                                     ((alpha[i] * 17) << 24);
@@ -159,20 +187,19 @@ static void guess_palette(uint32_t *rgba_palette,
 
 #define READ_OFFSET(a) (big_offsets ? AV_RB32(a) : AV_RB16(a))
 
-static int decode_dvd_subtitles(AVSubtitle *sub_header,
+static int decode_dvd_subtitles(DVDSubContext *ctx, AVSubtitle *sub_header,
                                 const uint8_t *buf, int buf_size)
 {
     int cmd_pos, pos, cmd, x1, y1, x2, y2, offset1, offset2, next_cmd_pos;
     int big_offsets, offset_size, is_8bit = 0;
     const uint8_t *yuv_palette = 0;
-    uint8_t colormap[4], alpha[256];
+    uint8_t *colormap = ctx->colormap, *alpha = ctx->alpha;
     int date;
     int i;
     int is_menu = 0;
 
     if (buf_size < 10)
         return -1;
-    memset(sub_header, 0, sizeof(*sub_header));
 
     if (AV_RB16(buf) == 0) {   /* HD subpicture with 4-byte offsets */
         big_offsets = 1;
@@ -325,8 +352,8 @@ static int decode_dvd_subtitles(AVSubtitle *sub_header,
                     yuv_a_to_rgba(yuv_palette, alpha, (uint32_t*)sub_header->rects[0]->pict.data[1], 256);
                 } else {
                     sub_header->rects[0]->nb_colors = 4;
-                    guess_palette((uint32_t*)sub_header->rects[0]->pict.data[1],
-                                  colormap, alpha, 0xffff00);
+                    guess_palette(ctx, (uint32_t*)sub_header->rects[0]->pict.data[1],
+                                  0xffff00);
                 }
                 sub_header->rects[0]->x = x1;
                 sub_header->rects[0]->y = y1;
@@ -334,7 +361,12 @@ static int decode_dvd_subtitles(AVSubtitle *sub_header,
                 sub_header->rects[0]->h = h;
                 sub_header->rects[0]->type = SUBTITLE_BITMAP;
                 sub_header->rects[0]->pict.linesize[0] = w;
+                sub_header->rects[0]->flags = is_menu ? AV_SUBTITLE_FLAG_FORCED : 0;
             }
+        }
+        if (next_cmd_pos < cmd_pos) {
+            av_log(NULL, AV_LOG_ERROR, "Invalid command offset\n");
+            break;
         }
         if (next_cmd_pos == cmd_pos)
             break;
@@ -456,12 +488,13 @@ static int dvdsub_decode(AVCodecContext *avctx,
                          void *data, int *data_size,
                          AVPacket *avpkt)
 {
+    DVDSubContext *ctx = avctx->priv_data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     AVSubtitle *sub = data;
     int is_menu;
 
-    is_menu = decode_dvd_subtitles(sub, buf, buf_size);
+    is_menu = decode_dvd_subtitles(ctx, sub, buf, buf_size);
 
     if (is_menu < 0) {
     no_subtitle:
@@ -484,10 +517,95 @@ static int dvdsub_decode(AVCodecContext *avctx,
     return buf_size;
 }
 
+static void parse_palette(DVDSubContext *ctx, char *p)
+{
+    int i;
+
+    ctx->has_palette = 1;
+    for(i=0;i<16;i++) {
+        ctx->palette[i] = strtoul(p, &p, 16);
+        while(*p == ',' || av_isspace(*p))
+            p++;
+    }
+}
+
+static int dvdsub_parse_extradata(AVCodecContext *avctx)
+{
+    DVDSubContext *ctx = (DVDSubContext*) avctx->priv_data;
+    char *dataorig, *data;
+
+    if (!avctx->extradata || !avctx->extradata_size)
+        return 1;
+
+    dataorig = data = av_malloc(avctx->extradata_size+1);
+    if (!data)
+        return AVERROR(ENOMEM);
+    memcpy(data, avctx->extradata, avctx->extradata_size);
+    data[avctx->extradata_size] = '\0';
+
+    for(;;) {
+        int pos = strcspn(data, "\n\r");
+        if (pos==0 && *data==0)
+            break;
+
+        if (strncmp("palette:", data, 8) == 0) {
+            parse_palette(ctx, data + 8);
+        } else if (strncmp("size:", data, 5) == 0) {
+            int w, h;
+            if (sscanf(data + 5, "%dx%d", &w, &h) == 2 &&
+                av_image_check_size(w, h, 0, avctx) >= 0)
+                avcodec_set_dimensions(avctx, w, h);
+        }
+
+        data += pos;
+        data += strspn(data, "\n\r");
+    }
+
+    av_free(dataorig);
+    return 1;
+}
+
+static int dvdsub_init(AVCodecContext *avctx)
+{
+    DVDSubContext *ctx = avctx->priv_data;
+    int ret;
+
+    if ((ret = dvdsub_parse_extradata(avctx)) < 0)
+        return ret;
+
+    if (ctx->palette_str)
+        parse_palette(ctx, ctx->palette_str);
+    if (ctx->has_palette) {
+        int i;
+        av_log(avctx, AV_LOG_DEBUG, "palette:");
+        for(i=0;i<16;i++)
+            av_log(avctx, AV_LOG_DEBUG, " 0x%06x", ctx->palette[i]);
+        av_log(avctx, AV_LOG_DEBUG, "\n");
+    }
+
+    return 1;
+}
+
+#define OFFSET(field) offsetof(DVDSubContext, field)
+#define VD AV_OPT_FLAG_SUBTITLE_PARAM | AV_OPT_FLAG_DECODING_PARAM
+static const AVOption options[] = {
+    { "palette", "set the global palette", OFFSET(palette_str), AV_OPT_TYPE_STRING, { .str = NULL }, 0, 0, VD },
+    { NULL }
+};
+static const AVClass class = {
+    .class_name = "dvdsubdec",
+    .item_name  = av_default_item_name,
+    .option     = options,
+    .version    = LIBAVUTIL_VERSION_INT,
+};
+
 AVCodec ff_dvdsub_decoder = {
     .name           = "dvdsub",
     .type           = AVMEDIA_TYPE_SUBTITLE,
     .id             = AV_CODEC_ID_DVD_SUBTITLE,
+    .priv_data_size = sizeof(DVDSubContext),
+    .init           = dvdsub_init,
     .decode         = dvdsub_decode,
     .long_name      = NULL_IF_CONFIG_SMALL("DVD subtitles"),
+    .priv_class     = &class,
 };

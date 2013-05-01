@@ -1,27 +1,36 @@
 /*
- * This file is part of Libav.
+ * Copyright (c) Stefano Sabatini | stefasab at gmail.com
+ * Copyright (c) S.N. Hemanth Meenakshisundaram | smeenaks at ucsd.edu
  *
- * Libav is free software; you can redistribute it and/or
+ * This file is part of FFmpeg.
+ *
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "libavutil/audioconvert.h"
+#include "libavutil/avassert.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 
 #include "audio.h"
 #include "avfilter.h"
 #include "internal.h"
+
+int avfilter_ref_get_channels(AVFilterBufferRef *ref)
+{
+    return ref->audio ? ref->audio->channels : 0;
+}
 
 AVFilterBufferRef *ff_null_get_audio_buffer(AVFilterLink *link, int perms,
                                             int nb_samples)
@@ -35,9 +44,13 @@ AVFilterBufferRef *ff_default_get_audio_buffer(AVFilterLink *link, int perms,
     AVFilterBufferRef *samplesref = NULL;
     uint8_t **data;
     int planar      = av_sample_fmt_is_planar(link->format);
-    int nb_channels = av_get_channel_layout_nb_channels(link->channel_layout);
+    int nb_channels = link->channels;
     int planes      = planar ? nb_channels : 1;
     int linesize;
+    int full_perms = AV_PERM_READ | AV_PERM_WRITE | AV_PERM_PRESERVE |
+                     AV_PERM_REUSE | AV_PERM_REUSE2 | AV_PERM_ALIGN;
+
+    av_assert1(!(perms & ~(full_perms | AV_PERM_NEG_LINESIZES)));
 
     if (!(data = av_mallocz(sizeof(*data) * planes)))
         goto fail;
@@ -45,11 +58,13 @@ AVFilterBufferRef *ff_default_get_audio_buffer(AVFilterLink *link, int perms,
     if (av_samples_alloc(data, &linesize, nb_channels, nb_samples, link->format, 0) < 0)
         goto fail;
 
-    samplesref = avfilter_get_audio_buffer_ref_from_arrays(data, linesize, perms,
-                                                           nb_samples, link->format,
-                                                           link->channel_layout);
+    samplesref = avfilter_get_audio_buffer_ref_from_arrays_channels(
+        data, linesize, full_perms, nb_samples, link->format,
+        link->channels, link->channel_layout);
     if (!samplesref)
         goto fail;
+
+    samplesref->audio->sample_rate = link->sample_rate;
 
     av_freep(&data);
 
@@ -77,11 +92,13 @@ AVFilterBufferRef *ff_get_audio_buffer(AVFilterLink *link, int perms,
     return ret;
 }
 
-AVFilterBufferRef* avfilter_get_audio_buffer_ref_from_arrays(uint8_t **data,
-                                                             int linesize,int perms,
-                                                             int nb_samples,
-                                                             enum AVSampleFormat sample_fmt,
-                                                             uint64_t channel_layout)
+AVFilterBufferRef* avfilter_get_audio_buffer_ref_from_arrays_channels(uint8_t **data,
+                                                                      int linesize,
+                                                                      int perms,
+                                                                      int nb_samples,
+                                                                      enum AVSampleFormat sample_fmt,
+                                                                      int channels,
+                                                                      uint64_t channel_layout)
 {
     int planes;
     AVFilterBuffer    *samples    = av_mallocz(sizeof(*samples));
@@ -90,6 +107,10 @@ AVFilterBufferRef* avfilter_get_audio_buffer_ref_from_arrays(uint8_t **data,
     if (!samples || !samplesref)
         goto fail;
 
+    av_assert0(channels);
+    av_assert0(channel_layout == 0 ||
+               channels == av_get_channel_layout_nb_channels(channel_layout));
+
     samplesref->buf         = samples;
     samplesref->buf->free   = ff_avfilter_default_free_buffer;
     if (!(samplesref->audio = av_mallocz(sizeof(*samplesref->audio))))
@@ -97,9 +118,9 @@ AVFilterBufferRef* avfilter_get_audio_buffer_ref_from_arrays(uint8_t **data,
 
     samplesref->audio->nb_samples     = nb_samples;
     samplesref->audio->channel_layout = channel_layout;
-    samplesref->audio->planar         = av_sample_fmt_is_planar(sample_fmt);
+    samplesref->audio->channels       = channels;
 
-    planes = samplesref->audio->planar ? av_get_channel_layout_nb_channels(channel_layout) : 1;
+    planes = av_sample_fmt_is_planar(sample_fmt) ? channels : 1;
 
     /* make sure the buffer gets read permission or it's useless for output */
     samplesref->perms = perms | AV_PERM_READ;
@@ -147,49 +168,14 @@ fail:
     return NULL;
 }
 
-static int default_filter_samples(AVFilterLink *link,
-                                  AVFilterBufferRef *samplesref)
+AVFilterBufferRef* avfilter_get_audio_buffer_ref_from_arrays(uint8_t **data,
+                                                             int linesize,int perms,
+                                                             int nb_samples,
+                                                             enum AVSampleFormat sample_fmt,
+                                                             uint64_t channel_layout)
 {
-    return ff_filter_samples(link->dst->outputs[0], samplesref);
+    int channels = av_get_channel_layout_nb_channels(channel_layout);
+    return avfilter_get_audio_buffer_ref_from_arrays_channels(data, linesize, perms,
+                                                              nb_samples, sample_fmt,
+                                                              channels, channel_layout);
 }
-
-int ff_filter_samples(AVFilterLink *link, AVFilterBufferRef *samplesref)
-{
-    int (*filter_samples)(AVFilterLink *, AVFilterBufferRef *);
-    AVFilterPad *dst = link->dstpad;
-    AVFilterBufferRef *buf_out;
-
-    FF_DPRINTF_START(NULL, filter_samples); ff_dlog_link(NULL, link, 1);
-
-    if (!(filter_samples = dst->filter_samples))
-        filter_samples = default_filter_samples;
-
-    /* prepare to copy the samples if the buffer has insufficient permissions */
-    if ((dst->min_perms & samplesref->perms) != dst->min_perms ||
-        dst->rej_perms & samplesref->perms) {
-        av_log(link->dst, AV_LOG_DEBUG,
-               "Copying audio data in avfilter (have perms %x, need %x, reject %x)\n",
-               samplesref->perms, link->dstpad->min_perms, link->dstpad->rej_perms);
-
-        buf_out = ff_default_get_audio_buffer(link, dst->min_perms,
-                                              samplesref->audio->nb_samples);
-        if (!buf_out) {
-            avfilter_unref_buffer(samplesref);
-            return AVERROR(ENOMEM);
-        }
-        buf_out->pts                = samplesref->pts;
-        buf_out->audio->sample_rate = samplesref->audio->sample_rate;
-
-        /* Copy actual data into new samples buffer */
-        av_samples_copy(buf_out->extended_data, samplesref->extended_data,
-                        0, 0, samplesref->audio->nb_samples,
-                        av_get_channel_layout_nb_channels(link->channel_layout),
-                        link->format);
-
-        avfilter_unref_buffer(samplesref);
-    } else
-        buf_out = samplesref;
-
-    return filter_samples(link, buf_out);
-}
-

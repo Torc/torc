@@ -1,28 +1,28 @@
 /*
- * G.723.1 compatible decoder data tables.
+ * G723.1 compatible decoder data tables.
  * Copyright (c) 2006 Benjamin Larsson
  * Copyright (c) 2010 Mohamed Naufal Basheer
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 /**
  * @file
- * G.723.1 compatible decoder data tables
+ * G723.1 compatible decoder data tables
  */
 
 #ifndef AVCODEC_G723_1_DATA_H
@@ -33,6 +33,8 @@
 #define SUBFRAMES       4
 #define SUBFRAME_LEN    60
 #define FRAME_LEN       (SUBFRAME_LEN << 2)
+#define HALF_FRAME_LEN  (FRAME_LEN / 2)
+#define LPC_FRAME       (HALF_FRAME_LEN + SUBFRAME_LEN)
 #define LPC_ORDER       10
 #define LSP_BANDS       3
 #define LSP_CB_SIZE     256
@@ -44,19 +46,89 @@
 #define GAIN_LEVELS     24
 #define COS_TBL_SIZE    512
 
+/**
+ * G723.1 frame types
+ */
+typedef enum FrameType {
+    ACTIVE_FRAME,        ///< Active speech
+    SID_FRAME,           ///< Silence Insertion Descriptor frame
+    UNTRANSMITTED_FRAME
+} FrameType;
+
 static const uint8_t frame_size[4] = { 24, 20, 4, 1 };
 
-/* Postfilter gain weighting factors scaled by 2^15 */
-static const int16_t ppf_gain_weight[2] = { 0x1800, 0x2000 };
+typedef enum Rate {
+    RATE_6300,
+    RATE_5300
+} Rate;
 
-/* LSP DC component */
+/**
+ * G723.1 unpacked data subframe
+ */
+typedef struct G723_1_Subframe {
+    int ad_cb_lag;     ///< adaptive codebook lag
+    int ad_cb_gain;
+    int dirac_train;
+    int pulse_sign;
+    int grid_index;
+    int amp_index;
+    int pulse_pos;
+} G723_1_Subframe;
+
+/**
+ * Pitch postfilter parameters
+ */
+typedef struct {
+    int     index;    ///< postfilter backward/forward lag
+    int16_t opt_gain; ///< optimal gain
+    int16_t sc_gain;  ///< scaling gain
+} PPFParam;
+
+/**
+ * Harmonic filter parameters
+ */
+typedef struct {
+    int index;
+    int gain;
+} HFParam;
+
+/**
+ * Optimized fixed codebook excitation parameters
+ */
+typedef struct {
+    int min_err;
+    int amp_index;
+    int grid_index;
+    int dirac_train;
+    int pulse_pos[PULSE_MAX];
+    int pulse_sign[PULSE_MAX];
+} FCBParam;
+
+/**
+ * Postfilter gain weighting factors scaled by 2^15
+ */
+static const int16_t ppf_gain_weight[2] = {0x1800, 0x2000};
+
+/**
+ * LSP DC component
+ */
 static const int16_t dc_lsp[LPC_ORDER] = {
-    0x0c3b, 0x1271, 0x1e0a, 0x2a36, 0x3630,
-    0x406f, 0x4d28, 0x56f4, 0x638c, 0x6c46
+    0x0c3b,
+    0x1271,
+    0x1e0a,
+    0x2a36,
+    0x3630,
+    0x406f,
+    0x4d28,
+    0x56f4,
+    0x638c,
+    0x6c46
 };
 
-/* Cosine table scaled by 2^14 */
-static const int16_t cos_tab[COS_TBL_SIZE] = {
+/**
+ * Cosine table scaled by 2^14
+ */
+static const int16_t cos_tab[COS_TBL_SIZE+1] = {
     16384,  16383,  16379,  16373,  16364,  16353,  16340,  16324,
     16305,  16284,  16261,  16235,  16207,  16176,  16143,  16107,
     16069,  16029,  15986,  15941,  15893,  15843,  15791,  15736,
@@ -121,9 +193,12 @@ static const int16_t cos_tab[COS_TBL_SIZE] = {
     15679,  15736,  15791,  15843,  15893,  15941,  15986,  16029,
     16069,  16107,  16143,  16176,  16207,  16235,  16261,  16284,
     16305,  16324,  16340,  16353,  16364,  16373,  16379,  16383,
+    16384
 };
 
-/* LSP VQ tables */
+/**
+ *  LSP VQ tables
+ */
 static const int16_t lsp_band0[LSP_CB_SIZE][3] = {
     {    0,      0,      0}, { -270,  -1372,  -1032}, { -541,  -1650,  -1382},
     { -723,  -2011,  -2213}, { -941,  -1122,  -1942}, { -780,  -1145,  -2454},
@@ -433,12 +508,12 @@ static const int16_t lsp_band2[LSP_CB_SIZE][4] = {
     { 3633,   2336,   2408,   1453}, { 2923,   3517,   2567,   1318},
 };
 
-/*
+/**
  * Used for the coding/decoding of the pulses positions
  * for the MP-MLQ codebook
  */
 static const int32_t combinatorial_table[PULSE_MAX][SUBFRAME_LEN/GRID_SIZE] = {
-    {118755, 98280, 80730, 65780L, 53130,
+    {118755, 98280, 80730,  65780, 53130,
       42504, 33649, 26334,  20349, 15504,
       11628,  8568,  6188,   4368,  3003,
        2002,  1287,   792,    462,   252,
@@ -527,10 +602,14 @@ static const int16_t pitch_contrib[340] = {
     -2, 25144,  0, 17998
 };
 
-/* Number of non-zero pulses in the MP-MLQ excitation */
+/**
+ * Number of non-zero pulses in the MP-MLQ excitation
+ */
 static const int8_t pulses[4] = {6, 5, 6, 5};
 
-/* Size of the MP-MLQ fixed excitation codebooks */
+/**
+ * Size of the MP-MLQ fixed excitation codebooks
+ */
 static const int32_t max_pos[4] = {593775, 142506, 593775, 142506};
 
 static const int16_t fixed_cb_gain[GAIN_LEVELS] = {
@@ -1183,12 +1262,62 @@ static const int16_t adaptive_cb_gain170[170 * 20] = {
     -4534,  -2487,  -3932,  -4166,  -2113,  -3341,  -3540,  -3070
 };
 
-/* 0.65^i (Zero part) and 0.75^i (Pole part) scaled by 2^15 */
+/**
+ * 0.65^i (Zero part) and 0.75^i (Pole part) scaled by 2^15
+ */
 static const int16_t postfilter_tbl[2][LPC_ORDER] = {
     /* Zero */
-    { 21299, 13844,  8999,  5849, 3802, 2471, 1606, 1044,  679,  441 },
+    {21299, 13844,  8999,  5849, 3802, 2471, 1606, 1044,  679,  441},
     /* Pole */
-    { 24576, 18432, 13824, 10368, 7776, 5832, 4374, 3281, 2460, 1845 }
+    {24576, 18432, 13824, 10368, 7776, 5832, 4374, 3281, 2460, 1845}
+};
+
+/**
+ * Hamming window coefficients scaled by 2^15
+ */
+static const int16_t hamming_window[LPC_FRAME] = {
+     2621,  2631,  2659,  2705,  2770,  2853,  2955,  3074,  3212,  3367,
+     3541,  3731,  3939,  4164,  4405,  4663,  4937,  5226,  5531,  5851,
+     6186,  6534,  6897,  7273,  7661,  8062,  8475,  8899,  9334,  9780,
+    10235, 10699, 11172, 11653, 12141, 12636, 13138, 13645, 14157, 14673,
+    15193, 15716, 16242, 16769, 17298, 17827, 18356, 18884, 19411, 19935,
+    20457, 20975, 21489, 21999, 22503, 23002, 23494, 23978, 24455, 24924,
+    25384, 25834, 26274, 26704, 27122, 27529, 27924, 28306, 28675, 29031,
+    29373, 29700, 30012, 30310, 30592, 30857, 31107, 31340, 31557, 31756,
+    31938, 32102, 32249, 32377, 32488, 32580, 32654, 32710, 32747, 32766,
+    32766, 32747, 32710, 32654, 32580, 32488, 32377, 32249, 32102, 31938,
+    31756, 31557, 31340, 31107, 30857, 30592, 30310, 30012, 29700, 29373,
+    29031, 28675, 28306, 27924, 27529, 27122, 26704, 26274, 25834, 25384,
+    24924, 24455, 23978, 23494, 23002, 22503, 21999, 21489, 20975, 20457,
+    19935, 19411, 18884, 18356, 17827, 17298, 16769, 16242, 15716, 15193,
+    14673, 14157, 13645, 13138, 12636, 12141, 11653, 11172, 10699, 10235,
+     9780, 9334,   8899,  8475,  8062,  7661,  7273,  6897,  6534,  6186,
+     5851, 5531,   5226,  4937,  4663,  4405,  4164,  3939,  3731,  3541,
+     3367, 3212,   3074,  2955,  2853,  2770,  2705,  2659,  2631,  2621
+};
+
+/**
+ * Binomial window coefficients scaled by 2^15
+ */
+static const int16_t binomial_window[LPC_ORDER] = {
+    32749, 32695, 32604, 32477, 32315, 32118, 31887, 31622, 31324, 30995
+};
+
+/**
+ * 0.994^i scaled by 2^15
+ */
+static const int16_t bandwidth_expand[LPC_ORDER] = {
+    32571, 32376, 32182, 31989, 31797, 31606, 31416, 31228, 31040, 30854
+};
+
+/**
+ * 0.5^i scaled by 2^15
+ */
+static const int16_t percept_flt_tbl[2][LPC_ORDER] = {
+    /* Zero part */
+    {29491, 26542, 23888, 21499, 19349, 17414, 15673, 14106, 12695, 11425},
+    /* Pole part */
+    {16384,  8192,  4096,  2048,  1024,   512,   256,   128,    64,    32}
 };
 
 static const int cng_adaptive_cb_lag[4] = { 1, 0, 1, 3 };

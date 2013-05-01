@@ -2,20 +2,20 @@
  * LPC utility code
  * Copyright (c) 2006  Justin Ruggles <justin.ruggles@gmail.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -24,6 +24,7 @@
 
 #define LPC_USE_DOUBLE
 #include "lpc.h"
+#include "libavutil/avassert.h"
 
 
 /**
@@ -38,7 +39,7 @@ static void lpc_apply_welch_window_c(const int32_t *data, int len,
 
     /* The optimization in commit fa4ed8c does not support odd len.
      * If someone wants odd len extend that change. */
-    assert(!(len & 1));
+    av_assert2(!(len & 1));
 
     n2 = (len >> 1);
     c = 2.0 / (len - 1.0);
@@ -148,6 +149,18 @@ static int estimate_best_order(double *ref, int min_order, int max_order)
     return est;
 }
 
+int ff_lpc_calc_ref_coefs(LPCContext *s,
+                          const int32_t *samples, int order, double *ref)
+{
+    double autoc[MAX_LPC_ORDER + 1];
+
+    s->lpc_apply_welch_window(samples, s->blocksize, s->windowed_samples);
+    s->lpc_compute_autocorr(s->windowed_samples, s->blocksize, order, autoc);
+    compute_ref_coefs(autoc, order, ref, NULL);
+
+    return order;
+}
+
 /**
  * Calculate LPC coefficients for multiple orders
  *
@@ -167,7 +180,7 @@ int ff_lpc_calc_coefs(LPCContext *s,
     int i, j, pass;
     int opt_order;
 
-    assert(max_order >= MIN_LPC_ORDER && max_order <= MAX_LPC_ORDER &&
+    av_assert2(max_order >= MIN_LPC_ORDER && max_order <= MAX_LPC_ORDER &&
            lpc_type > FF_LPC_TYPE_FIXED);
 
     /* reinit LPC context if parameters have changed */
@@ -190,8 +203,11 @@ int ff_lpc_calc_coefs(LPCContext *s,
         LLSModel m[2];
         double var[MAX_LPC_ORDER+1], av_uninit(weight);
 
+        if(lpc_passes <= 0)
+            lpc_passes = 2;
+
         for(pass=0; pass<lpc_passes; pass++){
-            av_init_lls(&m[pass&1], max_order);
+            avpriv_init_lls(&m[pass&1], max_order);
 
             weight=0;
             for(i=max_order; i<blocksize; i++){
@@ -200,7 +216,7 @@ int ff_lpc_calc_coefs(LPCContext *s,
 
                 if(pass){
                     double eval, inv, rinv;
-                    eval= av_evaluate_lls(&m[(pass-1)&1], var+1, max_order-1);
+                    eval= avpriv_evaluate_lls(&m[(pass-1)&1], var+1, max_order-1);
                     eval= (512>>pass) + fabs(eval - var[0]);
                     inv = 1/eval;
                     rinv = sqrt(inv);
@@ -210,9 +226,9 @@ int ff_lpc_calc_coefs(LPCContext *s,
                 }else
                     weight++;
 
-                av_update_lls(&m[pass&1], var, 1.0);
+                avpriv_update_lls(&m[pass&1], var, 1.0);
             }
-            av_solve_lls(&m[pass&1], 0.001, 0);
+            avpriv_solve_lls(&m[pass&1], 0.001, 0);
         }
 
         for(i=0; i<max_order; i++){
@@ -222,7 +238,8 @@ int ff_lpc_calc_coefs(LPCContext *s,
         }
         for(i=max_order-1; i>0; i--)
             ref[i] = ref[i-1] - ref[i];
-    }
+    } else
+        av_assert0(0);
     opt_order = max_order;
 
     if(omethod == ORDER_METHOD_EST) {

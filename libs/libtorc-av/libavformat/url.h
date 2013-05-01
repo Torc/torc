@@ -1,19 +1,19 @@
 /*
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -48,6 +48,7 @@ typedef struct URLContext {
     int is_streamed;            /**< true if streamed (no seek possible), default = false */
     int is_connected;
     AVIOInterruptCB interrupt_callback;
+    int64_t rw_timeout;         /**< maximum time to wait for (network) read/write operation completion, in mcs */
 } URLContext;
 
 typedef struct URLProtocol {
@@ -181,11 +182,12 @@ int64_t ffurl_seek(URLContext *h, int64_t pos, int whence);
 
 /**
  * Close the resource accessed by the URLContext h, and free the
- * memory used by it.
+ * memory used by it. Also set the URLContext pointer to NULL.
  *
  * @return a negative value if an error condition occurred, 0
  * otherwise
  */
+int ffurl_closep(URLContext **h);
 int ffurl_close(URLContext *h);
 
 /**

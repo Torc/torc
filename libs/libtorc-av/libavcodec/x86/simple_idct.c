@@ -3,25 +3,23 @@
  *
  * Copyright (c) 2001, 2002 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-#include "libavcodec/dsputil.h"
 #include "libavcodec/simple_idct.h"
-#include "libavutil/internal.h"
 #include "libavutil/mem.h"
 #include "dsputil_mmx.h"
 
@@ -1155,12 +1153,12 @@ void ff_simple_idct_mmx(int16_t *block)
 
 //FIXME merge add/put into the idct
 
-void ff_simple_idct_put_mmx(uint8_t *dest, int line_size, DCTELEM *block)
+void ff_simple_idct_put_mmx(uint8_t *dest, int line_size, int16_t *block)
 {
     idct(block);
     ff_put_pixels_clamped_mmx(block, dest, line_size);
 }
-void ff_simple_idct_add_mmx(uint8_t *dest, int line_size, DCTELEM *block)
+void ff_simple_idct_add_mmx(uint8_t *dest, int line_size, int16_t *block)
 {
     idct(block);
     ff_add_pixels_clamped_mmx(block, dest, line_size);

@@ -2,20 +2,20 @@
  * Deluxe Paint Animation decoder
  * Copyright (c) 2009 Peter Ross
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -41,10 +41,11 @@ static av_cold int decode_init(AVCodecContext *avctx)
 
     avctx->pix_fmt = AV_PIX_FMT_PAL8;
 
-    s->frame.reference = 1;
+    avcodec_get_frame_defaults(&s->frame);
+    s->frame.reference = 3;
     bytestream2_init(&s->gb, avctx->extradata, avctx->extradata_size);
     if (bytestream2_get_bytes_left(&s->gb) < 16 * 8 + 4 * 256)
-        return -1;
+        return AVERROR_INVALIDDATA;
 
     bytestream2_skipu(&s->gb, 16 * 8);
     for (i = 0; i < 256; i++)
@@ -105,17 +106,17 @@ exhausted:
 }
 
 static int decode_frame(AVCodecContext *avctx,
-                        void *data, int *data_size,
+                        void *data, int *got_frame,
                         AVPacket *avpkt)
 {
     AnmContext *s = avctx->priv_data;
     const int buf_size = avpkt->size;
     uint8_t *dst, *dst_end;
-    int count;
+    int count, ret;
 
-    if(avctx->reget_buffer(avctx, &s->frame) < 0){
+    if ((ret = avctx->reget_buffer(avctx, &s->frame)) < 0){
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
-        return -1;
+        return ret;
     }
     dst     = s->frame.data[0];
     dst_end = s->frame.data[0] + s->frame.linesize[0]*avctx->height;
@@ -124,11 +125,11 @@ static int decode_frame(AVCodecContext *avctx,
 
     if (bytestream2_get_byte(&s->gb) != 0x42) {
         av_log_ask_for_sample(avctx, "unknown record type\n");
-        return buf_size;
+        return AVERROR_INVALIDDATA;
     }
     if (bytestream2_get_byte(&s->gb)) {
         av_log_ask_for_sample(avctx, "padding bytes not supported\n");
-        return buf_size;
+        return AVERROR_PATCHWELCOME;
     }
     bytestream2_skip(&s->gb, 2);
 
@@ -158,7 +159,7 @@ static int decode_frame(AVCodecContext *avctx,
                     break; // stop
                 if (type == 2) {
                     av_log_ask_for_sample(avctx, "unknown opcode");
-                    return AVERROR_INVALIDDATA;
+                    return AVERROR_PATCHWELCOME;
                 }
                 continue;
             }
@@ -170,7 +171,7 @@ static int decode_frame(AVCodecContext *avctx,
 
     memcpy(s->frame.data[1], s->palette, AVPALETTE_SIZE);
 
-    *data_size = sizeof(AVFrame);
+    *got_frame = 1;
     *(AVFrame*)data = s->frame;
     return buf_size;
 }

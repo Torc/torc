@@ -2,20 +2,20 @@
  * RV30/40 decoder common data
  * Copyright (c) 2007 Mike Melanson, Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -24,10 +24,10 @@
  * RV30/40 decoder common data
  */
 
+#include "libavutil/imgutils.h"
 #include "libavutil/internal.h"
 
 #include "avcodec.h"
-#include "dsputil.h"
 #include "mpegvideo.h"
 #include "golomb.h"
 #include "internal.h"
@@ -214,9 +214,9 @@ static int rv34_decode_cbp(GetBitContext *gb, RV34VLC *vlc, int table)
 }
 
 /**
- * Get one coefficient value from the bistream and store it.
+ * Get one coefficient value from the bitstream and store it.
  */
-static inline void decode_coeff(DCTELEM *dst, int coef, int esc, GetBitContext *gb, VLC* vlc, int q)
+static inline void decode_coeff(int16_t *dst, int coef, int esc, GetBitContext *gb, VLC* vlc, int q)
 {
     if(coef){
         if(coef == esc){
@@ -236,7 +236,7 @@ static inline void decode_coeff(DCTELEM *dst, int coef, int esc, GetBitContext *
 /**
  * Decode 2x2 subblock of coefficients.
  */
-static inline void decode_subblock(DCTELEM *dst, int code, const int is_block2, GetBitContext *gb, VLC *vlc, int q)
+static inline void decode_subblock(int16_t *dst, int code, const int is_block2, GetBitContext *gb, VLC *vlc, int q)
 {
     int flags = modulo_three_table[code];
 
@@ -254,13 +254,13 @@ static inline void decode_subblock(DCTELEM *dst, int code, const int is_block2, 
 /**
  * Decode a single coefficient.
  */
-static inline void decode_subblock1(DCTELEM *dst, int code, GetBitContext *gb, VLC *vlc, int q)
+static inline void decode_subblock1(int16_t *dst, int code, GetBitContext *gb, VLC *vlc, int q)
 {
     int coeff = modulo_three_table[code] >> 6;
     decode_coeff(dst, coeff, 3, gb, vlc, q);
 }
 
-static inline void decode_subblock3(DCTELEM *dst, int code, GetBitContext *gb, VLC *vlc,
+static inline void decode_subblock3(int16_t *dst, int code, GetBitContext *gb, VLC *vlc,
                                     int q_dc, int q_ac1, int q_ac2)
 {
     int flags = modulo_three_table[code];
@@ -282,7 +282,7 @@ static inline void decode_subblock3(DCTELEM *dst, int code, GetBitContext *gb, V
  *  o--o
  */
 
-static int rv34_decode_block(DCTELEM *dst, GetBitContext *gb, RV34VLC *rvlc, int fc, int sc, int q_dc, int q_ac1, int q_ac2)
+static int rv34_decode_block(int16_t *dst, GetBitContext *gb, RV34VLC *rvlc, int fc, int sc, int q_dc, int q_ac1, int q_ac2)
 {
     int code, pattern, has_ac = 1;
 
@@ -725,12 +725,12 @@ static inline void rv34_mc(RV34DecContext *r, const int block_type,
         uint8_t *uvbuf = s->edge_emu_buffer + 22 * s->linesize;
 
         srcY -= 2 + 2*s->linesize;
-        s->dsp.emulated_edge_mc(s->edge_emu_buffer, srcY, s->linesize, (width<<3)+6, (height<<3)+6,
+        s->vdsp.emulated_edge_mc(s->edge_emu_buffer, srcY, s->linesize, (width<<3)+6, (height<<3)+6,
                             src_x - 2, src_y - 2, s->h_edge_pos, s->v_edge_pos);
         srcY = s->edge_emu_buffer + 2 + 2*s->linesize;
-        s->dsp.emulated_edge_mc(uvbuf     , srcU, s->uvlinesize, (width<<2)+1, (height<<2)+1,
+        s->vdsp.emulated_edge_mc(uvbuf     , srcU, s->uvlinesize, (width<<2)+1, (height<<2)+1,
                             uvsrc_x, uvsrc_y, s->h_edge_pos >> 1, s->v_edge_pos >> 1);
-        s->dsp.emulated_edge_mc(uvbuf + 16, srcV, s->uvlinesize, (width<<2)+1, (height<<2)+1,
+        s->vdsp.emulated_edge_mc(uvbuf + 16, srcV, s->uvlinesize, (width<<2)+1, (height<<2)+1,
                             uvsrc_x, uvsrc_y, s->h_edge_pos >> 1, s->v_edge_pos >> 1);
         srcU = uvbuf;
         srcV = uvbuf + 16;
@@ -994,7 +994,7 @@ static inline void rv34_process_block(RV34DecContext *r,
                                       int fc, int sc, int q_dc, int q_ac)
 {
     MpegEncContext *s = &r->s;
-    DCTELEM *ptr = s->block[0];
+    int16_t *ptr = s->block[0];
     int has_ac = rv34_decode_block(ptr, &s->gb, r->cur_vlcs,
                                    fc, sc, q_dc, q_ac, q_ac);
     if(has_ac){
@@ -1007,13 +1007,13 @@ static inline void rv34_process_block(RV34DecContext *r,
 
 static void rv34_output_i16x16(RV34DecContext *r, int8_t *intra_types, int cbp)
 {
-    LOCAL_ALIGNED_16(DCTELEM, block16, [16]);
+    LOCAL_ALIGNED_16(int16_t, block16, [16]);
     MpegEncContext *s    = &r->s;
     GetBitContext  *gb   = &s->gb;
     int             q_dc = rv34_qscale_tab[ r->luma_dc_quant_i[s->qscale] ],
                     q_ac = rv34_qscale_tab[s->qscale];
     uint8_t        *dst  = s->dest[0];
-    DCTELEM        *ptr  = s->block[0];
+    int16_t        *ptr  = s->block[0];
     int i, j, itype, has_ac;
 
     memset(block16, 0, 16 * sizeof(*block16));
@@ -1179,7 +1179,7 @@ static int rv34_decode_inter_macroblock(RV34DecContext *r, int8_t *intra_types)
     MpegEncContext *s   = &r->s;
     GetBitContext  *gb  = &s->gb;
     uint8_t        *dst = s->dest[0];
-    DCTELEM        *ptr = s->block[0];
+    int16_t        *ptr = s->block[0];
     int          mb_pos = s->mb_x + s->mb_y * s->mb_stride;
     int cbp, cbp2;
     int q_dc, q_ac, has_ac;
@@ -1219,7 +1219,7 @@ static int rv34_decode_inter_macroblock(RV34DecContext *r, int8_t *intra_types)
 
     if(r->is16){
         // Only for RV34_MB_P_MIX16x16
-        LOCAL_ALIGNED_16(DCTELEM, block16, [16]);
+        LOCAL_ALIGNED_16(int16_t, block16, [16]);
         memset(block16, 0, 16 * sizeof(*block16));
         q_dc = rv34_qscale_tab[ r->luma_dc_quant_p[s->qscale] ];
         q_ac = rv34_qscale_tab[s->qscale];
@@ -1332,7 +1332,7 @@ static int check_slice_end(RV34DecContext *r, MpegEncContext *s)
     if(r->s.mb_skip_run > 1)
         return 0;
     bits = get_bits_left(&s->gb);
-    if(bits < 0 || (bits < 8 && !show_bits(&s->gb, bits)))
+    if(bits <= 0 || (bits < 8 && !show_bits(&s->gb, bits)))
         return 1;
     return 0;
 }
@@ -1403,6 +1403,10 @@ static int rv34_decode_slice(RV34DecContext *r, int end, const uint8_t* buf, int
         av_log(s->avctx, AV_LOG_ERROR, "Slice type mismatch\n");
         return AVERROR_INVALIDDATA;
     }
+    if (s->width != r->si.width || s->height != r->si.height) {
+        av_log(s->avctx, AV_LOG_ERROR, "Size mismatch\n");
+        return AVERROR_INVALIDDATA;
+    }
 
     r->si.end = end;
     s->qscale = r->si.quant;
@@ -1429,7 +1433,7 @@ static int rv34_decode_slice(RV34DecContext *r, int end, const uint8_t* buf, int
         else
             res = rv34_decode_intra_macroblock(r, r->intra_types + s->mb_x * 4 + 4);
         if(res < 0){
-            ff_er_add_slice(s, s->resync_mb_x, s->resync_mb_y, s->mb_x-1, s->mb_y, ER_MB_ERROR);
+            ff_er_add_slice(&s->er, s->resync_mb_x, s->resync_mb_y, s->mb_x-1, s->mb_y, ER_MB_ERROR);
             return -1;
         }
         if (++s->mb_x == s->mb_width) {
@@ -1452,7 +1456,7 @@ static int rv34_decode_slice(RV34DecContext *r, int end, const uint8_t* buf, int
             s->first_slice_line=0;
         s->mb_num_left--;
     }
-    ff_er_add_slice(s, s->resync_mb_x, s->resync_mb_y, s->mb_x-1, s->mb_y, ER_MB_END);
+    ff_er_add_slice(&s->er, s->resync_mb_x, s->resync_mb_y, s->mb_x-1, s->mb_y, ER_MB_END);
 
     return s->mb_y == s->mb_height;
 }
@@ -1490,11 +1494,11 @@ av_cold int ff_rv34_decode_init(AVCodecContext *avctx)
 
 #if CONFIG_RV30_DECODER
     if (avctx->codec_id == AV_CODEC_ID_RV30)
-        ff_rv30dsp_init(&r->rdsp, &r->s.dsp);
+        ff_rv30dsp_init(&r->rdsp);
 #endif
 #if CONFIG_RV40_DECODER
     if (avctx->codec_id == AV_CODEC_ID_RV40)
-        ff_rv40dsp_init(&r->rdsp, &r->s.dsp);
+        ff_rv40dsp_init(&r->rdsp);
 #endif
 
     if ((ret = rv34_decoder_alloc(r)) < 0)
@@ -1565,7 +1569,7 @@ static int finish_frame(AVCodecContext *avctx, AVFrame *pict)
     MpegEncContext *s = &r->s;
     int got_picture = 0;
 
-    ff_er_frame_end(s);
+    ff_er_frame_end(&s->er);
     ff_MPV_frame_end(s);
     s->mb_num_left = 0;
 
@@ -1583,6 +1587,16 @@ static int finish_frame(AVCodecContext *avctx, AVFrame *pict)
         ff_print_debug_info(s, pict);
 
     return got_picture;
+}
+
+static AVRational update_sar(int old_w, int old_h, AVRational sar, int new_w, int new_h)
+{
+    // attempt to keep aspect during typical resolution switches
+    if (!sar.num)
+        sar = (AVRational){1, 1};
+
+    sar = av_mul_q(sar, (AVRational){new_h * old_w, new_w * old_h});
+    return sar;
 }
 
 int ff_rv34_decode_frame(AVCodecContext *avctx,
@@ -1645,9 +1659,9 @@ int ff_rv34_decode_frame(AVCodecContext *avctx,
     /* first slice */
     if (si.start == 0) {
         if (s->mb_num_left > 0) {
-            av_log(avctx, AV_LOG_ERROR, "New frame but still %d MB left.",
+            av_log(avctx, AV_LOG_ERROR, "New frame but still %d MB left.\n",
                    s->mb_num_left);
-            ff_er_frame_end(s);
+            ff_er_frame_end(&s->er);
             ff_MPV_frame_end(s);
         }
 
@@ -1657,6 +1671,12 @@ int ff_rv34_decode_frame(AVCodecContext *avctx,
             av_log(s->avctx, AV_LOG_WARNING, "Changing dimensions to %dx%d\n",
                    si.width, si.height);
 
+            if (av_image_check_size(si.width, si.height, 0, s->avctx))
+                return AVERROR_INVALIDDATA;
+
+            s->avctx->sample_aspect_ratio = update_sar(
+                s->width, s->height, s->avctx->sample_aspect_ratio,
+                si.width, si.height);
             s->width  = si.width;
             s->height = si.height;
             avcodec_set_dimensions(s->avctx, s->width, s->height);
@@ -1668,7 +1688,7 @@ int ff_rv34_decode_frame(AVCodecContext *avctx,
         s->pict_type = si.type ? si.type : AV_PICTURE_TYPE_I;
         if (ff_MPV_frame_start(s, s->avctx) < 0)
             return -1;
-        ff_er_frame_start(s);
+        ff_mpeg_er_frame_start(s);
         if (!r->tmp_b_block_base) {
             int i;
 
@@ -1767,7 +1787,7 @@ int ff_rv34_decode_frame(AVCodecContext *avctx,
             av_log(avctx, AV_LOG_INFO, "marking unfished frame as finished\n");
             /* always mark the current frame as finished, frame-mt supports
              * only complete frames */
-            ff_er_frame_end(s);
+            ff_er_frame_end(&s->er);
             ff_MPV_frame_end(s);
             s->mb_num_left = 0;
             ff_thread_report_progress(&s->current_picture_ptr->f, INT_MAX, 0);

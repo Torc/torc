@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2011 Mina Nagy Zaki
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -23,8 +23,8 @@
  * format audio filter
  */
 
-#include "libavutil/audioconvert.h"
 #include "libavutil/avstring.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "libavutil/opt.h"
 
@@ -47,19 +47,15 @@ typedef struct AFormatContext {
 
 #define OFFSET(x) offsetof(AFormatContext, x)
 #define A AV_OPT_FLAG_AUDIO_PARAM
-static const AVOption options[] = {
-    { "sample_fmts",     "A comma-separated list of sample formats.",  OFFSET(formats_str),         AV_OPT_TYPE_STRING, .flags = A },
-    { "sample_rates",    "A comma-separated list of sample rates.",    OFFSET(sample_rates_str),    AV_OPT_TYPE_STRING, .flags = A },
-    { "channel_layouts", "A comma-separated list of channel layouts.", OFFSET(channel_layouts_str), AV_OPT_TYPE_STRING, .flags = A },
+#define F AV_OPT_FLAG_FILTERING_PARAM
+static const AVOption aformat_options[] = {
+    { "sample_fmts",     "A comma-separated list of sample formats.",  OFFSET(formats_str),         AV_OPT_TYPE_STRING, .flags = A|F },
+    { "sample_rates",    "A comma-separated list of sample rates.",    OFFSET(sample_rates_str),    AV_OPT_TYPE_STRING, .flags = A|F },
+    { "channel_layouts", "A comma-separated list of channel layouts.", OFFSET(channel_layouts_str), AV_OPT_TYPE_STRING, .flags = A|F },
     { NULL },
 };
 
-static const AVClass aformat_class = {
-    .class_name = "aformat filter",
-    .item_name  = av_default_item_name,
-    .option     = options,
-    .version    = LIBAVUTIL_VERSION_INT,
-};
+AVFILTER_DEFINE_CLASS(aformat);
 
 #define PARSE_FORMATS(str, type, list, add_to_list, get_fmt, none, desc)    \
 do {                                                                        \
@@ -100,10 +96,8 @@ static av_cold int init(AVFilterContext *ctx, const char *args)
     s->class = &aformat_class;
     av_opt_set_defaults(s);
 
-    if ((ret = av_set_options_string(s, args, "=", ":")) < 0) {
-        av_log(ctx, AV_LOG_ERROR, "Error parsing options string '%s'.\n", args);
+    if ((ret = av_set_options_string(s, args, "=", ":")) < 0)
         return ret;
-    }
 
     PARSE_FORMATS(s->formats_str, enum AVSampleFormat, s->formats,
                   ff_add_format, av_get_sample_fmt, AV_SAMPLE_FMT_NONE, "sample format");
@@ -127,7 +121,7 @@ static int query_formats(AVFilterContext *ctx)
     ff_set_common_samplerates(ctx, s->sample_rates ? s->sample_rates :
                                                      ff_all_samplerates());
     ff_set_common_channel_layouts(ctx, s->channel_layouts ? s->channel_layouts :
-                                                            ff_all_channel_layouts());
+                                                            ff_all_channel_counts());
 
     return 0;
 }
@@ -157,4 +151,5 @@ AVFilter avfilter_af_aformat = {
 
     .inputs        = avfilter_af_aformat_inputs,
     .outputs       = avfilter_af_aformat_outputs,
+    .priv_class    = &aformat_class,
 };

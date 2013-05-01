@@ -1,20 +1,20 @@
 /*
  * copyright (c) 2007 Luca Abeni
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -128,7 +128,7 @@ static int sdp_get_address(char *dest_addr, int size, int *ttl, const char *url)
 
     *ttl = 0;
 
-    if (strcmp(proto, "rtp")) {
+    if (strcmp(proto, "rtp") && strcmp(proto, "srtp")) {
         /* The url isn't for the actual rtp sessions,
          * don't parse out anything else than the destination.
          */
@@ -438,7 +438,7 @@ static char *sdp_write_media_attributes(char *buff, int size, AVCodecContext *c,
                                      payload_type, config ? config : "");
             break;
         case AV_CODEC_ID_AAC:
-            if (fmt && fmt->oformat->priv_class &&
+            if (fmt && fmt->oformat && fmt->oformat->priv_class &&
                 av_opt_flag_is_set(fmt->priv_data, "rtpflags", "latm")) {
                 config = latm_context2config(c);
                 if (!config)
@@ -575,6 +575,20 @@ static char *sdp_write_media_attributes(char *buff, int size, AVCodecContext *c,
         case AV_CODEC_ID_SPEEX:
             av_strlcatf(buff, size, "a=rtpmap:%d speex/%d\r\n",
                                      payload_type, c->sample_rate);
+            if (c->codec) {
+                const char *mode;
+                uint64_t vad_option;
+
+                if (c->flags & CODEC_FLAG_QSCALE)
+                      mode = "on";
+                else if (!av_opt_get_int(c, "vad", AV_OPT_FLAG_ENCODING_PARAM, &vad_option) && vad_option)
+                      mode = "vad";
+                else
+                      mode = "off";
+
+                av_strlcatf(buff, size, "a=fmtp:%d vbr=%s\r\n",
+                                        payload_type, mode);
+            }
             break;
         case AV_CODEC_ID_OPUS:
             av_strlcatf(buff, size, "a=rtpmap:%d opus/48000\r\n",
@@ -590,12 +604,15 @@ static char *sdp_write_media_attributes(char *buff, int size, AVCodecContext *c,
     return buff;
 }
 
-void ff_sdp_write_media(char *buff, int size, AVCodecContext *c, const char *dest_addr, const char *dest_type, int port, int ttl, AVFormatContext *fmt)
+void ff_sdp_write_media(char *buff, int size, AVStream *st, int idx,
+                        const char *dest_addr, const char *dest_type,
+                        int port, int ttl, AVFormatContext *fmt)
 {
+    AVCodecContext *c = st->codec;
     const char *type;
     int payload_type;
 
-    payload_type = ff_rtp_get_payload_type(fmt, c);
+    payload_type = ff_rtp_get_payload_type(fmt, c, idx);
 
     switch (c->codec_type) {
         case AVMEDIA_TYPE_VIDEO   : type = "video"      ; break;
@@ -617,7 +634,7 @@ int av_sdp_create(AVFormatContext *ac[], int n_files, char *buf, int size)
 {
     AVDictionaryEntry *title = av_dict_get(ac[0]->metadata, "title", NULL, 0);
     struct sdp_session_level s = { 0 };
-    int i, j, port, ttl, is_multicast;
+    int i, j, port, ttl, is_multicast, index = 0;
     char dst[32], dst_type[5];
 
     memset(buf, 0, size);
@@ -656,13 +673,26 @@ int av_sdp_create(AVFormatContext *ac[], int n_files, char *buf, int size)
                 ttl = 0;
         }
         for (j = 0; j < ac[i]->nb_streams; j++) {
-            ff_sdp_write_media(buf, size,
-                                  ac[i]->streams[j]->codec, dst[0] ? dst : NULL,
-                                  dst_type, (port > 0) ? port + j * 2 : 0, ttl,
-                                  ac[i]);
+            ff_sdp_write_media(buf, size, ac[i]->streams[j], index++,
+                               dst[0] ? dst : NULL, dst_type,
+                               (port > 0) ? port + j * 2 : 0,
+                               ttl, ac[i]);
             if (port <= 0) {
                 av_strlcatf(buf, size,
                                    "a=control:streamid=%d\r\n", i + j);
+            }
+            if (ac[i]->pb && ac[i]->pb->av_class) {
+                uint8_t *crypto_suite = NULL, *crypto_params = NULL;
+                av_opt_get(ac[i]->pb, "srtp_out_suite",  AV_OPT_SEARCH_CHILDREN,
+                           &crypto_suite);
+                av_opt_get(ac[i]->pb, "srtp_out_params", AV_OPT_SEARCH_CHILDREN,
+                           &crypto_params);
+                if (crypto_suite && crypto_suite[0])
+                    av_strlcatf(buf, size,
+                                "a=crypto:1 %s inline:%s\r\n",
+                                crypto_suite, crypto_params);
+                av_free(crypto_suite);
+                av_free(crypto_params);
             }
         }
     }
@@ -675,7 +705,9 @@ int av_sdp_create(AVFormatContext *ac[], int n_files, char *buf, int size)
     return AVERROR(ENOSYS);
 }
 
-void ff_sdp_write_media(char *buff, int size, AVCodecContext *c, const char *dest_addr, const char *dest_type, int port, int ttl, AVFormatContext *fmt)
+void ff_sdp_write_media(char *buff, int size, AVStream *st, int idx,
+                        const char *dest_addr, const char *dest_type,
+                        int port, int ttl, AVFormatContext *fmt)
 {
 }
 #endif

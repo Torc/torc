@@ -2,20 +2,20 @@
  * XVideo Motion Compensation
  * Copyright (c) 2003 Ivan Kalvachev
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -23,7 +23,6 @@
 #include <X11/extensions/XvMC.h>
 
 #include "avcodec.h"
-#include "dsputil.h"
 #include "mpegvideo.h"
 
 #undef NDEBUG
@@ -44,7 +43,7 @@ void ff_xvmc_init_block(MpegEncContext *s)
     struct xvmc_pix_fmt *render = (struct xvmc_pix_fmt*)s->current_picture.f.data[2];
     assert(render && render->xvmc_id == AV_XVMC_ID);
 
-    s->block = (DCTELEM (*)[64])(render->data_blocks + render->next_free_data_block_num * 64);
+    s->block = (int16_t (*)[64])(render->data_blocks + render->next_free_data_block_num * 64);
 }
 
 /**
@@ -145,7 +144,7 @@ void ff_xvmc_field_end(MpegEncContext *s)
     assert(render);
 
     if (render->filled_mv_blocks_num > 0)
-        ff_draw_horiz_band(s, 0, 0);
+        ff_mpeg_draw_horiz_band(s, 0, 0);
 }
 
 /**
@@ -328,5 +327,5 @@ void ff_xvmc_decode_mb(MpegEncContext *s)
 
 
     if (render->filled_mv_blocks_num == render->allocated_mv_blocks)
-        ff_draw_horiz_band(s, 0, 0);
+        ff_mpeg_draw_horiz_band(s, 0, 0);
 }

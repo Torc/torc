@@ -3,20 +3,20 @@
  *
  * copyright (c) 2010 Laurent Aimar
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -68,7 +68,7 @@ static void fill_picture_parameters(AVCodecContext *avctx,
         pp->bPicStructure      |= 0x01;
     if (s->picture_structure & PICT_BOTTOM_FIELD)
         pp->bPicStructure      |= 0x02;
-    pp->bSecondField            = v->interlace && v->fcm != ILACE_FIELD && !s->first_field;
+    pp->bSecondField            = v->interlace && v->fcm == ILACE_FIELD && v->second_field;
     pp->bPicIntra               = s->pict_type == AV_PICTURE_TYPE_I || v->bi_type;
     pp->bPicBackwardPrediction  = s->pict_type == AV_PICTURE_TYPE_B && !v->bi_type;
     pp->bBidirectionalAveragingMode = (1                                           << 7) |
@@ -178,13 +178,16 @@ static int commit_bitstream_and_slice_buffer(AVCodecContext *avctx,
 
     if (FAILED(IDirectXVideoDecoder_GetBuffer(ctx->decoder,
                                               DXVA2_BitStreamDateBufferType,
-                                              &dxva_data, &dxva_size)))
+                                              (void **)&dxva_data, &dxva_size)))
         return -1;
 
     result = data_size <= dxva_size ? 0 : -1;
     if (!result) {
-        if (start_code_size > 0)
+        if (start_code_size > 0) {
             memcpy(dxva_data, start_code, start_code_size);
+            if (v->second_field)
+                dxva_data[3] = 0x0c;
+        }
         memcpy(dxva_data + start_code_size,
                ctx_pic->bitstream + slice->dwSliceDataLocation, slice_size);
         if (padding > 0)
@@ -208,9 +211,9 @@ static int commit_bitstream_and_slice_buffer(AVCodecContext *avctx,
                                   slice, sizeof(*slice), bs->NumMBsInBuffer);
 }
 
-static int start_frame(AVCodecContext *avctx,
-                       av_unused const uint8_t *buffer,
-                       av_unused uint32_t size)
+static int dxva2_vc1_start_frame(AVCodecContext *avctx,
+                                 av_unused const uint8_t *buffer,
+                                 av_unused uint32_t size)
 {
     const VC1Context *v = avctx->priv_data;
     struct dxva_context *ctx = avctx->hwaccel_context;
@@ -227,8 +230,9 @@ static int start_frame(AVCodecContext *avctx,
     return 0;
 }
 
-static int decode_slice(AVCodecContext *avctx,
-                        const uint8_t *buffer, uint32_t size)
+static int dxva2_vc1_decode_slice(AVCodecContext *avctx,
+                                  const uint8_t *buffer,
+                                  uint32_t size)
 {
     const VC1Context *v = avctx->priv_data;
     const Picture *current_picture = v->s.current_picture_ptr;
@@ -250,18 +254,22 @@ static int decode_slice(AVCodecContext *avctx,
     return 0;
 }
 
-static int end_frame(AVCodecContext *avctx)
+static int dxva2_vc1_end_frame(AVCodecContext *avctx)
 {
     VC1Context *v = avctx->priv_data;
     struct dxva2_picture_context *ctx_pic = v->s.current_picture_ptr->f.hwaccel_picture_private;
+    int ret;
 
     if (ctx_pic->bitstream_size <= 0)
         return -1;
 
-    return ff_dxva2_common_end_frame(avctx, &v->s,
-                                     &ctx_pic->pp, sizeof(ctx_pic->pp),
-                                     NULL, 0,
-                                     commit_bitstream_and_slice_buffer);
+    ret = ff_dxva2_common_end_frame(avctx, v->s.current_picture_ptr,
+                                    &ctx_pic->pp, sizeof(ctx_pic->pp),
+                                    NULL, 0,
+                                    commit_bitstream_and_slice_buffer);
+    if (!ret)
+        ff_mpeg_draw_horiz_band(&v->s, 0, avctx->height);
+    return ret;
 }
 
 #if CONFIG_WMV3_DXVA2_HWACCEL
@@ -270,9 +278,9 @@ AVHWAccel ff_wmv3_dxva2_hwaccel = {
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = AV_CODEC_ID_WMV3,
     .pix_fmt        = AV_PIX_FMT_DXVA2_VLD,
-    .start_frame    = start_frame,
-    .decode_slice   = decode_slice,
-    .end_frame      = end_frame,
+    .start_frame    = dxva2_vc1_start_frame,
+    .decode_slice   = dxva2_vc1_decode_slice,
+    .end_frame      = dxva2_vc1_end_frame,
     .priv_data_size = sizeof(struct dxva2_picture_context),
 };
 #endif
@@ -282,8 +290,8 @@ AVHWAccel ff_vc1_dxva2_hwaccel = {
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = AV_CODEC_ID_VC1,
     .pix_fmt        = AV_PIX_FMT_DXVA2_VLD,
-    .start_frame    = start_frame,
-    .decode_slice   = decode_slice,
-    .end_frame      = end_frame,
+    .start_frame    = dxva2_vc1_start_frame,
+    .decode_slice   = dxva2_vc1_decode_slice,
+    .end_frame      = dxva2_vc1_end_frame,
     .priv_data_size = sizeof(struct dxva2_picture_context),
 };

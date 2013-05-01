@@ -2,20 +2,20 @@
  * Copyright (c) 2007 Benoit Fouet
  * Copyright (c) 2010 Stefano Sabatini
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -42,33 +42,19 @@ typedef struct {
 
 static int query_formats(AVFilterContext *ctx)
 {
-    static const enum AVPixelFormat pix_fmts[] = {
-        AV_PIX_FMT_RGB48BE,      AV_PIX_FMT_RGB48LE,
-        AV_PIX_FMT_BGR48BE,      AV_PIX_FMT_BGR48LE,
-        AV_PIX_FMT_ARGB,         AV_PIX_FMT_RGBA,
-        AV_PIX_FMT_ABGR,         AV_PIX_FMT_BGRA,
-        AV_PIX_FMT_RGB24,        AV_PIX_FMT_BGR24,
-        AV_PIX_FMT_RGB565BE,     AV_PIX_FMT_RGB565LE,
-        AV_PIX_FMT_RGB555BE,     AV_PIX_FMT_RGB555LE,
-        AV_PIX_FMT_BGR565BE,     AV_PIX_FMT_BGR565LE,
-        AV_PIX_FMT_BGR555BE,     AV_PIX_FMT_BGR555LE,
-        AV_PIX_FMT_GRAY16BE,     AV_PIX_FMT_GRAY16LE,
-        AV_PIX_FMT_YUV420P16LE,  AV_PIX_FMT_YUV420P16BE,
-        AV_PIX_FMT_YUV422P16LE,  AV_PIX_FMT_YUV422P16BE,
-        AV_PIX_FMT_YUV444P16LE,  AV_PIX_FMT_YUV444P16BE,
-        AV_PIX_FMT_YUV444P,      AV_PIX_FMT_YUV422P,
-        AV_PIX_FMT_YUV420P,      AV_PIX_FMT_YUV411P,
-        AV_PIX_FMT_YUV410P,      AV_PIX_FMT_YUV440P,
-        AV_PIX_FMT_YUVJ444P,     AV_PIX_FMT_YUVJ422P,
-        AV_PIX_FMT_YUVJ420P,     AV_PIX_FMT_YUVJ440P,
-        AV_PIX_FMT_YUVA420P,
-        AV_PIX_FMT_RGB8,         AV_PIX_FMT_BGR8,
-        AV_PIX_FMT_RGB4_BYTE,    AV_PIX_FMT_BGR4_BYTE,
-        AV_PIX_FMT_PAL8,         AV_PIX_FMT_GRAY8,
-        AV_PIX_FMT_NONE
-    };
+    AVFilterFormats *pix_fmts = NULL;
+    int fmt;
 
-    ff_set_common_formats(ctx, ff_make_format_list(pix_fmts));
+    for (fmt = 0; fmt < AV_PIX_FMT_NB; fmt++) {
+        const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(fmt);
+        if (!(desc->flags & PIX_FMT_HWACCEL ||
+              desc->flags & PIX_FMT_BITSTREAM ||
+              (desc->log2_chroma_w != desc->log2_chroma_h &&
+               desc->comp[0].plane == desc->comp[1].plane)))
+            ff_add_format(&pix_fmts, fmt);
+    }
+
+    ff_set_common_formats(ctx, pix_fmts);
     return 0;
 }
 
@@ -84,22 +70,34 @@ static int config_props(AVFilterLink *inlink)
     return 0;
 }
 
-static int draw_slice(AVFilterLink *inlink, int y, int h, int slice_dir)
+static int filter_frame(AVFilterLink *inlink, AVFilterBufferRef *in)
 {
-    FlipContext *flip = inlink->dst->priv;
-    AVFilterBufferRef *inpic  = inlink->cur_buf;
-    AVFilterBufferRef *outpic = inlink->dst->outputs[0]->out_buf;
+    AVFilterContext *ctx  = inlink->dst;
+    FlipContext *flip     = ctx->priv;
+    AVFilterLink *outlink = ctx->outputs[0];
+    AVFilterBufferRef *out;
     uint8_t *inrow, *outrow;
     int i, j, plane, step, hsub, vsub;
 
-    for (plane = 0; plane < 4 && inpic->data[plane]; plane++) {
+    out = ff_get_video_buffer(outlink, AV_PERM_WRITE, outlink->w, outlink->h);
+    if (!out) {
+        avfilter_unref_bufferp(&in);
+        return AVERROR(ENOMEM);
+    }
+    avfilter_copy_buffer_ref_props(out, in);
+
+    /* copy palette if required */
+    if (av_pix_fmt_desc_get(inlink->format)->flags & PIX_FMT_PAL)
+        memcpy(out->data[1], in->data[1], AVPALETTE_SIZE);
+
+    for (plane = 0; plane < 4 && in->data[plane]; plane++) {
         step = flip->max_step[plane];
         hsub = (plane == 1 || plane == 2) ? flip->hsub : 0;
         vsub = (plane == 1 || plane == 2) ? flip->vsub : 0;
 
-        outrow = outpic->data[plane] + (y>>vsub) * outpic->linesize[plane];
-        inrow  = inpic ->data[plane] + (y>>vsub) * inpic ->linesize[plane] + ((inlink->w >> hsub) - 1) * step;
-        for (i = 0; i < h>>vsub; i++) {
+        outrow = out->data[plane];
+        inrow  = in ->data[plane] + ((inlink->w >> hsub) - 1) * step;
+        for (i = 0; i < in->video->h >> vsub; i++) {
             switch (step) {
             case 1:
                 for (j = 0; j < (inlink->w >> hsub); j++)
@@ -140,19 +138,20 @@ static int draw_slice(AVFilterLink *inlink, int y, int h, int slice_dir)
                     memcpy(outrow + j*step, inrow - j*step, step);
             }
 
-            inrow  += inpic ->linesize[plane];
-            outrow += outpic->linesize[plane];
+            inrow  += in ->linesize[plane];
+            outrow += out->linesize[plane];
         }
     }
 
-    return ff_draw_slice(inlink->dst->outputs[0], y, h, slice_dir);
+    avfilter_unref_bufferp(&in);
+    return ff_filter_frame(outlink, out);
 }
 
 static const AVFilterPad avfilter_vf_hflip_inputs[] = {
     {
         .name         = "default",
         .type         = AVMEDIA_TYPE_VIDEO,
-        .draw_slice   = draw_slice,
+        .filter_frame = filter_frame,
         .config_props = config_props,
         .min_perms    = AV_PERM_READ,
     },

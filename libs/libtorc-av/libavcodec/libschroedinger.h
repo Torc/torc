@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2008 BBC, Anuradha Suraparaju <asuraparaju at gmail dot com >
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -114,7 +114,7 @@ static const struct {
 * Returns the video format preset matching the input video dimensions and
 * time base.
 */
-SchroVideoFormatEnum ff_get_schro_video_format_preset (AVCodecContext *avccontext);
+SchroVideoFormatEnum ff_get_schro_video_format_preset (AVCodecContext *avctx);
 
 /**
 * Sets the Schroedinger frame format corresponding to the Schro chroma format
@@ -127,7 +127,7 @@ int ff_get_schro_frame_format(SchroChromaFormat schro_chroma_fmt,
 * Create a Schro frame based on the dimensions and frame format
 * passed. Returns a pointer to a frame on success, NULL on failure.
 */
-SchroFrame *ff_create_schro_frame(AVCodecContext *avccontext,
+SchroFrame *ff_create_schro_frame(AVCodecContext *avctx,
                                   SchroFrameFormat schro_frame_fmt);
 
 #endif /* AVCODEC_LIBSCHROEDINGER_H */

@@ -8,20 +8,20 @@
  * aspecting, new decode_frame mechanism and apple mjpeg-b support
  *                                  by Alex Beregszaszi
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -31,7 +31,6 @@
  */
 
 #include "avcodec.h"
-#include "dsputil.h"
 #include "internal.h"
 #include "mpegvideo.h"
 #include "mjpeg.h"
@@ -57,10 +56,15 @@ static int encode_picture_lossless(AVCodecContext *avctx, AVPacket *pkt,
         max_pkt_size += mb_width * mb_height * 3 * 4
                         * s->mjpeg_hsample[0] * s->mjpeg_vsample[0];
     }
-    if ((ret = ff_alloc_packet(pkt, max_pkt_size)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet of size %d.\n", max_pkt_size);
+
+    if (!s->edge_emu_buffer &&
+        (ret = ff_mpv_frame_size_alloc(s, pict->linesize[0])) < 0) {
+        av_log(avctx, AV_LOG_ERROR, "failed to allocate context scratch buffers.\n");
         return ret;
     }
+
+    if ((ret = ff_alloc_packet2(avctx, pkt, max_pkt_size)) < 0)
+        return ret;
 
     init_put_bits(&s->pb, pkt->data, pkt->size);
 
@@ -72,7 +76,9 @@ static int encode_picture_lossless(AVCodecContext *avctx, AVPacket *pkt,
 
     s->header_bits= put_bits_count(&s->pb);
 
-    if(avctx->pix_fmt == AV_PIX_FMT_BGRA){
+    if(avctx->pix_fmt == AV_PIX_FMT_BGR0
+        || avctx->pix_fmt == AV_PIX_FMT_BGRA
+        || avctx->pix_fmt == AV_PIX_FMT_BGR24){
         int x, y, i;
         const int linesize= p->linesize[0];
         uint16_t (*buffer)[4]= (void *) s->rd_scratchpad;
@@ -95,9 +101,15 @@ static int encode_picture_lossless(AVCodecContext *avctx, AVPacket *pkt,
                 top[i]= left[i]= topleft[i]= buffer[0][i];
             }
             for(x = 0; x < width; x++) {
+                if(avctx->pix_fmt == AV_PIX_FMT_BGR24){
+                    buffer[x][1] = ptr[3*x+0] - ptr[3*x+1] + 0x100;
+                    buffer[x][2] = ptr[3*x+2] - ptr[3*x+1] + 0x100;
+                    buffer[x][0] = (ptr[3*x+0] + 2*ptr[3*x+1] + ptr[3*x+2])>>2;
+                }else{
                 buffer[x][1] = ptr[4*x+0] - ptr[4*x+1] + 0x100;
                 buffer[x][2] = ptr[4*x+2] - ptr[4*x+1] + 0x100;
                 buffer[x][0] = (ptr[4*x+0] + 2*ptr[4*x+1] + ptr[4*x+2])>>2;
+                }
 
                 for(i=0;i<3;i++) {
                     int pred, diff;
@@ -189,7 +201,8 @@ static int encode_picture_lossless(AVCodecContext *avctx, AVPacket *pkt,
     }
 
     emms_c();
-
+    av_assert0(s->esc_pos == s->header_bits >> 3);
+    ff_mjpeg_encode_stuffing(s);
     ff_mjpeg_encode_picture_trailer(s);
     s->picture_number++;
 
@@ -211,5 +224,10 @@ AVCodec ff_ljpeg_encoder = { //FIXME avoid MPV_* lossless JPEG should not need t
     .init           = ff_MPV_encode_init,
     .encode2        = encode_picture_lossless,
     .close          = ff_MPV_encode_end,
+    .pix_fmts       = (const enum AVPixelFormat[]){
+        AV_PIX_FMT_BGR24, AV_PIX_FMT_BGRA, AV_PIX_FMT_BGR0,
+        AV_PIX_FMT_YUVJ420P, AV_PIX_FMT_YUVJ444P, AV_PIX_FMT_YUVJ422P,
+        AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUV444P, AV_PIX_FMT_YUV422P,
+        AV_PIX_FMT_NONE},
     .long_name      = NULL_IF_CONFIG_SMALL("Lossless JPEG"),
 };

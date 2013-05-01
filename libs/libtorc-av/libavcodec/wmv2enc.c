@@ -1,25 +1,24 @@
 /*
- * Copyright (c) 2002 The Libav Project
+ * Copyright (c) 2002 The FFmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "avcodec.h"
-#include "dsputil.h"
 #include "mpegvideo.h"
 #include "msmpeg4.h"
 #include "msmpeg4data.h"
@@ -85,10 +84,10 @@ int ff_wmv2_encode_picture_header(MpegEncContext * s, int picture_number)
     w->abt_type=0;
     w->j_type=0;
 
-    assert(s->flipflop_rounding);
+    av_assert0(s->flipflop_rounding);
 
     if (s->pict_type == AV_PICTURE_TYPE_I) {
-        assert(s->no_rounding==1);
+        av_assert0(s->no_rounding==1);
         if(w->j_type_bit) put_bits(&s->pb, 1, w->j_type);
 
         if(w->per_mb_rl_bit) put_bits(&s->pb, 1, s->per_mb_rl_table);
@@ -148,7 +147,7 @@ int ff_wmv2_encode_picture_header(MpegEncContext * s, int picture_number)
  * useless M$ crap features. It is duplicated here in case someone wants
  * to add support for these crap features. */
 void ff_wmv2_encode_mb(MpegEncContext * s,
-                       DCTELEM block[6][64],
+                       int16_t block[6][64],
                        int motion_x, int motion_y)
 {
     Wmv2Context * const w= (Wmv2Context*)s;

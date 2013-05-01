@@ -2,20 +2,20 @@
  * a64 video encoder - multicolor modes
  * Copyright (c) 2009 Tobias Bindhammer
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -255,7 +255,7 @@ static int a64multi_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     int b_width;
 
     int req_size, ret;
-    uint8_t *buf;
+    uint8_t *buf = NULL;
 
     int *charmap     = c->mc_charmap;
     uint8_t *colram  = c->mc_colram;
@@ -309,10 +309,8 @@ static int a64multi_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
         /* any frames to encode? */
         if (c->mc_lifetime) {
             req_size = charset_size + c->mc_lifetime*(screen_size + colram_size);
-            if ((ret = ff_alloc_packet(pkt, req_size)) < 0) {
-                av_log(avctx, AV_LOG_ERROR, "Error getting output packet of size %d.\n", req_size);
+            if ((ret = ff_alloc_packet2(avctx, pkt, req_size)) < 0)
                 return ret;
-            }
             buf = pkt->data;
 
             /* calc optimal new charset + charmaps */
@@ -371,6 +369,7 @@ static int a64multi_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     return 0;
 }
 
+#if CONFIG_A64MULTI_ENCODER
 AVCodec ff_a64multi_encoder = {
     .name           = "a64multi",
     .type           = AVMEDIA_TYPE_VIDEO,
@@ -383,7 +382,8 @@ AVCodec ff_a64multi_encoder = {
     .long_name      = NULL_IF_CONFIG_SMALL("Multicolor charset for Commodore 64"),
     .capabilities   = CODEC_CAP_DELAY,
 };
-
+#endif
+#if CONFIG_A64MULTI5_ENCODER
 AVCodec ff_a64multi5_encoder = {
     .name           = "a64multi5",
     .type           = AVMEDIA_TYPE_VIDEO,
@@ -396,3 +396,4 @@ AVCodec ff_a64multi5_encoder = {
     .long_name      = NULL_IF_CONFIG_SMALL("Multicolor charset for Commodore 64, extended with 5th color (colram)"),
     .capabilities   = CODEC_CAP_DELAY,
 };
+#endif

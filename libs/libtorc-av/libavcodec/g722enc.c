@@ -27,6 +27,7 @@
  * G.722 ADPCM audio encoder
  */
 
+#include "libavutil/avassert.h"
 #include "avcodec.h"
 #include "internal.h"
 #include "g722.h"
@@ -247,7 +248,7 @@ static void g722_encode_trellis(G722Context *c, int trellis,
                     continue;\
                 if (heap_pos[index] < frontier) {\
                     pos = heap_pos[index]++;\
-                    assert(pathn[index] < FREEZE_INTERVAL * frontier);\
+                    av_assert2(pathn[index] < FREEZE_INTERVAL * frontier);\
                     node = nodes_next[index][pos] = next[index]++;\
                     node->path = pathn[index]++;\
                 } else {\
@@ -367,10 +368,8 @@ static int g722_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     int nb_samples, out_size, ret;
 
     out_size = (frame->nb_samples + 1) / 2;
-    if ((ret = ff_alloc_packet(avpkt, out_size))) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, out_size)) < 0)
         return ret;
-    }
 
     nb_samples = frame->nb_samples - (frame->nb_samples & 1);
 

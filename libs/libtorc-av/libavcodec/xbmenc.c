@@ -3,20 +3,20 @@
  *
  * Copyright (c) 2012 Paul B Mahol
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -42,10 +42,8 @@ static int xbm_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
 
     linesize = (avctx->width + 7) / 8;
     size     = avctx->height * (linesize * 7 + 2) + 110;
-    if ((ret = ff_alloc_packet(pkt, size)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet.\n");
+    if ((ret = ff_alloc_packet2(avctx, pkt, size)) < 0)
         return ret;
-    }
 
     buf = pkt->data;
     ptr = p->data[0];
@@ -82,6 +80,6 @@ AVCodec ff_xbm_encoder = {
     .encode2      = xbm_encode_frame,
     .close        = xbm_encode_close,
     .pix_fmts     = (const enum AVPixelFormat[]) { AV_PIX_FMT_MONOWHITE,
-                                                 AV_PIX_FMT_NONE },
+                                                   AV_PIX_FMT_NONE },
     .long_name    = NULL_IF_CONFIG_SMALL("XBM (X BitMap) image"),
 };

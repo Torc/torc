@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2012 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -95,9 +95,9 @@ int ff_mss12_decode_rect(SliceContext *ctx, ArithCoder *acoder,
                          int x, int y, int width, int height);
 void ff_mss12_model_update(Model *m, int val);
 void ff_mss12_slicecontext_reset(SliceContext *sc);
-av_cold int ff_mss12_decode_init(MSS12Context *c, int version,
-                                 SliceContext* sc1, SliceContext *sc2);
-av_cold int ff_mss12_decode_end(MSS12Context *ctx);
+int ff_mss12_decode_init(MSS12Context *c, int version,
+                         SliceContext *sc1, SliceContext *sc2);
+int ff_mss12_decode_end(MSS12Context *ctx);
 
 #define ARITH_GET_BIT(VERSION)                                          \
 static int arith ## VERSION ## _get_bit(ArithCoder *c)                  \

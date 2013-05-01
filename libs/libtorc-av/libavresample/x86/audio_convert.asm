@@ -20,8 +20,7 @@
 ;* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 ;******************************************************************************
 
-%include "x86inc.asm"
-%include "x86util.asm"
+%include "libavutil/x86/x86util.asm"
 %include "util.asm"
 
 SECTION_RODATA 32
@@ -248,7 +247,7 @@ cglobal conv_s16p_to_s16_2ch, 3,4,5, dst, src0, len, src1
     add       src1q, lenq
     lea        dstq, [dstq+2*lenq]
     neg        lenq
-.loop
+.loop:
     mova         m0, [src0q+lenq       ]
     mova         m1, [src1q+lenq       ]
     mova         m2, [src0q+lenq+mmsize]
@@ -717,7 +716,7 @@ cglobal conv_fltp_to_flt_2ch, 3,4,5, dst, src0, len, src1
     add  src1q, lenq
     lea   dstq, [dstq+2*lenq]
     neg   lenq
-.loop
+.loop:
     mova    m0, [src0q+lenq       ]
     mova    m1, [src1q+lenq       ]
     mova    m2, [src0q+lenq+mmsize]
@@ -920,10 +919,8 @@ cglobal conv_s16_to_s16p_6ch, 2,7,5, dst, src, dst1, dst2, dst3, dst4, dst5
     REP_RET
 %endmacro
 
-%define PALIGNR PALIGNR_MMX
 INIT_XMM sse2
 CONV_S16_TO_S16P_6CH
-%define PALIGNR PALIGNR_SSSE3
 INIT_XMM ssse3
 CONV_S16_TO_S16P_6CH
 %if HAVE_AVX_EXTERNAL
@@ -1039,10 +1036,8 @@ cglobal conv_s16_to_fltp_6ch, 2,7,7, dst, src, dst1, dst2, dst3, dst4, dst5
     REP_RET
 %endmacro
 
-%define PALIGNR PALIGNR_MMX
 INIT_XMM sse2
 CONV_S16_TO_FLTP_6CH
-%define PALIGNR PALIGNR_SSSE3
 INIT_XMM ssse3
 CONV_S16_TO_FLTP_6CH
 INIT_XMM sse4
@@ -1161,10 +1156,8 @@ cglobal conv_flt_to_s16p_6ch, 2,7,7, dst, src, dst1, dst2, dst3, dst4, dst5
     REP_RET
 %endmacro
 
-%define PALIGNR PALIGNR_MMX
 INIT_XMM sse2
 CONV_FLT_TO_S16P_6CH
-%define PALIGNR PALIGNR_SSSE3
 INIT_XMM ssse3
 CONV_FLT_TO_S16P_6CH
 %if HAVE_AVX_EXTERNAL

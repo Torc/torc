@@ -2,20 +2,20 @@
  * Tiertex Limited SEQ Video Decoder
  * Copyright (c) 2006 Gregory Montoir (cyx@users.sourceforge.net)
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -178,7 +178,7 @@ static int seqvideo_decode(SeqVideoContext *seq, const unsigned char *data, int 
         for (i = 0; i < 256; i++) {
             for (j = 0; j < 3; j++, data++)
                 c[j] = (*data << 2) | (*data >> 4);
-            palette[i] = AV_RB24(c);
+            palette[i] = 0xFFU << 24 | AV_RB24(c);
         }
         seq->frame.palette_has_changed = 1;
     }
@@ -216,13 +216,14 @@ static av_cold int seqvideo_decode_init(AVCodecContext *avctx)
     seq->avctx = avctx;
     avctx->pix_fmt = AV_PIX_FMT_PAL8;
 
+    avcodec_get_frame_defaults(&seq->frame);
     seq->frame.data[0] = NULL;
 
     return 0;
 }
 
 static int seqvideo_decode_frame(AVCodecContext *avctx,
-                                 void *data, int *data_size,
+                                 void *data, int *got_frame,
                                  AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
@@ -230,17 +231,17 @@ static int seqvideo_decode_frame(AVCodecContext *avctx,
 
     SeqVideoContext *seq = avctx->priv_data;
 
-    seq->frame.reference = 1;
+    seq->frame.reference = 3;
     seq->frame.buffer_hints = FF_BUFFER_HINTS_VALID | FF_BUFFER_HINTS_PRESERVE | FF_BUFFER_HINTS_REUSABLE;
     if (avctx->reget_buffer(avctx, &seq->frame)) {
-        av_log(seq->avctx, AV_LOG_ERROR, "tiertexseqvideo: reget_buffer() failed\n");
+        av_log(seq->avctx, AV_LOG_ERROR, "reget_buffer() failed\n");
         return -1;
     }
 
     if (seqvideo_decode(seq, buf, buf_size))
         return AVERROR_INVALIDDATA;
 
-    *data_size = sizeof(AVFrame);
+    *got_frame       = 1;
     *(AVFrame *)data = seq->frame;
 
     return buf_size;

@@ -13,26 +13,26 @@
  * a page about fdct at http://www.geocities.com/ssavekar/dct.htm
  * Skal's fdct at http://skal.planet-d.net/coding/dct.html
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "libavutil/common.h"
 #include "libavutil/x86/asm.h"
-#include "libavcodec/dsputil.h"
+#include "libavcodec/dct.h"
 
 #if HAVE_INLINE_ASM
 
@@ -70,7 +70,7 @@ DECLARE_ALIGNED(16, static const int16_t, fdct_one_corr)[8] = { X8(1) };
 
 DECLARE_ALIGNED(8, static const int32_t, fdct_r_row)[2] = {RND_FRW_ROW, RND_FRW_ROW };
 
-static struct
+static const struct
 {
  DECLARE_ALIGNED(16, const int32_t, fdct_r_row_sse2)[4];
 } fdct_r_row_sse2 =
@@ -153,7 +153,7 @@ DECLARE_ALIGNED(8, static const int16_t, tab_frw_01234567)[] = {  // forward_dct
   29692,  -12299,   26722,  -31521,
 };
 
-static struct
+static const struct
 {
  DECLARE_ALIGNED(16, const int16_t, tab_frw_01234567_sse2)[256];
 } tab_frw_01234567_sse2 =
@@ -440,7 +440,8 @@ static av_always_inline void fdct_row_sse2(const int16_t *in, int16_t *out)
     );
 }
 
-static av_always_inline void fdct_row_mmx2(const int16_t *in, int16_t *out, const int16_t *table)
+static av_always_inline void fdct_row_mmxext(const int16_t *in, int16_t *out,
+                                             const int16_t *table)
 {
     __asm__ volatile (
         "pshufw    $0x1B, 8(%0), %%mm5 \n\t"
@@ -555,7 +556,7 @@ void ff_fdct_mmx(int16_t *block)
     }
 }
 
-void ff_fdct_mmx2(int16_t *block)
+void ff_fdct_mmxext(int16_t *block)
 {
     DECLARE_ALIGNED(8, int64_t, align_tmp)[16];
     int16_t *block1= (int16_t*)align_tmp;
@@ -566,7 +567,7 @@ void ff_fdct_mmx2(int16_t *block)
     fdct_col_mmx(block, block1, 4);
 
     for(i=8;i>0;i--) {
-        fdct_row_mmx2(block1, block, table);
+        fdct_row_mmxext(block1, block, table);
         block1 += 8;
         table += 32;
         block += 8;

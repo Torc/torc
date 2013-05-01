@@ -2,20 +2,20 @@
  * DPX (.dpx) image encoder
  * Copyright (c) 2011 Peter Ross <pross@xvid.org>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -30,6 +30,7 @@ typedef struct DPXContext {
     int big_endian;
     int bits_per_component;
     int descriptor;
+    int planar;
 } DPXContext;
 
 static av_cold int encode_init(AVCodecContext *avctx)
@@ -43,6 +44,7 @@ static av_cold int encode_init(AVCodecContext *avctx)
     s->big_endian         = 1;
     s->bits_per_component = 8;
     s->descriptor         = 50; /* RGB */
+    s->planar             = 0;
 
     switch (avctx->pix_fmt) {
     case AV_PIX_FMT_RGB24:
@@ -54,6 +56,24 @@ static av_cold int encode_init(AVCodecContext *avctx)
         s->big_endian = 0;
     case AV_PIX_FMT_RGB48BE:
         s->bits_per_component = avctx->bits_per_raw_sample ? avctx->bits_per_raw_sample : 16;
+        break;
+    case AV_PIX_FMT_RGBA64LE:
+        s->big_endian = 0;
+    case AV_PIX_FMT_RGBA64BE:
+        s->descriptor = 51;
+        s->bits_per_component = 16;
+        break;
+    case AV_PIX_FMT_GBRP10LE:
+        s->big_endian = 0;
+    case AV_PIX_FMT_GBRP10BE:
+        s->bits_per_component = 10;
+        s->planar = 1;
+        break;
+    case AV_PIX_FMT_GBRP12LE:
+        s->big_endian = 0;
+    case AV_PIX_FMT_GBRP12BE:
+        s->bits_per_component = 12;
+        s->planar = 1;
         break;
     default:
         av_log(avctx, AV_LOG_INFO, "unsupported pixel format\n");
@@ -75,8 +95,7 @@ do { \
     else               AV_WL32(p, value); \
 } while(0)
 
-static void encode_rgb48_10bit(AVCodecContext *avctx, const AVPicture *pic,
-                               uint8_t *dst)
+static void encode_rgb48_10bit(AVCodecContext *avctx, const AVPicture *pic, uint8_t *dst)
 {
     DPXContext *s = avctx->priv_data;
     const uint8_t *src = pic->data[0];
@@ -85,19 +104,72 @@ static void encode_rgb48_10bit(AVCodecContext *avctx, const AVPicture *pic,
     for (y = 0; y < avctx->height; y++) {
         for (x = 0; x < avctx->width; x++) {
             int value;
-            if ((avctx->pix_fmt & 1)) {
-                value = ((AV_RB16(src + 6*x + 4) & 0xFFC0) >> 4)
-                      | ((AV_RB16(src + 6*x + 2) & 0xFFC0) << 6)
-                      | ((AV_RB16(src + 6*x + 0) & 0xFFC0) << 16);
+            if (s->big_endian) {
+                value = ((AV_RB16(src + 6*x + 4) & 0xFFC0U) >> 4)
+                      | ((AV_RB16(src + 6*x + 2) & 0xFFC0U) << 6)
+                      | ((AV_RB16(src + 6*x + 0) & 0xFFC0U) << 16);
             } else {
-                value = ((AV_RL16(src + 6*x + 4) & 0xFFC0) >> 4)
-                      | ((AV_RL16(src + 6*x + 2) & 0xFFC0) << 6)
-                      | ((AV_RL16(src + 6*x + 0) & 0xFFC0) << 16);
+                value = ((AV_RL16(src + 6*x + 4) & 0xFFC0U) >> 4)
+                      | ((AV_RL16(src + 6*x + 2) & 0xFFC0U) << 6)
+                      | ((AV_RL16(src + 6*x + 0) & 0xFFC0U) << 16);
             }
             write32(dst, value);
             dst += 4;
         }
         src += pic->linesize[0];
+    }
+}
+
+static void encode_gbrp10(AVCodecContext *avctx, const AVPicture *pic, uint8_t *dst)
+{
+    DPXContext *s = avctx->priv_data;
+    const uint8_t *src[3] = {pic->data[0], pic->data[1], pic->data[2]};
+    int x, y, i;
+
+    for (y = 0; y < avctx->height; y++) {
+        for (x = 0; x < avctx->width; x++) {
+            int value;
+            if (s->big_endian) {
+                value = (AV_RB16(src[0] + 2*x) << 12)
+                      | (AV_RB16(src[1] + 2*x) << 2)
+                      | (AV_RB16(src[2] + 2*x) << 22);
+            } else {
+                value = (AV_RL16(src[0] + 2*x) << 12)
+                      | (AV_RL16(src[1] + 2*x) << 2)
+                      | (AV_RL16(src[2] + 2*x) << 22);
+            }
+            write32(dst, value);
+            dst += 4;
+        }
+        for (i = 0; i < 3; i++)
+            src[i] += pic->linesize[i];
+    }
+}
+
+static void encode_gbrp12(AVCodecContext *avctx, const AVPicture *pic, uint16_t *dst)
+{
+    DPXContext *s = avctx->priv_data;
+    const uint16_t *src[3] = {(uint16_t*)pic->data[0],
+                              (uint16_t*)pic->data[1],
+                              (uint16_t*)pic->data[2]};
+    int x, y, i;
+    for (y = 0; y < avctx->height; y++) {
+        for (x = 0; x < avctx->width; x++) {
+            uint16_t value[3];
+            if (s->big_endian) {
+                value[1] = AV_RB16(src[0] + x) << 4;
+                value[2] = AV_RB16(src[1] + x) << 4;
+                value[0] = AV_RB16(src[2] + x) << 4;
+            } else {
+                value[1] = AV_RL16(src[0] + x) << 4;
+                value[2] = AV_RL16(src[1] + x) << 4;
+                value[0] = AV_RL16(src[2] + x) << 4;
+            }
+            for (i = 0; i < 3; i++)
+                write16(dst++, value[i]);
+        }
+        for (i = 0; i < 3; i++)
+            src[i] += pic->linesize[i]/2;
     }
 }
 
@@ -113,10 +185,8 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
         size = avctx->height * avctx->width * 4;
     else
         size = avpicture_get_size(avctx->pix_fmt, avctx->width, avctx->height);
-    if ((ret = ff_alloc_packet(pkt, size + HEADER_SIZE)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet.\n");
+    if ((ret = ff_alloc_packet2(avctx, pkt, size + HEADER_SIZE)) < 0)
         return ret;
-    }
     buf = pkt->data;
 
     memset(buf, 0, HEADER_SIZE);
@@ -140,13 +210,14 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     buf[801] = 2; /* linear transfer */
     buf[802] = 2; /* linear colorimetric */
     buf[803] = s->bits_per_component;
-    write16(buf + 804, s->bits_per_component == 10 ? 1 : 0); /* packing method */
+    write16(buf + 804, (s->bits_per_component == 10 || s->bits_per_component == 12) ?
+                       1 : 0); /* packing method */
 
     /* Image source information header */
     write32(buf + 1628, avctx->sample_aspect_ratio.num);
     write32(buf + 1632, avctx->sample_aspect_ratio.den);
 
-    switch (s->bits_per_component) {
+    switch(s->bits_per_component) {
     case 8:
     case 16:
         size = avpicture_layout((const AVPicture*)frame, avctx->pix_fmt,
@@ -156,7 +227,13 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
             return size;
         break;
     case 10:
-        encode_rgb48_10bit(avctx, (const AVPicture*)frame, buf + HEADER_SIZE);
+        if (s->planar)
+            encode_gbrp10(avctx, (const AVPicture*)frame, buf + HEADER_SIZE);
+        else
+            encode_rgb48_10bit(avctx, (const AVPicture*)frame, buf + HEADER_SIZE);
+        break;
+    case 12:
+        encode_gbrp12(avctx, (const AVPicture*)frame, (uint16_t*)(buf + HEADER_SIZE));
         break;
     default:
         av_log(avctx, AV_LOG_ERROR, "Unsupported bit depth: %d\n", s->bits_per_component);
@@ -185,6 +262,12 @@ AVCodec ff_dpx_encoder = {
         AV_PIX_FMT_RGBA,
         AV_PIX_FMT_RGB48LE,
         AV_PIX_FMT_RGB48BE,
+        AV_PIX_FMT_RGBA64LE,
+        AV_PIX_FMT_RGBA64BE,
+        AV_PIX_FMT_GBRP10LE,
+        AV_PIX_FMT_GBRP10BE,
+        AV_PIX_FMT_GBRP12LE,
+        AV_PIX_FMT_GBRP12BE,
         AV_PIX_FMT_NONE},
     .long_name = NULL_IF_CONFIG_SMALL("DPX image"),
 };

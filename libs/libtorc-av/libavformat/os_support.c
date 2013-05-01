@@ -3,20 +3,20 @@
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard
  * copyright (c) 2002 Francois Revol
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <io.h>
 #include <windows.h>
+#include <share.h>
 
 int ff_win32_open(const char *filename_utf8, int oflag, int pmode)
 {
@@ -46,12 +47,12 @@ int ff_win32_open(const char *filename_utf8, int oflag, int pmode)
     filename_w = av_mallocz(sizeof(wchar_t) * num_chars);
     MultiByteToWideChar(CP_UTF8, 0, filename_utf8, -1, filename_w, num_chars);
 
-    fd = _wopen(filename_w, oflag, pmode);
+    fd = _wsopen(filename_w, oflag, SH_DENYNO, pmode);
     av_freep(&filename_w);
 
     /* filename maybe be in CP_ACP */
     if (fd == -1 && !(oflag & O_CREAT))
-        return open(filename_utf8, oflag, pmode);
+        return _sopen(filename_utf8, oflag, SH_DENYNO, pmode);
 
     return fd;
 }

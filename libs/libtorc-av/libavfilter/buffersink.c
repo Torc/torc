@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2011 Stefano Sabatini
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -24,8 +24,8 @@
  */
 
 #include "libavutil/audio_fifo.h"
-#include "libavutil/audioconvert.h"
 #include "libavutil/avassert.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "libavutil/mathematics.h"
 
@@ -48,18 +48,17 @@ static av_cold void uninit(AVFilterContext *ctx)
         av_audio_fifo_free(sink->audio_fifo);
 }
 
-static int start_frame(AVFilterLink *link, AVFilterBufferRef *buf)
+static int filter_frame(AVFilterLink *link, AVFilterBufferRef *buf)
 {
     BufferSinkContext *s = link->dst->priv;
 
-    av_assert0(!s->cur_buf);
+//     av_assert0(!s->cur_buf);
     s->cur_buf    = buf;
-    link->cur_buf = NULL;
 
     return 0;
-};
+}
 
-int av_buffersink_read(AVFilterContext *ctx, AVFilterBufferRef **buf)
+int ff_buffersink_read_compat(AVFilterContext *ctx, AVFilterBufferRef **buf)
 {
     BufferSinkContext *s    = ctx->priv;
     AVFilterLink      *link = ctx->inputs[0];
@@ -100,8 +99,8 @@ static int read_from_fifo(AVFilterContext *ctx, AVFilterBufferRef **pbuf,
 
 }
 
-int av_buffersink_read_samples(AVFilterContext *ctx, AVFilterBufferRef **pbuf,
-                               int nb_samples)
+int ff_buffersink_read_samples_compat(AVFilterContext *ctx, AVFilterBufferRef **pbuf,
+                                      int nb_samples)
 {
     BufferSinkContext *s = ctx->priv;
     AVFilterLink   *link = ctx->inputs[0];
@@ -144,7 +143,7 @@ static const AVFilterPad avfilter_vsink_buffer_inputs[] = {
     {
         .name        = "default",
         .type        = AVMEDIA_TYPE_VIDEO,
-        .start_frame = start_frame,
+        .filter_frame = filter_frame,
         .min_perms   = AV_PERM_READ,
         .needs_fifo  = 1
     },
@@ -152,7 +151,11 @@ static const AVFilterPad avfilter_vsink_buffer_inputs[] = {
 };
 
 AVFilter avfilter_vsink_buffer = {
+#if AV_HAVE_INCOMPATIBLE_FORK_ABI
     .name      = "buffersink",
+#else
+    .name      = "buffersink_old",
+#endif
     .description = NULL_IF_CONFIG_SMALL("Buffer video frames, and make them available to the end of the filter graph."),
     .priv_size = sizeof(BufferSinkContext),
     .uninit    = uninit,
@@ -165,7 +168,7 @@ static const AVFilterPad avfilter_asink_abuffer_inputs[] = {
     {
         .name           = "default",
         .type           = AVMEDIA_TYPE_AUDIO,
-        .filter_samples = start_frame,
+        .filter_frame   = filter_frame,
         .min_perms      = AV_PERM_READ,
         .needs_fifo     = 1
     },
@@ -173,7 +176,11 @@ static const AVFilterPad avfilter_asink_abuffer_inputs[] = {
 };
 
 AVFilter avfilter_asink_abuffer = {
+#if AV_HAVE_INCOMPATIBLE_FORK_ABI
     .name      = "abuffersink",
+#else
+    .name      = "abuffersink_old",
+#endif
     .description = NULL_IF_CONFIG_SMALL("Buffer audio frames, and make them available to the end of the filter graph."),
     .priv_size = sizeof(BufferSinkContext),
     .uninit    = uninit,

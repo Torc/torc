@@ -2,20 +2,20 @@
  * AAC coefficients encoder
  * Copyright (C) 2008-2009 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -506,7 +506,7 @@ static void codebook_trellis_rate(AACEncContext *s, SingleChannelElement *sce,
             idx = cb;
     ppos = max_sfb;
     while (ppos > 0) {
-        assert(idx >= 0);
+        av_assert1(idx >= 0);
         cb = idx;
         stackrun[stack_len] = path[ppos][cb].run;
         stackcb [stack_len] = cb;
@@ -875,7 +875,7 @@ static void search_for_quantizers_faac(AVCodecContext *avctx, AACEncContext *s,
     } else {
         for (w = 0; w < 8; w++) {
             const float *coeffs = sce->coeffs + w*128;
-            start = 0;
+            curband = start = 0;
             for (i = 0; i < 128; i++) {
                 if (i - start >= sce->ics.swb_sizes[curband]) {
                     start += sce->ics.swb_sizes[curband];
@@ -1112,7 +1112,7 @@ static void search_for_ms(AACEncContext *s, ChannelElement *cpe,
     }
 }
 
-AACCoefficientsEncoder ff_aac_coders[] = {
+AACCoefficientsEncoder ff_aac_coders[AAC_CODER_NB] = {
     {
         search_for_quantizers_faac,
         encode_window_bands_info,

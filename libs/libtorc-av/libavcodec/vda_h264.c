@@ -1,42 +1,41 @@
 /*
- * VDA H.264 hardware acceleration
+ * VDA H264 HW acceleration.
  *
  * copyright (c) 2011 Sebastien Zwickert
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <CoreFoundation/CFDictionary.h>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFData.h>
-#include <CoreFoundation/CFString.h>
 
+#include "vda.h"
 #include "libavutil/avutil.h"
 #include "h264.h"
-#include "vda.h"
 
 #if FF_API_VDA_ASYNC
-#include <CoreFoundation/CFDictionary.h>
+#include <CoreFoundation/CFString.h>
 
-/* helper to create a dictionary according to the given pts */
+/* Helper to create a dictionary according to the given pts. */
 static CFDictionaryRef vda_dictionary_with_pts(int64_t i_pts)
 {
-    CFStringRef key           = CFSTR("FF_VDA_DECODER_PTS_KEY");
-    CFNumberRef value         = CFNumberCreate(kCFAllocatorDefault,
-                                               kCFNumberSInt64Type, &i_pts);
+    CFStringRef key = CFSTR("FF_VDA_DECODER_PTS_KEY");
+    CFNumberRef value = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt64Type, &i_pts);
     CFDictionaryRef user_info = CFDictionaryCreate(kCFAllocatorDefault,
                                                    (const void **)&key,
                                                    (const void **)&value,
@@ -47,7 +46,7 @@ static CFDictionaryRef vda_dictionary_with_pts(int64_t i_pts)
     return user_info;
 }
 
-/* helper to retrieve the pts from the given dictionary */
+/* Helper to retrieve the pts from the given dictionary. */
 static int64_t vda_pts_from_dictionary(CFDictionaryRef user_info)
 {
     CFNumberRef pts;
@@ -64,7 +63,7 @@ static int64_t vda_pts_from_dictionary(CFDictionaryRef user_info)
     return outValue;
 }
 
-/* Remove and release all frames from the queue. */
+/* Removes and releases all frames from the queue. */
 static void vda_clear_queue(struct vda_context *vda_ctx)
 {
     vda_frame *top_frame;
@@ -72,7 +71,7 @@ static void vda_clear_queue(struct vda_context *vda_ctx)
     pthread_mutex_lock(&vda_ctx->queue_mutex);
 
     while (vda_ctx->queue) {
-        top_frame      = vda_ctx->queue;
+        top_frame = vda_ctx->queue;
         vda_ctx->queue = top_frame->next_frame;
         ff_vda_release_vda_frame(top_frame);
     }
@@ -85,13 +84,14 @@ static int vda_decoder_decode(struct vda_context *vda_ctx,
                               int bitstream_size,
                               int64_t frame_pts)
 {
-    OSStatus status = kVDADecoderNoErr;
+    OSStatus status;
     CFDictionaryRef user_info;
     CFDataRef coded_frame;
 
     coded_frame = CFDataCreate(kCFAllocatorDefault, bitstream, bitstream_size);
-    user_info   = vda_dictionary_with_pts(frame_pts);
-    status      = VDADecoderDecode(vda_ctx->decoder, 0, coded_frame, user_info);
+    user_info = vda_dictionary_with_pts(frame_pts);
+
+    status = VDADecoderDecode(vda_ctx->decoder, 0, coded_frame, user_info);
 
     CFRelease(user_info);
     CFRelease(coded_frame);
@@ -107,7 +107,7 @@ vda_frame *ff_vda_queue_pop(struct vda_context *vda_ctx)
         return NULL;
 
     pthread_mutex_lock(&vda_ctx->queue_mutex);
-    top_frame      = vda_ctx->queue;
+    top_frame = vda_ctx->queue;
     vda_ctx->queue = top_frame->next_frame;
     pthread_mutex_unlock(&vda_ctx->queue_mutex);
 
@@ -123,12 +123,12 @@ void ff_vda_release_vda_frame(vda_frame *frame)
 }
 #endif
 
-/* Decoder callback that adds the VDA frame to the queue in display order. */
-static void vda_decoder_callback(void *vda_hw_ctx,
-                                 CFDictionaryRef user_info,
-                                 OSStatus status,
-                                 uint32_t infoFlags,
-                                 CVImageBufferRef image_buffer)
+/* Decoder callback that adds the vda frame to the queue in display order. */
+static void vda_decoder_callback (void *vda_hw_ctx,
+                                  CFDictionaryRef user_info,
+                                  OSStatus status,
+                                  uint32_t infoFlags,
+                                  CVImageBufferRef image_buffer)
 {
     struct vda_context *vda_ctx = vda_hw_ctx;
 
@@ -146,25 +146,28 @@ static void vda_decoder_callback(void *vda_hw_ctx,
 
         if (!(new_frame = av_mallocz(sizeof(*new_frame))))
             return;
+
         new_frame->next_frame = NULL;
-        new_frame->cv_buffer  = CVPixelBufferRetain(image_buffer);
-        new_frame->pts        = vda_pts_from_dictionary(user_info);
+        new_frame->cv_buffer = CVPixelBufferRetain(image_buffer);
+        new_frame->pts = vda_pts_from_dictionary(user_info);
 
         pthread_mutex_lock(&vda_ctx->queue_mutex);
 
         queue_walker = vda_ctx->queue;
 
-        if (!queue_walker || new_frame->pts < queue_walker->pts) {
+        if (!queue_walker || (new_frame->pts < queue_walker->pts)) {
             /* we have an empty queue, or this frame earlier than the current queue head */
             new_frame->next_frame = queue_walker;
-            vda_ctx->queue        = new_frame;
+            vda_ctx->queue = new_frame;
         } else {
             /* walk the queue and insert this frame where it belongs in display order */
             vda_frame *next_frame;
+
             while (1) {
                 next_frame = queue_walker->next_frame;
-                if (!next_frame || new_frame->pts < next_frame->pts) {
-                    new_frame->next_frame    = next_frame;
+
+                if (!next_frame || (new_frame->pts < next_frame->pts)) {
+                    new_frame->next_frame = next_frame;
                     queue_walker->next_frame = new_frame;
                     break;
                 }
@@ -197,11 +200,11 @@ static int vda_sync_decode(struct vda_context *vda_ctx)
 }
 
 
-static int start_frame(AVCodecContext *avctx,
-                       av_unused const uint8_t *buffer,
-                       av_unused uint32_t size)
+static int vda_h264_start_frame(AVCodecContext *avctx,
+                                av_unused const uint8_t *buffer,
+                                av_unused uint32_t size)
 {
-    struct vda_context *vda_ctx         = avctx->hwaccel_context;
+    struct vda_context *vda_ctx = avctx->hwaccel_context;
 
     if (!vda_ctx->decoder)
         return -1;
@@ -211,11 +214,11 @@ static int start_frame(AVCodecContext *avctx,
     return 0;
 }
 
-static int decode_slice(AVCodecContext *avctx,
-                        const uint8_t *buffer,
-                        uint32_t size)
+static int vda_h264_decode_slice(AVCodecContext *avctx,
+                                 const uint8_t *buffer,
+                                 uint32_t size)
 {
-    struct vda_context *vda_ctx         = avctx->hwaccel_context;
+    struct vda_context *vda_ctx = avctx->hwaccel_context;
     void *tmp;
 
     if (!vda_ctx->decoder)
@@ -237,11 +240,11 @@ static int decode_slice(AVCodecContext *avctx,
     return 0;
 }
 
-static int end_frame(AVCodecContext *avctx)
+static int vda_h264_end_frame(AVCodecContext *avctx)
 {
     H264Context *h                      = avctx->priv_data;
     struct vda_context *vda_ctx         = avctx->hwaccel_context;
-    AVFrame *frame                      = &h->s.current_picture_ptr->f;
+    AVFrame *frame                      = &h->cur_pic_ptr->f;
     int status;
 
     if (!vda_ctx->decoder || !vda_ctx->priv_bitstream)
@@ -266,7 +269,7 @@ int ff_vda_create_decoder(struct vda_context *vda_ctx,
                           uint8_t *extradata,
                           int extradata_size)
 {
-    OSStatus status = kVDADecoderNoErr;
+    OSStatus status;
     CFNumberRef height;
     CFNumberRef width;
     CFNumberRef format;
@@ -276,12 +279,15 @@ int ff_vda_create_decoder(struct vda_context *vda_ctx,
     CFMutableDictionaryRef io_surface_properties;
     CFNumberRef cv_pix_fmt;
 
+    vda_ctx->priv_bitstream = NULL;
+    vda_ctx->priv_allocated_size = 0;
+
 #if FF_API_VDA_ASYNC
     pthread_mutex_init(&vda_ctx->queue_mutex, NULL);
 #endif
 
-    /* Each VCL NAL in the bistream sent to the decoder
-     * is preceeded by a 4 bytes length header.
+    /* Each VCL NAL in the bitstream sent to the decoder
+     * is preceded by a 4 bytes length header.
      * Change the avcC atom header if needed, to signal headers of 4 bytes. */
     if (extradata_size >= 4 && (extradata[4] & 0x03) != 0x03) {
         uint8_t *rw_extradata;
@@ -322,9 +328,9 @@ int ff_vda_create_decoder(struct vda_context *vda_ctx,
                                                       0,
                                                       &kCFTypeDictionaryKeyCallBacks,
                                                       &kCFTypeDictionaryValueCallBacks);
-    cv_pix_fmt      = CFNumberCreate(kCFAllocatorDefault,
-                                     kCFNumberSInt32Type,
-                                     &vda_ctx->cv_pix_fmt_type);
+    cv_pix_fmt  = CFNumberCreate(kCFAllocatorDefault,
+                                 kCFNumberSInt32Type,
+                                 &vda_ctx->cv_pix_fmt_type);
     CFDictionarySetValue(buffer_attributes,
                          kCVPixelBufferPixelFormatTypeKey,
                          cv_pix_fmt);
@@ -361,7 +367,6 @@ int ff_vda_destroy_decoder(struct vda_context *vda_ctx)
     vda_clear_queue(vda_ctx);
     pthread_mutex_destroy(&vda_ctx->queue_mutex);
 #endif
-
     av_freep(&vda_ctx->priv_bitstream);
 
     return status;
@@ -372,7 +377,7 @@ AVHWAccel ff_h264_vda_hwaccel = {
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = AV_CODEC_ID_H264,
     .pix_fmt        = AV_PIX_FMT_VDA_VLD,
-    .start_frame    = start_frame,
-    .decode_slice   = decode_slice,
-    .end_frame      = end_frame,
+    .start_frame    = vda_h264_start_frame,
+    .decode_slice   = vda_h264_decode_slice,
+    .end_frame      = vda_h264_end_frame,
 };

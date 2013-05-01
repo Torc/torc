@@ -2,20 +2,20 @@
  * RTP depacketizer declarations
  * Copyright (c) 2010 Martin Storsjo
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -33,7 +33,7 @@ int ff_wms_parse_sdp_a_line(AVFormatContext *s, const char *p);
 
 int ff_h263_handle_packet(AVFormatContext *ctx, PayloadContext *data,
                           AVStream *st, AVPacket *pkt, uint32_t *timestamp,
-                          const uint8_t *buf, int len, int flags);
+                          const uint8_t *buf, int len, uint16_t seq, int flags);
 
 extern RTPDynamicProtocolHandler ff_amr_nb_dynamic_handler;
 extern RTPDynamicProtocolHandler ff_amr_wb_dynamic_handler;
@@ -49,7 +49,10 @@ extern RTPDynamicProtocolHandler ff_ilbc_dynamic_handler;
 extern RTPDynamicProtocolHandler ff_jpeg_dynamic_handler;
 extern RTPDynamicProtocolHandler ff_mp4a_latm_dynamic_handler;
 extern RTPDynamicProtocolHandler ff_mp4v_es_dynamic_handler;
+extern RTPDynamicProtocolHandler ff_mpeg_audio_dynamic_handler;
+extern RTPDynamicProtocolHandler ff_mpeg_video_dynamic_handler;
 extern RTPDynamicProtocolHandler ff_mpeg4_generic_dynamic_handler;
+extern RTPDynamicProtocolHandler ff_mpegts_dynamic_handler;
 extern RTPDynamicProtocolHandler ff_ms_rtp_asf_pfa_handler;
 extern RTPDynamicProtocolHandler ff_ms_rtp_asf_pfv_handler;
 extern RTPDynamicProtocolHandler ff_qcelp_dynamic_handler;

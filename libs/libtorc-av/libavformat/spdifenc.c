@@ -4,20 +4,20 @@
  * Copyright (c) 2010 Anssi Hannula
  * Copyright (c) 2010 Carl Eugen Hoyos
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -339,7 +339,7 @@ static int spdif_header_mpeg(AVFormatContext *s, AVPacket *pkt)
         ctx->data_type  = mpeg_data_type [version & 1][layer];
         ctx->pkt_offset = spdif_mpeg_pkt_offset[version & 1][layer];
     }
-    // TODO Data type dependant info (normal/karaoke, dynamic range control)
+    // TODO Data type dependent info (normal/karaoke, dynamic range control)
     return 0;
 }
 
@@ -414,7 +414,7 @@ static int spdif_header_truehd(AVFormatContext *s, AVPacket *pkt)
          * distribute the TrueHD frames in the MAT frame */
         av_log(s, AV_LOG_ERROR, "TrueHD frame too big, %d bytes\n", pkt->size);
         av_log_ask_for_sample(s, NULL);
-        return AVERROR_INVALIDDATA;
+        return AVERROR_PATCHWELCOME;
     }
 
     memcpy(&ctx->hd_buf[ctx->hd_buf_count * TRUEHD_FRAME_OFFSET - BURST_HEADER_SIZE + mat_code_length],
@@ -520,13 +520,13 @@ static int spdif_write_packet(struct AVFormatContext *s, AVPacket *pkt)
     }
 
     if (ctx->extra_bswap ^ (ctx->spdif_flags & SPDIF_FLAG_BIGENDIAN)) {
-    avio_write(s->pb, ctx->out_buf, ctx->out_bytes & ~1);
+        avio_write(s->pb, ctx->out_buf, ctx->out_bytes & ~1);
     } else {
-    av_fast_malloc(&ctx->buffer, &ctx->buffer_size, ctx->out_bytes + FF_INPUT_BUFFER_PADDING_SIZE);
-    if (!ctx->buffer)
-        return AVERROR(ENOMEM);
-    ff_spdif_bswap_buf16((uint16_t *)ctx->buffer, (uint16_t *)ctx->out_buf, ctx->out_bytes >> 1);
-    avio_write(s->pb, ctx->buffer, ctx->out_bytes & ~1);
+        av_fast_malloc(&ctx->buffer, &ctx->buffer_size, ctx->out_bytes + FF_INPUT_BUFFER_PADDING_SIZE);
+        if (!ctx->buffer)
+            return AVERROR(ENOMEM);
+        ff_spdif_bswap_buf16((uint16_t *)ctx->buffer, (uint16_t *)ctx->out_buf, ctx->out_bytes >> 1);
+        avio_write(s->pb, ctx->buffer, ctx->out_bytes & ~1);
     }
 
     /* a final lone byte has to be MSB aligned */

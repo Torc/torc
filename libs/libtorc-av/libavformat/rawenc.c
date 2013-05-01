@@ -3,20 +3,20 @@
  * Copyright (c) 2001 Fabrice Bellard
  * Copyright (c) 2005 Alex Beregszaszi
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -132,6 +132,19 @@ AVOutputFormat ff_g722_muxer = {
 };
 #endif
 
+#if CONFIG_G723_1_MUXER
+AVOutputFormat ff_g723_1_muxer = {
+    .name              = "g723_1",
+    .long_name         = NULL_IF_CONFIG_SMALL("raw G.723.1"),
+    .mime_type         = "audio/g723",
+    .extensions        = "tco,rco",
+    .audio_codec       = AV_CODEC_ID_G723_1,
+    .video_codec       = AV_CODEC_ID_NONE,
+    .write_packet      = ff_raw_write_packet,
+    .flags             = AVFMT_NOTIMESTAMPS,
+};
+#endif
+
 #if CONFIG_H261_MUXER
 AVOutputFormat ff_h261_muxer = {
     .name              = "h261",
@@ -241,18 +254,6 @@ AVOutputFormat ff_rawvideo_muxer = {
     .video_codec       = AV_CODEC_ID_RAWVIDEO,
     .write_packet      = ff_raw_write_packet,
     .flags             = AVFMT_NOTIMESTAMPS,
-};
-#endif
-
-#if CONFIG_SRT_MUXER
-AVOutputFormat ff_srt_muxer = {
-    .name              = "srt",
-    .long_name         = NULL_IF_CONFIG_SMALL("SubRip subtitle"),
-    .mime_type         = "application/x-subrip",
-    .extensions        = "srt",
-    .write_packet      = ff_raw_write_packet,
-    .flags             = AVFMT_NOTIMESTAMPS,
-    .subtitle_codec    = AV_CODEC_ID_SRT,
 };
 #endif
 

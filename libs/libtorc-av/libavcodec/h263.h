@@ -1,20 +1,20 @@
 /*
  * H263 internal header
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #ifndef AVCODEC_H263_H
@@ -59,28 +59,30 @@ extern RLTable ff_rl_intra_aic;
 
 extern const uint16_t ff_h263_format[8][2];
 extern const uint8_t ff_modified_quant_tab[2][32];
-extern uint16_t ff_mba_max[6];
-extern uint8_t ff_mba_length[7];
+extern const uint16_t ff_mba_max[6];
+extern const uint8_t ff_mba_length[7];
 
 extern uint8_t ff_h263_static_rl_table_store[2][2][2*MAX_RUN + MAX_LEVEL + 3];
+
+extern const enum AVPixelFormat ff_h263_hwaccel_pixfmt_list_420[];
 
 
 int ff_h263_decode_motion(MpegEncContext * s, int pred, int f_code);
 av_const int ff_h263_aspect_to_info(AVRational aspect);
 int ff_h263_decode_init(AVCodecContext *avctx);
 int ff_h263_decode_frame(AVCodecContext *avctx,
-                             void *data, int *data_size,
+                             void *data, int *got_frame,
                              AVPacket *avpkt);
 int ff_h263_decode_end(AVCodecContext *avctx);
 void ff_h263_encode_mb(MpegEncContext *s,
-                       DCTELEM block[6][64],
+                       int16_t block[6][64],
                        int motion_x, int motion_y);
 void ff_h263_encode_picture_header(MpegEncContext *s, int picture_number);
 void ff_h263_encode_gob_header(MpegEncContext * s, int mb_line);
 int16_t *ff_h263_pred_motion(MpegEncContext * s, int block, int dir,
                              int *px, int *py);
 void ff_h263_encode_init(MpegEncContext *s);
-void ff_h263_decode_init_vlc(MpegEncContext *s);
+void ff_h263_decode_init_vlc(void);
 int ff_h263_decode_picture_header(MpegEncContext *s);
 int ff_h263_decode_gob_header(MpegEncContext *s);
 void ff_h263_update_motion_val(MpegEncContext * s);
@@ -89,7 +91,7 @@ int ff_h263_decode_mba(MpegEncContext *s);
 void ff_h263_encode_mba(MpegEncContext *s);
 void ff_init_qscale_tab(MpegEncContext *s);
 int ff_h263_pred_dc(MpegEncContext * s, int n, int16_t **dc_val_ptr);
-void ff_h263_pred_acdc(MpegEncContext * s, DCTELEM *block, int n);
+void ff_h263_pred_acdc(MpegEncContext * s, int16_t *block, int n);
 
 
 /**
@@ -99,7 +101,7 @@ void ff_h263_show_pict_info(MpegEncContext *s);
 
 int ff_intel_h263_decode_picture_header(MpegEncContext *s);
 int ff_h263_decode_mb(MpegEncContext *s,
-                      DCTELEM block[6][64]);
+                      int16_t block[6][64]);
 
 /**
  * Return the value of the 3bit "source format" syntax element.
@@ -110,7 +112,7 @@ int av_const h263_get_picture_format(int width, int height);
 
 void ff_clean_h263_qscales(MpegEncContext *s);
 int ff_h263_resync(MpegEncContext *s);
-const uint8_t *ff_h263_find_resync_marker(const uint8_t *p, const uint8_t *end);
+const uint8_t *ff_h263_find_resync_marker(MpegEncContext *s, const uint8_t *p, const uint8_t *end);
 int ff_h263_get_gob_height(MpegEncContext *s);
 void ff_h263_encode_motion(MpegEncContext * s, int val, int f_code);
 
@@ -144,7 +146,7 @@ static inline void ff_h263_encode_motion_vector(MpegEncContext * s, int x, int y
 }
 
 static inline int get_p_cbp(MpegEncContext * s,
-                      DCTELEM block[6][64],
+                      int16_t block[6][64],
                       int motion_x, int motion_y){
     int cbp, i;
 

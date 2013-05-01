@@ -2,20 +2,20 @@
  * TTA demuxer
  * Copyright (c) 2006 Alex Beregszaszi
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -44,8 +44,9 @@ static int tta_read_header(AVFormatContext *s)
 {
     TTAContext *c = s->priv_data;
     AVStream *st;
-    int i, channels, bps, samplerate, datalen;
+    int i, channels, bps, samplerate;
     uint64_t framepos, start_offset;
+    uint32_t datalen;
 
     if (!av_dict_get(s->metadata, "", NULL, AV_DICT_IGNORE_SUFFIX))
         ff_id3v1_read(s);
@@ -64,9 +65,9 @@ static int tta_read_header(AVFormatContext *s)
     }
 
     datalen = avio_rl32(s->pb);
-    if(datalen < 0){
-        av_log(s, AV_LOG_ERROR, "nonsense datalen\n");
-        return -1;
+    if (!datalen) {
+        av_log(s, AV_LOG_ERROR, "invalid datalen\n");
+        return AVERROR_INVALIDDATA;
     }
 
     avio_skip(s->pb, 4); // header crc
@@ -78,8 +79,8 @@ static int tta_read_header(AVFormatContext *s)
     c->totalframes = datalen / c->frame_size + (c->last_frame_size < c->frame_size);
     c->currentframe = 0;
 
-    if(c->totalframes >= UINT_MAX/sizeof(uint32_t)){
-        av_log(s, AV_LOG_ERROR, "totalframes too large\n");
+    if(c->totalframes >= UINT_MAX/sizeof(uint32_t) || c->totalframes <= 0){
+        av_log(s, AV_LOG_ERROR, "totalframes %d invalid\n", c->totalframes);
         return -1;
     }
 

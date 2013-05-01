@@ -2,23 +2,24 @@
  * GXF demuxer.
  * Copyright (c) 2006 Reimar Doeffinger
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "avformat.h"
 #include "internal.h"
@@ -30,7 +31,29 @@ struct gxf_stream_info {
     int64_t last_field;
     AVRational frames_per_second;
     int32_t fields_per_frame;
+    int64_t track_aux_data;
 };
+
+/**
+ * @brief parse gxf timecode and add it to metadata
+ */
+static int add_timecode_metadata(AVDictionary **pm, const char *key, uint32_t timecode, int fields_per_frame)
+{
+   char tmp[128];
+   int field  = timecode & 0xff;
+   int frame  = fields_per_frame ? field / fields_per_frame : field;
+   int second = (timecode >>  8) & 0xff;
+   int minute = (timecode >> 16) & 0xff;
+   int hour   = (timecode >> 24) & 0x1f;
+   int drop   = (timecode >> 29) & 1;
+   // bit 30: color_frame, unused
+   // ignore invalid time code
+   if (timecode >> 31)
+       return 0;
+   snprintf(tmp, sizeof(tmp), "%02d:%02d:%02d%c%02d",
+       hour, minute, second, drop ? ';' : ':', frame);
+   return av_dict_set(pm, key, tmp, 0);
+}
 
 /**
  * @brief parses a packet header, extracting type and length
@@ -119,6 +142,7 @@ static int get_sindex(AVFormatContext *s, int id, int format) {
             st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
             st->codec->codec_id = AV_CODEC_ID_PCM_S24LE;
             st->codec->channels = 1;
+            st->codec->channel_layout = AV_CH_LAYOUT_MONO;
             st->codec->sample_rate = 48000;
             st->codec->bit_rate = 3 * 1 * 48000 * 8;
             st->codec->block_align = 3 * 1;
@@ -128,6 +152,7 @@ static int get_sindex(AVFormatContext *s, int id, int format) {
             st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
             st->codec->codec_id = AV_CODEC_ID_PCM_S16LE;
             st->codec->channels = 1;
+            st->codec->channel_layout = AV_CH_LAYOUT_MONO;
             st->codec->sample_rate = 48000;
             st->codec->bit_rate = 2 * 1 * 48000 * 8;
             st->codec->block_align = 2 * 1;
@@ -137,6 +162,7 @@ static int get_sindex(AVFormatContext *s, int id, int format) {
             st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
             st->codec->codec_id = AV_CODEC_ID_AC3;
             st->codec->channels = 2;
+            st->codec->channel_layout = AV_CH_LAYOUT_STEREO;
             st->codec->sample_rate = 48000;
             break;
         // timecode tracks:
@@ -222,6 +248,7 @@ static AVRational fps_umf2avr(uint32_t flags) {
 static void gxf_track_tags(AVIOContext *pb, int *len, struct gxf_stream_info *si) {
     si->frames_per_second = (AVRational){0, 0};
     si->fields_per_frame = 0;
+    si->track_aux_data = 0x80000000;
     while (*len >= 2) {
         GXFTrackTag tag = avio_r8(pb);
         int tlen = avio_r8(pb);
@@ -235,7 +262,9 @@ static void gxf_track_tags(AVIOContext *pb, int *len, struct gxf_stream_info *si
                 si->frames_per_second = fps_tag2avr(value);
             else if (tag == TRACK_FPF && (value == 1 || value == 2))
                 si->fields_per_frame = value;
-        } else
+        } else if (tlen == 8 && tag == TRACK_AUX)
+            si->track_aux_data = avio_rl64(pb);
+        else
             avio_skip(pb, tlen);
     }
 }
@@ -245,15 +274,16 @@ static void gxf_track_tags(AVIOContext *pb, int *len, struct gxf_stream_info *si
  */
 static void gxf_read_index(AVFormatContext *s, int pkt_len) {
     AVIOContext *pb = s->pb;
-    AVStream *st = s->streams[0];
+    AVStream *st;
     uint32_t fields_per_map = avio_rl32(pb);
     uint32_t map_cnt = avio_rl32(pb);
     int i;
     pkt_len -= 8;
-    if (s->flags & AVFMT_FLAG_IGNIDX) {
+    if ((s->flags & AVFMT_FLAG_IGNIDX) || !s->streams) {
         avio_skip(pb, pkt_len);
         return;
     }
+    st = s->streams[0];
     if (map_cnt > 1000) {
         av_log(s, AV_LOG_ERROR, "too many index entries %u (%x)\n", map_cnt, map_cnt);
         map_cnt = 1000;
@@ -313,8 +343,6 @@ static int gxf_header(AVFormatContext *s) {
         track_id = avio_r8(pb);
         track_len = avio_rb16(pb);
         len -= track_len;
-        gxf_track_tags(pb, &track_len, si);
-        avio_skip(pb, track_len);
         if (!(track_type & 0x80)) {
            av_log(s, AV_LOG_ERROR, "invalid track type %x\n", track_type);
            continue;
@@ -325,6 +353,16 @@ static int gxf_header(AVFormatContext *s) {
            continue;
         }
         track_id &= 0x3f;
+        gxf_track_tags(pb, &track_len, si);
+        // check for timecode tracks
+        if (track_type == 7 || track_type == 8 || track_type == 24) {
+            add_timecode_metadata(&s->metadata, "timecode",
+                                  si->track_aux_data & 0xffffffff,
+                                  si->fields_per_frame);
+
+        }
+        avio_skip(pb, track_len);
+
         idx = get_sindex(s, track_id, track_type);
         if (idx < 0) continue;
         st = s->streams[idx];
@@ -359,9 +397,20 @@ static int gxf_header(AVFormatContext *s) {
             avio_skip(pb, 0x30); // payload description
             fps = fps_umf2avr(avio_rl32(pb));
             if (!main_timebase.num || !main_timebase.den) {
+                av_log(s, AV_LOG_WARNING, "No FPS track tag, using UMF fps tag."
+                                          " This might give wrong results.\n");
                 // this may not always be correct, but simply the best we can get
                 main_timebase.num = fps.den;
                 main_timebase.den = fps.num * 2;
+            }
+
+            if (len >= 0x18) {
+                len -= 0x18;
+                avio_skip(pb, 0x10);
+                add_timecode_metadata(&s->metadata, "timecode_at_mark_in",
+                                      avio_rl32(pb), si->fields_per_frame);
+                add_timecode_metadata(&s->metadata, "timecode_at_mark_out",
+                                      avio_rl32(pb), si->fields_per_frame);
             }
         } else
             av_log(s, AV_LOG_INFO, "UMF packet too short\n");
@@ -381,7 +430,7 @@ static int gxf_header(AVFormatContext *s) {
 
 #define READ_ONE() \
     { \
-        if (!max_interval-- || pb->eof_reached) \
+        if (!max_interval-- || url_feof(pb)) \
             goto out; \
         tmp = tmp << 8 | avio_r8(pb); \
     }
@@ -443,7 +492,7 @@ static int gxf_packet(AVFormatContext *s, AVPacket *pkt) {
         int field_nr, field_info, skip = 0;
         int stream_index;
         if (!parse_packet_header(pb, &pkt_type, &pkt_len)) {
-            if (!pb->eof_reached)
+            if (!url_feof(pb))
                 av_log(s, AV_LOG_ERROR, "sync lost\n");
             return -1;
         }
@@ -495,7 +544,7 @@ static int gxf_packet(AVFormatContext *s, AVPacket *pkt) {
 
         return ret;
     }
-    return AVERROR(EIO);
+    return AVERROR_EOF;
 }
 
 static int gxf_seek(AVFormatContext *s, int stream_index, int64_t timestamp, int flags) {

@@ -3,20 +3,20 @@
  *
  * Copyright (c) 2008 Vladimir Voroshilov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -24,6 +24,7 @@
 
 #include "avcodec.h"
 #include "celp_filters.h"
+#include "libavutil/avassert.h"
 #include "libavutil/common.h"
 
 void ff_celp_convolve_circ(int16_t* fc_out, const int16_t* fc_in,
@@ -104,6 +105,8 @@ void ff_celp_lp_synthesis_filterf(float *out, const float *filter_coeffs,
     c -= filter_coeffs[1] * filter_coeffs[0];
     c -= filter_coeffs[0] * b;
 
+    av_assert2((filter_length&1)==0 && filter_length>=4);
+
     old_out0 = out[-4];
     old_out1 = out[-3];
     old_out2 = out[-2];
@@ -133,7 +136,7 @@ void ff_celp_lp_synthesis_filterf(float *out, const float *filter_coeffs,
         out2 -= val * old_out2;
         out3 -= val * old_out3;
 
-        for (i = 5; i <= filter_length; i += 2) {
+        for (i = 5; i < filter_length; i += 2) {
             old_out3 = out[-i];
             val = filter_coeffs[i-1];
 
@@ -204,4 +207,13 @@ void ff_celp_lp_zero_synthesis_filterf(float *out, const float *filter_coeffs,
         for (i = 1; i <= filter_length; i++)
             out[n] += filter_coeffs[i-1] * in[n-i];
     }
+}
+
+void ff_celp_filter_init(CELPFContext *c)
+{
+    c->celp_lp_synthesis_filterf        = ff_celp_lp_synthesis_filterf;
+    c->celp_lp_zero_synthesis_filterf   = ff_celp_lp_zero_synthesis_filterf;
+
+    if(HAVE_MIPSFPU)
+        ff_celp_filter_init_mips(c);
 }

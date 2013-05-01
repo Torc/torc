@@ -3,30 +3,30 @@
  *
  * Copyright (C) 2007 Marc Hoffman <mmh@pleasantst.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/attributes.h"
 #include "libavcodec/avcodec.h"
-#include "libavcodec/dsputil.h"
 #include "libavcodec/mpegvideo.h"
 #include "dsputil_bfin.h"
 
 static int dct_quantize_bfin (MpegEncContext *s,
-                              DCTELEM *block, int n,
+                              int16_t *block, int n,
                               int qscale, int *overflow)
 {
     int last_non_zero, q, start_i;
@@ -61,8 +61,13 @@ static int dct_quantize_bfin (MpegEncContext *s,
         dc = block[0] = (block[0] + (q >> 1)) / q;
         start_i = 1;
         last_non_zero = 0;
-        bias = s->q_intra_matrix16[qscale][1];
-        qmat = s->q_intra_matrix16[qscale][0];
+        if(n<4){
+            bias = s->q_intra_matrix16[qscale][1];
+            qmat = s->q_intra_matrix16[qscale][0];
+        }else{
+            bias = s->q_chroma_intra_matrix16[qscale][1];
+            qmat = s->q_chroma_intra_matrix16[qscale][0];
+        }
 
     } else {
         start_i = 0;
@@ -141,7 +146,7 @@ static int dct_quantize_bfin (MpegEncContext *s,
     return last_non_zero;
 }
 
-void ff_MPV_common_init_bfin (MpegEncContext *s)
+av_cold void ff_MPV_common_init_bfin (MpegEncContext *s)
 {
 /*     s->dct_quantize= dct_quantize_bfin; */
 }

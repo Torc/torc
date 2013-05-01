@@ -3,20 +3,20 @@
  *
  * copyright (C) 2004 Marc Hoffman <marc.hoffman@analog.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -97,6 +97,7 @@
 #include "libswscale/swscale_internal.h"
 #include "libavutil/attributes.h"
 #include "libavutil/cpu.h"
+#include "libavutil/pixdesc.h"
 #include "yuv2rgb_altivec.h"
 
 #undef PROFILE_THE_BEAST
@@ -317,12 +318,7 @@ static int altivec_ ## name(SwsContext *c, const unsigned char **in,          \
     const ubyte *ui  = in[1];                                                 \
     const ubyte *vi  = in[2];                                                 \
                                                                               \
-    vector unsigned char *oute =                                              \
-        (vector unsigned char *)                                              \
-            (oplanes[0] + srcSliceY * outstrides[0]);                         \
-    vector unsigned char *outo =                                              \
-        (vector unsigned char *)                                              \
-            (oplanes[0] + srcSliceY * outstrides[0] + outstrides[0]);         \
+    vector unsigned char *oute, *outo;                                        \
                                                                               \
     /* loop moves y{1, 2}i by w */                                            \
     instrides_scl[0] = instrides[0] * 2 - w;                                  \
@@ -332,6 +328,9 @@ static int altivec_ ## name(SwsContext *c, const unsigned char **in,          \
     instrides_scl[2] = instrides[2] - w / 2;                                  \
                                                                               \
     for (i = 0; i < h / 2; i++) {                                             \
+        oute = (vector unsigned char *)(oplanes[0] + outstrides[0] *          \
+                                        (srcSliceY + i * 2));                 \
+        outo = oute + (outstrides[0] >> 4);                                   \
         vec_dstst(outo, (0x02000002 | (((w * 3 + 32) / 32) << 16)), 0);       \
         vec_dstst(oute, (0x02000002 | (((w * 3 + 32) / 32) << 16)), 1);       \
                                                                               \
@@ -428,9 +427,6 @@ static int altivec_ ## name(SwsContext *c, const unsigned char **in,          \
             ui  += 8;                                                         \
             vi  += 8;                                                         \
         }                                                                     \
-                                                                              \
-        outo += (outstrides[0]) >> 4;                                         \
-        oute += (outstrides[0]) >> 4;                                         \
                                                                               \
         ui  += instrides_scl[1];                                              \
         vi  += instrides_scl[2];                                              \
@@ -736,7 +732,7 @@ static av_always_inline void ff_yuv2packedX_altivec(SwsContext *c,
             if (!printed_error_message) {
                 av_log(c, AV_LOG_ERROR,
                        "altivec_yuv2packedX doesn't support %s output\n",
-                       sws_format_name(c->dstFormat));
+                       av_get_pix_fmt_name(c->dstFormat));
                 printed_error_message = 1;
             }
             return;
@@ -824,7 +820,7 @@ static av_always_inline void ff_yuv2packedX_altivec(SwsContext *c,
             /* Unreachable, I think. */
             av_log(c, AV_LOG_ERROR,
                    "altivec_yuv2packedX doesn't support %s output\n",
-                   sws_format_name(c->dstFormat));
+                   av_get_pix_fmt_name(c->dstFormat));
             return;
         }
 

@@ -1,18 +1,22 @@
-/*
- * This file is part of Libav.
+/**
+ * @file
+ * Common code for Vorbis I encoder and decoder
+ * @author Denes Balatoni  ( dbalatoni programozo hu )
  *
- * Libav is free software; you can redistribute it and/or
+ * This file is part of FFmpeg.
+ *
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -117,7 +121,7 @@ int ff_vorbis_len2vlc(uint8_t *bits, uint32_t *codes, unsigned num)
     return 0;
 }
 
-int ff_vorbis_ready_floor1_list(AVCodecContext *avccontext,
+int ff_vorbis_ready_floor1_list(AVCodecContext *avctx,
                                 vorbis_floor1_entry *list, int values)
 {
     int i;
@@ -143,7 +147,7 @@ int ff_vorbis_ready_floor1_list(AVCodecContext *avccontext,
         int j;
         for (j = i + 1; j < values; j++) {
             if (list[i].x == list[j].x) {
-                av_log(avccontext, AV_LOG_ERROR,
+                av_log(avctx, AV_LOG_ERROR,
                        "Duplicate value found in floor 1 X coordinates\n");
                 return AVERROR_INVALIDDATA;
             }

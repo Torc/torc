@@ -3,20 +3,20 @@
  *
  * copyright (c) 2010 Laurent Aimar
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -109,10 +109,10 @@ static void fill_quantization_matrices(AVCodecContext *avctx,
         qm->bNewQmatrix[i] = 1;
     for (i = 0; i < 64; i++) {
         int n = s->dsp.idct_permutation[ff_zigzag_direct[i]];
-        qm->Qmatrix[0][i] = s->intra_matrix[n];;
-        qm->Qmatrix[1][i] = s->inter_matrix[n];;
-        qm->Qmatrix[2][i] = s->chroma_intra_matrix[n];;
-        qm->Qmatrix[3][i] = s->chroma_inter_matrix[n];;
+        qm->Qmatrix[0][i] = s->intra_matrix[n];
+        qm->Qmatrix[1][i] = s->inter_matrix[n];
+        qm->Qmatrix[2][i] = s->chroma_intra_matrix[n];
+        qm->Qmatrix[3][i] = s->chroma_inter_matrix[n];
     }
 }
 
@@ -160,7 +160,7 @@ static int commit_bitstream_and_slice_buffer(AVCodecContext *avctx,
 
     if (FAILED(IDirectXVideoDecoder_GetBuffer(ctx->decoder,
                                               DXVA2_BitStreamDateBufferType,
-                                              &dxva_data, &dxva_size)))
+                                              (void **)&dxva_data, &dxva_size)))
         return -1;
     current = dxva_data;
     end = dxva_data + dxva_size;
@@ -203,9 +203,9 @@ static int commit_bitstream_and_slice_buffer(AVCodecContext *avctx,
                                   mb_count);
 }
 
-static int start_frame(AVCodecContext *avctx,
-                       av_unused const uint8_t *buffer,
-                       av_unused uint32_t size)
+static int dxva2_mpeg2_start_frame(AVCodecContext *avctx,
+                                   av_unused const uint8_t *buffer,
+                                   av_unused uint32_t size)
 {
     const struct MpegEncContext *s = avctx->priv_data;
     struct dxva_context *ctx = avctx->hwaccel_context;
@@ -225,8 +225,8 @@ static int start_frame(AVCodecContext *avctx,
     return 0;
 }
 
-static int decode_slice(AVCodecContext *avctx,
-                        const uint8_t *buffer, uint32_t size)
+static int dxva2_mpeg2_decode_slice(AVCodecContext *avctx,
+                                    const uint8_t *buffer, uint32_t size)
 {
     const struct MpegEncContext *s = avctx->priv_data;
     struct dxva2_picture_context *ctx_pic =
@@ -246,18 +246,22 @@ static int decode_slice(AVCodecContext *avctx,
     return 0;
 }
 
-static int end_frame(AVCodecContext *avctx)
+static int dxva2_mpeg2_end_frame(AVCodecContext *avctx)
 {
     struct MpegEncContext *s = avctx->priv_data;
     struct dxva2_picture_context *ctx_pic =
         s->current_picture_ptr->f.hwaccel_picture_private;
+    int ret;
 
     if (ctx_pic->slice_count <= 0 || ctx_pic->bitstream_size <= 0)
         return -1;
-    return ff_dxva2_common_end_frame(avctx, s,
-                                     &ctx_pic->pp, sizeof(ctx_pic->pp),
-                                     &ctx_pic->qm, sizeof(ctx_pic->qm),
-                                     commit_bitstream_and_slice_buffer);
+    ret = ff_dxva2_common_end_frame(avctx, s->current_picture_ptr,
+                                    &ctx_pic->pp, sizeof(ctx_pic->pp),
+                                    &ctx_pic->qm, sizeof(ctx_pic->qm),
+                                    commit_bitstream_and_slice_buffer);
+    if (!ret)
+        ff_mpeg_draw_horiz_band(s, 0, avctx->height);
+    return ret;
 }
 
 AVHWAccel ff_mpeg2_dxva2_hwaccel = {
@@ -265,8 +269,8 @@ AVHWAccel ff_mpeg2_dxva2_hwaccel = {
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = AV_CODEC_ID_MPEG2VIDEO,
     .pix_fmt        = AV_PIX_FMT_DXVA2_VLD,
-    .start_frame    = start_frame,
-    .decode_slice   = decode_slice,
-    .end_frame      = end_frame,
+    .start_frame    = dxva2_mpeg2_start_frame,
+    .decode_slice   = dxva2_mpeg2_decode_slice,
+    .end_frame      = dxva2_mpeg2_end_frame,
     .priv_data_size = sizeof(struct dxva2_picture_context),
 };

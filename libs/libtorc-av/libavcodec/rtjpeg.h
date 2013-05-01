@@ -2,20 +2,20 @@
  * RTJpeg decoding functions
  * copyright (c) 2006 Reimar Doeffinger
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -35,7 +35,7 @@ typedef struct RTJpegContext {
     uint8_t scan[64];
     uint32_t lquant[64];
     uint32_t cquant[64];
-    DECLARE_ALIGNED(16, DCTELEM, block)[64];
+    DECLARE_ALIGNED(16, int16_t, block)[64];
 } RTJpegContext;
 
 void ff_rtjpeg_decode_init(RTJpegContext *c, DSPContext *dsp,

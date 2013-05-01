@@ -2,20 +2,20 @@
  * Constants for DV codec
  * Copyright (c) 2002 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -40,9 +40,9 @@ typedef struct DVVideoContext {
 
     uint8_t  dv_zigzag[2][64];
 
-    void (*get_pixels)(DCTELEM *block, const uint8_t *pixels, int line_size);
-    void (*fdct[2])(DCTELEM *block);
-    void (*idct_put[2])(uint8_t *dest, int line_size, DCTELEM *block);
+    void (*get_pixels)(int16_t *block, const uint8_t *pixels, int line_size);
+    void (*fdct[2])(int16_t *block);
+    void (*idct_put[2])(uint8_t *dest, int line_size, int16_t *block);
     me_cmp_func ildct_cmp;
 } DVVideoContext;
 
@@ -82,10 +82,6 @@ extern const int ff_dv_iweight_720_c[64];
 #define DV_PROFILE_IS_HD(p) ((p)->video_stype & 0x10)
 #define DV_PROFILE_IS_1080i50(p) (((p)->video_stype == 0x14) && ((p)->dsf == 1))
 #define DV_PROFILE_IS_720p50(p)  (((p)->video_stype == 0x18) && ((p)->dsf == 1))
-
-/* minimum number of bytes to read from a DV stream in order to
-   determine the profile */
-#define DV_PROFILE_BYTES (6*80) /* 6 DIF blocks */
 
 /**
  * largest possible DV frame, in bytes (1080i50)

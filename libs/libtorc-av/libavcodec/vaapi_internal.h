@@ -4,20 +4,20 @@
  *
  * Copyright (C) 2008-2009 Splitted-Desktop Systems
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -42,7 +42,7 @@ static inline VASurfaceID ff_vaapi_get_surface_id(Picture *pic)
 }
 
 /** Common AVHWAccel.end_frame() implementation */
-int ff_vaapi_common_end_frame(MpegEncContext *s);
+void ff_vaapi_common_end_frame(AVCodecContext *avctx);
 
 /** Allocate a new picture parameter buffer */
 void *ff_vaapi_alloc_pic_param(struct vaapi_context *vactx, unsigned int size);
@@ -62,6 +62,10 @@ uint8_t *ff_vaapi_alloc_bitplane(struct vaapi_context *vactx, uint32_t size);
  * @return the newly allocated slice parameter
  */
 VASliceParameterBufferBase *ff_vaapi_alloc_slice(struct vaapi_context *vactx, const uint8_t *buffer, uint32_t size);
+
+int ff_vaapi_mpeg_end_frame(AVCodecContext *avctx);
+int ff_vaapi_commit_slices(struct vaapi_context *vactx);
+int ff_vaapi_render_picture(struct vaapi_context *vactx, VASurfaceID surface);
 
 /* @} */
 

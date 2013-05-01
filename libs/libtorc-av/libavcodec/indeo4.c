@@ -30,7 +30,6 @@
 #define BITSTREAM_READER_LE
 #include "avcodec.h"
 #include "get_bits.h"
-#include "dsputil.h"
 #include "ivi_dsp.h"
 #include "ivi_common.h"
 #include "indeo4data.h"
@@ -197,6 +196,7 @@ static int decode_pic_hdr(IVI45DecContext *ctx, AVCodecContext *avctx)
 
     /* decode subdivision of the planes */
     pic_conf.luma_bands = decode_plane_subdivision(&ctx->gb);
+    pic_conf.chroma_bands = 0;
     if (pic_conf.luma_bands)
         pic_conf.chroma_bands = decode_plane_subdivision(&ctx->gb);
     ctx->is_scalable = pic_conf.luma_bands != 1 || pic_conf.chroma_bands != 1;
@@ -283,6 +283,7 @@ static int decode_band_hdr(IVI45DecContext *ctx, IVIBandDesc *band,
 {
     int plane, band_num, indx, transform_id, scan_indx;
     int i;
+    int quant_mat;
 
     plane    = get_bits(&ctx->gb, 2);
     band_num = get_bits(&ctx->gb, 4);
@@ -339,6 +340,10 @@ static int decode_band_hdr(IVI45DecContext *ctx, IVIBandDesc *band,
                 return AVERROR_PATCHWELCOME;
             }
 
+            if (transform_id < 10 && band->blk_size < 8) {
+                av_log(avctx, AV_LOG_ERROR, "wrong transform size!\n");
+                return AVERROR_INVALIDDATA;
+            }
 #if IVI4_STREAM_ANALYSER
             if ((transform_id >= 0 && transform_id <= 2) || transform_id == 10)
                 ctx->uses_haar = 1;
@@ -347,19 +352,43 @@ static int decode_band_hdr(IVI45DecContext *ctx, IVIBandDesc *band,
             band->inv_transform = transforms[transform_id].inv_trans;
             band->dc_transform  = transforms[transform_id].dc_trans;
             band->is_2d_trans   = transforms[transform_id].is_2d_trans;
+            band->transform_size= (transform_id < 10) ? 8 : 4;
 
             scan_indx = get_bits(&ctx->gb, 4);
+            if ((scan_indx>4 && scan_indx<10) != (band->blk_size==4)) {
+                av_log(avctx, AV_LOG_ERROR, "mismatching scan table!\n");
+                return AVERROR_INVALIDDATA;
+            }
             if (scan_indx == 15) {
                 av_log(avctx, AV_LOG_ERROR, "Custom scan pattern encountered!\n");
                 return AVERROR_INVALIDDATA;
             }
             band->scan = scan_index_to_tab[scan_indx];
+            band->scan_size = band->blk_size;
 
-            band->quant_mat = get_bits(&ctx->gb, 5);
-            if (band->quant_mat == 31) {
+            quant_mat = get_bits(&ctx->gb, 5);
+            if (quant_mat == 31) {
                 av_log(avctx, AV_LOG_ERROR, "Custom quant matrix encountered!\n");
                 return AVERROR_INVALIDDATA;
             }
+            if (quant_mat > 21) {
+                av_log(avctx, AV_LOG_ERROR, "Invalid quant matrix encountered!\n");
+                return AVERROR_INVALIDDATA;
+            }
+            band->quant_mat = quant_mat;
+        }
+        if (quant_index_to_tab[band->quant_mat] > 4 && band->blk_size == 4) {
+            av_log(avctx, AV_LOG_ERROR, "Invalid quant matrix for 4x4 block encountered!\n");
+            band->quant_mat = 0;
+            return AVERROR_INVALIDDATA;
+        }
+        if (band->scan_size != band->blk_size) {
+            av_log(avctx, AV_LOG_ERROR, "mismatching scan table!\n");
+            return AVERROR_INVALIDDATA;
+        }
+        if (band->transform_size == 8 && band->blk_size < 8) {
+            av_log(avctx, AV_LOG_ERROR, "mismatching transform_size!\n");
+            return AVERROR_INVALIDDATA;
         }
 
         /* decode block huffman codebook */
@@ -400,6 +429,11 @@ static int decode_band_hdr(IVI45DecContext *ctx, IVIBandDesc *band,
 
     align_get_bits(&ctx->gb);
 
+    if (!band->scan) {
+        av_log(avctx, AV_LOG_ERROR, "band->scan not set\n");
+        return AVERROR_INVALIDDATA;
+    }
+
     return 0;
 }
 
@@ -418,7 +452,7 @@ static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
                           IVITile *tile, AVCodecContext *avctx)
 {
     int         x, y, mv_x, mv_y, mv_delta, offs, mb_offset, blks_per_mb,
-                mv_scale, mb_type_bits;
+                mv_scale, mb_type_bits, s;
     IVIMbInfo   *mb, *ref_mb;
     int         row_offset = band->mb_size * band->pitch;
 
@@ -432,6 +466,11 @@ static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
     /* scale factor for motion vectors */
     mv_scale = (ctx->planes[0].bands[0].mb_size >> 3) - (band->mb_size >> 3);
     mv_x = mv_y = 0;
+
+    if (((tile->width + band->mb_size-1)/band->mb_size) * ((tile->height + band->mb_size-1)/band->mb_size) != tile->num_MBs) {
+        av_log(avctx, AV_LOG_ERROR, "num_MBs mismatch %d %d %d %d\n", tile->width, tile->height, band->mb_size, tile->num_MBs);
+        return -1;
+    }
 
     for (y = tile->ypos; y < tile->ypos + tile->height; y += band->mb_size) {
         mb_offset = offs;
@@ -457,7 +496,7 @@ static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
                 }
 
                 mb->mv_x = mb->mv_y = 0; /* no motion vector coded */
-                if (band->inherit_mv) {
+                if (band->inherit_mv && ref_mb) {
                     /* motion vector inheritance */
                     if (mv_scale) {
                         mb->mv_x = ivi_scale_mv(ref_mb->mv_x, mv_scale);
@@ -468,7 +507,7 @@ static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
                     }
                 }
             } else {
-                if (band->inherit_mv) {
+                if (band->inherit_mv && ref_mb) {
                     mb->type = ref_mb->type; /* copy mb_type from corresponding reference mb */
                 } else if (ctx->frame_type == FRAMETYPE_INTRA ||
                            ctx->frame_type == FRAMETYPE_INTRA1) {
@@ -492,7 +531,7 @@ static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
                 if (!mb->type) {
                     mb->mv_x = mb->mv_y = 0; /* there is no motion vector in intra-macroblocks */
                 } else {
-                    if (band->inherit_mv) {
+                    if (band->inherit_mv && ref_mb) {
                         /* motion vector inheritance */
                         if (mv_scale) {
                             mb->mv_x = ivi_scale_mv(ref_mb->mv_x, mv_scale);
@@ -513,6 +552,15 @@ static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
                         mb->mv_y = mv_y;
                     }
                 }
+            }
+
+            s= band->is_halfpel;
+            if (mb->type)
+            if ( x +  (mb->mv_x   >>s) +                 (y+               (mb->mv_y   >>s))*band->pitch < 0 ||
+                 x + ((mb->mv_x+s)>>s) + band->mb_size - 1
+                   + (y+band->mb_size - 1 +((mb->mv_y+s)>>s))*band->pitch > band->bufsize -1) {
+                av_log(avctx, AV_LOG_ERROR, "motion vector %d %d outside reference\n", x*s + mb->mv_x, y*s + mb->mv_y);
+                return AVERROR_INVALIDDATA;
             }
 
             mb++;
@@ -607,4 +655,5 @@ AVCodec ff_indeo4_decoder = {
     .close          = ff_ivi_decode_close,
     .decode         = ff_ivi_decode_frame,
     .long_name      = NULL_IF_CONFIG_SMALL("Intel Indeo Video Interactive 4"),
+    .capabilities   = CODEC_CAP_DR1,
 };

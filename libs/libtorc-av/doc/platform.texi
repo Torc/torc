@@ -1,8 +1,8 @@
 \input texinfo @c -*- texinfo -*-
 
-@settitle Platform Specific information
+@settitle Platform Specific Information
 @titlepage
-@center @titlefont{Platform Specific information}
+@center @titlefont{Platform Specific Information}
 @end titlepage
 
 @top
@@ -11,7 +11,7 @@
 
 @chapter Unix-like
 
-Some parts of Libav cannot be built with version 2.15 of the GNU
+Some parts of FFmpeg cannot be built with version 2.15 of the GNU
 assembler which is still provided by a few AMD64 distributions. To
 make sure your compiler really uses the required version of gas
 after a binutils upgrade, run:
@@ -26,12 +26,12 @@ to configure.
 
 @section BSD
 
-BSD make will not build Libav, you need to install and use GNU Make
+BSD make will not build FFmpeg, you need to install and use GNU Make
 (@command{gmake}).
 
 @section (Open)Solaris
 
-GNU Make is required to build Libav, so you have to invoke (@command{gmake}),
+GNU Make is required to build FFmpeg, so you have to invoke (@command{gmake}),
 standard Solaris Make will not work. When building with a non-c99 front-end
 (gcc, generic suncc) add either @code{--extra-libs=/usr/lib/values-xpg6.o}
 or @code{--extra-libs=/usr/lib/64/values-xpg6.o} to the configure options
@@ -45,20 +45,21 @@ bash ./configure
 @end example
 
 @anchor{Darwin}
-@section Darwin (OS X, iPhone)
+@section Darwin (Mac OS X, iPhone)
 
 The toolchain provided with Xcode is sufficient to build the basic
 unacelerated code.
 
-OS X on PowerPC or ARM (iPhone) requires a preprocessor from
+Mac OS X on PowerPC or ARM (iPhone) requires a preprocessor from
 @url{http://github.com/yuvi/gas-preprocessor} to build the optimized
 assembler functions. Just download the Perl script and put it somewhere
-in your PATH, Libav's configure will pick it up automatically.
+in your PATH, FFmpeg's configure will pick it up automatically.
 
-OS X on AMD64 and x86 requires @command{yasm} to build most of the
-optimized assembler functions @url{http://mxcl.github.com/homebrew/, Homebrew},
-@url{http://www.gentoo.org/proj/en/gentoo-alt/prefix/bootstrap-macos.xml, Gentoo Prefix}
-or @url{http://www.macports.org, MacPorts} can easily provide it.
+Mac OS X on amd64 and x86 requires @command{yasm} to build most of the
+optimized assembler functions. @uref{http://www.finkproject.org/, Fink},
+@uref{http://www.gentoo.org/proj/en/gentoo-alt/prefix/bootstrap-macos.xml, Gentoo Prefix},
+@uref{http://mxcl.github.com/homebrew/, Homebrew}
+or @uref{http://www.macports.org, MacPorts} can easily provide it.
 
 
 @chapter DOS
@@ -69,15 +70,18 @@ Using a cross-compiler is preferred for various reasons.
 
 @chapter OS/2
 
-For information about compiling Libav on OS/2 see
+For information about compiling FFmpeg on OS/2 see
 @url{http://www.edm2.com/index.php/FFmpeg}.
 
 
 @chapter Windows
 
+To get help and instructions for building FFmpeg under Windows, check out
+the FFmpeg Windows Help Forum at @url{http://ffmpeg.zeranoe.com/forum/}.
+
 @section Native Windows compilation using MinGW or MinGW-w64
 
-Libav can be built to run natively on Windows using the MinGW or MinGW-w64
+FFmpeg can be built to run natively on Windows using the MinGW or MinGW-w64
 toolchains. Install the latest versions of MSYS and MinGW or MinGW-w64 from
 @url{http://www.mingw.org/} or @url{http://mingw-w64.sourceforge.net/}.
 You can find detailed installation instructions in the download section and
@@ -93,23 +97,24 @@ speed up is close to non-existent for normal one-off builds and is only
 noticeable when running make for a second time (for example during
 @code{make install}).
 
-@item In order to compile AVplay, you must have the MinGW development library
+@item In order to compile FFplay, you must have the MinGW development library
 of @uref{http://www.libsdl.org/, SDL} and @code{pkg-config} installed.
 
-@item By using @code{./configure --enable-shared} when configuring Libav,
-you can build all libraries as DLLs.
+@item By using @code{./configure --enable-shared} when configuring FFmpeg,
+you can build the FFmpeg libraries (e.g. libavutil, libavcodec,
+libavformat) as DLLs.
 
 @end itemize
 
 @section Microsoft Visual C++
 
-Libav can be built with MSVC using a C99-to-C89 conversion utility and
+FFmpeg can be built with MSVC using a C99-to-C89 conversion utility and
 wrapper.
 
 You will need the following prerequisites:
 
 @itemize
-@item @uref{https://github.com/rbultje/c99-to-c89/, C99-to-C89 Converter & Wrapper}
+@item @uref{http://download.videolan.org/pub/contrib/c99-to-c89/, C99-to-C89 Converter & Wrapper}
 @item @uref{http://code.google.com/p/msinttypes/, msinttypes}
 @item @uref{http://www.mingw.org/, MSYS}
 @item @uref{http://yasm.tortall.net/, YASM}
@@ -137,7 +142,7 @@ make
 make install
 @end example
 
-If you wish to compile static libraries, add @code{--enable-shared} to your
+If you wish to compile shared libraries, add @code{--enable-shared} to your
 configure options. Note that due to the way MSVC handles DLL imports and
 exports, you cannot compile static and shared libraries at the same time, and
 enabling shared libraries will automatically disable the static ones.
@@ -160,26 +165,26 @@ follow step 3, or compilation will fail.
 @enumerate
 @item Grab the @uref{http://zlib.net/, zlib sources}.
 @item Edit @code{win32/Makefile.msc} so that it uses -MT instead of -MD, since
-this is how Libav is built as well.
+this is how FFmpeg is built as well.
 @item Edit @code{zconf.h} and remove its inclusion of @code{unistd.h}. This gets
-erroneously included when building Libav.
+erroneously included when building FFmpeg.
 @item Run @code{nmake -f win32/Makefile.msc}.
 @item Move @code{zlib.lib}, @code{zconf.h}, and @code{zlib.h} to somewhere MSVC
 can see.
 @end enumerate
 
-@item Libav has been tested with Visual Studio 2010 and 2012, Pro and Express.
+@item FFmpeg has been tested with Visual Studio 2010 and 2012, Pro and Express.
 Anything else is not officially supported.
 
 @end itemize
 
-@subsection Linking to Libav with Microsoft Visual C++
+@subsection Linking to FFmpeg with Microsoft Visual C++
 
 If you plan to link with MSVC-built static libraries, you will need
 to make sure you have @code{Runtime Library} set to
 @code{Multi-threaded (/MT)} in your project's settings.
 
-Libav headers do not declare global data for Windows DLLs through the usual
+FFmpeg headers do not declare global data for Windows DLLs through the usual
 dllexport/dllimport interface. Such data will be exported properly while
 building, but to use them in your MSVC code you will have to edit the
 appropriate headers and mark the data as dllimport. For example, in
@@ -234,14 +239,14 @@ Replace @code{foo-version} and @code{foo} with the respective library names.
 You must use the MinGW cross compilation tools available at
 @url{http://www.mingw.org/}.
 
-Then configure Libav with the following options:
+Then configure FFmpeg with the following options:
 @example
 ./configure --target-os=mingw32 --cross-prefix=i386-mingw32msvc-
 @end example
 (you can change the cross-prefix according to the prefix chosen for the
 MinGW tools).
 
-Then you can easily test Libav with @uref{http://www.winehq.com/, Wine}.
+Then you can easily test FFmpeg with @uref{http://www.winehq.com/, Wine}.
 
 @section Compilation under Cygwin
 
@@ -259,7 +264,7 @@ In order to run FATE you will also need the following "Utils" packages:
 bc, diffutils
 @end example
 
-If you want to build Libav with additional libraries, download Cygwin
+If you want to build FFmpeg with additional libraries, download Cygwin
 "Devel" packages for Ogg and Vorbis from any Cygwin packages repository:
 @example
 libogg-devel, libvorbis-devel
@@ -269,7 +274,7 @@ These library packages are only available from
 @uref{http://sourceware.org/cygwinports/, Cygwin Ports}:
 
 @example
-yasm, libSDL-devel, libfaac-devel, libgsm-devel, libmp3lame-devel,
+yasm, libSDL-devel, libfaac-devel, libaacplus-devel, libgsm-devel, libmp3lame-devel,
 libschroedinger1.0-devel, speex-devel, libtheora-devel, libxvidcore-devel
 @end example
 
@@ -301,7 +306,7 @@ and for a build with shared libraries
 @chapter Plan 9
 
 The native @uref{http://plan9.bell-labs.com/plan9/, Plan 9} compiler
-does not implement all the C99 features needed by Libav so the gcc
+does not implement all the C99 features needed by FFmpeg so the gcc
 port must be used.  Furthermore, a few items missing from the C
 library and shell environment need to be fixed.
 
@@ -317,7 +322,7 @@ utility by setting @code{pkgpath} to
 
 @item Missing/broken @code{head} and @code{printf} commands
 
-Replacements adequate for building Libav can be found in the
+Replacements adequate for building FFmpeg can be found in the
 @code{compat/plan9} directory.  Place these somewhere they will be
 found by the shell.  These are not full implementations of the
 commands and are @emph{not} suitable for general use.
@@ -355,7 +360,7 @@ build system of this library.
 @item FPU exceptions enabled by default
 
 Unlike most other systems, Plan 9 enables FPU exceptions by default.
-These must be disabled before calling any Libav functions.  While the
+These must be disabled before calling any FFmpeg functions.  While the
 included tools will do this automatically, other users of the
 libraries must do it themselves.
 

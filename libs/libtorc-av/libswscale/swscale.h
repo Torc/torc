@@ -1,20 +1,20 @@
 /*
- * Copyright (C) 2001-2003 Michael Niedermayer <michaelni@gmx.at>
+ * Copyright (C) 2001-2011 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -23,8 +23,13 @@
 
 /**
  * @file
- * @brief
- *     external api for the swscale stuff
+ * @ingroup lsws
+ * external API header
+ */
+
+/**
+ * @defgroup lsws Libswscale
+ * @{
  */
 
 #include <stdint.h>
@@ -77,6 +82,7 @@ const char *swscale_license(void);
 #define SWS_DIRECT_BGR        0x8000
 #define SWS_ACCURATE_RND      0x40000
 #define SWS_BITEXACT          0x80000
+#define SWS_ERROR_DIFFUSION  0x800000
 
 #if FF_API_SWS_CPU_CAPS
 /**
@@ -85,9 +91,7 @@ const char *swscale_license(void);
  */
 #define SWS_CPU_CAPS_MMX      0x80000000
 #define SWS_CPU_CAPS_MMXEXT   0x20000000
-#if LIBSWSCALE_VERSION_MAJOR < 3
 #define SWS_CPU_CAPS_MMX2     0x20000000
-#endif
 #define SWS_CPU_CAPS_3DNOW    0x40000000
 #define SWS_CPU_CAPS_ALTIVEC  0x10000000
 #define SWS_CPU_CAPS_BFIN     0x01000000
@@ -217,7 +221,13 @@ int sws_scale(struct SwsContext *c, const uint8_t *const srcSlice[],
               uint8_t *const dst[], const int dstStride[]);
 
 /**
- * @param inv_table the yuv2rgb coefficients, normally ff_yuv2rgb_coeffs[x]
+ * @param dstRange flag indicating the while-black range of the output (1=jpeg / 0=mpeg)
+ * @param srcRange flag indicating the while-black range of the input (1=jpeg / 0=mpeg)
+ * @param table the yuv2rgb coefficients describing the output yuv space, normally ff_yuv2rgb_coeffs[x]
+ * @param inv_table the yuv2rgb coefficients describing the input yuv space, normally ff_yuv2rgb_coeffs[x]
+ * @param brightness 16.16 fixed point brightness correction
+ * @param contrast 16.16 fixed point contrast correction
+ * @param saturation 16.16 fixed point saturation correction
  * @return -1 if not supported
  */
 int sws_setColorspaceDetails(struct SwsContext *c, const int inv_table[4],
@@ -337,5 +347,9 @@ void sws_convertPalette8ToPacked24(const uint8_t *src, uint8_t *dst, int num_pix
  * @see av_opt_find().
  */
 const AVClass *sws_get_class(void);
+
+/**
+ * @}
+ */
 
 #endif /* SWSCALE_SWSCALE_H */

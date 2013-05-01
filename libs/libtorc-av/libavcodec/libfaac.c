@@ -2,20 +2,20 @@
  * Interface to libfaac for aac encoding
  * Copyright (c) 2002 Gildas Bazin <gbazin@netcourrier.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -26,11 +26,11 @@
 
 #include <faac.h>
 
+#include "libavutil/channel_layout.h"
+#include "libavutil/common.h"
 #include "avcodec.h"
 #include "audio_frame_queue.h"
 #include "internal.h"
-#include "libavutil/audioconvert.h"
-#include "libavutil/common.h"
 
 
 /* libfaac has an encoder delay of 1024 samples */
@@ -40,7 +40,6 @@ typedef struct FaacAudioContext {
     faacEncHandle faac_handle;
     AudioFrameQueue afq;
 } FaacAudioContext;
-
 
 static av_cold int Faac_encode_close(AVCodecContext *avctx)
 {
@@ -159,9 +158,7 @@ static av_cold int Faac_encode_init(AVCodecContext *avctx)
             memcpy(avctx->extradata, buffer, avctx->extradata_size);
             faac_cfg->outputFormat = 0;
         }
-#undef free
         free(buffer);
-#define free please_use_av_free
     }
 
     if (!faacEncSetConfiguration(s->faac_handle, faac_cfg)) {
@@ -187,10 +184,8 @@ static int Faac_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     int num_samples  = frame ? frame->nb_samples : 0;
     void *samples    = frame ? frame->data[0]    : NULL;
 
-    if ((ret = ff_alloc_packet(avpkt, (7 + 768) * avctx->channels))) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, (7 + 768) * avctx->channels)) < 0)
         return ret;
-    }
 
     bytes_written = faacEncEncode(s->faac_handle, samples,
                                   num_samples * avctx->channels,
@@ -202,7 +197,7 @@ static int Faac_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
 
     /* add current frame to the queue */
     if (frame) {
-        if ((ret = ff_af_queue_add(&s->afq, frame) < 0))
+        if ((ret = ff_af_queue_add(&s->afq, frame)) < 0)
             return ret;
     }
 

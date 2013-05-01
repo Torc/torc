@@ -2,20 +2,20 @@
  * Range coder
  * Copyright (c) 2004 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -28,9 +28,9 @@
 #define AVCODEC_RANGECODER_H
 
 #include <stdint.h>
-#include <assert.h>
 
 #include "libavutil/common.h"
+#include "libavutil/avassert.h"
 
 typedef struct RangeCoder {
     int low;
@@ -86,9 +86,9 @@ static inline void put_rac(RangeCoder *c, uint8_t *const state, int bit)
 {
     int range1 = (c->range * (*state)) >> 8;
 
-    assert(*state);
-    assert(range1 < c->range);
-    assert(range1 > 0);
+    av_assert2(*state);
+    av_assert2(range1 < c->range);
+    av_assert2(range1 > 0);
     if (!bit) {
         c->range -= range1;
         *state    = c->zero_state[*state];

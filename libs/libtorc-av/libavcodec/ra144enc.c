@@ -2,20 +2,20 @@
  * Real Audio 1.0 (14.4K) encoder
  * Copyright (c) 2010 Francesco Lavra <francescolavra@interfree.it>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -208,8 +208,8 @@ static void create_adapt_vect(float *vect, const int16_t *cb, int lag)
 static int adaptive_cb_search(const int16_t *adapt_cb, float *work,
                               const float *coefs, float *data)
 {
-    int i, best_vect;
-    float score, gain, best_score, best_gain;
+    int i, av_uninit(best_vect);
+    float score, gain, best_score, av_uninit(best_gain);
     float exc[BLOCKSIZE];
 
     gain = best_score = 0;
@@ -347,7 +347,8 @@ static void ra144_encode_subblock(RA144Context *ractx,
     float zero[BLOCKSIZE], cba[BLOCKSIZE], cb1[BLOCKSIZE], cb2[BLOCKSIZE];
     int16_t cba_vect[BLOCKSIZE];
     int cba_idx, cb1_idx, cb2_idx, gain;
-    int i, n, m[3];
+    int i, n;
+    unsigned m[3];
     float g[3];
     float error, best_error;
 
@@ -457,10 +458,8 @@ static int ra144_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     if (ractx->last_frame)
         return 0;
 
-    if ((ret = ff_alloc_packet(avpkt, FRAMESIZE))) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, FRAMESIZE)) < 0)
         return ret;
-    }
 
     /**
      * Since the LPC coefficients are calculated on a frame centered over the
@@ -537,7 +536,7 @@ static int ra144_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
         for (; i < frame->nb_samples; i++)
             ractx->curr_block[i] = samples[i] >> 2;
 
-        if ((ret = ff_af_queue_add(&ractx->afq, frame) < 0))
+        if ((ret = ff_af_queue_add(&ractx->afq, frame)) < 0)
             return ret;
     } else
         ractx->last_frame = 1;
@@ -565,5 +564,6 @@ AVCodec ff_ra_144_encoder = {
     .capabilities   = CODEC_CAP_DELAY | CODEC_CAP_SMALL_LAST_FRAME,
     .sample_fmts    = (const enum AVSampleFormat[]){ AV_SAMPLE_FMT_S16,
                                                      AV_SAMPLE_FMT_NONE },
+    .supported_samplerates = (const int[]){ 8000, 0 },
     .long_name      = NULL_IF_CONFIG_SMALL("RealAudio 1.0 (14.4K)"),
 };

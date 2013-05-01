@@ -2,20 +2,20 @@
  * H.264 encoding using the x264 library
  * Copyright (C) 2005  Mans Rullgard <mans@mansr.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -43,7 +43,10 @@ typedef struct X264Context {
     char *preset;
     char *tune;
     char *profile;
+    char *level;
     int fastfirstpass;
+    char *wpredp;
+    char *x264opts;
     float crf;
     float crf_max;
     int cqp;
@@ -70,6 +73,7 @@ typedef struct X264Context {
     int slice_max_size;
     char *stats;
     int nal_hrd;
+    char *x264_params;
 } X264Context;
 
 static void X264_log(void *p, int level, const char *fmt, va_list args)
@@ -101,16 +105,21 @@ static int encode_nals(AVCodecContext *ctx, AVPacket *pkt,
     for (i = 0; i < nnal; i++)
         size += nals[i].i_payload;
 
-    if ((ret = ff_alloc_packet(pkt, size)) < 0)
+    if ((ret = ff_alloc_packet2(ctx, pkt, size)) < 0)
         return ret;
 
     p = pkt->data;
 
     /* Write the SEI as part of the first frame. */
     if (x4->sei_size > 0 && nnal > 0) {
+        if (x4->sei_size > size) {
+            av_log(ctx, AV_LOG_ERROR, "Error: nal buffer is too small\n");
+            return -1;
+        }
         memcpy(p, x4->sei, x4->sei_size);
         p += x4->sei_size;
         x4->sei_size = 0;
+        av_freep(&x4->sei);
     }
 
     for (i = 0; i < nnal; i++){
@@ -119,6 +128,25 @@ static int encode_nals(AVCodecContext *ctx, AVPacket *pkt,
     }
 
     return 1;
+}
+
+static int avfmt2_num_planes(int avfmt)
+{
+    switch (avfmt) {
+    case AV_PIX_FMT_YUV420P:
+    case AV_PIX_FMT_YUVJ420P:
+    case AV_PIX_FMT_YUV420P9:
+    case AV_PIX_FMT_YUV420P10:
+    case AV_PIX_FMT_YUV444P:
+        return 3;
+
+    case AV_PIX_FMT_BGR24:
+    case AV_PIX_FMT_RGB24:
+        return 1;
+
+    default:
+        return 3;
+    }
 }
 
 static int X264_frame(AVCodecContext *ctx, AVPacket *pkt, const AVFrame *frame,
@@ -133,10 +161,10 @@ static int X264_frame(AVCodecContext *ctx, AVPacket *pkt, const AVFrame *frame,
     x4->pic.img.i_csp   = x4->params.i_csp;
     if (x264_bit_depth > 8)
         x4->pic.img.i_csp |= X264_CSP_HIGH_DEPTH;
-    x4->pic.img.i_plane = 3;
+    x4->pic.img.i_plane = avfmt2_num_planes(ctx->pix_fmt);
 
     if (frame) {
-        for (i = 0; i < 3; i++) {
+        for (i = 0; i < x4->pic.img.i_plane; i++) {
             x4->pic.img.plane[i]    = frame->data[i];
             x4->pic.img.i_stride[i] = frame->linesize[i];
         }
@@ -206,6 +234,20 @@ static av_cold int X264_close(AVCodecContext *avctx)
     return 0;
 }
 
+#define OPT_STR(opt, param)                                                   \
+    do {                                                                      \
+        int ret;                                                              \
+        if (param && (ret = x264_param_parse(&x4->params, opt, param)) < 0) { \
+            if(ret == X264_PARAM_BAD_NAME)                                    \
+                av_log(avctx, AV_LOG_ERROR,                                   \
+                        "bad option '%s': '%s'\n", opt, param);               \
+            else                                                              \
+                av_log(avctx, AV_LOG_ERROR,                                   \
+                        "bad value for '%s': '%s'\n", opt, param);            \
+            return -1;                                                        \
+        }                                                                     \
+    } while (0)
+
 static int convert_pix_fmt(enum AVPixelFormat pix_fmt)
 {
     switch (pix_fmt) {
@@ -218,6 +260,13 @@ static int convert_pix_fmt(enum AVPixelFormat pix_fmt)
     case AV_PIX_FMT_YUV444P:
     case AV_PIX_FMT_YUV444P9:
     case AV_PIX_FMT_YUV444P10: return X264_CSP_I444;
+#ifdef X264_CSP_BGR
+    case AV_PIX_FMT_BGR24:
+        return X264_CSP_BGR;
+
+    case AV_PIX_FMT_RGB24:
+        return X264_CSP_RGB;
+#endif
     };
     return 0;
 }
@@ -231,14 +280,26 @@ static int convert_pix_fmt(enum AVPixelFormat pix_fmt)
 static av_cold int X264_init(AVCodecContext *avctx)
 {
     X264Context *x4 = avctx->priv_data;
+    int sw,sh;
 
     x264_param_default(&x4->params);
 
     x4->params.b_deblocking_filter         = avctx->flags & CODEC_FLAG_LOOP_FILTER;
 
+    x4->params.rc.f_pb_factor             = avctx->b_quant_factor;
+    x4->params.analyse.i_chroma_qp_offset = avctx->chromaoffset;
     if (x4->preset || x4->tune)
         if (x264_param_default_preset(&x4->params, x4->preset, x4->tune) < 0) {
+            int i;
             av_log(avctx, AV_LOG_ERROR, "Error setting preset/tune %s/%s.\n", x4->preset, x4->tune);
+            av_log(avctx, AV_LOG_INFO, "Possible presets:");
+            for (i = 0; x264_preset_names[i]; i++)
+                av_log(avctx, AV_LOG_INFO, " %s", x264_preset_names[i]);
+            av_log(avctx, AV_LOG_INFO, "\n");
+            av_log(avctx, AV_LOG_INFO, "Possible tunes:");
+            for (i = 0; x264_tune_names[i]; i++)
+                av_log(avctx, AV_LOG_INFO, " %s", x264_tune_names[i]);
+            av_log(avctx, AV_LOG_INFO, "\n");
             return AVERROR(EINVAL);
         }
 
@@ -249,6 +310,8 @@ static av_cold int X264_init(AVCodecContext *avctx)
     x4->params.p_log_private        = avctx;
     x4->params.i_log_level          = X264_LOG_DEBUG;
     x4->params.i_csp                = convert_pix_fmt(avctx->pix_fmt);
+
+    OPT_STR("weightp", x4->wpredp);
 
     if (avctx->bit_rate) {
         x4->params.rc.i_bitrate   = avctx->bit_rate / 1000;
@@ -272,15 +335,29 @@ static av_cold int X264_init(AVCodecContext *avctx)
             x4->params.rc.f_rf_constant_max = x4->crf_max;
     }
 
-    if (avctx->rc_buffer_size && avctx->rc_initial_buffer_occupancy &&
+    if (avctx->rc_buffer_size && avctx->rc_initial_buffer_occupancy > 0 &&
         (avctx->rc_initial_buffer_occupancy <= avctx->rc_buffer_size)) {
         x4->params.rc.f_vbv_buffer_init =
             (float)avctx->rc_initial_buffer_occupancy / avctx->rc_buffer_size;
     }
 
-    x4->params.rc.f_ip_factor             = 1 / fabs(avctx->i_quant_factor);
-    x4->params.rc.f_pb_factor             = avctx->b_quant_factor;
-    x4->params.analyse.i_chroma_qp_offset = avctx->chromaoffset;
+    OPT_STR("level", x4->level);
+
+    if(x4->x264opts){
+        const char *p= x4->x264opts;
+        while(p){
+            char param[256]={0}, val[256]={0};
+            if(sscanf(p, "%255[^:=]=%255[^:]", param, val) == 1){
+                OPT_STR(param, "1");
+            }else
+                OPT_STR(param, val);
+            p= strchr(p, ':');
+            p+=!!p;
+        }
+    }
+
+    if (avctx->i_quant_factor > 0)
+        x4->params.rc.f_ip_factor         = 1 / fabs(avctx->i_quant_factor);
 
     if (avctx->me_method == ME_EPZS)
         x4->params.analyse.i_me_method = X264_ME_DIA;
@@ -370,23 +447,64 @@ static av_cold int X264_init(AVCodecContext *avctx)
 
     if (x4->slice_max_size >= 0)
         x4->params.i_slice_max_size =  x4->slice_max_size;
+    else {
+        /*
+         * Allow x264 to be instructed through AVCodecContext about the maximum
+         * size of the RTP payload. For example, this enables the production of
+         * payload suitable for the H.264 RTP packetization-mode 0 i.e. single
+         * NAL unit per RTP packet.
+         */
+        if (avctx->rtp_payload_size)
+            x4->params.i_slice_max_size = avctx->rtp_payload_size;
+    }
 
     if (x4->fastfirstpass)
         x264_param_apply_fastfirstpass(&x4->params);
+
+    /* Allow specifying the x264 profile through AVCodecContext. */
+    if (!x4->profile)
+        switch (avctx->profile) {
+        case FF_PROFILE_H264_BASELINE:
+            x4->profile = av_strdup("baseline");
+            break;
+        case FF_PROFILE_H264_HIGH:
+            x4->profile = av_strdup("high");
+            break;
+        case FF_PROFILE_H264_HIGH_10:
+            x4->profile = av_strdup("high10");
+            break;
+        case FF_PROFILE_H264_HIGH_422:
+            x4->profile = av_strdup("high422");
+            break;
+        case FF_PROFILE_H264_HIGH_444:
+            x4->profile = av_strdup("high444");
+            break;
+        case FF_PROFILE_H264_MAIN:
+            x4->profile = av_strdup("main");
+            break;
+        default:
+            break;
+        }
 
     if (x4->nal_hrd >= 0)
         x4->params.i_nal_hrd = x4->nal_hrd;
 
     if (x4->profile)
         if (x264_param_apply_profile(&x4->params, x4->profile) < 0) {
+            int i;
             av_log(avctx, AV_LOG_ERROR, "Error setting profile %s.\n", x4->profile);
+            av_log(avctx, AV_LOG_INFO, "Possible profiles:");
+            for (i = 0; x264_profile_names[i]; i++)
+                av_log(avctx, AV_LOG_INFO, " %s", x264_profile_names[i]);
+            av_log(avctx, AV_LOG_INFO, "\n");
             return AVERROR(EINVAL);
         }
 
     x4->params.i_width          = avctx->width;
     x4->params.i_height         = avctx->height;
-    x4->params.vui.i_sar_width  = avctx->sample_aspect_ratio.num;
-    x4->params.vui.i_sar_height = avctx->sample_aspect_ratio.den;
+    av_reduce(&sw, &sh, avctx->sample_aspect_ratio.num, avctx->sample_aspect_ratio.den, 4096);
+    x4->params.vui.i_sar_width  = sw;
+    x4->params.vui.i_sar_height = sh;
     x4->params.i_fps_num = x4->params.i_timebase_den = avctx->time_base.den;
     x4->params.i_fps_den = x4->params.i_timebase_num = avctx->time_base.num;
 
@@ -406,6 +524,22 @@ static av_cold int X264_init(AVCodecContext *avctx)
 
     if (avctx->flags & CODEC_FLAG_GLOBAL_HEADER)
         x4->params.b_repeat_headers = 0;
+
+    if (x4->x264_params) {
+        AVDictionary *dict    = NULL;
+        AVDictionaryEntry *en = NULL;
+
+        if (!av_dict_parse_string(&dict, x4->x264_params, "=", ":", 0)) {
+            while ((en = av_dict_get(dict, "", en, AV_DICT_IGNORE_SUFFIX))) {
+                if (x264_param_parse(&x4->params, en->key, en->value) < 0)
+                    av_log(avctx, AV_LOG_WARNING,
+                           "Error parsing option '%s = %s'.\n",
+                            en->key, en->value);
+            }
+
+            av_dict_free(&dict);
+        }
+    }
 
     // update AVCodecContext with x264 parameters
     avctx->has_b_frames = x4->params.i_bframe ?
@@ -465,6 +599,13 @@ static const enum AVPixelFormat pix_fmts_10bit[] = {
     AV_PIX_FMT_YUV444P10,
     AV_PIX_FMT_NONE
 };
+static const enum AVPixelFormat pix_fmts_8bit_rgb[] = {
+#ifdef X264_CSP_BGR
+    AV_PIX_FMT_BGR24,
+    AV_PIX_FMT_RGB24,
+#endif
+    AV_PIX_FMT_NONE
+};
 
 static av_cold void X264_init_static(AVCodec *codec)
 {
@@ -483,6 +624,10 @@ static const AVOption options[] = {
     { "tune",          "Tune the encoding params (cf. x264 --fullhelp)",  OFFSET(tune),          AV_OPT_TYPE_STRING, { 0 }, 0, 0, VE},
     { "profile",       "Set profile restrictions (cf. x264 --fullhelp) ", OFFSET(profile),       AV_OPT_TYPE_STRING, { 0 }, 0, 0, VE},
     { "fastfirstpass", "Use fast settings when encoding first pass",      OFFSET(fastfirstpass), AV_OPT_TYPE_INT,    { .i64 = 1 }, 0, 1, VE},
+    {"level", "Specify level (as defined by Annex A)", OFFSET(level), AV_OPT_TYPE_STRING, {.str=NULL}, 0, 0, VE},
+    {"passlogfile", "Filename for 2 pass stats", OFFSET(stats), AV_OPT_TYPE_STRING, {.str=NULL}, 0, 0, VE},
+    {"wpredp", "Weighted prediction for P-frames", OFFSET(wpredp), AV_OPT_TYPE_STRING, {.str=NULL}, 0, 0, VE},
+    {"x264opts", "x264 options", OFFSET(x264opts), AV_OPT_TYPE_STRING, {.str=NULL}, 0, 0, VE},
     { "crf",           "Select the quality for constant quality mode",    OFFSET(crf),           AV_OPT_TYPE_FLOAT,  {.dbl = -1 }, -1, FLT_MAX, VE },
     { "crf_max",       "In CRF mode, prevents VBV from lowering quality beyond this point.",OFFSET(crf_max), AV_OPT_TYPE_FLOAT, {.dbl = -1 }, -1, FLT_MAX, VE },
     { "qp",            "Constant quantization parameter rate control method",OFFSET(cqp),        AV_OPT_TYPE_INT,    { .i64 = -1 }, -1, INT_MAX, VE },
@@ -527,6 +672,7 @@ static const AVOption options[] = {
     { "none",          NULL, 0, AV_OPT_TYPE_CONST, {.i64 = X264_NAL_HRD_NONE}, INT_MIN, INT_MAX, VE, "nal-hrd" },
     { "vbr",           NULL, 0, AV_OPT_TYPE_CONST, {.i64 = X264_NAL_HRD_VBR},  INT_MIN, INT_MAX, VE, "nal-hrd" },
     { "cbr",           NULL, 0, AV_OPT_TYPE_CONST, {.i64 = X264_NAL_HRD_CBR},  INT_MIN, INT_MAX, VE, "nal-hrd" },
+    { "x264-params",  "Override the x264 configuration using a :-separated list of key=value parameters", OFFSET(x264_params), AV_OPT_TYPE_STRING, { 0 }, 0, 0, VE },
     { NULL },
 };
 
@@ -537,15 +683,25 @@ static const AVClass class = {
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
+static const AVClass rgbclass = {
+    .class_name = "libx264rgb",
+    .item_name  = av_default_item_name,
+    .option     = options,
+    .version    = LIBAVUTIL_VERSION_INT,
+};
+
 static const AVCodecDefault x264_defaults[] = {
     { "b",                "0" },
     { "bf",               "-1" },
+    { "flags2",           "0" },
     { "g",                "-1" },
+    { "i_qfactor",        "-1" },
     { "qmin",             "-1" },
     { "qmax",             "-1" },
     { "qdiff",            "-1" },
     { "qblur",            "-1" },
     { "qcomp",            "-1" },
+//     { "rc_lookahead",     "-1" },
     { "refs",             "-1" },
     { "sc_threshold",     "-1" },
     { "trellis",          "-1" },
@@ -560,6 +716,7 @@ static const AVCodecDefault x264_defaults[] = {
     { "threads",          AV_STRINGIFY(X264_THREADS_AUTO) },
     { "thread_type",      "0" },
     { "flags",            "+cgop" },
+    { "rc_init_occupancy","-1" },
     { NULL },
 };
 
@@ -576,4 +733,19 @@ AVCodec ff_libx264_encoder = {
     .priv_class       = &class,
     .defaults         = x264_defaults,
     .init_static_data = X264_init_static,
+};
+
+AVCodec ff_libx264rgb_encoder = {
+    .name           = "libx264rgb",
+    .type           = AVMEDIA_TYPE_VIDEO,
+    .id             = AV_CODEC_ID_H264,
+    .priv_data_size = sizeof(X264Context),
+    .init           = X264_init,
+    .encode2        = X264_frame,
+    .close          = X264_close,
+    .capabilities   = CODEC_CAP_DELAY,
+    .long_name      = NULL_IF_CONFIG_SMALL("libx264 H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 RGB"),
+    .priv_class     = &rgbclass,
+    .defaults       = x264_defaults,
+    .pix_fmts       = pix_fmts_8bit_rgb,
 };

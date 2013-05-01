@@ -1,23 +1,36 @@
 /*
- * ID3v2 header parser
  * Copyright (c) 2003 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+/**
+ * @file
+ * ID3v2 header parser
+ *
+ * Specifications available at:
+ * http://id3.org/Developer_Information
+ */
+
+#include "config.h"
+
+#if CONFIG_ZLIB
+#include <zlib.h>
+#endif
 
 #include "id3v2.h"
 #include "id3v1.h"
@@ -478,7 +491,7 @@ static void read_apic(AVFormatContext *s, AVIOContext *pb, int taglen, char *tag
 
     apic->len   = taglen;
     apic->data  = av_malloc(taglen);
-    if (!apic->data || avio_read(pb, apic->data, taglen) != taglen)
+    if (!apic->data || !apic->len || avio_read(pb, apic->data, taglen) != taglen)
         goto fail;
 
     new_extra->tag    = "APIC";
@@ -495,6 +508,36 @@ fail:
     avio_seek(pb, end, SEEK_SET);
 }
 
+static void read_chapter(AVFormatContext *s, AVIOContext *pb, int taglen, char *tag, ID3v2ExtraMeta **extra_meta)
+{
+    AVRational time_base = {1, 1000};
+    char title[1024];
+    uint32_t start, end;
+
+    taglen -= avio_get_str(pb, taglen, title, sizeof(title));
+    if (taglen < 16)
+        return;
+
+    start = avio_rb32(pb);
+    end   = avio_rb32(pb);
+    taglen -= 27;
+    if (taglen > 0) {
+        char tag[4];
+
+        avio_skip(pb, 8);
+        avio_read(pb, tag, 4);
+        if (!memcmp(tag, "TIT2", 4)) {
+            taglen = FFMIN(taglen, avio_rb32(pb));
+            if (taglen < 0)
+                return;
+            avio_skip(pb, 3);
+            avio_get_str(pb, taglen, title, sizeof(title));
+        }
+    }
+
+    avpriv_new_chapter(s, s->nb_chapters + 1, time_base, start, end, title);
+}
+
 typedef struct ID3v2EMFunc {
     const char *tag3;
     const char *tag4;
@@ -505,6 +548,7 @@ typedef struct ID3v2EMFunc {
 static const ID3v2EMFunc id3v2_extra_meta_funcs[] = {
     { "GEO", "GEOB", read_geobtag, free_geobtag },
     { "PIC", "APIC", read_apic,    free_apic },
+    { "CHAP","CHAP", read_chapter, NULL },
     { NULL }
 };
 
@@ -517,7 +561,7 @@ static const ID3v2EMFunc *get_extra_meta_func(const char *tag, int isv34)
 {
     int i = 0;
     while (id3v2_extra_meta_funcs[i].tag3) {
-        if (!memcmp(tag,
+        if (tag && !memcmp(tag,
                     (isv34 ? id3v2_extra_meta_funcs[i].tag4 :
                              id3v2_extra_meta_funcs[i].tag3),
                     (isv34 ? 4 : 3)))
@@ -529,7 +573,8 @@ static const ID3v2EMFunc *get_extra_meta_func(const char *tag, int isv34)
 
 static void ff_id3v2_parse(AVFormatContext *s, int len, uint8_t version, uint8_t flags, ID3v2ExtraMeta **extra_meta)
 {
-    int isv34, tlen, unsync;
+    int isv34, unsync;
+    unsigned tlen;
     char tag[5];
     int64_t next, end = avio_tell(s->pb) + len;
     int taghdrlen;
@@ -538,7 +583,11 @@ static void ff_id3v2_parse(AVFormatContext *s, int len, uint8_t version, uint8_t
     AVIOContext *pbx;
     unsigned char *buffer = NULL;
     int buffer_size = 0;
-    const ID3v2EMFunc *extra_func;
+    const ID3v2EMFunc *extra_func = NULL;
+    unsigned char *uncompressed_buffer = NULL;
+    int uncompressed_buffer_size = 0;
+
+    av_log(s, AV_LOG_DEBUG, "id3v2 ver:%d flags:%02X len:%d\n", version, flags, len);
 
     switch (version) {
     case 2:
@@ -573,11 +622,19 @@ static void ff_id3v2_parse(AVFormatContext *s, int len, uint8_t version, uint8_t
             goto error;
         }
         avio_skip(s->pb, extlen);
+        len -= extlen + 4;
+        if (len < 0) {
+            reason = "extended header too long.";
+            goto error;
+        }
     }
 
     while (len >= taghdrlen) {
         unsigned int tflags = 0;
         int tunsync = 0;
+        int tcomp = 0;
+        int tencr = 0;
+        unsigned long dlen;
 
         if (isv34) {
             avio_read(s->pb, tag, 4);
@@ -593,11 +650,13 @@ static void ff_id3v2_parse(AVFormatContext *s, int len, uint8_t version, uint8_t
             tag[3] = 0;
             tlen = avio_rb24(s->pb);
         }
-        if (tlen < 0 || tlen > len - taghdrlen) {
-            av_log(s, AV_LOG_WARNING, "Invalid size in frame %s, skipping the rest of tag.\n", tag);
+        if (tlen > (1<<28))
             break;
-        }
         len -= taghdrlen + tlen;
+
+        if (len < 0)
+            break;
+
         next = avio_tell(s->pb) + tlen;
 
         if (!tlen) {
@@ -607,35 +666,87 @@ static void ff_id3v2_parse(AVFormatContext *s, int len, uint8_t version, uint8_t
         }
 
         if (tflags & ID3v2_FLAG_DATALEN) {
-            avio_rb32(s->pb);
+            if (tlen < 4)
+                break;
+            dlen = avio_rb32(s->pb);
             tlen -= 4;
-        }
+        } else
+            dlen = tlen;
 
-        if (tflags & (ID3v2_FLAG_ENCRYPTION | ID3v2_FLAG_COMPRESSION)) {
-            av_log(s, AV_LOG_WARNING, "Skipping encrypted/compressed ID3v2 frame %s.\n", tag);
+        tcomp = tflags & ID3v2_FLAG_COMPRESSION;
+        tencr = tflags & ID3v2_FLAG_ENCRYPTION;
+
+        /* skip encrypted tags and, if no zlib, compressed tags */
+        if (tencr || (!CONFIG_ZLIB && tcomp)) {
+            const char *type;
+            if (!tcomp)
+                type = "encrypted";
+            else if (!tencr)
+                type = "compressed";
+            else
+                type = "encrypted and compressed";
+
+            av_log(s, AV_LOG_WARNING, "Skipping %s ID3v2 frame %s.\n", type, tag);
             avio_skip(s->pb, tlen);
         /* check for text tag or supported special meta tag */
         } else if (tag[0] == 'T' || (extra_meta && (extra_func = get_extra_meta_func(tag, isv34)))) {
-            if (unsync || tunsync) {
-                int i, j;
+            pbx = s->pb;
+
+            if (unsync || tunsync || tcomp) {
                 av_fast_malloc(&buffer, &buffer_size, tlen);
                 if (!buffer) {
                     av_log(s, AV_LOG_ERROR, "Failed to alloc %d bytes\n", tlen);
                     goto seek;
                 }
-                for (i = 0, j = 0; i < tlen; i++, j++) {
-                    buffer[j] = avio_r8(s->pb);
-                    if (j > 0 && !buffer[j] && buffer[j - 1] == 0xff) {
-                        /* Unsynchronised byte, skip it */
-                        j--;
+            }
+            if (unsync || tunsync) {
+                int64_t end = avio_tell(s->pb) + tlen;
+                uint8_t *b;
+
+                b = buffer;
+                while (avio_tell(s->pb) < end && b - buffer < tlen) {
+                    *b++ = avio_r8(s->pb);
+                    if (*(b - 1) == 0xff && avio_tell(s->pb) < end - 1 && b - buffer < tlen) {
+                        uint8_t val = avio_r8(s->pb);
+                        *b++ = val ? val : avio_r8(s->pb);
                     }
                 }
-                ffio_init_context(&pb, buffer, j, 0, NULL, NULL, NULL, NULL);
-                tlen = j;
+                ffio_init_context(&pb, buffer, b - buffer, 0, NULL, NULL, NULL, NULL);
+                tlen = b - buffer;
                 pbx = &pb; // read from sync buffer
-            } else {
-                pbx = s->pb; // read straight from input
             }
+
+#if CONFIG_ZLIB
+                if (tcomp) {
+                    int err;
+
+                    av_log(s, AV_LOG_DEBUG, "Compresssed frame %s tlen=%d dlen=%ld\n", tag, tlen, dlen);
+
+                    av_fast_malloc(&uncompressed_buffer, &uncompressed_buffer_size, dlen);
+                    if (!uncompressed_buffer) {
+                        av_log(s, AV_LOG_ERROR, "Failed to alloc %ld bytes\n", dlen);
+                        goto seek;
+                    }
+
+                    if (!(unsync || tunsync)) {
+                        err = avio_read(s->pb, buffer, tlen);
+                        if (err < 0) {
+                            av_log(s, AV_LOG_ERROR, "Failed to read compressed tag\n");
+                            goto seek;
+                        }
+                        tlen = err;
+                    }
+
+                    err = uncompress(uncompressed_buffer, &dlen, buffer, tlen);
+                    if (err != Z_OK) {
+                        av_log(s, AV_LOG_ERROR, "Failed to uncompress tag: %d\n", err);
+                        goto seek;
+                    }
+                    ffio_init_context(&pb, uncompressed_buffer, dlen, 0, NULL, NULL, NULL, NULL);
+                    tlen = dlen;
+                    pbx = &pb; // read from sync buffer
+                }
+#endif
             if (tag[0] == 'T')
                 /* parse text tag */
                 read_ttag(s, pbx, tlen, tag);
@@ -645,7 +756,7 @@ static void ff_id3v2_parse(AVFormatContext *s, int len, uint8_t version, uint8_t
         }
         else if (!tag[0]) {
             if (tag[1])
-                av_log(s, AV_LOG_WARNING, "invalid frame id, assuming padding");
+                av_log(s, AV_LOG_WARNING, "invalid frame id, assuming padding\n");
             avio_skip(s->pb, tlen);
             break;
         }
@@ -662,6 +773,7 @@ seek:
         av_log(s, AV_LOG_INFO, "ID3v2.%d tag skipped, cannot handle %s\n", version, reason);
     avio_seek(s->pb, end, SEEK_SET);
     av_free(buffer);
+    av_free(uncompressed_buffer);
     return;
 }
 
@@ -676,10 +788,12 @@ void ff_id3v2_read(AVFormatContext *s, const char *magic, ID3v2ExtraMeta **extra
         /* save the current offset in case there's nothing to read/skip */
         off = avio_tell(s->pb);
         ret = avio_read(s->pb, buf, ID3v2_HEADER_SIZE);
-        if (ret != ID3v2_HEADER_SIZE)
+        if (ret != ID3v2_HEADER_SIZE) {
+            avio_seek(s->pb, off, SEEK_SET);
             break;
-            found_header = ff_id3v2_match(buf, magic);
-            if (found_header) {
+        }
+        found_header = ff_id3v2_match(buf, magic);
+        if (found_header) {
             /* parse ID3v2 header */
             len = ((buf[6] & 0x7f) << 21) |
                   ((buf[7] & 0x7f) << 14) |

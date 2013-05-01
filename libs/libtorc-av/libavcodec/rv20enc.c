@@ -3,20 +3,20 @@
  * Copyright (c) 2000,2001 Fabrice Bellard
  * Copyright (c) 2002-2004 Michael Niedermayer
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -40,12 +40,12 @@ void ff_rv20_encode_picture_header(MpegEncContext *s, int picture_number){
 
     put_bits(&s->pb, 1, s->no_rounding);
 
-    assert(s->f_code == 1);
-    assert(s->unrestricted_mv == 0);
-    assert(s->alt_inter_vlc == 0);
-    assert(s->umvplus == 0);
-    assert(s->modified_quant==1);
-    assert(s->loop_filter==1);
+    av_assert0(s->f_code == 1);
+    av_assert0(s->unrestricted_mv == 0);
+    av_assert0(s->alt_inter_vlc == 0);
+    av_assert0(s->umvplus == 0);
+    av_assert0(s->modified_quant==1);
+    av_assert0(s->loop_filter==1);
 
     s->h263_aic= s->pict_type == AV_PICTURE_TYPE_I;
     if(s->h263_aic){

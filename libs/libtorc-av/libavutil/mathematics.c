@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2005 Michael Niedermayer <michaelni@gmx.at>
+ * Copyright (c) 2005-2012 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -23,11 +23,12 @@
  * miscellaneous math routines and tables
  */
 
-#include <assert.h>
 #include <stdint.h>
 #include <limits.h>
 
 #include "mathematics.h"
+#include "libavutil/common.h"
+#include "avassert.h"
 #include "version.h"
 
 #if FF_API_AV_REVERSE
@@ -58,9 +59,15 @@ int64_t av_gcd(int64_t a, int64_t b){
 
 int64_t av_rescale_rnd(int64_t a, int64_t b, int64_t c, enum AVRounding rnd){
     int64_t r=0;
-    assert(c > 0);
-    assert(b >=0);
-    assert((unsigned)rnd<=5 && rnd!=4);
+    av_assert2(c > 0);
+    av_assert2(b >=0);
+    av_assert2((unsigned)(rnd&~AV_ROUND_PASS_MINMAX)<=5 && (rnd&~AV_ROUND_PASS_MINMAX)!=4);
+
+    if (rnd & AV_ROUND_PASS_MINMAX) {
+        if (a == INT64_MIN || a == INT64_MAX)
+            return a;
+        rnd -= AV_ROUND_PASS_MINMAX;
+    }
 
     if(a<0 && a != INT64_MIN) return -av_rescale_rnd(-a, b, c, rnd ^ ((rnd>>1)&1));
 
@@ -128,6 +135,8 @@ int64_t av_rescale_q(int64_t a, AVRational bq, AVRational cq)
 int av_compare_ts(int64_t ts_a, AVRational tb_a, int64_t ts_b, AVRational tb_b){
     int64_t a= tb_a.num * (int64_t)tb_b.den;
     int64_t b= tb_b.num * (int64_t)tb_a.den;
+    if((FFABS(ts_a)|a|FFABS(ts_b)|b)<=INT_MAX)
+        return (ts_a*a > ts_b*b) - (ts_a*a < ts_b*b);
     if (av_rescale_rnd(ts_a, a, b, AV_ROUND_DOWN) < ts_b) return -1;
     if (av_rescale_rnd(ts_b, b, a, AV_ROUND_DOWN) < ts_a) return  1;
     return 0;
@@ -138,4 +147,27 @@ int64_t av_compare_mod(uint64_t a, uint64_t b, uint64_t mod){
     if(c > (mod>>1))
         c-= mod;
     return c;
+}
+
+int64_t av_rescale_delta(AVRational in_tb, int64_t in_ts,  AVRational fs_tb, int duration, int64_t *last, AVRational out_tb){
+    int64_t a, b, this;
+
+    av_assert0(in_ts != AV_NOPTS_VALUE);
+    av_assert0(duration >= 0);
+
+    if (*last == AV_NOPTS_VALUE || !duration || in_tb.num*(int64_t)out_tb.den <= out_tb.num*(int64_t)in_tb.den) {
+simple_round:
+        *last = av_rescale_q(in_ts, in_tb, fs_tb) + duration;
+        return av_rescale_q(in_ts, in_tb, out_tb);
+    }
+
+    a =  av_rescale_q_rnd(2*in_ts-1, in_tb, fs_tb, AV_ROUND_DOWN)   >>1;
+    b = (av_rescale_q_rnd(2*in_ts+1, in_tb, fs_tb, AV_ROUND_UP  )+1)>>1;
+    if (*last < 2*a - b || *last > 2*b - a)
+        goto simple_round;
+
+    this = av_clip64(*last, a, b);
+    *last = this + duration;
+
+    return av_rescale_q(this, fs_tb, out_tb);
 }

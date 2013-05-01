@@ -2,29 +2,33 @@
  * AIFF/AIFF-C demuxer
  * Copyright (c) 2006  Patrick Guimond
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/intreadwrite.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/dict.h"
 #include "avformat.h"
 #include "internal.h"
 #include "pcm.h"
 #include "aiff.h"
+#include "isom.h"
+#include "id3v2.h"
+#include "mov_chan.h"
 
 #define AIFF                    0
 #define AIFF_C_VERSION1         0xA2805140
@@ -54,7 +58,7 @@ static int get_tag(AVIOContext *pb, uint32_t * tag)
 {
     int size;
 
-    if (pb->eof_reached)
+    if (url_feof(pb))
         return AVERROR(EIO);
 
     *tag = avio_rl32(pb);
@@ -70,19 +74,20 @@ static int get_tag(AVIOContext *pb, uint32_t * tag)
 static void get_meta(AVFormatContext *s, const char *key, int size)
 {
     uint8_t *str = av_malloc(size+1);
-    int res;
 
-    if (!str) {
-        avio_skip(s->pb, size);
-        return;
-    }
+    if (str) {
+        int res = avio_read(s->pb, str, size);
+        if (res < 0){
+            av_free(str);
+            return;
+        }
+        size += (size&1)-res;
+        str[res] = 0;
+        av_dict_set(&s->metadata, key, str, AV_DICT_DONT_STRDUP_VAL);
+    }else
+        size+= size&1;
 
-    res = avio_read(s->pb, str, size);
-    if (res < 0)
-        return;
-
-    str[res] = 0;
-    av_dict_set(&s->metadata, key, str, AV_DICT_DONT_STRDUP_VAL);
+    avio_skip(s->pb, size);
 }
 
 /* Returns the number of sound data frames or negative on error */
@@ -146,6 +151,7 @@ static unsigned int get_aiff_header(AVFormatContext *s, int size,
             codec->block_align = 35;
             break;
         default:
+            aiff->block_duration = 1;
             break;
         }
         if (codec->block_align > 0)
@@ -156,7 +162,7 @@ static unsigned int get_aiff_header(AVFormatContext *s, int size,
     /* Block align needs to be computed in all cases, as the definition
      * is specific to applications -> here we use the WAVE format definition */
     if (!codec->block_align)
-        codec->block_align = (codec->bits_per_coded_sample * codec->channels) >> 3;
+        codec->block_align = (av_get_bits_per_sample(codec->codec_id) * codec->channels) >> 3;
 
     if (aiff->block_duration) {
         codec->bit_rate = codec->sample_rate * (codec->block_align << 3) /
@@ -185,13 +191,14 @@ static int aiff_probe(AVProbeData *p)
 /* aiff input */
 static int aiff_read_header(AVFormatContext *s)
 {
-    int size, filesize;
+    int ret, size, filesize;
     int64_t offset = 0;
     uint32_t tag;
     unsigned version = AIFF_C_VERSION1;
     AVIOContext *pb = s->pb;
     AVStream * st;
     AIFFInputContext *aiff = s->priv_data;
+    ID3v2ExtraMeta *id3v2_extra_meta = NULL;
 
     /* check FORM header */
     filesize = get_tag(pb, &tag);
@@ -228,6 +235,15 @@ static int aiff_read_header(AVFormatContext *s)
             if (offset > 0) // COMM is after SSND
                 goto got_sound;
             break;
+        case MKTAG('I', 'D', '3', ' '):
+            ff_id3v2_read(s, ID3v2_DEFAULT_MAGIC, &id3v2_extra_meta);
+            if (id3v2_extra_meta)
+                if ((ret = ff_id3v2_parse_apic(s, &id3v2_extra_meta)) < 0) {
+                    ff_id3v2_free_extra_meta(&id3v2_extra_meta);
+                    return ret;
+                }
+            ff_id3v2_free_extra_meta(&id3v2_extra_meta);
+            break;
         case MKTAG('F', 'V', 'E', 'R'):     /* Version chunk */
             version = avio_rb32(pb);
             break;
@@ -248,7 +264,7 @@ static int aiff_read_header(AVFormatContext *s)
             offset = avio_rb32(pb);      /* Offset of sound data */
             avio_rb32(pb);               /* BlockSize... don't care */
             offset += avio_tell(pb);    /* Compute absolute data offset */
-            if (st->codec->block_align)    /* Assume COMM already parsed */
+            if (st->codec->block_align && !pb->seekable)    /* Assume COMM already parsed */
                 goto got_sound;
             if (!pb->seekable) {
                 av_log(s, AV_LOG_ERROR, "file is not seekable\n");
@@ -264,6 +280,14 @@ static int aiff_read_header(AVFormatContext *s)
                 return AVERROR(ENOMEM);
             st->codec->extradata_size = size;
             avio_read(pb, st->codec->extradata, size);
+            if (st->codec->codec_id == AV_CODEC_ID_QDM2 && size>=12*4 && !st->codec->block_align) {
+                st->codec->block_align = AV_RB32(st->codec->extradata+11*4);
+                aiff->block_duration = AV_RB32(st->codec->extradata+9*4);
+            }
+            break;
+        case MKTAG('C','H','A','N'):
+            if(ff_mov_read_chan(s, pb, st, size) < 0)
+                return AVERROR_INVALIDDATA;
             break;
         default: /* Jump */
             if (size & 1)   /* Always even aligned */
@@ -314,6 +338,8 @@ static int aiff_read_packet(AVFormatContext *s,
     if (res < 0)
         return res;
 
+    if (size >= st->codec->block_align)
+        pkt->flags &= ~AV_PKT_FLAG_CORRUPT;
     /* Only one stream in an AIFF file */
     pkt->stream_index = 0;
     pkt->duration     = (res / st->codec->block_align) * aiff->block_duration;

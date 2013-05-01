@@ -2,20 +2,20 @@
  * Electronic Arts CMV Video Decoder
  * Copyright (c) 2007-2008 Peter Ross
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
@@ -32,6 +32,7 @@
 #include "libavutil/intreadwrite.h"
 #include "libavutil/imgutils.h"
 #include "avcodec.h"
+#include "internal.h"
 
 typedef struct CmvContext {
     AVCodecContext *avctx;
@@ -44,6 +45,10 @@ typedef struct CmvContext {
 
 static av_cold int cmv_decode_init(AVCodecContext *avctx){
     CmvContext *s = avctx->priv_data;
+    avcodec_get_frame_defaults(&s->frame);
+    avcodec_get_frame_defaults(&s->last_frame);
+    avcodec_get_frame_defaults(&s->last2_frame);
+
     s->avctx = avctx;
     avctx->pix_fmt = AV_PIX_FMT_PAL8;
     return 0;
@@ -107,9 +112,10 @@ static void cmv_decode_inter(CmvContext * s, const uint8_t *buf, const uint8_t *
         }else{  /* inter using last frame as reference */
             int xoffset = (buf[i] & 0xF) - 7;
             int yoffset = ((buf[i] >> 4)) - 7;
-            cmv_motcomp(s->frame.data[0], s->frame.linesize[0],
-                      s->last_frame.data[0], s->last_frame.linesize[0],
-                      x*4, y*4, xoffset, yoffset, s->avctx->width, s->avctx->height);
+            if (s->last_frame.data[0])
+                cmv_motcomp(s->frame.data[0], s->frame.linesize[0],
+                          s->last_frame.data[0], s->last_frame.linesize[0],
+                          x*4, y*4, xoffset, yoffset, s->avctx->width, s->avctx->height);
         }
         i++;
     }
@@ -126,8 +132,13 @@ static void cmv_process_header(CmvContext *s, const uint8_t *buf, const uint8_t 
 
     s->width  = AV_RL16(&buf[4]);
     s->height = AV_RL16(&buf[6]);
-    if (s->avctx->width!=s->width || s->avctx->height!=s->height)
+    if (s->avctx->width!=s->width || s->avctx->height!=s->height) {
         avcodec_set_dimensions(s->avctx, s->width, s->height);
+        if (s->frame.data[0])
+            s->avctx->release_buffer(s->avctx, &s->frame);
+        if (s->last_frame.data[0])
+            s->avctx->release_buffer(s->avctx, &s->last_frame);
+    }
 
     s->avctx->time_base.num = 1;
     s->avctx->time_base.den = AV_RL16(&buf[10]);
@@ -137,7 +148,7 @@ static void cmv_process_header(CmvContext *s, const uint8_t *buf, const uint8_t 
 
     buf += 16;
     for (i=pal_start; i<pal_start+pal_count && i<AVPALETTE_COUNT && buf_end - buf >= 3; i++) {
-        s->palette[i] = AV_RB24(buf);
+        s->palette[i] = 0xFFU << 24 | AV_RB24(buf);
         buf += 3;
     }
 }
@@ -146,7 +157,7 @@ static void cmv_process_header(CmvContext *s, const uint8_t *buf, const uint8_t 
 #define MVIh_TAG MKTAG('M', 'V', 'I', 'h')
 
 static int cmv_decode_frame(AVCodecContext *avctx,
-                            void *data, int *data_size,
+                            void *data, int *got_frame,
                             AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
@@ -158,8 +169,11 @@ static int cmv_decode_frame(AVCodecContext *avctx,
         return AVERROR_INVALIDDATA;
 
     if (AV_RL32(buf)==MVIh_TAG||AV_RB32(buf)==MVIh_TAG) {
+        unsigned size = AV_RL32(buf + 4);
         cmv_process_header(s, buf+EA_PREAMBLE_SIZE, buf_end);
-        return buf_size;
+        if (size > buf_end - buf - EA_PREAMBLE_SIZE)
+            return -1;
+        buf += size;
     }
 
     if (av_image_check_size(s->width, s->height, 0, s->avctx))
@@ -171,9 +185,11 @@ static int cmv_decode_frame(AVCodecContext *avctx,
     FFSWAP(AVFrame, s->last_frame, s->last2_frame);
     FFSWAP(AVFrame, s->frame, s->last_frame);
 
-    s->frame.reference = 1;
-    s->frame.buffer_hints = FF_BUFFER_HINTS_VALID;
-    if (avctx->get_buffer(avctx, &s->frame)<0) {
+    s->frame.reference = 3;
+    s->frame.buffer_hints = FF_BUFFER_HINTS_VALID |
+                            FF_BUFFER_HINTS_READABLE |
+                            FF_BUFFER_HINTS_PRESERVE;
+    if (ff_get_buffer(avctx, &s->frame)<0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return -1;
     }
@@ -191,7 +207,7 @@ static int cmv_decode_frame(AVCodecContext *avctx,
         cmv_decode_intra(s, buf+2, buf_end);
     }
 
-    *data_size = sizeof(AVFrame);
+    *got_frame = 1;
     *(AVFrame*)data = s->frame;
 
     return buf_size;

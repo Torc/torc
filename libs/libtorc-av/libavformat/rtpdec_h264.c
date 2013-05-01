@@ -2,20 +2,20 @@
  * RTP H264 Protocol (RFC3984)
  * Copyright (c) 2006 Ryan Martell
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -165,7 +165,8 @@ static int sdp_parse_fmtp_config_h264(AVStream *stream,
 // return 0 on packet, no more left, 1 on packet, 1 on partial packet
 static int h264_handle_packet(AVFormatContext *ctx, PayloadContext *data,
                               AVStream *st, AVPacket *pkt, uint32_t *timestamp,
-                              const uint8_t *buf, int len, int flags)
+                              const uint8_t *buf, int len, uint16_t seq,
+                              int flags)
 {
     uint8_t nal;
     uint8_t type;
@@ -337,6 +338,14 @@ static void h264_free_context(PayloadContext *data)
     av_free(data);
 }
 
+static int h264_init(AVFormatContext *s, int st_index, PayloadContext *data)
+{
+    if (st_index < 0)
+        return 0;
+    s->streams[st_index]->need_parsing = AVSTREAM_PARSE_FULL;
+    return 0;
+}
+
 static int parse_h264_sdp_line(AVFormatContext *s, int st_index,
                                PayloadContext *h264_data, const char *line)
 {
@@ -382,6 +391,7 @@ RTPDynamicProtocolHandler ff_h264_dynamic_handler = {
     .enc_name         = "H264",
     .codec_type       = AVMEDIA_TYPE_VIDEO,
     .codec_id         = AV_CODEC_ID_H264,
+    .init             = h264_init,
     .parse_sdp_a_line = parse_h264_sdp_line,
     .alloc            = h264_new_context,
     .free             = h264_free_context,

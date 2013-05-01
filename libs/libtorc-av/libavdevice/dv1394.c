@@ -2,20 +2,20 @@
  * Linux DV1394 interface
  * Copyright (c) 2003 Max Krasnyansky <maxk@qualcomm.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -29,7 +29,7 @@
 
 #include "libavutil/log.h"
 #include "libavutil/opt.h"
-#include "libavformat/avformat.h"
+#include "avdevice.h"
 #include "libavformat/dv.h"
 #include "dv1394.h"
 
@@ -185,7 +185,7 @@ restart_poll:
 
     size = avpriv_dv_produce_packet(dv->dv_demux, pkt,
                              dv->ring + (dv->index * DV1394_PAL_FRAME_SIZE),
-                             DV1394_PAL_FRAME_SIZE);
+                             DV1394_PAL_FRAME_SIZE, -1);
     dv->index = (dv->index + 1) % DV1394_RING_FRAMES;
     dv->done++; dv->avail--;
 
@@ -211,7 +211,7 @@ static int dv1394_close(AVFormatContext * context)
 }
 
 static const AVOption options[] = {
-    { "standard", "", offsetof(struct dv1394_data, format), AV_OPT_TYPE_INT, {.i64 = DV1394_NTSC}, DV1394_PAL, DV1394_NTSC, AV_OPT_FLAG_DECODING_PARAM, "standard" },
+    { "standard", "", offsetof(struct dv1394_data, format), AV_OPT_TYPE_INT, {.i64 = DV1394_NTSC}, DV1394_NTSC, DV1394_PAL, AV_OPT_FLAG_DECODING_PARAM, "standard" },
     { "PAL",      "", 0, AV_OPT_TYPE_CONST, {.i64 = DV1394_PAL},   0, 0, AV_OPT_FLAG_DECODING_PARAM, "standard" },
     { "NTSC",     "", 0, AV_OPT_TYPE_CONST, {.i64 = DV1394_NTSC},  0, 0, AV_OPT_FLAG_DECODING_PARAM, "standard" },
     { "channel",  "", offsetof(struct dv1394_data, channel), AV_OPT_TYPE_INT, {.i64 = DV1394_DEFAULT_CHANNEL}, 0, INT_MAX, AV_OPT_FLAG_DECODING_PARAM },

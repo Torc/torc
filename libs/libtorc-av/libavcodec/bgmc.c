@@ -2,20 +2,20 @@
  * Block Gilbert-Moore decoder
  * Copyright (c) 2010 Thilo Borgmann <thilo.borgmann _at_ googlemail.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -458,16 +458,16 @@ static uint8_t *bgmc_lut_getp(uint8_t *lut, int *lut_status, int delta)
 /** Initialize the lookup table arrays */
 int ff_bgmc_init(AVCodecContext *avctx, uint8_t **cf_lut, int **cf_lut_status)
 {
-    *cf_lut        = av_malloc(sizeof(*cf_lut)        * LUT_BUFF * 16 * LUT_SIZE);
-    *cf_lut_status = av_malloc(sizeof(*cf_lut_status) * LUT_BUFF);
+    *cf_lut        = av_malloc(sizeof(**cf_lut)        * LUT_BUFF * 16 * LUT_SIZE);
+    *cf_lut_status = av_malloc(sizeof(**cf_lut_status) * LUT_BUFF);
 
-    if (!cf_lut || !cf_lut_status) {
+    if (!*cf_lut || !*cf_lut_status) {
         ff_bgmc_end(cf_lut, cf_lut_status);
         av_log(avctx, AV_LOG_ERROR, "Allocating buffer memory failed.\n");
         return AVERROR(ENOMEM);
     } else {
         // initialize lut_status buffer to a value never used to compare against
-        memset(*cf_lut_status, -1, sizeof(*cf_lut_status) * LUT_BUFF);
+        memset(*cf_lut_status, -1, sizeof(**cf_lut_status) * LUT_BUFF);
     }
 
     return 0;

@@ -3,20 +3,20 @@
  * Copyright (c) 2000,2001 Fabrice Bellard
  * Copyright (c) 2002-2010 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -83,9 +83,9 @@ extern const uint16_t ff_mpeg4_resync_prefix[8];
 extern const uint8_t ff_mpeg4_dc_threshold[8];
 
 void ff_mpeg4_encode_mb(MpegEncContext *s,
-                        DCTELEM block[6][64],
+                        int16_t block[6][64],
                         int motion_x, int motion_y);
-void ff_mpeg4_pred_ac(MpegEncContext * s, DCTELEM *block, int n,
+void ff_mpeg4_pred_ac(MpegEncContext * s, int16_t *block, int n,
                       int dir);
 void ff_set_mpeg4_time(MpegEncContext * s);
 void ff_mpeg4_encode_picture_header(MpegEncContext *s, int picture_number);
@@ -101,6 +101,7 @@ int ff_mpeg4_decode_partitions(MpegEncContext *s);
 int ff_mpeg4_get_video_packet_prefix_length(MpegEncContext *s);
 int ff_mpeg4_decode_video_packet_header(MpegEncContext *s);
 void ff_mpeg4_init_direct_mv(MpegEncContext *s);
+void ff_mpeg4videodec_static_init(void);
 
 /**
  *
@@ -174,7 +175,7 @@ static inline int ff_mpeg4_pred_dc(MpegEncContext * s, int n, int level, int *di
     }else{
         level += pred;
         ret= level;
-        if(s->err_recognition&AV_EF_BITSTREAM){
+        if(s->err_recognition&(AV_EF_BITSTREAM|AV_EF_AGGRESSIVE)){
             if(level<0){
                 av_log(s->avctx, AV_LOG_ERROR, "dc<0 at %dx%d\n", s->mb_x, s->mb_y);
                 return -1;

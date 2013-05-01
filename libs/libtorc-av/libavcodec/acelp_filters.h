@@ -3,20 +3,20 @@
  *
  * Copyright (c) 2008 Vladimir Voroshilov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,6 +25,39 @@
 
 #include <stdint.h>
 
+typedef struct ACELPFContext {
+    /**
+    * Floating point version of ff_acelp_interpolate()
+    */
+    void (*acelp_interpolatef)(float *out, const float *in,
+                            const float *filter_coeffs, int precision,
+                            int frac_pos, int filter_length, int length);
+
+    /**
+     * Apply an order 2 rational transfer function in-place.
+     *
+     * @param out output buffer for filtered speech samples
+     * @param in input buffer containing speech data (may be the same as out)
+     * @param zero_coeffs z^-1 and z^-2 coefficients of the numerator
+     * @param pole_coeffs z^-1 and z^-2 coefficients of the denominator
+     * @param gain scale factor for final output
+     * @param mem intermediate values used by filter (should be 0 initially)
+     * @param n number of samples (should be a multiple of eight)
+     */
+    void (*acelp_apply_order_2_transfer_function)(float *out, const float *in,
+                                                  const float zero_coeffs[2],
+                                                  const float pole_coeffs[2],
+                                                  float gain,
+                                                  float mem[2], int n);
+
+}ACELPFContext;
+
+/**
+ * Initialize ACELPFContext.
+ */
+void ff_acelp_filter_init(ACELPFContext *c);
+void ff_acelp_filter_init_mips(ACELPFContext *c);
+
 /**
  * low-pass Finite Impulse Response filter coefficients.
  *
@@ -32,7 +65,7 @@
  * the coefficients are scaled by 2^15.
  * This array only contains the right half of the filter.
  * This filter is likely identical to the one used in G.729, though this
- * could not be determined from the original comments with certainity.
+ * could not be determined from the original comments with certainty.
  */
 extern const int16_t ff_acelp_interp_filter[61];
 
@@ -76,7 +109,7 @@ void ff_acelp_interpolatef(float *out, const float *in,
  *
  * The filter has a cut-off frequency of 1/80 of the sampling freq
  *
- * @note Two items before the top of the out buffer must contain two items from the
+ * @note Two items before the top of the in buffer must contain two items from the
  *       tail of the previous subframe.
  *
  * @remark It is safe to pass the same array in in and out parameters.

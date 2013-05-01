@@ -1,20 +1,20 @@
 /*
  * copyright (c) 2006 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -37,7 +37,16 @@
 #include "config.h"
 #include "attributes.h"
 #include "timer.h"
+#include "cpu.h"
 #include "dict.h"
+
+#if ARCH_X86
+#   include "x86/emms.h"
+#endif
+
+#ifndef emms_c
+#   define emms_c()
+#endif
 
 #ifndef attribute_align_arg
 #if ARCH_X86_32 && AV_GCC_VERSION_AT_LEAST(4,2)
@@ -57,39 +66,31 @@
 #    define INT_BIT (CHAR_BIT * sizeof(int))
 #endif
 
-/* avoid usage of dangerous/inappropriate system functions */
-#undef  malloc
-#define malloc please_use_av_malloc
-#undef  free
-#define free please_use_av_free
-#undef  realloc
-#define realloc please_use_av_realloc
-#undef  time
-#define time time_is_forbidden_due_to_security_issues
-#undef  rand
-#define rand rand_is_forbidden_due_to_state_trashing_use_av_lfg_get
-#undef  srand
-#define srand srand_is_forbidden_due_to_state_trashing_use_av_lfg_init
-#undef  random
-#define random random_is_forbidden_due_to_state_trashing_use_av_lfg_get
-#undef  sprintf
-#define sprintf sprintf_is_forbidden_due_to_security_issues_use_snprintf
-#undef  strcat
-#define strcat strcat_is_forbidden_due_to_security_issues_use_av_strlcat
-#undef  exit
-#define exit exit_is_forbidden
-#undef  printf
-#define printf please_use_av_log_instead_of_printf
-#undef  fprintf
-#define fprintf please_use_av_log_instead_of_fprintf
-#undef  puts
-#define puts please_use_av_log_instead_of_puts
-#undef  perror
-#define perror please_use_av_log_instead_of_perror
-#undef strcasecmp
-#define strcasecmp please_use_av_strcasecmp
-#undef strncasecmp
-#define strncasecmp please_use_av_strncasecmp
+// Some broken preprocessors need a second expansion
+// to be forced to tokenize __VA_ARGS__
+#define E1(x) x
+
+#define LOCAL_ALIGNED_A(a, t, v, s, o, ...)             \
+    uint8_t la_##v[sizeof(t s o) + (a)];                \
+    t (*v) o = (void *)FFALIGN((uintptr_t)la_##v, a)
+
+#define LOCAL_ALIGNED_D(a, t, v, s, o, ...)             \
+    DECLARE_ALIGNED(a, t, la_##v) s o;                  \
+    t (*v) o = la_##v
+
+#define LOCAL_ALIGNED(a, t, v, ...) E1(LOCAL_ALIGNED_A(a, t, v, __VA_ARGS__,,))
+
+#if HAVE_LOCAL_ALIGNED_8
+#   define LOCAL_ALIGNED_8(t, v, ...) E1(LOCAL_ALIGNED_D(8, t, v, __VA_ARGS__,,))
+#else
+#   define LOCAL_ALIGNED_8(t, v, ...) LOCAL_ALIGNED(8, t, v, __VA_ARGS__)
+#endif
+
+#if HAVE_LOCAL_ALIGNED_16
+#   define LOCAL_ALIGNED_16(t, v, ...) E1(LOCAL_ALIGNED_D(16, t, v, __VA_ARGS__,,))
+#else
+#   define LOCAL_ALIGNED_16(t, v, ...) LOCAL_ALIGNED(16, t, v, __VA_ARGS__)
+#endif
 
 #define FF_ALLOC_OR_GOTO(ctx, p, size, label)\
 {\
@@ -122,12 +123,11 @@
 #   define NULL_IF_CONFIG_SMALL(x) x
 #endif
 
-
 /**
  * Define a function with only the non-default version specified.
  *
  * On systems with ELF shared libraries, all symbols exported from
- * Libav libraries are tagged with the name and major version of the
+ * FFmpeg libraries are tagged with the name and major version of the
  * library to which they belong.  If a function is moved from one
  * library to another, a wrapper must be retained in the original
  * location to preserve binary compatibility.
@@ -161,22 +161,5 @@
 #else
 #   define ONLY_IF_THREADS_ENABLED(x) NULL
 #endif
-
-#if HAVE_MMX_INLINE
-/**
- * Empty mmx state.
- * this must be called between any dsp function and float/double code.
- * for example sin(); dsp->idct_put(); emms_c(); cos()
- */
-static av_always_inline void emms_c(void)
-{
-    __asm__ volatile ("emms" ::: "memory");
-}
-#elif HAVE_MMX && HAVE_MM_EMPTY
-#   include <mmintrin.h>
-#   define emms_c _mm_empty
-#else
-#   define emms_c()
-#endif /* HAVE_MMX_INLINE */
 
 #endif /* AVUTIL_INTERNAL_H */

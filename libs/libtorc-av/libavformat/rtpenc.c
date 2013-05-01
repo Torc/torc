@@ -2,20 +2,20 @@
  * RTP output format
  * Copyright (c) 2002 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -34,6 +34,8 @@ static const AVOption options[] = {
     FF_RTP_FLAG_OPTS(RTPMuxContext, flags),
     { "payload_type", "Specify RTP payload type", offsetof(RTPMuxContext, payload_type), AV_OPT_TYPE_INT, {.i64 = -1 }, -1, 127, AV_OPT_FLAG_ENCODING_PARAM },
     { "ssrc", "Stream identifier", offsetof(RTPMuxContext, ssrc), AV_OPT_TYPE_INT, { .i64 = 0 }, INT_MIN, INT_MAX, AV_OPT_FLAG_ENCODING_PARAM },
+    { "cname", "CNAME to include in RTCP SR packets", offsetof(RTPMuxContext, cname), AV_OPT_TYPE_STRING, { .str = NULL }, 0, 0, AV_OPT_FLAG_ENCODING_PARAM },
+    { "seq", "Starting sequence number", offsetof(RTPMuxContext, seq), AV_OPT_TYPE_INT, { .i64 = -1 }, -1, 65535, AV_OPT_FLAG_ENCODING_PARAM },
     { NULL },
 };
 
@@ -96,13 +98,22 @@ static int rtp_write_header(AVFormatContext *s1)
     }
     st = s1->streams[0];
     if (!is_supported(st->codec->codec_id)) {
-        av_log(s1, AV_LOG_ERROR, "Unsupported codec %x\n", st->codec->codec_id);
+        av_log(s1, AV_LOG_ERROR, "Unsupported codec %s\n", avcodec_get_name(st->codec->codec_id));
 
         return -1;
     }
 
-    if (s->payload_type < 0)
-        s->payload_type = ff_rtp_get_payload_type(s1, st->codec);
+    if (s->payload_type < 0) {
+        /* Re-validate non-dynamic payload types */
+        if (st->id < RTP_PT_PRIVATE)
+            st->id = ff_rtp_get_payload_type(s1, st->codec, -1);
+
+        s->payload_type = st->id;
+    } else {
+        /* private option takes priority */
+        st->id = s->payload_type;
+    }
+
     s->base_timestamp = av_get_random_seed();
     s->timestamp = s->base_timestamp;
     s->cur_timestamp = 0;
@@ -114,6 +125,16 @@ static int rtp_write_header(AVFormatContext *s1)
         /* Round the NTP time to whole milliseconds. */
         s->first_rtcp_ntp_time = (s1->start_time_realtime / 1000) * 1000 +
                                  NTP_OFFSET_US;
+    // Pick a random sequence start number, but in the lower end of the
+    // available range, so that any wraparound doesn't happen immediately.
+    // (Immediate wraparound would be an issue for SRTP.)
+    if (s->seq < 0) {
+        if (st->codec->flags & CODEC_FLAG_BITEXACT) {
+            s->seq = 0;
+        } else
+            s->seq = av_get_random_seed() & 0x0fff;
+    } else
+        s->seq &= 0xffff; // Use the given parameter, wrapped to the right interval
 
     if (s1->packet_size) {
         if (s1->pb->max_packet_size)
@@ -262,6 +283,22 @@ static void rtcp_send_sr(AVFormatContext *s1, int64_t ntp_time)
     avio_wb32(s1->pb, rtp_ts);
     avio_wb32(s1->pb, s->packet_count);
     avio_wb32(s1->pb, s->octet_count);
+
+    if (s->cname) {
+        int len = FFMIN(strlen(s->cname), 255);
+        avio_w8(s1->pb, (RTP_VERSION << 6) + 1);
+        avio_w8(s1->pb, RTCP_SDES);
+        avio_wb16(s1->pb, (7 + len + 3) / 4); /* length in words - 1 */
+
+        avio_wb32(s1->pb, s->ssrc);
+        avio_w8(s1->pb, 0x01); /* CNAME */
+        avio_w8(s1->pb, len);
+        avio_write(s1->pb, s->cname, len);
+        avio_w8(s1->pb, 0); /* END */
+        for (len = (7 + len) % 4; len % 4; len++)
+            avio_w8(s1->pb, 0);
+    }
+
     avio_flush(s1->pb);
 }
 
@@ -283,7 +320,7 @@ void ff_rtp_send_data(AVFormatContext *s1, const uint8_t *buf1, int len, int m)
     avio_write(s1->pb, buf1, len);
     avio_flush(s1->pb);
 
-    s->seq++;
+    s->seq = (s->seq + 1) & 0xffff;
     s->octet_count += len;
     s->packet_count++;
 }

@@ -8,20 +8,20 @@
  *   Copyright (C)1999,2000 Sebastien Rougeaux <sebastien.rougeaux@anu.edu.au>
  *                          Peter Schlaile <udbz@rz.uni-karlsruhe.de>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -186,7 +186,7 @@
    where copy_DV_frame() reads or writes on the dv1394 file descriptor
    (read/write mode) or copies data to/from the mmap ringbuffer and
    then calls ioctl(DV1394_SUBMIT_FRAMES) to notify dv1394 that new
-   frames are availble (mmap mode).
+   frames are available (mmap mode).
 
    reset_dv1394() is called in the event of a buffer
    underflow/overflow or a halt in the DV stream (e.g. due to a 1394

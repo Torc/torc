@@ -2,23 +2,24 @@
  * CDXL demuxer
  * Copyright (c) 2011-2012 Paul B Mahol
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/parseutils.h"
 #include "libavutil/opt.h"
@@ -37,6 +38,48 @@ typedef struct CDXLDemuxContext {
     int         video_stream_index;
     int         audio_stream_index;
 } CDXLDemuxContext;
+
+static int cdxl_read_probe(AVProbeData *p)
+{
+    int score = AVPROBE_SCORE_MAX / 2 + 10;
+
+    if (p->buf_size < CDXL_HEADER_SIZE)
+        return 0;
+
+    /* reserved bytes should always be set to 0 */
+    if (AV_RN64(&p->buf[24]) || AV_RN16(&p->buf[10]))
+        return 0;
+
+    /* check type */
+    if (p->buf[0] != 1)
+        return 0;
+
+    /* check palette size */
+    if (AV_RB16(&p->buf[20]) > 512)
+        return 0;
+
+    /* check number of planes */
+    if (p->buf[18] || !p->buf[19])
+        return 0;
+
+    /* check widh and height */
+    if (!AV_RN16(&p->buf[14]) || !AV_RN16(&p->buf[16]))
+        return 0;
+
+    /* chunk size */
+    if (AV_RB32(&p->buf[2]) < AV_RB16(&p->buf[22]) + AV_RB16(&p->buf[20]) + CDXL_HEADER_SIZE)
+        return 0;
+
+    /* previous chunk size */
+    if (AV_RN32(&p->buf[6]))
+        score /= 2;
+
+    /* current frame number, usually starts from 1 */
+    if (AV_RB16(&p->buf[12]) != 1)
+        score /= 2;
+
+    return score;
+}
 
 static int cdxl_read_header(AVFormatContext *s)
 {
@@ -67,7 +110,7 @@ static int cdxl_read_packet(AVFormatContext *s, AVPacket *pkt)
     int64_t  pos;
     int      ret;
 
-    if (pb->eof_reached)
+    if (url_feof(pb))
         return AVERROR_EOF;
 
     pos = avio_tell(pb);
@@ -101,7 +144,13 @@ static int cdxl_read_packet(AVFormatContext *s, AVPacket *pkt)
             st->codec->codec_type    = AVMEDIA_TYPE_AUDIO;
             st->codec->codec_tag     = 0;
             st->codec->codec_id      = AV_CODEC_ID_PCM_S8;
-            st->codec->channels      = cdxl->header[1] & 0x10 ? 2 : 1;
+            if (cdxl->header[1] & 0x10) {
+                st->codec->channels       = 2;
+                st->codec->channel_layout = AV_CH_LAYOUT_STEREO;
+            } else {
+                st->codec->channels       = 1;
+                st->codec->channel_layout = AV_CH_LAYOUT_MONO;
+            }
             st->codec->sample_rate   = cdxl->sample_rate;
             st->start_time           = 0;
             cdxl->audio_stream_index = st->index;
@@ -173,6 +222,7 @@ AVInputFormat ff_cdxl_demuxer = {
     .name           = "cdxl",
     .long_name      = NULL_IF_CONFIG_SMALL("Commodore CDXL video"),
     .priv_data_size = sizeof(CDXLDemuxContext),
+    .read_probe     = cdxl_read_probe,
     .read_header    = cdxl_read_header,
     .read_packet    = cdxl_read_packet,
     .extensions     = "cdxl,xl",

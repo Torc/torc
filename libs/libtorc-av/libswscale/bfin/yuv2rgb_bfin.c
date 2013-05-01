@@ -4,23 +4,24 @@
  * Blackfin video color space converter operations
  * convert I420 YV12 to RGB in various formats
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/pixdesc.h"
 #include <stdint.h>
 
 #include "config.h"
@@ -195,7 +196,7 @@ SwsFunc ff_yuv2rgb_get_func_ptr_bfin(SwsContext *c)
     }
 
     av_log(c, AV_LOG_INFO, "BlackFin accelerated color space converter %s\n",
-           sws_format_name(c->dstFormat));
+           av_get_pix_fmt_name(c->dstFormat));
 
     return f;
 }

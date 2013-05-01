@@ -3,20 +3,20 @@
  *
  * some optimization ideas from aes128.c by Reimar Doeffinger
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -39,9 +39,7 @@ typedef struct AVAES {
     int rounds;
 } AVAES;
 
-#if FF_API_CONTEXT_SIZE
 const int av_aes_size= sizeof(AVAES);
-#endif
 
 struct AVAES *av_aes_alloc(void)
 {
@@ -266,6 +264,7 @@ int av_aes_init(AVAES *a, const uint8_t *key, int key_bits, int decrypt)
 }
 
 #ifdef TEST
+// LCOV_EXCL_START
 #include <string.h>
 #include "lfg.h"
 #include "log.h"
@@ -338,4 +337,5 @@ int main(int argc, char **argv)
     }
     return err;
 }
+// LCOV_EXCL_STOP
 #endif

@@ -3,20 +3,20 @@
  * Copyright (c) 2003 Michael Niedermayer
  * Copyright (c) 2006 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -40,7 +40,7 @@
 * (or test broken JPEG-LS decoder) and slow down ordinary decoding a bit.
 *
 * There is no Golomb code with length >= 32 bits possible, so check and
-* avoid situation of 32 zeros, Libav Golomb decoder is painfully slow
+* avoid situation of 32 zeros, FFmpeg Golomb decoder is painfully slow
 * on this errors.
 */
 //#define JLS_BROKEN
@@ -197,6 +197,9 @@ static inline void ls_decode_line(JLSState *state, MJpegDecodeContext *s, void *
             r = ff_log2_run[state->run_index[comp]];
             if(r)
                 r = get_bits_long(&s->gb, r);
+            if(x + r * stride > w) {
+                r = (w - x) / stride;
+            }
             for(i = 0; i < r; i++) {
                 W(dst, x, Ra);
                 x += stride;
@@ -261,9 +264,9 @@ int ff_jpegls_decode_picture(MJpegDecodeContext *s, int near, int point_transfor
     JLSState *state;
     int off = 0, stride = 1, width, shift;
 
-    zero = av_mallocz(s->picture_ptr->linesize[0]);
+    zero = av_mallocz(s->picture.linesize[0]);
     last = zero;
-    cur = s->picture_ptr->data[0];
+    cur = s->picture.data[0];
 
     state = av_mallocz(sizeof(JLSState));
     /* initialize JPEG-LS state from JPEG parameters */
@@ -282,15 +285,17 @@ int ff_jpegls_decode_picture(MJpegDecodeContext *s, int near, int point_transfor
     else
         shift = point_transform + (16 - s->bits);
 
-    av_dlog(s->avctx, "JPEG-LS params: %ix%i NEAR=%i MV=%i T(%i,%i,%i) RESET=%i, LIMIT=%i, qbpp=%i, RANGE=%i\n",
-            s->width, s->height, state->near, state->maxval,
-            state->T1, state->T2, state->T3,
-            state->reset, state->limit, state->qbpp, state->range);
-    av_dlog(s->avctx, "JPEG params: ILV=%i Pt=%i BPP=%i, scan = %i\n",
-            ilv, point_transform, s->bits, s->cur_scan);
+    if (s->avctx->debug & FF_DEBUG_PICT_INFO) {
+        av_log(s->avctx, AV_LOG_DEBUG, "JPEG-LS params: %ix%i NEAR=%i MV=%i T(%i,%i,%i) RESET=%i, LIMIT=%i, qbpp=%i, RANGE=%i\n",
+                s->width, s->height, state->near, state->maxval,
+                state->T1, state->T2, state->T3,
+                state->reset, state->limit, state->qbpp, state->range);
+        av_log(s->avctx, AV_LOG_DEBUG, "JPEG params: ILV=%i Pt=%i BPP=%i, scan = %i\n",
+                ilv, point_transform, s->bits, s->cur_scan);
+    }
     if(ilv == 0) { /* separate planes */
-        off = s->cur_scan - 1;
         stride = (s->nb_components > 1) ? 3 : 1;
+        off = av_clip(s->cur_scan - 1, 0, stride - 1);
         width = s->width * stride;
         cur += off;
         for(i = 0; i < s->height; i++) {
@@ -302,7 +307,7 @@ int ff_jpegls_decode_picture(MJpegDecodeContext *s, int near, int point_transfor
                 t = *((uint16_t*)last);
             }
             last = cur;
-            cur += s->picture_ptr->linesize[0];
+            cur += s->picture.linesize[0];
 
             if (s->restart_interval && !--s->restart_count) {
                 align_get_bits(&s->gb);
@@ -312,11 +317,12 @@ int ff_jpegls_decode_picture(MJpegDecodeContext *s, int near, int point_transfor
     } else if(ilv == 1) { /* line interleaving */
         int j;
         int Rc[3] = {0, 0, 0};
-        memset(cur, 0, s->picture_ptr->linesize[0]);
-        width = s->width * 3;
+        stride = (s->nb_components > 1) ? 3 : 1;
+        memset(cur, 0, s->picture.linesize[0]);
+        width = s->width * stride;
         for(i = 0; i < s->height; i++) {
-            for(j = 0; j < 3; j++) {
-                ls_decode_line(state, s, last + j, cur + j, Rc[j], width, 3, j, 8);
+            for(j = 0; j < stride; j++) {
+                ls_decode_line(state, s, last + j, cur + j, Rc[j], width, stride, j, 8);
                 Rc[j] = last[j];
 
                 if (s->restart_interval && !--s->restart_count) {
@@ -325,7 +331,7 @@ int ff_jpegls_decode_picture(MJpegDecodeContext *s, int near, int point_transfor
                 }
             }
             last = cur;
-            cur += s->picture_ptr->linesize[0];
+            cur += s->picture.linesize[0];
         }
     } else if(ilv == 2) { /* sample interleaving */
         av_log(s->avctx, AV_LOG_ERROR, "Sample interleaved images are not supported.\n");
@@ -340,22 +346,22 @@ int ff_jpegls_decode_picture(MJpegDecodeContext *s, int near, int point_transfor
         w = s->width * s->nb_components;
 
         if(s->bits <= 8){
-            uint8_t *src = s->picture_ptr->data[0];
+            uint8_t *src = s->picture.data[0];
 
             for(i = 0; i < s->height; i++){
                 for(x = off; x < w; x+= stride){
                     src[x] <<= shift;
                 }
-                src += s->picture_ptr->linesize[0];
+                src += s->picture.linesize[0];
             }
         }else{
-            uint16_t *src = (uint16_t*) s->picture_ptr->data[0];
+            uint16_t *src = (uint16_t*) s->picture.data[0];
 
             for(i = 0; i < s->height; i++){
                 for(x = 0; x < w; x++){
                     src[x] <<= shift;
                 }
-                src += s->picture_ptr->linesize[0]/2;
+                src += s->picture.linesize[0]/2;
             }
         }
     }

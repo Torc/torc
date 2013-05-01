@@ -3,20 +3,20 @@
  * Copyright (c) 2003 Michael Niedermayer <michaelni@gmx.at>
  * Copyright (c) 2004 Alex Beregszaszi
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -66,10 +66,14 @@ static inline int get_ue_golomb(GetBitContext *gb){
         return ff_ue_golomb_vlc_code[buf];
     }else{
         log= 2*av_log2(buf) - 31;
-        buf>>= log;
-        buf--;
         LAST_SKIP_BITS(re, gb, 32 - log);
         CLOSE_READER(re, gb);
+        if (CONFIG_FTRAPV && log < 0) {
+            av_log(0, AV_LOG_ERROR, "Invalid UE golomb code\n");
+            return AVERROR_INVALIDDATA;
+        }
+        buf>>= log;
+        buf--;
 
         return buf;
     }
@@ -107,7 +111,8 @@ static inline int get_ue_golomb_31(GetBitContext *gb){
     return ff_ue_golomb_vlc_code[buf];
 }
 
-static inline int svq3_get_ue_golomb(GetBitContext *gb){
+static inline unsigned svq3_get_ue_golomb(GetBitContext *gb)
+{
     uint32_t buf;
 
     OPEN_READER(re, gb);
@@ -121,7 +126,7 @@ static inline int svq3_get_ue_golomb(GetBitContext *gb){
 
         return ff_interleaved_ue_golomb_vlc_code[buf];
     }else{
-        int ret = 1;
+        unsigned ret = 1;
 
         do {
             buf >>= 32 - 8;
@@ -135,7 +140,7 @@ static inline int svq3_get_ue_golomb(GetBitContext *gb){
             ret = (ret << 4) | ff_interleaved_dirac_golomb_vlc_code[buf];
             UPDATE_CACHE(re, gb);
             buf = GET_CACHE(re, gb);
-        } while (HAVE_BITS_REMAINING(re, gb));
+        } while (ret<0x8000000U && HAVE_BITS_REMAINING(re, gb));
 
         CLOSE_READER(re, gb);
         return ret - 1;
@@ -146,7 +151,7 @@ static inline int svq3_get_ue_golomb(GetBitContext *gb){
  * read unsigned truncated exp golomb code.
  */
 static inline int get_te0_golomb(GetBitContext *gb, int range){
-    assert(range >= 1);
+    av_assert2(range >= 1);
 
     if(range==1)      return 0;
     else if(range==2) return get_bits1(gb)^1;
@@ -157,7 +162,7 @@ static inline int get_te0_golomb(GetBitContext *gb, int range){
  * read unsigned truncated exp golomb code.
  */
 static inline int get_te_golomb(GetBitContext *gb, int range){
-    assert(range >= 1);
+    av_assert2(range >= 1);
 
     if(range==2) return get_bits1(gb)^1;
     else         return get_ue_golomb(gb);
@@ -182,7 +187,11 @@ static inline int get_se_golomb(GetBitContext *gb){
 
         return ff_se_golomb_vlc_code[buf];
     }else{
-        log= 2*av_log2(buf) - 31;
+        log = av_log2(buf);
+        LAST_SKIP_BITS(re, gb, 31 - log);
+        UPDATE_CACHE(re, gb);
+        buf = GET_CACHE(re, gb);
+
         buf>>= log;
 
         LAST_SKIP_BITS(re, gb, 32 - log);
@@ -301,7 +310,9 @@ static inline int get_ur_golomb_jpegls(GetBitContext *gb, int k, int limit, int 
         return buf;
     }else{
         int i;
-        for (i = 0; i < limit && SHOW_UBITS(re, gb, 1) == 0 && HAVE_BITS_REMAINING(re, gb); i++) {
+        for (i = 0; i < limit && SHOW_UBITS(re, gb, 1) == 0; i++) {
+            if (gb->size_in_bits <= re_index)
+                return -1;
             LAST_SKIP_BITS(re, gb, 1);
             UPDATE_CACHE(re, gb);
         }
@@ -431,7 +442,7 @@ static inline int get_te(GetBitContext *s, int r, char *file, const char *func, 
 static inline void set_ue_golomb(PutBitContext *pb, int i){
     int e;
 
-    assert(i>=0);
+    av_assert2(i>=0);
 
 #if 0
     if(i=0){
@@ -452,8 +463,8 @@ static inline void set_ue_golomb(PutBitContext *pb, int i){
  * write truncated unsigned exp golomb code.
  */
 static inline void set_te_golomb(PutBitContext *pb, int i, int range){
-    assert(range >= 1);
-    assert(i<=range);
+    av_assert2(range >= 1);
+    av_assert2(i<=range);
 
     if(range==2) put_bits(pb, 1, i^1);
     else         set_ue_golomb(pb, i);
@@ -482,7 +493,7 @@ static inline void set_se_golomb(PutBitContext *pb, int i){
 static inline void set_ur_golomb(PutBitContext *pb, int i, int k, int limit, int esc_len){
     int e;
 
-    assert(i>=0);
+    av_assert2(i>=0);
 
     e= i>>k;
     if(e<limit){
@@ -498,7 +509,7 @@ static inline void set_ur_golomb(PutBitContext *pb, int i, int k, int limit, int
 static inline void set_ur_golomb_jpegls(PutBitContext *pb, int i, int k, int limit, int esc_len){
     int e;
 
-    assert(i>=0);
+    av_assert2(i>=0);
 
     e= (i>>k) + 1;
     if(e<limit){

@@ -2,20 +2,20 @@
  * Bethesda VID video decoder
  * Copyright (C) 2007 Nicholas Tung
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -28,7 +28,7 @@
  */
 
 #include "libavutil/common.h"
-#include "dsputil.h"
+#include "avcodec.h"
 #include "bethsoftvideo.h"
 #include "bytestream.h"
 
@@ -40,7 +40,8 @@ typedef struct BethsoftvidContext {
 static av_cold int bethsoftvid_decode_init(AVCodecContext *avctx)
 {
     BethsoftvidContext *vid = avctx->priv_data;
-    vid->frame.reference = 1;
+    avcodec_get_frame_defaults(&vid->frame);
+    vid->frame.reference = 3;
     vid->frame.buffer_hints = FF_BUFFER_HINTS_VALID |
         FF_BUFFER_HINTS_PRESERVE | FF_BUFFER_HINTS_REUSABLE;
     avctx->pix_fmt = AV_PIX_FMT_PAL8;
@@ -56,14 +57,15 @@ static int set_palette(BethsoftvidContext *ctx)
         return AVERROR_INVALIDDATA;
 
     for(a = 0; a < 256; a++){
-        palette[a] = bytestream2_get_be24u(&ctx->g) * 4;
+        palette[a] = 0xFFU << 24 | bytestream2_get_be24u(&ctx->g) * 4;
+        palette[a] |= palette[a] >> 6 & 0x30303;
     }
     ctx->frame.palette_has_changed = 1;
     return 0;
 }
 
 static int bethsoftvid_decode_frame(AVCodecContext *avctx,
-                              void *data, int *data_size,
+                              void *data, int *got_frame,
                               AVPacket *avpkt)
 {
     BethsoftvidContext * vid = avctx->priv_data;
@@ -75,9 +77,9 @@ static int bethsoftvid_decode_frame(AVCodecContext *avctx,
     int code, ret;
     int yoffset;
 
-    if (avctx->reget_buffer(avctx, &vid->frame)) {
+    if ((ret = avctx->reget_buffer(avctx, &vid->frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "reget_buffer() failed\n");
-        return -1;
+        return ret;
     }
     wrap_to_next_line = vid->frame.linesize[0] - avctx->width;
 
@@ -95,7 +97,7 @@ static int bethsoftvid_decode_frame(AVCodecContext *avctx,
 
     switch(block_type = bytestream2_get_byte(&vid->g)){
         case PALETTE_BLOCK: {
-            *data_size = 0;
+            *got_frame = 0;
             if ((ret = set_palette(vid)) < 0) {
                 av_log(avctx, AV_LOG_ERROR, "error reading palette\n");
                 return ret;
@@ -105,7 +107,7 @@ static int bethsoftvid_decode_frame(AVCodecContext *avctx,
         case VIDEO_YOFF_P_FRAME:
             yoffset = bytestream2_get_le16(&vid->g);
             if(yoffset >= avctx->height)
-                return -1;
+                return AVERROR_INVALIDDATA;
             dst += vid->frame.linesize[0] * yoffset;
     }
 
@@ -136,7 +138,7 @@ static int bethsoftvid_decode_frame(AVCodecContext *avctx,
     }
     end:
 
-    *data_size = sizeof(AVFrame);
+    *got_frame = 1;
     *(AVFrame*)data = vid->frame;
 
     return avpkt->size;

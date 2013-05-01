@@ -5,20 +5,20 @@
  * Copyright (c) 2001 Juan J. Sierralta P
  * Copyright (c) 2002-2004 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -30,7 +30,6 @@
 //#define DEBUG
 #include <limits.h>
 
-#include "dsputil.h"
 #include "avcodec.h"
 #include "mpegvideo.h"
 #include "h263.h"
@@ -39,9 +38,6 @@
 #include "flv.h"
 #include "mpeg4video.h"
 #include "internal.h"
-
-//#undef NDEBUG
-//#include <assert.h>
 
 /**
  * Table of number of bits a motion vector component needs.
@@ -229,7 +225,7 @@ void ff_h263_encode_picture_header(MpegEncContext * s, int picture_number)
     if(s->h263_slice_structured){
         put_bits(&s->pb, 1, 1);
 
-        assert(s->mb_x == 0 && s->mb_y == 0);
+        av_assert1(s->mb_x == 0 && s->mb_y == 0);
         ff_h263_encode_mba(s);
 
         put_bits(&s->pb, 1, 1);
@@ -271,7 +267,7 @@ void ff_h263_encode_gob_header(MpegEncContext * s, int mb_line)
 }
 
 /**
- * modify qscale so that encoding is acually possible in h263 (limit difference to -2..2)
+ * modify qscale so that encoding is actually possible in h263 (limit difference to -2..2)
  */
 void ff_clean_h263_qscales(MpegEncContext *s){
     int i;
@@ -306,7 +302,7 @@ static const int dquant_code[5]= {1,0,9,2,3};
  * @param block the 8x8 block
  * @param n block index (0-3 are luma, 4-5 are chroma)
  */
-static void h263_encode_block(MpegEncContext * s, DCTELEM * block, int n)
+static void h263_encode_block(MpegEncContext * s, int16_t * block, int n)
 {
     int level, run, last, i, j, last_index, last_non_zero, sign, slevel, code;
     RLTable *rl;
@@ -396,7 +392,7 @@ static void h263_encode_block(MpegEncContext * s, DCTELEM * block, int n)
                 put_bits(&s->pb, 1, last);
                 put_bits(&s->pb, 6, run);
 
-                assert(slevel != 0);
+                av_assert2(slevel != 0);
 
                 if(level < 128)
                     put_sbits(&s->pb, 8, slevel);
@@ -455,7 +451,7 @@ static void h263p_encode_umotion(MpegEncContext * s, int val)
 }
 
 void ff_h263_encode_mb(MpegEncContext * s,
-                       DCTELEM block[6][64],
+                       int16_t block[6][64],
                        int motion_x, int motion_y)
 {
     int cbpc, cbpy, i, cbp, pred_x, pred_y;
@@ -549,7 +545,7 @@ void ff_h263_encode_mb(MpegEncContext * s,
             s->mv_bits+= get_bits_diff(s);
         }
     } else {
-        assert(s->mb_intra);
+        av_assert2(s->mb_intra);
 
         cbp = 0;
         if (s->h263_aic) {
@@ -728,8 +724,8 @@ static void init_mv_penalty_and_fcode(MpegEncContext *s)
 static void init_uni_h263_rl_tab(RLTable *rl, uint32_t *bits_tab, uint8_t *len_tab){
     int slevel, run, last;
 
-    assert(MAX_LEVEL >= 64);
-    assert(MAX_RUN   >= 63);
+    av_assert0(MAX_LEVEL >= 64);
+    av_assert0(MAX_RUN   >= 63);
 
     for(slevel=-64; slevel<64; slevel++){
         if(slevel==0) continue;

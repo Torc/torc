@@ -7,20 +7,20 @@
  * palette & YUV & runtime CPU stuff by Michael (michaelni@gmx.at)
  * lot of big-endian byte order fixes by Alex Beregszaszi
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -127,14 +127,11 @@ static inline void RENAME(rgb24tobgr32)(const uint8_t *src, uint8_t *dst, int sr
             "movq       %%mm4, %%mm3    \n\t" \
             "psllq        $48, %%mm2    \n\t" \
             "psllq        $32, %%mm3    \n\t" \
-            "pand "MANGLE(mask24hh)", %%mm2\n\t" \
-            "pand "MANGLE(mask24hhh)", %%mm3\n\t" \
             "por        %%mm2, %%mm0    \n\t" \
             "psrlq        $16, %%mm1    \n\t" \
             "psrlq        $32, %%mm4    \n\t" \
             "psllq        $16, %%mm5    \n\t" \
             "por        %%mm3, %%mm1    \n\t" \
-            "pand  "MANGLE(mask24hhhh)", %%mm5\n\t" \
             "por        %%mm5, %%mm4    \n\t" \
  \
             MOVNTQ"     %%mm0,   (%0)    \n\t" \
@@ -181,7 +178,7 @@ static inline void RENAME(rgb32tobgr24)(const uint8_t *src, uint8_t *dst, int sr
 /*
  original by Strepto/Astral
  ported to gcc & bugfixed: A'rpi
- MMX2, 3DNOW optimization by Nick Kurshev
+ MMXEXT, 3DNOW optimization by Nick Kurshev
  32-bit C version, and and&add trick by Michael Niedermayer
 */
 static inline void RENAME(rgb15to16)(const uint8_t *src, uint8_t *dst, int src_size)
@@ -713,27 +710,6 @@ static inline void RENAME(rgb24to15)(const uint8_t *src, uint8_t *dst, int src_s
     }
 }
 
-/*
-  I use less accurate approximation here by simply left-shifting the input
-  value and filling the low order bits with zeroes. This method improves PNG
-  compression but this scheme cannot reproduce white exactly, since it does
-  not generate an all-ones maximum value; the net effect is to darken the
-  image slightly.
-
-  The better method should be "left bit replication":
-
-   4 3 2 1 0
-   ---------
-   1 1 0 1 1
-
-   7 6 5 4 3  2 1 0
-   ----------------
-   1 1 0 1 1  1 1 0
-   |=======|  |===|
-       |      leftmost bits repeated to fill open bits
-       |
-   original bits
-*/
 static inline void RENAME(rgb15tobgr24)(const uint8_t *src, uint8_t *dst, int src_size)
 {
     const uint16_t *end;
@@ -752,9 +728,10 @@ static inline void RENAME(rgb15tobgr24)(const uint8_t *src, uint8_t *dst, int sr
             "pand          %2, %%mm0    \n\t"
             "pand          %3, %%mm1    \n\t"
             "pand          %4, %%mm2    \n\t"
-            "psllq         $3, %%mm0    \n\t"
-            "psrlq         $2, %%mm1    \n\t"
-            "psrlq         $7, %%mm2    \n\t"
+            "psllq         $5, %%mm0    \n\t"
+            "pmulhw        "MANGLE(mul15_mid)", %%mm0    \n\t"
+            "pmulhw        "MANGLE(mul15_mid)", %%mm1    \n\t"
+            "pmulhw        "MANGLE(mul15_hi)", %%mm2    \n\t"
             "movq       %%mm0, %%mm3    \n\t"
             "movq       %%mm1, %%mm4    \n\t"
             "movq       %%mm2, %%mm5    \n\t"
@@ -782,9 +759,10 @@ static inline void RENAME(rgb15tobgr24)(const uint8_t *src, uint8_t *dst, int sr
             "pand          %2, %%mm0    \n\t"
             "pand          %3, %%mm1    \n\t"
             "pand          %4, %%mm2    \n\t"
-            "psllq         $3, %%mm0    \n\t"
-            "psrlq         $2, %%mm1    \n\t"
-            "psrlq         $7, %%mm2    \n\t"
+            "psllq         $5, %%mm0    \n\t"
+            "pmulhw        "MANGLE(mul15_mid)", %%mm0    \n\t"
+            "pmulhw        "MANGLE(mul15_mid)", %%mm1    \n\t"
+            "pmulhw        "MANGLE(mul15_hi)", %%mm2    \n\t"
             "movq       %%mm0, %%mm3    \n\t"
             "movq       %%mm1, %%mm4    \n\t"
             "movq       %%mm2, %%mm5    \n\t"
@@ -830,9 +808,9 @@ static inline void RENAME(rgb15tobgr24)(const uint8_t *src, uint8_t *dst, int sr
     while (s < end) {
         register uint16_t bgr;
         bgr = *s++;
-        *d++ = (bgr&0x1F)<<3;
-        *d++ = (bgr&0x3E0)>>2;
-        *d++ = (bgr&0x7C00)>>7;
+        *d++ = ((bgr&0x1F)<<3) | ((bgr&0x1F)>>2);
+        *d++ = ((bgr&0x3E0)>>2) | ((bgr&0x3E0)>>7);
+        *d++ = ((bgr&0x7C00)>>7) | ((bgr&0x7C00)>>12);
     }
 }
 
@@ -854,9 +832,11 @@ static inline void RENAME(rgb16tobgr24)(const uint8_t *src, uint8_t *dst, int sr
             "pand          %2, %%mm0    \n\t"
             "pand          %3, %%mm1    \n\t"
             "pand          %4, %%mm2    \n\t"
-            "psllq         $3, %%mm0    \n\t"
-            "psrlq         $3, %%mm1    \n\t"
-            "psrlq         $8, %%mm2    \n\t"
+            "psllq         $5, %%mm0    \n\t"
+            "psrlq         $1, %%mm2    \n\t"
+            "pmulhw        "MANGLE(mul15_mid)", %%mm0    \n\t"
+            "pmulhw        "MANGLE(mul16_mid)", %%mm1    \n\t"
+            "pmulhw        "MANGLE(mul15_hi)", %%mm2    \n\t"
             "movq       %%mm0, %%mm3    \n\t"
             "movq       %%mm1, %%mm4    \n\t"
             "movq       %%mm2, %%mm5    \n\t"
@@ -884,9 +864,11 @@ static inline void RENAME(rgb16tobgr24)(const uint8_t *src, uint8_t *dst, int sr
             "pand          %2, %%mm0    \n\t"
             "pand          %3, %%mm1    \n\t"
             "pand          %4, %%mm2    \n\t"
-            "psllq         $3, %%mm0    \n\t"
-            "psrlq         $3, %%mm1    \n\t"
-            "psrlq         $8, %%mm2    \n\t"
+            "psllq         $5, %%mm0    \n\t"
+            "psrlq         $1, %%mm2    \n\t"
+            "pmulhw        "MANGLE(mul15_mid)", %%mm0    \n\t"
+            "pmulhw        "MANGLE(mul16_mid)", %%mm1    \n\t"
+            "pmulhw        "MANGLE(mul15_hi)", %%mm2    \n\t"
             "movq       %%mm0, %%mm3    \n\t"
             "movq       %%mm1, %%mm4    \n\t"
             "movq       %%mm2, %%mm5    \n\t"
@@ -931,9 +913,9 @@ static inline void RENAME(rgb16tobgr24)(const uint8_t *src, uint8_t *dst, int sr
     while (s < end) {
         register uint16_t bgr;
         bgr = *s++;
-        *d++ = (bgr&0x1F)<<3;
-        *d++ = (bgr&0x7E0)>>3;
-        *d++ = (bgr&0xF800)>>8;
+        *d++ = ((bgr&0x1F)<<3) | ((bgr&0x1F)>>2);
+        *d++ = ((bgr&0x7E0)>>3) | ((bgr&0x7E0)>>9);
+        *d++ = ((bgr&0xF800)>>8) | ((bgr&0xF800)>>13);
     }
 }
 
@@ -976,11 +958,12 @@ static inline void RENAME(rgb15to32)(const uint8_t *src, uint8_t *dst, int src_s
             "pand          %2, %%mm0    \n\t"
             "pand          %3, %%mm1    \n\t"
             "pand          %4, %%mm2    \n\t"
-            "psllq         $3, %%mm0    \n\t"
-            "psrlq         $2, %%mm1    \n\t"
-            "psrlq         $7, %%mm2    \n\t"
+            "psllq         $5, %%mm0    \n\t"
+            "pmulhw        %5, %%mm0    \n\t"
+            "pmulhw        %5, %%mm1    \n\t"
+            "pmulhw        "MANGLE(mul15_hi)", %%mm2    \n\t"
             PACK_RGB32
-            ::"r"(d),"r"(s),"m"(mask15b),"m"(mask15g),"m"(mask15r)
+            ::"r"(d),"r"(s),"m"(mask15b),"m"(mask15g),"m"(mask15r) ,"m"(mul15_mid)
             :"memory");
         d += 16;
         s += 4;
@@ -990,9 +973,9 @@ static inline void RENAME(rgb15to32)(const uint8_t *src, uint8_t *dst, int src_s
     while (s < end) {
         register uint16_t bgr;
         bgr = *s++;
-        *d++ = (bgr&0x1F)<<3;
-        *d++ = (bgr&0x3E0)>>2;
-        *d++ = (bgr&0x7C00)>>7;
+        *d++ = ((bgr&0x1F)<<3) | ((bgr&0x1F)>>2);
+        *d++ = ((bgr&0x3E0)>>2) | ((bgr&0x3E0)>>7);
+        *d++ = ((bgr&0x7C00)>>7) | ((bgr&0x7C00)>>12);
         *d++ = 255;
     }
 }
@@ -1017,11 +1000,13 @@ static inline void RENAME(rgb16to32)(const uint8_t *src, uint8_t *dst, int src_s
             "pand          %2, %%mm0    \n\t"
             "pand          %3, %%mm1    \n\t"
             "pand          %4, %%mm2    \n\t"
-            "psllq         $3, %%mm0    \n\t"
-            "psrlq         $3, %%mm1    \n\t"
-            "psrlq         $8, %%mm2    \n\t"
+            "psllq         $5, %%mm0    \n\t"
+            "psrlq         $1, %%mm2    \n\t"
+            "pmulhw        %5, %%mm0    \n\t"
+            "pmulhw        "MANGLE(mul16_mid)", %%mm1    \n\t"
+            "pmulhw        "MANGLE(mul15_hi)", %%mm2    \n\t"
             PACK_RGB32
-            ::"r"(d),"r"(s),"m"(mask16b),"m"(mask16g),"m"(mask16r)
+            ::"r"(d),"r"(s),"m"(mask16b),"m"(mask16g),"m"(mask16r),"m"(mul15_mid)
             :"memory");
         d += 16;
         s += 4;
@@ -1031,9 +1016,9 @@ static inline void RENAME(rgb16to32)(const uint8_t *src, uint8_t *dst, int src_s
     while (s < end) {
         register uint16_t bgr;
         bgr = *s++;
-        *d++ = (bgr&0x1F)<<3;
-        *d++ = (bgr&0x7E0)>>3;
-        *d++ = (bgr&0xF800)>>8;
+        *d++ = ((bgr&0x1F)<<3) | ((bgr&0x1F)>>2);
+        *d++ = ((bgr&0x7E0)>>3) | ((bgr&0x7E0)>>9);
+        *d++ = ((bgr&0xF800)>>8) | ((bgr&0xF800)>>13);
         *d++ = 255;
     }
 }

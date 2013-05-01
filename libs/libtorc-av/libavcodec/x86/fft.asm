@@ -6,20 +6,20 @@
 ;* This algorithm (though not any of the implementation details) is
 ;* based on libdjbfft by D. J. Bernstein.
 ;*
-;* This file is part of Libav.
+;* This file is part of FFmpeg.
 ;*
-;* Libav is free software; you can redistribute it and/or
+;* FFmpeg is free software; you can redistribute it and/or
 ;* modify it under the terms of the GNU Lesser General Public
 ;* License as published by the Free Software Foundation; either
 ;* version 2.1 of the License, or (at your option) any later version.
 ;*
-;* Libav is distributed in the hope that it will be useful,
+;* FFmpeg is distributed in the hope that it will be useful,
 ;* but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;* Lesser General Public License for more details.
 ;*
 ;* You should have received a copy of the GNU Lesser General Public
-;* License along with Libav; if not, write to the Free Software
+;* License along with FFmpeg; if not, write to the Free Software
 ;* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 ;******************************************************************************
 
@@ -28,14 +28,15 @@
 ; in blocks as conventient to the vector size.
 ; i.e. {4x real, 4x imaginary, 4x real, ...} (or 2x respectively)
 
-%include "x86inc.asm"
-%include "x86util.asm"
+%include "libavutil/x86/x86util.asm"
 
 %if ARCH_X86_64
 %define pointer resq
 %else
 %define pointer resd
 %endif
+
+SECTION_RODATA
 
 struc FFTContext
     .nbits:    resd 1
@@ -51,8 +52,6 @@ struc FFTContext
     .imdctcalc:pointer 1
     .imdcthalf:pointer 1
 endstruc
-
-SECTION_RODATA
 
 %define M_SQRT1_2 0.70710678118654752440
 %define M_COS_PI_1_8 0.923879532511287
@@ -106,7 +105,8 @@ SECTION_TEXT
     pfadd    %5, %4 ; {t6,t5}
     pxor     %3, [ps_m1p1] ; {t8,t7}
     mova     %6, %1
-    PSWAPD   %3, %3
+    movd [r0+12], %3
+    punpckhdq %3, [r0+8]
     pfadd    %1, %5 ; {r0,i0}
     pfsub    %6, %5 ; {r2,i2}
     mova     %4, %2
@@ -394,6 +394,7 @@ fft32_interleave_avx:
     sub r2d, mmsize/4
     jg .deint_loop
     ret
+
 %endif
 
 INIT_XMM sse
@@ -499,19 +500,6 @@ fft8 %+ SUFFIX:
 %endmacro
 
 %if ARCH_X86_32
-%macro PSWAPD 2
-%if cpuflag(3dnowext)
-    pswapd %1, %2
-%elifidn %1, %2
-    movd [r0+12], %1
-    punpckhdq %1, [r0+8]
-%else
-    movq  %1, %2
-    psrlq %1, 32
-    punpckldq %1, %2
-%endif
-%endmacro
-
 INIT_MMX 3dnowext
 FFT48_3DNOW
 

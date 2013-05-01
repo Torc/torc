@@ -2,20 +2,20 @@
  * H.26L/H.264/AVC/JVT/14496-10/... encoder/decoder
  * Copyright (c) 2003-2010 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -26,8 +26,10 @@
  */
 
 #include <stdint.h>
+#include "libavutil/avassert.h"
 #include "avcodec.h"
 #include "h264dsp.h"
+#include "h264idct.h"
 #include "libavutil/common.h"
 
 #define BIT_DEPTH 8
@@ -42,10 +44,36 @@
 #include "h264dsp_template.c"
 #undef BIT_DEPTH
 
+#define BIT_DEPTH 12
+#include "h264dsp_template.c"
+#undef BIT_DEPTH
+
+#define BIT_DEPTH 14
+#include "h264dsp_template.c"
+#undef BIT_DEPTH
+
+#define BIT_DEPTH 8
+#include "h264addpx_template.c"
+#undef BIT_DEPTH
+
+#define BIT_DEPTH 16
+#include "h264addpx_template.c"
+#undef BIT_DEPTH
+
 void ff_h264dsp_init(H264DSPContext *c, const int bit_depth, const int chroma_format_idc)
 {
 #undef FUNC
 #define FUNC(a, depth) a ## _ ## depth ## _c
+
+#define ADDPX_DSP(depth) \
+    c->h264_add_pixels4_clear = FUNC(ff_h264_add_pixels4, depth);\
+    c->h264_add_pixels8_clear = FUNC(ff_h264_add_pixels8, depth)
+
+    if (bit_depth > 8 && bit_depth <= 16) {
+        ADDPX_DSP(16);
+    } else {
+        ADDPX_DSP(8);
+    }
 
 #define H264_DSP(depth) \
     c->h264_idct_add= FUNC(ff_h264_idct_add, depth);\
@@ -107,7 +135,14 @@ void ff_h264dsp_init(H264DSPContext *c, const int bit_depth, const int chroma_fo
     case 10:
         H264_DSP(10);
         break;
+    case 12:
+        H264_DSP(12);
+        break;
+    case 14:
+        H264_DSP(14);
+        break;
     default:
+        av_assert0(bit_depth<=8);
         H264_DSP(8);
         break;
     }

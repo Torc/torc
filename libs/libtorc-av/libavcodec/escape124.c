@@ -2,24 +2,25 @@
  * Escape 124 Video Decoder
  * Copyright (C) 2008 Eli Friedman (eli.friedman@gmail.com)
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "avcodec.h"
+#include "internal.h"
 
 #define BITSTREAM_READER_LE
 #include "get_bits.h"
@@ -48,7 +49,7 @@ typedef struct Escape124Context {
     CodeBook codebooks[3];
 } Escape124Context;
 
-static int can_safely_read(GetBitContext* gb, int bits) {
+static int can_safely_read(GetBitContext* gb, uint64_t bits) {
     return get_bits_left(gb) >= bits;
 }
 
@@ -61,6 +62,7 @@ static av_cold int escape124_decode_init(AVCodecContext *avctx)
 {
     Escape124Context *s = avctx->priv_data;
 
+    avcodec_get_frame_defaults(&s->frame);
     avctx->pix_fmt = AV_PIX_FMT_RGB555;
 
     s->num_superblocks = ((unsigned)avctx->width / 8) *
@@ -89,7 +91,7 @@ static CodeBook unpack_codebook(GetBitContext* gb, unsigned depth,
     unsigned i, j;
     CodeBook cb = { 0 };
 
-    if (!can_safely_read(gb, size * 34))
+    if (!can_safely_read(gb, (uint64_t)size * 34))
         return cb;
 
     if (size >= INT_MAX / sizeof(MacroBlock))
@@ -196,7 +198,7 @@ static const uint16_t mask_matrix[] = {0x1,   0x2,   0x10,   0x20,
                                        0x400, 0x800, 0x4000, 0x8000};
 
 static int escape124_decode_frame(AVCodecContext *avctx,
-                                  void *data, int *data_size,
+                                  void *data, int *got_frame,
                                   AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
@@ -214,7 +216,8 @@ static int escape124_decode_frame(AVCodecContext *avctx,
     uint16_t* old_frame_data, *new_frame_data;
     unsigned old_stride, new_stride;
 
-    AVFrame new_frame = { { 0 } };
+    AVFrame new_frame;
+    avcodec_get_frame_defaults(&new_frame);
 
     init_get_bits(&gb, buf, buf_size * 8);
 
@@ -231,7 +234,7 @@ static int escape124_decode_frame(AVCodecContext *avctx,
     if (!(frame_flags & 0x114) || !(frame_flags & 0x7800000)) {
         av_log(NULL, AV_LOG_DEBUG, "Skipping frame\n");
 
-        *data_size = sizeof(AVFrame);
+        *got_frame = 1;
         *(AVFrame*)data = s->frame;
 
         return frame_size;
@@ -266,7 +269,7 @@ static int escape124_decode_frame(AVCodecContext *avctx,
     }
 
     new_frame.reference = 3;
-    if (avctx->get_buffer(avctx, &new_frame)) {
+    if (ff_get_buffer(avctx, &new_frame)) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return -1;
     }
@@ -357,7 +360,7 @@ static int escape124_decode_frame(AVCodecContext *avctx,
         avctx->release_buffer(avctx, &s->frame);
 
     *(AVFrame*)data = s->frame = new_frame;
-    *data_size = sizeof(AVFrame);
+    *got_frame = 1;
 
     return frame_size;
 }

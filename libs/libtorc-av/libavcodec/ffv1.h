@@ -3,33 +3,49 @@
  *
  * Copyright (c) 2003-2012 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifndef AVCODEC_FFV1_H
 #define AVCODEC_FFV1_H
 
-#include <stdint.h>
+/**
+ * @file
+ * FF Video Codec 1 (a lossless codec)
+ */
 
+#include "libavutil/avassert.h"
+#include "libavutil/crc.h"
+#include "libavutil/opt.h"
+#include "libavutil/imgutils.h"
+#include "libavutil/pixdesc.h"
+#include "libavutil/timer.h"
 #include "avcodec.h"
 #include "dsputil.h"
 #include "get_bits.h"
+#include "internal.h"
+#include "mathops.h"
 #include "put_bits.h"
 #include "rangecoder.h"
+
+#ifdef __INTEL_COMPILER
+#undef av_flatten
+#define av_flatten
+#endif
 
 #define MAX_PLANES 4
 #define CONTEXT_SIZE 32
@@ -38,12 +54,6 @@
 #define MAX_CONTEXT_INPUTS 5
 
 extern const uint8_t ff_log2_run[41];
-
-extern const int8_t ffv1_quant5_10bit[256];
-extern const int8_t ffv1_quant5[256];
-extern const int8_t ffv1_quant9_10bit[256];
-extern const int8_t ffv1_quant11[256];
-extern const uint8_t ffv1_ver2_state[256];
 
 typedef struct VlcState {
     int16_t drift;
@@ -79,10 +89,11 @@ typedef struct FFV1Context {
     int transparency;
     int flags;
     int picture_number;
-    AVFrame picture, last_picture;
+    AVFrame picture;
+    AVFrame last_picture;
     int plane_count;
-    int ac;     // 1 = range coder <-> 0 = golomb rice
-    int ac_byte_count;      // number of bytes used for AC coding
+    int ac;                              ///< 1=range coder <-> 0=golomb rice
+    int ac_byte_count;                   ///< number of bytes used for AC coding
     PlaneContext plane[MAX_PLANES];
     int16_t quant_table[MAX_CONTEXT_INPUTS][256];
     int16_t quant_tables[MAX_QUANT_TABLES][MAX_CONTEXT_INPUTS][256];
@@ -114,6 +125,14 @@ typedef struct FFV1Context {
     int slice_x;
     int slice_y;
 } FFV1Context;
+
+int ffv1_common_init(AVCodecContext *avctx);
+int ffv1_init_slice_state(FFV1Context *f, FFV1Context *fs);
+int ffv1_init_slices_state(FFV1Context *f);
+int ffv1_init_slice_contexts(FFV1Context *f);
+int ffv1_allocate_initial_states(FFV1Context *f);
+void ffv1_clear_slice_state(FFV1Context *f, FFV1Context *fs);
+int ffv1_close(AVCodecContext *avctx);
 
 static av_always_inline int fold(int diff, int bits)
 {
@@ -192,12 +211,5 @@ static inline void update_vlc_state(VlcState *const state, const int v)
     state->drift = drift;
     state->count = count;
 }
-
-int ffv1_common_init(AVCodecContext *avctx);
-int ffv1_init_slice_state(FFV1Context *f, FFV1Context *fs);
-int ffv1_init_slice_contexts(FFV1Context *f);
-int ffv1_allocate_initial_states(FFV1Context *f);
-void ffv1_clear_slice_state(FFV1Context *f, FFV1Context *fs);
-int ffv1_close(AVCodecContext *avctx);
 
 #endif /* AVCODEC_FFV1_H */

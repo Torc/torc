@@ -2,20 +2,20 @@
  * MACE decoder
  * Copyright (c) 2002 Laszlo Torok <torokl@alpha.dfmk.hu>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,6 +25,7 @@
  */
 
 #include "avcodec.h"
+#include "internal.h"
 #include "libavutil/common.h"
 
 /*
@@ -154,7 +155,6 @@ typedef struct ChannelData {
 } ChannelData;
 
 typedef struct MACEContext {
-    AVFrame frame;
     ChannelData chd[2];
 } MACEContext;
 
@@ -226,14 +226,9 @@ static void chomp6(ChannelData *chd, int16_t *output, uint8_t val, int tab_idx)
 
 static av_cold int mace_decode_init(AVCodecContext * avctx)
 {
-    MACEContext *ctx = avctx->priv_data;
-
-    if (avctx->channels > 2)
+    if (avctx->channels > 2 || avctx->channels <= 0)
         return -1;
     avctx->sample_fmt = AV_SAMPLE_FMT_S16P;
-
-    avcodec_get_frame_defaults(&ctx->frame);
-    avctx->coded_frame = &ctx->frame;
 
     return 0;
 }
@@ -241,6 +236,7 @@ static av_cold int mace_decode_init(AVCodecContext * avctx)
 static int mace_decode_frame(AVCodecContext *avctx, void *data,
                              int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     int16_t **samples;
@@ -249,12 +245,12 @@ static int mace_decode_frame(AVCodecContext *avctx, void *data,
     int is_mace3 = (avctx->codec_id == AV_CODEC_ID_MACE3);
 
     /* get output buffer */
-    ctx->frame.nb_samples = 3 * (buf_size << (1 - is_mace3)) / avctx->channels;
-    if ((ret = avctx->get_buffer(avctx, &ctx->frame)) < 0) {
+    frame->nb_samples = 3 * (buf_size << (1 - is_mace3)) / avctx->channels;
+    if ((ret = ff_get_buffer(avctx, frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
-    samples = (int16_t **)ctx->frame.extended_data;
+    samples = (int16_t **)frame->extended_data;
 
     for(i = 0; i < avctx->channels; i++) {
         int16_t *output = samples[i];
@@ -278,8 +274,7 @@ static int mace_decode_frame(AVCodecContext *avctx, void *data,
             }
     }
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = ctx->frame;
+    *got_frame_ptr = 1;
 
     return buf_size;
 }

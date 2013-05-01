@@ -23,8 +23,15 @@
  * libcdio CD grabbing
  */
 
+#include "config.h"
+
+#if HAVE_CDIO_PARANOIA_H
 #include <cdio/cdda.h>
 #include <cdio/paranoia.h>
+#elif HAVE_CDIO_PARANOIA_PARANOIA_H
+#include <cdio/paranoia/cdda.h>
+#include <cdio/paranoia/paranoia.h>
+#endif
 
 #include "libavutil/log.h"
 #include "libavutil/mem.h"
@@ -33,11 +40,8 @@
 #include "libavformat/avformat.h"
 #include "libavformat/internal.h"
 
-/* cdio returns some malloced strings that need to be free()d */
-#undef free
-
 typedef struct CDIOContext {
-    AVClass             *class;
+    const AVClass       *class;
     cdrom_drive_t       *drive;
     cdrom_paranoia_t *paranoia;
     int32_t last_sector;

@@ -28,10 +28,10 @@
  * output.
  */
 
-#include "libavutil/audioconvert.h"
 #include "libavutil/audio_fifo.h"
 #include "libavutil/avassert.h"
 #include "libavutil/avstring.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "libavutil/float_dsp.h"
 #include "libavutil/mathematics.h"
@@ -174,27 +174,22 @@ typedef struct MixContext {
 
 #define OFFSET(x) offsetof(MixContext, x)
 #define A AV_OPT_FLAG_AUDIO_PARAM
-static const AVOption options[] = {
+#define F AV_OPT_FLAG_FILTERING_PARAM
+static const AVOption amix_options[] = {
     { "inputs", "Number of inputs.",
-            OFFSET(nb_inputs), AV_OPT_TYPE_INT, { .i64 = 2 }, 1, 32, A },
+            OFFSET(nb_inputs), AV_OPT_TYPE_INT, { .i64 = 2 }, 1, 32, A|F },
     { "duration", "How to determine the end-of-stream.",
-            OFFSET(duration_mode), AV_OPT_TYPE_INT, { .i64 = DURATION_LONGEST }, 0,  2, A, "duration" },
-        { "longest",  "Duration of longest input.",  0, AV_OPT_TYPE_CONST, { .i64 = DURATION_LONGEST  }, INT_MIN, INT_MAX, A, "duration" },
-        { "shortest", "Duration of shortest input.", 0, AV_OPT_TYPE_CONST, { .i64 = DURATION_SHORTEST }, INT_MIN, INT_MAX, A, "duration" },
-        { "first",    "Duration of first input.",    0, AV_OPT_TYPE_CONST, { .i64 = DURATION_FIRST    }, INT_MIN, INT_MAX, A, "duration" },
+            OFFSET(duration_mode), AV_OPT_TYPE_INT, { .i64 = DURATION_LONGEST }, 0,  2, A|F, "duration" },
+        { "longest",  "Duration of longest input.",  0, AV_OPT_TYPE_CONST, { .i64 = DURATION_LONGEST  }, INT_MIN, INT_MAX, A|F, "duration" },
+        { "shortest", "Duration of shortest input.", 0, AV_OPT_TYPE_CONST, { .i64 = DURATION_SHORTEST }, INT_MIN, INT_MAX, A|F, "duration" },
+        { "first",    "Duration of first input.",    0, AV_OPT_TYPE_CONST, { .i64 = DURATION_FIRST    }, INT_MIN, INT_MAX, A|F, "duration" },
     { "dropout_transition", "Transition time, in seconds, for volume "
                             "renormalization when an input stream ends.",
-            OFFSET(dropout_transition), AV_OPT_TYPE_FLOAT, { .dbl = 2.0 }, 0, INT_MAX, A },
+            OFFSET(dropout_transition), AV_OPT_TYPE_FLOAT, { .dbl = 2.0 }, 0, INT_MAX, A|F },
     { NULL },
 };
 
-static const AVClass amix_class = {
-    .class_name = "amix filter",
-    .item_name  = av_default_item_name,
-    .option     = options,
-    .version    = LIBAVUTIL_VERSION_INT,
-};
-
+AVFILTER_DEFINE_CLASS(amix);
 
 /**
  * Update the scaling factors to apply to each input during mixing.
@@ -314,7 +309,7 @@ static int output_frame(AVFilterLink *outlink, int nb_samples)
     if (s->next_pts != AV_NOPTS_VALUE)
         s->next_pts += nb_samples;
 
-    return ff_filter_samples(outlink, out_buf);
+    return ff_filter_frame(outlink, out_buf);
 }
 
 /**
@@ -455,7 +450,7 @@ static int request_frame(AVFilterLink *outlink)
     return output_frame(outlink, available_samples);
 }
 
-static int filter_samples(AVFilterLink *inlink, AVFilterBufferRef *buf)
+static int filter_frame(AVFilterLink *inlink, AVFilterBufferRef *buf)
 {
     AVFilterContext  *ctx = inlink->dst;
     MixContext       *s = ctx->priv;
@@ -496,10 +491,8 @@ static int init(AVFilterContext *ctx, const char *args)
     s->class = &amix_class;
     av_opt_set_defaults(s);
 
-    if ((ret = av_set_options_string(s, args, "=", ":")) < 0) {
-        av_log(ctx, AV_LOG_ERROR, "Error parsing options string '%s'.\n", args);
+    if ((ret = av_set_options_string(s, args, "=", ":")) < 0)
         return ret;
-    }
     av_opt_free(s);
 
     for (i = 0; i < s->nb_inputs; i++) {
@@ -509,7 +502,7 @@ static int init(AVFilterContext *ctx, const char *args)
         snprintf(name, sizeof(name), "input%d", i);
         pad.type           = AVMEDIA_TYPE_AUDIO;
         pad.name           = av_strdup(name);
-        pad.filter_samples = filter_samples;
+        pad.filter_frame   = filter_frame;
 
         ff_insert_inpad(ctx, i, &pad);
     }
@@ -570,4 +563,5 @@ AVFilter avfilter_af_amix = {
 
     .inputs    = NULL,
     .outputs   = avfilter_af_amix_outputs,
+    .priv_class = &amix_class,
 };

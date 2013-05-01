@@ -23,7 +23,7 @@
  * Split an audio stream into per-channel streams.
  */
 
-#include "libavutil/audioconvert.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/internal.h"
 #include "libavutil/opt.h"
 
@@ -41,17 +41,13 @@ typedef struct ChannelSplitContext {
 
 #define OFFSET(x) offsetof(ChannelSplitContext, x)
 #define A AV_OPT_FLAG_AUDIO_PARAM
-static const AVOption options[] = {
-    { "channel_layout", "Input channel layout.", OFFSET(channel_layout_str), AV_OPT_TYPE_STRING, { .str = "stereo" }, .flags = A },
+#define F AV_OPT_FLAG_FILTERING_PARAM
+static const AVOption channelsplit_options[] = {
+    { "channel_layout", "Input channel layout.", OFFSET(channel_layout_str), AV_OPT_TYPE_STRING, { .str = "stereo" }, .flags = A|F },
     { NULL },
 };
 
-static const AVClass channelsplit_class = {
-    .class_name = "channelsplit filter",
-    .item_name  = av_default_item_name,
-    .option     = options,
-    .version    = LIBAVUTIL_VERSION_INT,
-};
+AVFILTER_DEFINE_CLASS(channelsplit);
 
 static int init(AVFilterContext *ctx, const char *arg)
 {
@@ -61,10 +57,8 @@ static int init(AVFilterContext *ctx, const char *arg)
 
     s->class = &channelsplit_class;
     av_opt_set_defaults(s);
-    if ((ret = av_set_options_string(s, arg, "=", ":")) < 0) {
-        av_log(ctx, AV_LOG_ERROR, "Error parsing options string '%s'.\n", arg);
+    if ((ret = av_set_options_string(s, arg, "=", ":")) < 0)
         return ret;
-    }
     if (!(s->channel_layout = av_get_channel_layout(s->channel_layout_str))) {
         av_log(ctx, AV_LOG_ERROR, "Error parsing channel layout '%s'.\n",
                s->channel_layout_str);
@@ -111,7 +105,7 @@ static int query_formats(AVFilterContext *ctx)
     return 0;
 }
 
-static int filter_samples(AVFilterLink *inlink, AVFilterBufferRef *buf)
+static int filter_frame(AVFilterLink *inlink, AVFilterBufferRef *buf)
 {
     AVFilterContext *ctx = inlink->dst;
     int i, ret = 0;
@@ -128,7 +122,7 @@ static int filter_samples(AVFilterLink *inlink, AVFilterBufferRef *buf)
         buf_out->audio->channel_layout =
             av_channel_layout_extract_channel(buf->audio->channel_layout, i);
 
-        ret = ff_filter_samples(ctx->outputs[i], buf_out);
+        ret = ff_filter_frame(ctx->outputs[i], buf_out);
         if (ret < 0)
             break;
     }
@@ -140,7 +134,7 @@ static const AVFilterPad avfilter_af_channelsplit_inputs[] = {
     {
         .name           = "default",
         .type           = AVMEDIA_TYPE_AUDIO,
-        .filter_samples = filter_samples,
+        .filter_frame   = filter_frame,
     },
     { NULL }
 };
@@ -155,4 +149,5 @@ AVFilter avfilter_af_channelsplit = {
 
     .inputs  = avfilter_af_channelsplit_inputs,
     .outputs = NULL,
+    .priv_class = &channelsplit_class,
 };

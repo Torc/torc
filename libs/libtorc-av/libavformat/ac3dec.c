@@ -2,20 +2,20 @@
  * RAW AC-3 and E-AC-3 demuxer
  * Copyright (c) 2007 Justin Ruggles <justin.ruggles@gmail.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,7 +27,7 @@
 static int ac3_eac3_probe(AVProbeData *p, enum AVCodecID expected_codec_id)
 {
     int max_frames, first_frames = 0, frames;
-    uint8_t *buf, *buf2, *end;
+    const uint8_t *buf, *buf2, *end;
     AC3HeaderInfo hdr;
     GetBitContext gbc;
     enum AVCodecID codec_id = AV_CODEC_ID_AC3;
@@ -37,14 +37,36 @@ static int ac3_eac3_probe(AVProbeData *p, enum AVCodecID expected_codec_id)
     end = buf + p->buf_size;
 
     for(; buf < end; buf++) {
+        if(buf > p->buf && !(buf[0] == 0x0B && buf[1] == 0x77)
+                        && !(buf[0] == 0x77 && buf[1] == 0x0B) )
+            continue;
         buf2 = buf;
 
         for(frames = 0; buf2 < end; frames++) {
-            init_get_bits(&gbc, buf2, 54);
+            uint8_t buf3[4096];
+            int i;
+            if(!memcmp(buf2, "\x1\x10\0\0\0\0\0\0", 8))
+                buf2+=16;
+            if (buf[0] == 0x77 && buf[1] == 0x0B) {
+                for(i=0; i<8; i+=2) {
+                    buf3[i  ] = buf[i+1];
+                    buf3[i+1] = buf[i  ];
+                }
+                init_get_bits(&gbc, buf3, 54);
+            }else
+                init_get_bits(&gbc, buf2, 54);
             if(avpriv_ac3_parse_header(&gbc, &hdr) < 0)
                 break;
-            if(buf2 + hdr.frame_size > end ||
-               av_crc(av_crc_get_table(AV_CRC_16_ANSI), 0, buf2 + 2, hdr.frame_size - 2))
+            if(buf2 + hdr.frame_size > end)
+                break;
+            if (buf[0] == 0x77 && buf[1] == 0x0B) {
+                av_assert0(hdr.frame_size <= sizeof(buf3));
+                for(i=8; i<hdr.frame_size; i+=2) {
+                    buf3[i  ] = buf[i+1];
+                    buf3[i+1] = buf[i  ];
+                }
+            }
+            if(av_crc(av_crc_get_table(AV_CRC_16_ANSI), 0, gbc.buffer + 2, hdr.frame_size - 2))
                 break;
             if (hdr.bitstream_id > 10)
                 codec_id = AV_CODEC_ID_EAC3;
@@ -57,31 +79,11 @@ static int ac3_eac3_probe(AVProbeData *p, enum AVCodecID expected_codec_id)
     if(codec_id != expected_codec_id) return 0;
     // keep this in sync with mp3 probe, both need to avoid
     // issues with MPEG-files!
-    if (first_frames >= 4) return AVPROBE_SCORE_MAX / 2 + 1;
-
-    if (max_frames) {
-        int pes = 0, i;
-        unsigned int code = -1;
-
-#define VIDEO_ID 0x000001e0
-#define AUDIO_ID 0x000001c0
-        /* do a search for mpegps headers to be able to properly bias
-         * towards mpegps if we detect this stream as both. */
-        for (i = 0; i<p->buf_size; i++) {
-            code = (code << 8) + p->buf[i];
-            if ((code & 0xffffff00) == 0x100) {
-                if     ((code & 0x1f0) == VIDEO_ID) pes++;
-                else if((code & 0x1e0) == AUDIO_ID) pes++;
-            }
-        }
-
-        if (pes)
-            max_frames = (max_frames + pes - 1) / pes;
-    }
-    if      (max_frames >  500) return AVPROBE_SCORE_MAX / 2;
-    else if (max_frames >= 4)   return AVPROBE_SCORE_MAX / 4;
-    else if (max_frames >= 1)   return 1;
-    else                        return 0;
+    if   (first_frames>=4) return AVPROBE_SCORE_MAX/2+1;
+    else if(max_frames>200)return AVPROBE_SCORE_MAX/2;
+    else if(max_frames>=4) return AVPROBE_SCORE_MAX/4;
+    else if(max_frames>=1) return 1;
+    else                   return 0;
 }
 
 #if CONFIG_AC3_DEMUXER

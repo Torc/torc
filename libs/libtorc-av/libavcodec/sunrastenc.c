@@ -56,7 +56,7 @@ static void sunrast_image_write_image(AVCodecContext *avctx,
 {
     SUNRASTContext *s = avctx->priv_data;
     const uint8_t *ptr;
-    int len, alen, x;
+    int len, alen, x, y;
 
     if (s->maplength) {     // palettized
         PutByteContext pb_r, pb_g;
@@ -83,33 +83,29 @@ static void sunrast_image_write_image(AVCodecContext *avctx,
      if (s->type == RT_BYTE_ENCODED) {
         uint8_t value, value2;
         int run;
-        const uint8_t *start = linesize < 0 ? pixels + (avctx->height - 1) * linesize
-                                            : pixels;
-        const uint8_t *end   = linesize < 0 ? pixels - linesize
-                                            : pixels + avctx->height * linesize;
 
         ptr = pixels;
 
-#define GET_VALUE ptr >= end || ptr < start ? 0 : x >= len ? ptr[len-1] : ptr[x]
+#define GET_VALUE y >= avctx->height ? 0 : x >= len ? ptr[len-1] : ptr[x]
 
-        x = 0;
+        x = 0, y = 0;
         value2 = GET_VALUE;
-        while (ptr < end && ptr >= start) {
+        while (y < avctx->height) {
             run = 1;
             value = value2;
             x++;
             if (x >= alen) {
                 x = 0;
-                ptr += linesize;
+                ptr += linesize, y++;
             }
 
             value2 = GET_VALUE;
-            while (value2 == value && run < 256 && ptr < end && ptr >= start) {
+            while (value2 == value && run < 256 && y < avctx->height) {
                 x++;
                 run++;
                 if (x >= alen) {
                     x = 0;
-                    ptr += linesize;
+                    ptr += linesize, y++;
                 }
                 value2 = GET_VALUE;
             }
@@ -128,7 +124,6 @@ static void sunrast_image_write_image(AVCodecContext *avctx,
         // update data length for header
         s->length = bytestream2_tell_p(&s->p) - 32 - s->maplength;
     } else {
-        int y;
         for (y = 0; y < avctx->height; y++) {
             bytestream2_put_buffer(&s->p, ptr, len);
             if (len < alen)
@@ -189,7 +184,7 @@ static int sunrast_encode_frame(AVCodecContext *avctx,  AVPacket *avpkt,
     SUNRASTContext *s = avctx->priv_data;
     int ret;
 
-    if ((ret = ff_alloc_packet(avpkt, s->size)) < 0)
+    if ((ret = ff_alloc_packet2(avctx, avpkt, s->size)) < 0)
         return ret;
 
     bytestream2_init_writer(&s->p, avpkt->data, avpkt->size);

@@ -25,8 +25,8 @@
  * a single output
  */
 
-#include "libavutil/audioconvert.h"
 #include "libavutil/avassert.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "libavutil/opt.h"
 
@@ -76,13 +76,14 @@ typedef struct JoinBufferPriv {
 
 #define OFFSET(x) offsetof(JoinContext, x)
 #define A AV_OPT_FLAG_AUDIO_PARAM
+#define F AV_OPT_FLAG_FILTERING_PARAM
 static const AVOption join_options[] = {
-    { "inputs",         "Number of input streams.", OFFSET(inputs),             AV_OPT_TYPE_INT,    { .i64 = 2 }, 1, INT_MAX,       A },
+    { "inputs",         "Number of input streams.", OFFSET(inputs),             AV_OPT_TYPE_INT,    { .i64 = 2 }, 1, INT_MAX,       A|F },
     { "channel_layout", "Channel layout of the "
-                        "output stream.",           OFFSET(channel_layout_str), AV_OPT_TYPE_STRING, {.str = "stereo"}, 0, 0, A },
+                        "output stream.",           OFFSET(channel_layout_str), AV_OPT_TYPE_STRING, {.str = "stereo"}, 0, 0, A|F },
     { "map",            "A comma-separated list of channels maps in the format "
                         "'input_stream.input_channel-output_channel.",
-                                                    OFFSET(map),                AV_OPT_TYPE_STRING,                 .flags = A },
+                                                    OFFSET(map),                AV_OPT_TYPE_STRING,                 .flags = A|F },
     { NULL },
 };
 
@@ -93,7 +94,7 @@ static const AVClass join_class = {
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
-static int filter_samples(AVFilterLink *link, AVFilterBufferRef *buf)
+static int filter_frame(AVFilterLink *link, AVFilterBufferRef *buf)
 {
     AVFilterContext *ctx = link->dst;
     JoinContext       *s = ctx->priv;
@@ -194,10 +195,8 @@ static int join_init(AVFilterContext *ctx, const char *args)
 
     s->class = &join_class;
     av_opt_set_defaults(s);
-    if ((ret = av_set_options_string(s, args, "=", ":")) < 0) {
-        av_log(ctx, AV_LOG_ERROR, "Error parsing options string '%s'.\n", args);
+    if ((ret = av_set_options_string(s, args, "=", ":")) < 0)
         return ret;
-    }
 
     if (!(s->channel_layout = av_get_channel_layout(s->channel_layout_str))) {
         av_log(ctx, AV_LOG_ERROR, "Error parsing channel layout '%s'.\n",
@@ -230,7 +229,7 @@ static int join_init(AVFilterContext *ctx, const char *args)
         snprintf(name, sizeof(name), "input%d", i);
         pad.type           = AVMEDIA_TYPE_AUDIO;
         pad.name           = av_strdup(name);
-        pad.filter_samples = filter_samples;
+        pad.filter_frame   = filter_frame;
 
         pad.needs_fifo = 1;
 
@@ -471,7 +470,7 @@ static int join_request_frame(AVFilterLink *outlink)
     priv->nb_in_buffers = ctx->nb_inputs;
     buf->buf->priv      = priv;
 
-    ret = ff_filter_samples(outlink, buf);
+    ret = ff_filter_frame(outlink, buf);
 
     memset(s->input_frames, 0, sizeof(*s->input_frames) * ctx->nb_inputs);
 
@@ -507,4 +506,5 @@ AVFilter avfilter_af_join = {
 
     .inputs  = NULL,
     .outputs = avfilter_af_join_outputs,
+    .priv_class = &join_class,
 };

@@ -5,20 +5,20 @@
  * Copyright (c) 2011 Andreas Öman
  * Copyright (c) 2011 - 2012 Mashiat Sarker Shakkhar
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -123,7 +123,7 @@ typedef struct WmallDecodeCtx {
     int8_t  acfilter_order;
     int8_t  acfilter_scaling;
     int64_t acfilter_coeffs[16];
-    int     acfilter_prevvalues[2][16];
+    int     acfilter_prevvalues[WMALL_MAX_CHANNELS][16];
 
     int8_t  mclms_order;
     int8_t  mclms_scaling;
@@ -145,29 +145,29 @@ typedef struct WmallDecodeCtx {
         int16_t lms_prevvalues[MAX_ORDER * 2];
         int16_t lms_updates[MAX_ORDER * 2];
         int recent;
-    } cdlms[2][9];
+    } cdlms[WMALL_MAX_CHANNELS][9];
 
-    int cdlms_ttl[2];
+    int cdlms_ttl[WMALL_MAX_CHANNELS];
 
     int bV3RTM;
 
-    int is_channel_coded[2];
-    int update_speed[2];
+    int is_channel_coded[WMALL_MAX_CHANNELS];
+    int update_speed[WMALL_MAX_CHANNELS];
 
-    int transient[2];
-    int transient_pos[2];
+    int transient[WMALL_MAX_CHANNELS];
+    int transient_pos[WMALL_MAX_CHANNELS];
     int seekable_tile;
 
-    int ave_sum[2];
+    int ave_sum[WMALL_MAX_CHANNELS];
 
-    int channel_residues[2][WMALL_BLOCK_MAX_SIZE];
+    int channel_residues[WMALL_MAX_CHANNELS][WMALL_BLOCK_MAX_SIZE];
 
-    int lpc_coefs[2][40];
+    int lpc_coefs[WMALL_MAX_CHANNELS][40];
     int lpc_order;
     int lpc_scaling;
     int lpc_intbits;
 
-    int channel_coeffs[2][WMALL_BLOCK_MAX_SIZE];
+    int channel_coeffs[WMALL_MAX_CHANNELS][WMALL_BLOCK_MAX_SIZE];
 } WmallDecodeCtx;
 
 
@@ -203,7 +203,7 @@ static av_cold int decode_init(AVCodecContext *avctx)
 
     } else {
         av_log_ask_for_sample(avctx, "Unsupported extradata size\n");
-        return AVERROR_INVALIDDATA;
+        return AVERROR_PATCHWELCOME;
     }
 
     /* generic init */
@@ -500,9 +500,9 @@ static int decode_channel_residues(WmallDecodeCtx *s, int ch, int tile_size)
 
     if (s->seekable_tile) {
         if (s->do_inter_ch_decorr)
-            s->channel_residues[ch][0] = get_sbits(&s->gb, s->bits_per_sample + 1);
+            s->channel_residues[ch][0] = get_sbits_long(&s->gb, s->bits_per_sample + 1);
         else
-            s->channel_residues[ch][0] = get_sbits(&s->gb, s->bits_per_sample);
+            s->channel_residues[ch][0] = get_sbits_long(&s->gb, s->bits_per_sample);
         i++;
     }
     for (; i < tile_size; i++) {
@@ -520,7 +520,7 @@ static int decode_channel_residues(WmallDecodeCtx *s, int ch, int tile_size)
             residue = quo;
         else {
             rem_bits = av_ceil_log2(ave_mean);
-            rem      = rem_bits ? get_bits_long(&s->gb, rem_bits) : 0;
+            rem      = get_bits_long(&s->gb, rem_bits);
             residue  = (quo << rem_bits) + rem;
         }
 
@@ -950,7 +950,7 @@ static int decode_subframe(WmallDecodeCtx *s)
                 bits * s->num_channels * subframe_len, get_bits_count(&s->gb));
         for (i = 0; i < s->num_channels; i++)
             for (j = 0; j < subframe_len; j++)
-                s->channel_coeffs[i][j] = get_sbits(&s->gb, bits);
+                s->channel_coeffs[i][j] = get_sbits_long(&s->gb, bits);
     } else {
         for (i = 0; i < s->num_channels; i++)
             if (s->is_channel_coded[i]) {
@@ -1015,7 +1015,7 @@ static int decode_frame(WmallDecodeCtx *s)
     int more_frames = 0, len = 0, i, ret;
 
     s->frame.nb_samples = s->samples_per_frame;
-    if ((ret = s->avctx->get_buffer(s->avctx, &s->frame)) < 0) {
+    if ((ret = ff_get_buffer(s->avctx, &s->frame)) < 0) {
         /* return an error if no frame could be decoded at all */
         av_log(s->avctx, AV_LOG_ERROR,
                "not enough space for the output samples\n");

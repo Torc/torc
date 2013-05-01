@@ -2,28 +2,29 @@
  * TwinVQ decoder
  * Copyright (c) 2009 Vitor Sessak
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/float_dsp.h"
 #include "avcodec.h"
 #include "get_bits.h"
-#include "dsputil.h"
 #include "fft.h"
+#include "internal.h"
 #include "lsp.h"
 #include "sinewin.h"
 
@@ -175,8 +176,6 @@ static const ModeTab mode_44_48 = {
 
 typedef struct TwinContext {
     AVCodecContext *avctx;
-    AVFrame frame;
-    DSPContext      dsp;
     AVFloatDSPContext fdsp;
     FFTContext mdct_ctx[3];
 
@@ -648,11 +647,10 @@ static void imdct_and_window(TwinContext *tctx, enum FrameType ftype, int wtype,
 
         mdct->imdct_half(mdct, buf1 + bsize*j, in + bsize*j);
 
-        tctx->dsp.vector_fmul_window(out2,
-                                     prev_buf + (bsize-wsize)/2,
-                                     buf1 + bsize*j,
-                                     ff_sine_windows[av_log2(wsize)],
-                                     wsize/2);
+        tctx->fdsp.vector_fmul_window(out2, prev_buf + (bsize-wsize) / 2,
+                                      buf1 + bsize * j,
+                                      ff_sine_windows[av_log2(wsize)],
+                                      wsize / 2);
         out2 += wsize;
 
         memcpy(out2, buf1 + bsize*j + wsize/2, (bsize - wsize/2)*sizeof(float));
@@ -692,7 +690,7 @@ static void imdct_output(TwinContext *tctx, enum FrameType ftype, int wtype,
     if (tctx->avctx->channels == 2) {
         memcpy(&out[1][0],     &prev_buf[2*mtab->size],         size1 * sizeof(out[1][0]));
         memcpy(&out[1][size1], &tctx->curr_frame[2*mtab->size], size2 * sizeof(out[1][0]));
-        tctx->dsp.butterflies_float(out[0], out[1], mtab->size);
+        tctx->fdsp.butterflies_float(out[0], out[1], mtab->size);
     }
 }
 
@@ -811,6 +809,7 @@ static void read_and_decode_spectrum(TwinContext *tctx, GetBitContext *gb,
 static int twin_decode_frame(AVCodecContext * avctx, void *data,
                              int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     TwinContext *tctx = avctx->priv_data;
@@ -832,12 +831,12 @@ static int twin_decode_frame(AVCodecContext * avctx, void *data,
 
     /* get output buffer */
     if (tctx->discarded_packets >= 2) {
-        tctx->frame.nb_samples = mtab->size;
-        if ((ret = avctx->get_buffer(avctx, &tctx->frame)) < 0) {
+        frame->nb_samples = mtab->size;
+        if ((ret = ff_get_buffer(avctx, frame)) < 0) {
             av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
             return ret;
         }
-        out = (float **)tctx->frame.extended_data;
+        out = (float **)frame->extended_data;
     }
 
     init_get_bits(&gb, buf, buf_size * 8);
@@ -863,8 +862,7 @@ static int twin_decode_frame(AVCodecContext * avctx, void *data,
         return buf_size;
     }
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = tctx->frame;;
+    *got_frame_ptr = 1;
 
     return buf_size;
 }
@@ -1119,6 +1117,11 @@ static av_cold int twin_decode_init(AVCodecContext *avctx)
     avctx->channels = AV_RB32(avctx->extradata    ) + 1;
     avctx->bit_rate = AV_RB32(avctx->extradata + 4) * 1000;
     isampf          = AV_RB32(avctx->extradata + 8);
+
+    if (isampf < 8 || isampf > 44) {
+        av_log(avctx, AV_LOG_ERROR, "Unsupported sample rate\n");
+        return AVERROR_INVALIDDATA;
+    }
     switch (isampf) {
     case 44: avctx->sample_rate = 44100;         break;
     case 22: avctx->sample_rate = 22050;         break;
@@ -1126,12 +1129,20 @@ static av_cold int twin_decode_init(AVCodecContext *avctx)
     default: avctx->sample_rate = isampf * 1000; break;
     }
 
-    if (avctx->channels > CHANNELS_MAX) {
+    if (avctx->channels <= 0 || avctx->channels > CHANNELS_MAX) {
         av_log(avctx, AV_LOG_ERROR, "Unsupported number of channels: %i\n",
                avctx->channels);
         return -1;
     }
+    avctx->channel_layout = avctx->channels == 1 ? AV_CH_LAYOUT_MONO :
+                                                   AV_CH_LAYOUT_STEREO;
+
     ibps = avctx->bit_rate / (1000 * avctx->channels);
+
+    if (ibps > 255U) {
+        av_log(avctx, AV_LOG_ERROR, "unsupported per channel bitrate %dkbps\n", ibps);
+        return AVERROR_INVALIDDATA;
+    }
 
     switch ((isampf << 8) +  ibps) {
     case (8 <<8) +  8: tctx->mtab = &mode_08_08; break;
@@ -1148,7 +1159,6 @@ static av_cold int twin_decode_init(AVCodecContext *avctx)
         return -1;
     }
 
-    ff_dsputil_init(&tctx->dsp, avctx);
     avpriv_float_dsp_init(&tctx->fdsp, avctx->flags & CODEC_FLAG_BITEXACT);
     if ((ret = init_mdct_win(tctx))) {
         av_log(avctx, AV_LOG_ERROR, "Error initializing MDCT\n");
@@ -1158,9 +1168,6 @@ static av_cold int twin_decode_init(AVCodecContext *avctx)
     init_bitstream_params(tctx);
 
     memset_float(tctx->bark_hist[0][0], 0.1, FF_ARRAY_ELEMS(tctx->bark_hist));
-
-    avcodec_get_frame_defaults(&tctx->frame);
-    avctx->coded_frame = &tctx->frame;
 
     return 0;
 }

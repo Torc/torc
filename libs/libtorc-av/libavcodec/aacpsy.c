@@ -2,20 +2,20 @@
  * AAC encoder psychoacoustic model
  * Copyright (C) 2008 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -23,6 +23,8 @@
  * @file
  * AAC encoder psychoacoustic model
  */
+
+#include "libavutil/libm.h"
 
 #include "avcodec.h"
 #include "aactab.h"
@@ -292,7 +294,7 @@ static av_cold int psy_3gpp_init(FFPsyContext *ctx) {
     int i, j, g, start;
     float prev, minscale, minath, minsnr, pe_min;
     const int chan_bitrate = ctx->avctx->bit_rate / ctx->avctx->channels;
-    const int bandwidth    = ctx->avctx->cutoff ? ctx->avctx->cutoff : ctx->avctx->sample_rate / 2;
+    const int bandwidth    = ctx->avctx->cutoff ? ctx->avctx->cutoff : AAC_CUTOFF(ctx->avctx);
     const float num_bark   = calc_bark((float)bandwidth);
 
     ctx->model_priv_data = av_mallocz(sizeof(AacPsyContext));
@@ -333,7 +335,7 @@ static av_cold int psy_3gpp_init(FFPsyContext *ctx) {
             coeff->spread_low[1] = pow(10.0, -bark_width * en_spread_low);
             coeff->spread_hi [1] = pow(10.0, -bark_width * en_spread_hi);
             pe_min = bark_pe * bark_width;
-            minsnr = pow(2.0f, pe_min / band_sizes[g]) - 1.5f;
+            minsnr = exp2(pe_min / band_sizes[g]) - 1.5f;
             coeff->min_snr = av_clipf(1.0f / minsnr, PSY_SNR_25DB, PSY_SNR_1DB);
         }
         start = 0;
@@ -524,8 +526,11 @@ static float calc_reduction_3gpp(float a, float desired_pe, float pe,
 {
     float thr_avg, reduction;
 
-    thr_avg   = powf(2.0f, (a - pe) / (4.0f * active_lines));
-    reduction = powf(2.0f, (a - desired_pe) / (4.0f * active_lines)) - thr_avg;
+    if(active_lines == 0.0)
+        return 0;
+
+    thr_avg   = exp2f((a - pe) / (4.0f * active_lines));
+    reduction = exp2f((a - desired_pe) / (4.0f * active_lines)) - thr_avg;
 
     return FFMAX(reduction, 0.0f);
 }
@@ -536,8 +541,10 @@ static float calc_reduced_thr_3gpp(AacPsyBand *band, float min_snr,
     float thr = band->thr;
 
     if (band->energy > thr) {
-        thr = powf(thr, 0.25f) + reduction;
-        thr = powf(thr, 4.0f);
+        thr = sqrtf(thr);
+        thr = sqrtf(thr) + reduction;
+        thr *= thr;
+        thr *= thr;
 
         /* This deviates from the 3GPP spec to match the reference encoder.
          * It performs min(thr_reduced, max(thr, energy/min_snr)) only for bands
@@ -563,7 +570,7 @@ static void psy_3gpp_analyze_channel(FFPsyContext *ctx, int channel,
     AacPsyChannel *pch  = &pctx->ch[channel];
     int start = 0;
     int i, w, g;
-    float desired_bits, desired_pe, delta_pe, reduction, spread_en[128] = {0};
+    float desired_bits, desired_pe, delta_pe, reduction= NAN, spread_en[128] = {0};
     float a = 0.0f, active_lines = 0.0f, norm_fac = 0.0f;
     float pe = pctx->chan_bitrate > 32000 ? 0.0f : FFMAX(50.0f, 100.0f - pctx->chan_bitrate * 100.0f / 32000.0f);
     const int      num_bands   = ctx->num_bands[wi->num_windows == 8];
@@ -577,13 +584,15 @@ static void psy_3gpp_analyze_channel(FFPsyContext *ctx, int channel,
             AacPsyBand *band = &pch->band[w+g];
 
             float form_factor = 0.0f;
+            float Temp;
             band->energy = 0.0f;
             for (i = 0; i < band_sizes[g]; i++) {
                 band->energy += coefs[start+i] * coefs[start+i];
                 form_factor  += sqrtf(fabs(coefs[start+i]));
             }
+            Temp = band->energy > 0 ? sqrtf((float)band_sizes[g] / band->energy) : 0;
             band->thr      = band->energy * 0.001258925f;
-            band->nz_lines = form_factor / powf(band->energy / band_sizes[g], 0.25f);
+            band->nz_lines = form_factor * sqrtf(Temp);
 
             start += band_sizes[g];
         }
@@ -592,7 +601,7 @@ static void psy_3gpp_analyze_channel(FFPsyContext *ctx, int channel,
     for (w = 0; w < wi->num_windows*16; w += 16) {
         AacPsyBand *bands = &pch->band[w];
 
-        //5.4.2.3 "Spreading" & 5.4.3 "Spreaded Energy Calculation"
+        /* 5.4.2.3 "Spreading" & 5.4.3 "Spread Energy Calculation" */
         spread_en[0] = bands[0].energy;
         for (g = 1; g < num_bands; g++) {
             bands[g].thr   = FFMAX(bands[g].thr,    bands[g-1].thr * coeffs[g].spread_hi[0]);
@@ -612,7 +621,7 @@ static void psy_3gpp_analyze_channel(FFPsyContext *ctx, int channel,
                 band->thr = FFMAX(PSY_3GPP_RPEMIN*band->thr, FFMIN(band->thr,
                                   PSY_3GPP_RPELEV*pch->prev_band[w+g].thr_quiet));
 
-            /* 5.6.1.3.1 "Prepatory steps of the perceptual entropy calculation" */
+            /* 5.6.1.3.1 "Preparatory steps of the perceptual entropy calculation" */
             pe += calc_pe_3gpp(band);
             a  += band->pe_const;
             active_lines += band->active_lines;
@@ -703,7 +712,7 @@ static void psy_3gpp_analyze_channel(FFPsyContext *ctx, int channel,
                         float delta_sfb_pe = band->norm_fac * norm_fac * delta_pe;
                         float thr = band->thr;
 
-                        thr *= powf(2.0f, delta_sfb_pe / band->active_lines);
+                        thr *= exp2f(delta_sfb_pe / band->active_lines);
                         if (thr > coeffs[g].min_snr * band->energy && band->avoid_holes == PSY_3GPP_AH_INACTIVE)
                             thr = FFMAX(band->thr, coeffs[g].min_snr * band->energy);
                         band->thr = thr;

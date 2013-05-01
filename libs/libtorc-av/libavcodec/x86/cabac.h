@@ -73,10 +73,7 @@
         "test   "lowword"   , "lowword"                                 \n\t"\
         "jnz    2f                                                      \n\t"\
         "mov    "byte"      , %%"REG_c"                                 \n\t"\
-        "cmp    "end"       , %%"REG_c"                                 \n\t"\
-        "jge    1f                                                      \n\t"\
         "add"OPSIZE" $2     , "byte"                                    \n\t"\
-        "1:                                                             \n\t"\
         "movzwl (%%"REG_c") , "tmp"                                     \n\t"\
         "lea    -1("low")   , %%ecx                                     \n\t"\
         "xor    "low"       , %%ecx                                     \n\t"\
@@ -93,6 +90,7 @@
 
 #else /* BROKEN_RELOCATIONS */
 #define TABLES_ARG
+#define RIP_ARG
 
 #if HAVE_FAST_CMOV
 #define BRANCHLESS_GET_CABAC_UPDATE(ret, low, range, tmp)\
@@ -134,10 +132,7 @@
         "test   "lowword"   , "lowword"                                 \n\t"\
         " jnz   2f                                                      \n\t"\
         "mov    "byte"      , %%"REG_c"                                 \n\t"\
-        "cmp    "end"       , %%"REG_c"                                 \n\t"\
-        "jge    1f                                                      \n\t"\
         "add"OPSIZE" $2     , "byte"                                    \n\t"\
-        "1:                                                             \n\t"\
         "movzwl (%%"REG_c")     , "tmp"                                 \n\t"\
         "lea    -1("low")   , %%ecx                                     \n\t"\
         "xor    "low"       , %%ecx                                     \n\t"\
@@ -155,7 +150,8 @@
 #endif /* BROKEN_RELOCATIONS */
 
 
-#if HAVE_7REGS
+#if HAVE_7REGS && !(defined(__i386) && defined(__clang__) && (__clang_major__<2 || (__clang_major__==2 && __clang_minor__<10)))\
+               && !(                  !defined(__clang__) && defined(__llvm__) && __GNUC__==4 && __GNUC_MINOR__==2 && __GNUC_PATCHLEVEL__<=1)
 #define get_cabac_inline get_cabac_inline_x86
 static av_always_inline int get_cabac_inline_x86(CABACContext *c,
                                                  uint8_t *const state)
@@ -178,11 +174,12 @@ static av_always_inline int get_cabac_inline_x86(CABACContext *c,
                              AV_STRINGIFY(H264_LPS_RANGE_OFFSET),
                              AV_STRINGIFY(H264_MLPS_STATE_OFFSET),
                              "%8")
-        : "=&r"(bit), "+&r"(c->low), "+&r"(c->range), "=&q"(tmp)
+        : "=&r"(bit), "=&r"(c->low), "=&r"(c->range), "=&q"(tmp)
         : "r"(state), "r"(c),
           "i"(offsetof(CABACContext, bytestream)),
           "i"(offsetof(CABACContext, bytestream_end))
           TABLES_ARG
+          ,"1"(c->low), "2"(c->range)
         : "%"REG_c, "memory"
     );
     return bit & 1;
@@ -211,10 +208,9 @@ static av_always_inline int get_cabac_bypass_sign_x86(CABACContext *c, int val)
         "movzwl         (%1), %%edx     \n\t"
         "bswap         %%edx            \n\t"
         "shrl            $15, %%edx     \n\t"
+        "add              $2, %1        \n\t"
         "addl          %%edx, %%eax     \n\t"
-        "cmp         %c5(%2), %1        \n\t"
-        "jge              1f            \n\t"
-        "add"OPSIZE"      $2, %c4(%2)   \n\t"
+        "mov              %1, %c4(%2)   \n\t"
         "1:                             \n\t"
         "movl          %%eax, %c3(%2)   \n\t"
 

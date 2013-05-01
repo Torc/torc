@@ -2,28 +2,29 @@
  * The simplest mpeg encoder (well, it was the simplest!)
  * Copyright (c) 2000,2001 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/attributes.h"
 #include "libavutil/cpu.h"
 #include "libavutil/x86/asm.h"
 #include "libavutil/x86/cpu.h"
 #include "libavcodec/avcodec.h"
-#include "libavcodec/dsputil.h"
+#include "libavcodec/dct.h"
 #include "libavcodec/mpegvideo.h"
 #include "dsputil_mmx.h"
 
@@ -47,8 +48,8 @@ extern uint16_t ff_inv_zigzag_direct16[64];
 #define COMPILE_TEMPLATE_SSSE3  0
 #undef RENAME
 #undef RENAMEl
-#define RENAME(a) a ## _MMX2
-#define RENAMEl(a) a ## _mmx2
+#define RENAME(a) a ## _MMXEXT
+#define RENAMEl(a) a ## _mmxext
 #include "mpegvideoenc_template.c"
 #endif /* HAVE_MMXEXT_INLINE */
 
@@ -80,7 +81,7 @@ extern uint16_t ff_inv_zigzag_direct16[64];
 #include "mpegvideoenc_template.c"
 #endif /* HAVE_SSSE3_INLINE */
 
-void ff_MPV_encode_init_x86(MpegEncContext *s)
+av_cold void ff_dct_encode_init_x86(MpegEncContext *s)
 {
     int mm_flags = av_get_cpu_flags();
     const int dct_algo = s->avctx->dct_algo;
@@ -92,7 +93,7 @@ void ff_MPV_encode_init_x86(MpegEncContext *s)
 #endif
 #if HAVE_MMXEXT_INLINE
         if (INLINE_MMXEXT(mm_flags))
-            s->dct_quantize = dct_quantize_MMX2;
+            s->dct_quantize = dct_quantize_MMXEXT;
 #endif
 #if HAVE_SSE2_INLINE
         if (INLINE_SSE2(mm_flags))

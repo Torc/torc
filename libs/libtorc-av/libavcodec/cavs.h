@@ -2,29 +2,31 @@
  * Chinese AVS video (AVS1-P2, JiZhun profile) decoder.
  * Copyright (c) 2006  Stefan Gehrer <stefan.gehrer@gmx.de>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifndef AVCODEC_CAVS_H
 #define AVCODEC_CAVS_H
 
-#include "dsputil.h"
-#include "mpegvideo.h"
 #include "cavsdsp.h"
+#include "dsputil.h"
+#include "h264chroma.h"
+#include "get_bits.h"
+#include "videodsp.h"
 
 #define SLICE_MAX_START_CODE    0x000001af
 #define EXT_START_CODE          0x000001b5
@@ -152,16 +154,26 @@ struct dec_2dvlc {
   int8_t max_run;
 };
 
+typedef struct AVSFrame {
+    AVFrame *f;
+    int poc;
+} AVSFrame;
+
 typedef struct AVSContext {
-    MpegEncContext s;
-    CAVSDSPContext cdsp;
-    Picture picture; ///< currently decoded frame
-    Picture DPB[2];  ///< reference frames
+    AVCodecContext *avctx;
+    DSPContext       dsp;
+    H264ChromaContext h264chroma;
+    VideoDSPContext vdsp;
+    CAVSDSPContext  cdsp;
+    GetBitContext gb;
+    AVSFrame cur;     ///< currently decoded frame
+    AVSFrame DPB[2];  ///< reference frames
     int dist[2];     ///< temporal distances from current frame to ref frames
+    int low_delay;
     int profile, level;
     int aspect_ratio;
     int mb_width, mb_height;
-    int pic_type;
+    int width, height;
     int stream_revision; ///<0 for samples from 2006, 1 for rm52j encoder
     int progressive;
     int pic_structure;
@@ -221,8 +233,10 @@ typedef struct AVSContext {
     int direct_den[2]; ///< for scaling in direct B block
     int scale_den[2];  ///< for scaling neighbouring MVs
 
+    uint8_t *edge_emu_buffer;
+
     int got_keyframe;
-    DCTELEM *block;
+    int16_t *block;
 } AVSContext;
 
 extern const uint8_t     ff_cavs_partition_flags[30];
@@ -253,7 +267,7 @@ void ff_cavs_mv(AVSContext *h, enum cavs_mv_loc nP, enum cavs_mv_loc nC,
                 enum cavs_mv_pred mode, enum cavs_block size, int ref);
 void ff_cavs_init_mb(AVSContext *h);
 int  ff_cavs_next_mb(AVSContext *h);
-void ff_cavs_init_pic(AVSContext *h);
+int ff_cavs_init_pic(AVSContext *h);
 void ff_cavs_init_top_lines(AVSContext *h);
 int ff_cavs_init(AVCodecContext *avctx);
 int ff_cavs_end (AVCodecContext *avctx);

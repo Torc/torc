@@ -3,24 +3,24 @@
  *
  * Copyright (C) 2009 Konstantin Shishkov
  *
- * MMX/MMX2 template stuff (needed for fast movntq support),
+ * MMX/MMXEXT template stuff (needed for fast movntq support),
  * 1,4,8bpp support and context / deglobalize stuff
  * by Michael Niedermayer (michaelni@gmx.at)
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -58,12 +58,12 @@ DECLARE_ASM_CONST(8, uint64_t, pb_07) = 0x0707070707070707ULL;
 #include "yuv2rgb_template.c"
 #endif /* HAVE_MMX_INLINE */
 
-//MMX2 versions
+// MMXEXT versions
 #if HAVE_MMXEXT_INLINE
 #undef RENAME
 #undef COMPILE_TEMPLATE_MMXEXT
 #define COMPILE_TEMPLATE_MMXEXT 1
-#define RENAME(a) a ## _MMX2
+#define RENAME(a) a ## _MMXEXT
 #include "yuv2rgb_template.c"
 #endif /* HAVE_MMXEXT_INLINE */
 
@@ -74,15 +74,13 @@ av_cold SwsFunc ff_yuv2rgb_init_mmx(SwsContext *c)
 #if HAVE_INLINE_ASM
     int cpu_flags = av_get_cpu_flags();
 
-    if (c->srcFormat != AV_PIX_FMT_YUV420P &&
-        c->srcFormat != AV_PIX_FMT_YUVA420P)
-        return NULL;
-
 #if HAVE_MMXEXT_INLINE
     if (cpu_flags & AV_CPU_FLAG_MMXEXT) {
         switch (c->dstFormat) {
-        case AV_PIX_FMT_RGB24:  return yuv420_rgb24_MMX2;
-        case AV_PIX_FMT_BGR24:  return yuv420_bgr24_MMX2;
+        case AV_PIX_FMT_RGB24:
+            return yuv420_rgb24_MMXEXT;
+        case AV_PIX_FMT_BGR24:
+            return yuv420_bgr24_MMXEXT;
         }
     }
 #endif

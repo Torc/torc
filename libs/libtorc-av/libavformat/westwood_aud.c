@@ -2,20 +2,20 @@
  * Westwood Studios AUD Format Demuxer
  * Copyright (c) 2003 The ffmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -33,6 +33,7 @@
  * qualify a file. Refer to wsaud_probe() for the precise parameters.
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "internal.h"
@@ -68,8 +69,6 @@ static int wsaud_probe(AVProbeData *p)
     if (p->buf[10] & 0xFC)
         return 0;
 
-    /* note: only check for WS IMA (type 99) right now since there is no
-     * support for type 1 */
     if (p->buf[11] != 99 && p->buf[11] != 1)
         return 0;
 
@@ -120,6 +119,8 @@ static int wsaud_read_header(AVFormatContext *s)
     avpriv_set_pts_info(st, 64, 1, sample_rate);
     st->codec->codec_type  = AVMEDIA_TYPE_AUDIO;
     st->codec->channels    = channels;
+    st->codec->channel_layout = channels == 1 ? AV_CH_LAYOUT_MONO :
+                                                AV_CH_LAYOUT_STEREO;
     st->codec->sample_rate = sample_rate;
 
     return 0;

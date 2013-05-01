@@ -1,19 +1,19 @@
 /*
  * FLV decoding.
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -40,12 +40,12 @@ int ff_flv_decode_picture_header(MpegEncContext *s)
     /* picture header */
     if (get_bits_long(&s->gb, 17) != 1) {
         av_log(s->avctx, AV_LOG_ERROR, "Bad picture start code\n");
-        return -1;
+        return AVERROR_INVALIDDATA;
     }
     format = get_bits(&s->gb, 5);
     if (format != 0 && format != 1) {
         av_log(s->avctx, AV_LOG_ERROR, "Bad picture format\n");
-        return -1;
+        return AVERROR_INVALIDDATA;
     }
     s->h263_flv = format+1;
     s->picture_number = get_bits(&s->gb, 8); /* picture timestamp */
@@ -84,13 +84,13 @@ int ff_flv_decode_picture_header(MpegEncContext *s)
         break;
     }
     if(av_image_check_size(width, height, 0, s->avctx))
-        return -1;
+        return AVERROR(EINVAL);
     s->width = width;
     s->height = height;
 
     s->pict_type = AV_PICTURE_TYPE_I + get_bits(&s->gb, 2);
-    s->dropable= s->pict_type > AV_PICTURE_TYPE_P;
-    if (s->dropable)
+    s->droppable = s->pict_type > AV_PICTURE_TYPE_P;
+    if (s->droppable)
         s->pict_type = AV_PICTURE_TYPE_P;
 
     skip_bits1(&s->gb); /* deblocking flag */
@@ -109,7 +109,8 @@ int ff_flv_decode_picture_header(MpegEncContext *s)
 
     if(s->avctx->debug & FF_DEBUG_PICT_INFO){
         av_log(s->avctx, AV_LOG_DEBUG, "%c esc_type:%d, qp:%d num:%d\n",
-               s->dropable ? 'D' : av_get_picture_type_char(s->pict_type), s->h263_flv-1, s->qscale, s->picture_number);
+               s->droppable ? 'D' : av_get_picture_type_char(s->pict_type),
+               s->h263_flv - 1, s->qscale, s->picture_number);
     }
 
     s->y_dc_scale_table=
@@ -127,6 +128,7 @@ AVCodec ff_flv_decoder = {
     .close          = ff_h263_decode_end,
     .decode         = ff_h263_decode_frame,
     .capabilities   = CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1,
+    .max_lowres     = 3,
     .long_name      = NULL_IF_CONFIG_SMALL("FLV / Sorenson Spark / Sorenson H.263 (Flash Video)"),
     .pix_fmts       = ff_pixfmt_list_420,
 };

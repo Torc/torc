@@ -1,21 +1,21 @@
 /*
- * 8SVX audio decoder
  * Copyright (C) 2008 Jaikrishnan Menon
+ * Copyright (C) 2011 Stefano Sabatini
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -26,14 +26,24 @@
  *
  * supports: fibonacci delta encoding
  *         : exponential encoding
+ *
+ * For more information about the 8SVX format:
+ * http://netghost.narod.ru/gff/vendspec/iff/iff.txt
+ * http://sox.sourceforge.net/AudioFormats-11.html
+ * http://aminet.net/package/mus/misc/wavepak
+ * http://amigan.1emu.net/reg/8SVX.txt
+ *
+ * Samples can be found here:
+ * http://aminet.net/mods/smpl/
  */
 
+#include "libavutil/avassert.h"
 #include "avcodec.h"
+#include "internal.h"
 #include "libavutil/common.h"
 
 /** decoder context */
 typedef struct EightSvxContext {
-    AVFrame frame;
     uint8_t fib_acc[2];
     const int8_t *table;
 
@@ -44,18 +54,17 @@ typedef struct EightSvxContext {
     int data_idx;
 } EightSvxContext;
 
-static const int8_t fibonacci[16]   = { -34, -21, -13,  -8, -5, -3, -2, -1,
-                                          0,   1,   2,   3,  5,  8, 13, 21 };
-static const int8_t exponential[16] = { -128, -64, -32, -16, -8, -4, -2, -1,
-                                           0,   1,   2,   4,  8, 16, 32, 64 };
+static const int8_t fibonacci[16]   = { -34,  -21, -13,  -8, -5, -3, -2, -1, 0, 1, 2, 3, 5, 8,  13, 21 };
+static const int8_t exponential[16] = { -128, -64, -32, -16, -8, -4, -2, -1, 0, 1, 2, 4, 8, 16, 32, 64 };
 
-#define MAX_FRAME_SIZE 32768
+#define MAX_FRAME_SIZE 2048
 
 /**
  * Delta decode the compressed values in src, and put the resulting
  * decoded samples in dst.
  *
  * @param[in,out] state starting value. it is saved for use in the next call.
+ * @param table delta sequence table
  */
 static void delta_decode(uint8_t *dst, const uint8_t *src, int src_size,
                          uint8_t *state, const int8_t *table)
@@ -73,40 +82,31 @@ static void delta_decode(uint8_t *dst, const uint8_t *src, int src_size,
     *state = val;
 }
 
-static void raw_decode(uint8_t *dst, const int8_t *src, int src_size)
-{
-    while (src_size--)
-        *dst++ = *src++ + 128;
-}
-
 /** decode a frame */
 static int eightsvx_decode_frame(AVCodecContext *avctx, void *data,
                                  int *got_frame_ptr, AVPacket *avpkt)
 {
     EightSvxContext *esc = avctx->priv_data;
+    AVFrame *frame       = data;
     int buf_size;
     int ch, ret;
-    int is_compr = (avctx->codec_id != AV_CODEC_ID_PCM_S8_PLANAR);
+    int hdr_size = 2;
 
-    /* for the first packet, copy data to buffer */
-    if (avpkt->data) {
-        int hdr_size  = is_compr ? 2 : 0;
-        int chan_size = (avpkt->size - hdr_size * avctx->channels) / avctx->channels;
+    /* decode and interleave the first packet */
+    if (!esc->data[0] && avpkt) {
+        int chan_size = avpkt->size / avctx->channels - hdr_size;
 
-        if (avpkt->size < hdr_size * avctx->channels) {
+        if (avpkt->size % avctx->channels) {
+            av_log(avctx, AV_LOG_WARNING, "Packet with odd size, ignoring last byte\n");
+        }
+        if (avpkt->size < (hdr_size + 1) * avctx->channels) {
             av_log(avctx, AV_LOG_ERROR, "packet size is too small\n");
             return AVERROR(EINVAL);
         }
-        if (esc->data[0]) {
-            av_log(avctx, AV_LOG_ERROR, "unexpected data after first packet\n");
-            return AVERROR(EINVAL);
-        }
 
-        if (is_compr) {
         esc->fib_acc[0] = avpkt->data[1] + 128;
         if (avctx->channels == 2)
             esc->fib_acc[1] = avpkt->data[2+chan_size+1] + 128;
-        }
 
         esc->data_idx  = 0;
         esc->data_size = chan_size;
@@ -135,56 +135,41 @@ static int eightsvx_decode_frame(AVCodecContext *avctx, void *data,
     }
 
     /* get output buffer */
-    esc->frame.nb_samples = buf_size * (is_compr + 1);
-    if ((ret = avctx->get_buffer(avctx, &esc->frame)) < 0) {
+    frame->nb_samples = buf_size * 2;
+    if ((ret = ff_get_buffer(avctx, frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
 
     for (ch = 0; ch < avctx->channels; ch++) {
-        if (is_compr) {
-            delta_decode(esc->frame.data[ch], &esc->data[ch][esc->data_idx],
-                         buf_size, &esc->fib_acc[ch], esc->table);
-        } else {
-            raw_decode(esc->frame.data[ch], &esc->data[ch][esc->data_idx],
-                       buf_size);
-        }
+        delta_decode(frame->data[ch], &esc->data[ch][esc->data_idx],
+                     buf_size, &esc->fib_acc[ch], esc->table);
     }
 
     esc->data_idx += buf_size;
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = esc->frame;
+    *got_frame_ptr = 1;
 
-    return avpkt->size;
+    return ((avctx->frame_number == 0)*hdr_size + buf_size)*avctx->channels;
 }
 
-/** initialize 8svx decoder */
 static av_cold int eightsvx_decode_init(AVCodecContext *avctx)
 {
     EightSvxContext *esc = avctx->priv_data;
 
     if (avctx->channels < 1 || avctx->channels > 2) {
         av_log(avctx, AV_LOG_ERROR, "8SVX does not support more than 2 channels\n");
-        return AVERROR(EINVAL);
+        return AVERROR_INVALIDDATA;
     }
 
-    switch(avctx->codec->id) {
-        case AV_CODEC_ID_8SVX_FIB:
-          esc->table = fibonacci;
-          break;
-        case AV_CODEC_ID_8SVX_EXP:
-          esc->table = exponential;
-          break;
-        case AV_CODEC_ID_PCM_S8_PLANAR:
-            break;
-        default:
-          return -1;
+    switch (avctx->codec->id) {
+    case AV_CODEC_ID_8SVX_FIB: esc->table = fibonacci;    break;
+    case AV_CODEC_ID_8SVX_EXP: esc->table = exponential;  break;
+    default:
+        av_log(avctx, AV_LOG_ERROR, "Invalid codec id %d.\n", avctx->codec->id);
+        return AVERROR_INVALIDDATA;
     }
     avctx->sample_fmt = AV_SAMPLE_FMT_U8P;
-
-    avcodec_get_frame_defaults(&esc->frame);
-    avctx->coded_frame = &esc->frame;
 
     return 0;
 }
@@ -195,48 +180,39 @@ static av_cold int eightsvx_decode_close(AVCodecContext *avctx)
 
     av_freep(&esc->data[0]);
     av_freep(&esc->data[1]);
+    esc->data_size = 0;
+    esc->data_idx = 0;
 
     return 0;
 }
 
+#if CONFIG_EIGHTSVX_FIB_DECODER
 AVCodec ff_eightsvx_fib_decoder = {
   .name           = "8svx_fib",
   .type           = AVMEDIA_TYPE_AUDIO,
   .id             = AV_CODEC_ID_8SVX_FIB,
   .priv_data_size = sizeof (EightSvxContext),
   .init           = eightsvx_decode_init,
-  .close          = eightsvx_decode_close,
   .decode         = eightsvx_decode_frame,
-  .capabilities   = CODEC_CAP_DELAY | CODEC_CAP_DR1,
+  .close          = eightsvx_decode_close,
+  .capabilities   = CODEC_CAP_DR1,
   .long_name      = NULL_IF_CONFIG_SMALL("8SVX fibonacci"),
   .sample_fmts    = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_U8P,
                                                     AV_SAMPLE_FMT_NONE },
 };
-
+#endif
+#if CONFIG_EIGHTSVX_EXP_DECODER
 AVCodec ff_eightsvx_exp_decoder = {
   .name           = "8svx_exp",
   .type           = AVMEDIA_TYPE_AUDIO,
   .id             = AV_CODEC_ID_8SVX_EXP,
   .priv_data_size = sizeof (EightSvxContext),
   .init           = eightsvx_decode_init,
-  .close          = eightsvx_decode_close,
   .decode         = eightsvx_decode_frame,
-  .capabilities   = CODEC_CAP_DELAY | CODEC_CAP_DR1,
+  .close          = eightsvx_decode_close,
+  .capabilities   = CODEC_CAP_DR1,
   .long_name      = NULL_IF_CONFIG_SMALL("8SVX exponential"),
   .sample_fmts    = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_U8P,
                                                     AV_SAMPLE_FMT_NONE },
 };
-
-AVCodec ff_pcm_s8_planar_decoder = {
-    .name           = "pcm_s8_planar",
-    .type           = AVMEDIA_TYPE_AUDIO,
-    .id             = AV_CODEC_ID_PCM_S8_PLANAR,
-    .priv_data_size = sizeof(EightSvxContext),
-    .init           = eightsvx_decode_init,
-    .close          = eightsvx_decode_close,
-    .decode         = eightsvx_decode_frame,
-    .capabilities   = CODEC_CAP_DELAY | CODEC_CAP_DR1,
-    .long_name      = NULL_IF_CONFIG_SMALL("PCM signed 8-bit planar"),
-    .sample_fmts    = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_U8P,
-                                                      AV_SAMPLE_FMT_NONE },
-};
+#endif

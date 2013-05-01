@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2010, Google, Inc.
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -35,10 +35,10 @@ typedef struct VP8DecoderContext {
     struct vpx_codec_ctx decoder;
 } VP8Context;
 
-static av_cold int vp8_init(AVCodecContext *avctx)
+static av_cold int vpx_init(AVCodecContext *avctx,
+                            const struct vpx_codec_iface *iface)
 {
     VP8Context *ctx = avctx->priv_data;
-    const struct vpx_codec_iface *iface = &vpx_codec_vp8_dx_algo;
     struct vpx_codec_dec_cfg deccfg = {
         /* token partitions+1 would be a decent choice */
         .threads = FFMIN(avctx->thread_count, 16)
@@ -59,7 +59,7 @@ static av_cold int vp8_init(AVCodecContext *avctx)
 }
 
 static int vp8_decode(AVCodecContext *avctx,
-                      void *data, int *data_size, AVPacket *avpkt)
+                      void *data, int *got_frame, AVPacket *avpkt)
 {
     VP8Context *ctx = avctx->priv_data;
     AVFrame *picture = data;
@@ -100,7 +100,7 @@ static int vp8_decode(AVCodecContext *avctx,
         picture->linesize[1] = img->stride[1];
         picture->linesize[2] = img->stride[2];
         picture->linesize[3] = 0;
-        *data_size           = sizeof(AVPicture);
+        *got_frame           = 1;
     }
     return avpkt->size;
 }
@@ -112,7 +112,13 @@ static av_cold int vp8_free(AVCodecContext *avctx)
     return 0;
 }
 
-AVCodec ff_libvpx_decoder = {
+#if CONFIG_LIBVPX_VP8_DECODER
+static av_cold int vp8_init(AVCodecContext *avctx)
+{
+    return vpx_init(avctx, &vpx_codec_vp8_dx_algo);
+}
+
+AVCodec ff_libvpx_vp8_decoder = {
     .name           = "libvpx",
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = AV_CODEC_ID_VP8,
@@ -123,3 +129,23 @@ AVCodec ff_libvpx_decoder = {
     .capabilities   = CODEC_CAP_AUTO_THREADS,
     .long_name      = NULL_IF_CONFIG_SMALL("libvpx VP8"),
 };
+#endif /* CONFIG_LIBVPX_VP8_DECODER */
+
+#if CONFIG_LIBVPX_VP9_DECODER
+static av_cold int vp9_init(AVCodecContext *avctx)
+{
+    return vpx_init(avctx, &vpx_codec_vp9_dx_algo);
+}
+
+AVCodec ff_libvpx_vp9_decoder = {
+    .name           = "libvpx-vp9",
+    .type           = AVMEDIA_TYPE_VIDEO,
+    .id             = AV_CODEC_ID_VP9,
+    .priv_data_size = sizeof(VP8Context),
+    .init           = vp9_init,
+    .close          = vp8_free,
+    .decode         = vp8_decode,
+    .capabilities   = CODEC_CAP_AUTO_THREADS | CODEC_CAP_EXPERIMENTAL,
+    .long_name      = NULL_IF_CONFIG_SMALL("libvpx VP9"),
+};
+#endif /* CONFIG_LIBVPX_VP9_DECODER */

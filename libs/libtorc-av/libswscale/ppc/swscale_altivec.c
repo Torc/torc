@@ -4,20 +4,20 @@
  * Copyright (C) 2004 Romain Dolbeau <romain@dolbeau.org>
  * based on the equivalent C code in swscale.c
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -292,7 +292,7 @@ av_cold void ff_sws_init_swScale_altivec(SwsContext *c)
     if (!(av_get_cpu_flags() & AV_CPU_FLAG_ALTIVEC))
         return;
 
-    if (c->srcBpc == 8 && c->dstBpc <= 10) {
+    if (c->srcBpc == 8 && c->dstBpc <= 14) {
         c->hyScale = c->hcScale = hScale_altivec_real;
     }
     if (!is16BPS(dstFormat) && !is9_OR_10BPS(dstFormat) &&

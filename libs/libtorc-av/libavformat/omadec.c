@@ -5,20 +5,20 @@
  *               2008 Benjamin Larsson
  *               2011 David Goldwich
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -37,16 +37,15 @@
  * - Sound data organized in packets follow the EA3 header
  *   (can be encrypted using the Sony DRM!).
  *
- * CODEC SUPPORT: Only ATRAC3 codec is currently supported!
  */
 
+#include "libavutil/channel_layout.h"
 #include "avformat.h"
 #include "internal.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/des.h"
 #include "oma.h"
 #include "pcm.h"
-#include "riff.h"
 #include "id3v2.h"
 
 
@@ -159,7 +158,7 @@ static int nprobe(AVFormatContext *s, uint8_t *enc_header, int size, const uint8
     taglen = AV_RB32(&enc_header[pos+32]);
     datalen = AV_RB32(&enc_header[pos+36]) >> 4;
 
-    if(taglen + (((uint64_t)datalen)<<4) + 44 > size)
+    if(pos + (uint64_t)taglen + (((uint64_t)datalen)<<4) + 44 > size)
         return -1;
 
     pos += 44 + taglen;
@@ -219,6 +218,12 @@ static int decrypt_init(AVFormatContext *s, ID3v2ExtraMeta *em, uint8_t *header)
         av_log(s, AV_LOG_ERROR, "Invalid encryption header\n");
         return -1;
     }
+    if (   OMA_ENC_HEADER_SIZE + oc->k_size + oc->e_size + oc->i_size + 8 > geob->datasize
+        || OMA_ENC_HEADER_SIZE + 48 > geob->datasize
+    ) {
+        av_log(s, AV_LOG_ERROR, "Too little GEOB data\n");
+        return AVERROR_INVALIDDATA;
+    }
     oc->rid = AV_RB32(&gdata[OMA_ENC_HEADER_SIZE + 28]);
     av_log(s, AV_LOG_DEBUG, "RID: %.8x\n", oc->rid);
 
@@ -242,7 +247,7 @@ static int decrypt_init(AVFormatContext *s, ID3v2ExtraMeta *em, uint8_t *header)
             if (!rprobe(s, gdata, oc->r_val) || !nprobe(s, gdata, geob->datasize, oc->n_val))
                 break;
         }
-        if (i >= sizeof(leaf_table)) {
+        if (i >= FF_ARRAY_ELEMS(leaf_table)) {
             av_log(s, AV_LOG_ERROR, "Invalid key\n");
             return -1;
         }
@@ -312,6 +317,7 @@ static int oma_read_header(AVFormatContext *s)
             framesize = (codec_params & 0x3FF) * 8;
             jsflag = (codec_params >> 17) & 1; /* get stereo coding mode, 1 for joint-stereo */
             st->codec->channels    = 2;
+            st->codec->channel_layout = AV_CH_LAYOUT_STEREO;
             st->codec->sample_rate = samplerate;
             st->codec->bit_rate    = st->codec->sample_rate * framesize * 8 / 1024;
 
@@ -340,12 +346,13 @@ static int oma_read_header(AVFormatContext *s)
             av_log(s, AV_LOG_ERROR, "Unsupported codec ATRAC3+!\n");
             break;
         case OMA_CODECID_MP3:
-            st->need_parsing = AVSTREAM_PARSE_FULL;
+            st->need_parsing = AVSTREAM_PARSE_FULL_RAW;
             framesize = 1024;
             break;
         case OMA_CODECID_LPCM:
             /* PCM 44.1 kHz 16 bit stereo big-endian */
             st->codec->channels = 2;
+            st->codec->channel_layout = AV_CH_LAYOUT_STEREO;
             st->codec->sample_rate = 44100;
             framesize = 1024;
             /* bit rate = sample rate x PCM block align (= 4) x 8 */
@@ -377,7 +384,7 @@ static int oma_read_packet(AVFormatContext *s, AVPacket *pkt)
 
     if (oc->encrypted) {
         /* previous unencrypted block saved in IV for the next packet (CBC mode) */
-        av_des_crypt(&oc->av_des, pkt->data, pkt->data, (packet_size >> 3), oc->iv, 1);
+        av_des_crypt(&oc->av_des, pkt->data, pkt->data, (ret >> 3), oc->iv, 1);
     }
 
     return ret;

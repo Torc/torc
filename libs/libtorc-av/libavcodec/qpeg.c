@@ -2,20 +2,20 @@
  * QPEG codec
  * Copyright (c) 2004 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -26,11 +26,11 @@
 
 #include "avcodec.h"
 #include "bytestream.h"
+#include "internal.h"
 
 typedef struct QpegContext{
     AVCodecContext *avctx;
-    AVFrame pic;
-    uint8_t *refdata;
+    AVFrame pic, ref;
     uint32_t pal[256];
     GetByteContext buffer;
 } QpegContext;
@@ -120,9 +120,12 @@ static void qpeg_decode_inter(QpegContext *qctx, uint8_t *dst,
     int filled = 0;
     int orig_height;
 
+    if(!refdata)
+        refdata= dst;
+
     /* copy prev frame */
     for(i = 0; i < height; i++)
-        memcpy(refdata + (i * width), dst + (i * stride), width);
+        memcpy(dst + (i * stride), refdata + (i * stride), width);
 
     orig_height = height;
     height--;
@@ -133,7 +136,7 @@ static void qpeg_decode_inter(QpegContext *qctx, uint8_t *dst,
 
         if(delta) {
             /* motion compensation */
-            while((code & 0xF0) == 0xF0) {
+            while(bytestream2_get_bytes_left(&qctx->buffer) > 0 && (code & 0xF0) == 0xF0) {
                 if(delta == 1) {
                     int me_idx;
                     int me_w, me_h, me_x, me_y;
@@ -166,10 +169,10 @@ static void qpeg_decode_inter(QpegContext *qctx, uint8_t *dst,
                                me_x, me_y, me_w, me_h, filled, height);
                     else {
                         /* do motion compensation */
-                        me_plane = refdata + (filled + me_x) + (height - me_y) * width;
+                        me_plane = refdata + (filled + me_x) + (height - me_y) * stride;
                         for(j = 0; j < me_h; j++) {
                             for(i = 0; i < me_w; i++)
-                                dst[filled + i - (j * stride)] = me_plane[i - (j * width)];
+                                dst[filled + i - (j * stride)] = me_plane[i - (j * stride)];
                         }
                     }
                 }
@@ -190,10 +193,15 @@ static void qpeg_decode_inter(QpegContext *qctx, uint8_t *dst,
                     filled = 0;
                     dst -= stride;
                     height--;
+                    if(height < 0)
+                        break;
                 }
             }
         } else if(code >= 0xC0) { /* copy code: 0xC0..0xDF */
             code &= 0x1F;
+
+            if(code + 1 > bytestream2_get_bytes_left(&qctx->buffer))
+                break;
 
             for(i = 0; i <= code; i++) {
                 dst[filled++] = bytestream2_get_byte(&qctx->buffer);
@@ -201,6 +209,8 @@ static void qpeg_decode_inter(QpegContext *qctx, uint8_t *dst,
                     filled = 0;
                     dst -= stride;
                     height--;
+                    if(height < 0)
+                        break;
                 }
             }
         } else if(code >= 0x80) { /* skip code: 0x80..0xBF */
@@ -240,14 +250,15 @@ static void qpeg_decode_inter(QpegContext *qctx, uint8_t *dst,
 }
 
 static int decode_frame(AVCodecContext *avctx,
-                        void *data, int *data_size,
+                        void *data, int *got_frame,
                         AVPacket *avpkt)
 {
     uint8_t ctable[128];
     QpegContext * const a = avctx->priv_data;
-    AVFrame * const p = &a->pic;
+    AVFrame *  p = &a->pic;
+    AVFrame * ref= &a->ref;
     uint8_t* outdata;
-    int delta;
+    int delta, ret;
     const uint8_t *pal = av_packet_get_side_data(avpkt, AV_PKT_DATA_PALETTE, NULL);
 
     if (avpkt->size < 0x86) {
@@ -256,10 +267,15 @@ static int decode_frame(AVCodecContext *avctx,
     }
 
     bytestream2_init(&a->buffer, avpkt->data, avpkt->size);
-    p->reference = 3;
-    if (avctx->reget_buffer(avctx, p) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "reget_buffer() failed\n");
-        return -1;
+
+    if(ref->data[0])
+        avctx->release_buffer(avctx, ref);
+    FFSWAP(AVFrame, *ref, *p);
+
+    p->reference= 3;
+    if ((ret = ff_get_buffer(avctx, p)) < 0) {
+        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+        return ret;
     }
     outdata = a->pic.data[0];
     bytestream2_skip(&a->buffer, 4);
@@ -270,7 +286,7 @@ static int decode_frame(AVCodecContext *avctx,
     if(delta == 0x10) {
         qpeg_decode_intra(a, outdata, a->pic.linesize[0], avctx->width, avctx->height);
     } else {
-        qpeg_decode_inter(a, outdata, a->pic.linesize[0], avctx->width, avctx->height, delta, ctable, a->refdata);
+        qpeg_decode_inter(a, outdata, a->pic.linesize[0], avctx->width, avctx->height, delta, ctable, a->ref.data[0]);
     }
 
     /* make the palette available on the way out */
@@ -280,18 +296,33 @@ static int decode_frame(AVCodecContext *avctx,
     }
     memcpy(a->pic.data[1], a->pal, AVPALETTE_SIZE);
 
-    *data_size = sizeof(AVFrame);
+    *got_frame      = 1;
     *(AVFrame*)data = a->pic;
 
     return avpkt->size;
 }
 
+static void decode_flush(AVCodecContext *avctx){
+    QpegContext * const a = avctx->priv_data;
+    int i, pal_size;
+    const uint8_t *pal_src;
+
+    pal_size = FFMIN(1024U, avctx->extradata_size);
+    pal_src = avctx->extradata + avctx->extradata_size - pal_size;
+
+    for (i=0; i<pal_size/4; i++)
+        a->pal[i] = 0xFFU<<24 | AV_RL32(pal_src+4*i);
+}
+
 static av_cold int decode_init(AVCodecContext *avctx){
     QpegContext * const a = avctx->priv_data;
 
+    avcodec_get_frame_defaults(&a->pic);
+    avcodec_get_frame_defaults(&a->ref);
     a->avctx = avctx;
     avctx->pix_fmt= AV_PIX_FMT_PAL8;
-    a->refdata = av_malloc(avctx->width * avctx->height);
+
+    decode_flush(avctx);
 
     return 0;
 }
@@ -299,11 +330,13 @@ static av_cold int decode_init(AVCodecContext *avctx){
 static av_cold int decode_end(AVCodecContext *avctx){
     QpegContext * const a = avctx->priv_data;
     AVFrame * const p = &a->pic;
+    AVFrame * const ref= &a->ref;
 
     if(p->data[0])
         avctx->release_buffer(avctx, p);
+    if(ref->data[0])
+        avctx->release_buffer(avctx, ref);
 
-    av_free(a->refdata);
     return 0;
 }
 
@@ -315,6 +348,7 @@ AVCodec ff_qpeg_decoder = {
     .init           = decode_init,
     .close          = decode_end,
     .decode         = decode_frame,
+    .flush          = decode_flush,
     .capabilities   = CODEC_CAP_DR1,
     .long_name      = NULL_IF_CONFIG_SMALL("Q-team QPEG"),
 };

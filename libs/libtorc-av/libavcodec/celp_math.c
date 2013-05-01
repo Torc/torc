@@ -3,28 +3,29 @@
  *
  * Copyright (c) 2008 Vladimir Voroshilov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include <inttypes.h>
 #include <limits.h>
-#include <assert.h>
 
+#include "libavutil/avassert.h"
 #include "avcodec.h"
+#include "mathops.h"
 #include "celp_math.h"
 #include "libavutil/common.h"
 
@@ -48,7 +49,7 @@ int ff_exp2(uint16_t power)
 {
     unsigned int result= exp2a[power>>10] + 0x10000;
 
-    assert(power <= 0x7fff);
+    av_assert2(power <= 0x7fff);
 
     result= (result<<3) + ((result*exp2b[(power>>5)&31])>>17);
     return result + ((result*(power&31)*89)>>22);
@@ -61,10 +62,17 @@ int ff_exp2(uint16_t power)
  */
 static const uint16_t tab_log2[33] =
 {
+#ifdef G729_BITEXACT
+      0,   1455,   2866,   4236,   5568,   6863,   8124,   9352,
+  10549,  11716,  12855,  13967,  15054,  16117,  17156,  18172,
+  19167,  20142,  21097,  22033,  22951,  23852,  24735,  25603,
+  26455,  27291,  28113,  28922,  29716,  30497,  31266,  32023,  32767,
+#else
       4,   1459,   2870,   4240,   5572,   6867,   8127,   9355,
   10552,  11719,  12858,  13971,  15057,  16120,  17158,  18175,
   19170,  20145,  21100,  22036,  22954,  23854,  24738,  25605,
   26457,  27294,  28116,  28924,  29719,  30500,  31269,  32025,  32769,
+#endif
 };
 
 int ff_log2_q15(uint32_t value)
@@ -85,4 +93,34 @@ int ff_log2_q15(uint32_t value)
     value += (frac_dx * (tab_log2[frac_x0+1] - tab_log2[frac_x0])) >> 15;
 
     return (power_int << 15) + value;
+}
+
+int64_t ff_dot_product(const int16_t *a, const int16_t *b, int length)
+{
+    int i;
+    int64_t sum = 0;
+
+    for (i = 0; i < length; i++)
+        sum += MUL16(a[i], b[i]);
+
+    return sum;
+}
+
+float ff_dot_productf(const float* a, const float* b, int length)
+{
+    float sum = 0;
+    int i;
+
+    for(i=0; i<length; i++)
+        sum += a[i] * b[i];
+
+    return sum;
+}
+
+void ff_celp_math_init(CELPMContext *c)
+{
+    c->dot_productf   = ff_dot_productf;
+
+    if(HAVE_MIPSFPU)
+        ff_celp_math_init_mips(c);
 }

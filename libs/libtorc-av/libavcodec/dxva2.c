@@ -3,20 +3,20 @@
  *
  * copyright (c) 2010 Laurent Aimar
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -76,7 +76,7 @@ int ff_dxva2_commit_buffer(AVCodecContext *avctx,
     return result;
 }
 
-int ff_dxva2_common_end_frame(AVCodecContext *avctx, MpegEncContext *s,
+int ff_dxva2_common_end_frame(AVCodecContext *avctx, Picture *pic,
                               const void *pp, unsigned pp_size,
                               const void *qm, unsigned qm_size,
                               int (*commit_bs_si)(AVCodecContext *,
@@ -90,7 +90,7 @@ int ff_dxva2_common_end_frame(AVCodecContext *avctx, MpegEncContext *s,
     int      result;
 
     if (FAILED(IDirectXVideoDecoder_BeginFrame(ctx->decoder,
-                                               ff_dxva2_get_surface(s->current_picture_ptr),
+                                               ff_dxva2_get_surface(pic),
                                                NULL))) {
         av_log(avctx, AV_LOG_ERROR, "Failed to begin frame\n");
         return -1;
@@ -146,7 +146,5 @@ end:
         result = -1;
     }
 
-    if (!result)
-        ff_draw_horiz_band(s, 0, s->avctx->height);
     return result;
 }

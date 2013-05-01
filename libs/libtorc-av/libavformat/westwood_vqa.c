@@ -2,20 +2,20 @@
  * Westwood Studios VQA Format Demuxer
  * Copyright (c) 2003 The ffmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -131,10 +131,8 @@ static int wsvqa_read_header(AVFormatContext *s)
     /* there are 0 or more chunks before the FINF chunk; iterate until
      * FINF has been skipped and the file will be ready to be demuxed */
     do {
-        if (avio_read(pb, scratch, VQA_PREAMBLE_SIZE) != VQA_PREAMBLE_SIZE) {
-            av_free(st->codec->extradata);
+        if (avio_read(pb, scratch, VQA_PREAMBLE_SIZE) != VQA_PREAMBLE_SIZE)
             return AVERROR(EIO);
-        }
         chunk_tag = AV_RB32(&scratch[0]);
         chunk_size = AV_RB32(&scratch[4]);
 
@@ -177,18 +175,15 @@ static int wsvqa_read_packet(AVFormatContext *s,
     while (avio_read(pb, preamble, VQA_PREAMBLE_SIZE) == VQA_PREAMBLE_SIZE) {
         chunk_type = AV_RB32(&preamble[0]);
         chunk_size = AV_RB32(&preamble[4]);
+
         skip_byte = chunk_size & 0x01;
 
         if ((chunk_type == SND0_TAG) || (chunk_type == SND1_TAG) ||
             (chunk_type == SND2_TAG) || (chunk_type == VQFR_TAG)) {
 
-            if (av_new_packet(pkt, chunk_size))
+            ret= av_get_packet(pb, pkt, chunk_size);
+            if (ret<0)
                 return AVERROR(EIO);
-            ret = avio_read(pb, pkt->data, chunk_size);
-            if (ret != chunk_size) {
-                av_free_packet(pkt);
-                return AVERROR(EIO);
-            }
 
             switch (chunk_type) {
             case SND0_TAG:
@@ -238,7 +233,8 @@ static int wsvqa_read_packet(AVFormatContext *s,
                 switch (chunk_type) {
                 case SND1_TAG:
                     /* unpacked size is stored in header */
-                    pkt->duration = AV_RL16(pkt->data) / wsvqa->channels;
+                    if(pkt->data)
+                        pkt->duration = AV_RL16(pkt->data) / wsvqa->channels;
                     break;
                 case SND2_TAG:
                     /* 2 samples/byte, 1 or 2 samples per frame depending on stereo */

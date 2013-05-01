@@ -2,20 +2,20 @@
  * PC Paintbrush PCX (.pcx) image encoder
  * Copyright (c) 2009 Daniel Verkamp <daniel at drv.nu>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -28,6 +28,7 @@
 
 #include "avcodec.h"
 #include "bytestream.h"
+#include "libavutil/imgutils.h"
 #include "internal.h"
 
 typedef struct PCXContext {
@@ -104,8 +105,9 @@ static int pcx_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     const uint8_t *buf_end;
     uint8_t *buf;
 
-    int bpp, nplanes, i, y, line_bytes, written, ret, max_pkt_size;
+    int bpp, nplanes, i, y, line_bytes, written, ret, max_pkt_size, sw, sh;
     const uint32_t *pal = NULL;
+    uint32_t palette256[256];
     const uint8_t *src;
 
     *pict = *frame;
@@ -127,6 +129,11 @@ static int pcx_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     case AV_PIX_FMT_RGB4_BYTE:
     case AV_PIX_FMT_BGR4_BYTE:
     case AV_PIX_FMT_GRAY8:
+        bpp = 8;
+        nplanes = 1;
+        avpriv_set_systematic_pal2(palette256, avctx->pix_fmt);
+        pal = palette256;
+        break;
     case AV_PIX_FMT_PAL8:
         bpp = 8;
         nplanes = 1;
@@ -146,12 +153,15 @@ static int pcx_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     line_bytes = (line_bytes + 1) & ~1;
 
     max_pkt_size = 128 + avctx->height * 2 * line_bytes * nplanes + (pal ? 256*3 + 1 : 0);
-    if ((ret = ff_alloc_packet(pkt, max_pkt_size)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet of size %d.\n", max_pkt_size);
+    if ((ret = ff_alloc_packet2(avctx, pkt, max_pkt_size)) < 0)
         return ret;
-    }
     buf     = pkt->data;
     buf_end = pkt->data + pkt->size;
+
+    sw = avctx->sample_aspect_ratio.num;
+    sh = avctx->sample_aspect_ratio.den;
+    if (sw > 0xFFFFu || sh > 0xFFFFu)
+        av_reduce(&sw, &sh, sw, sh, 0xFFFFu);
 
     bytestream_put_byte(&buf, 10);                  // manufacturer
     bytestream_put_byte(&buf, 5);                   // version
@@ -161,8 +171,8 @@ static int pcx_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     bytestream_put_le16(&buf, 0);                   // y min
     bytestream_put_le16(&buf, avctx->width - 1);    // x max
     bytestream_put_le16(&buf, avctx->height - 1);   // y max
-    bytestream_put_le16(&buf, 0);                   // horizontal DPI
-    bytestream_put_le16(&buf, 0);                   // vertical DPI
+    bytestream_put_le16(&buf, sw);                  // horizontal DPI
+    bytestream_put_le16(&buf, sh);                  // vertical DPI
     for (i = 0; i < 16; i++)
         bytestream_put_be24(&buf, pal ? pal[i] : 0);// palette (<= 16 color only)
     bytestream_put_byte(&buf, 0);                   // reserved

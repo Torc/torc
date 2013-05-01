@@ -4,20 +4,20 @@
  * Copyright (c) 2006-2010 Justin Ruggles <justin.ruggles@gmail.com>
  * Copyright (c) 2006-2010 Prakash Punnoor <prakash@punnoor.de>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -36,8 +36,12 @@
 #if CONFIG_AC3_ENCODER
 #define AC3ENC_TYPE AC3ENC_TYPE_AC3
 #include "ac3enc_opts_template.c"
-static const AVClass ac3enc_class = { "AC-3 Encoder", av_default_item_name,
-                                      ac3_options, LIBAVUTIL_VERSION_INT };
+static const AVClass ac3enc_class = {
+    .class_name = "AC-3 Encoder",
+    .item_name  = av_default_item_name,
+    .option     = ac3_options,
+    .version    = LIBAVUTIL_VERSION_INT,
+};
 #endif
 
 #include "ac3enc_template.c"
@@ -117,6 +121,12 @@ static void scale_coefficients(AC3EncodeContext *s)
                                chan_size * (s->channels + cpl));
 }
 
+static void sum_square_butterfly(AC3EncodeContext *s, float sum[4],
+                                 const float *coef0, const float *coef1,
+                                 int len)
+{
+    s->ac3dsp.sum_square_butterfly_float(sum, coef0, coef1, len);
+}
 
 /*
  * Clip MDCT coefficients to allowable range.

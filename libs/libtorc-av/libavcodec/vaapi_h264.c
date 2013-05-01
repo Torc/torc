@@ -3,20 +3,20 @@
  *
  * Copyright (C) 2008-2009 Splitted-Desktop Systems
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,7 +25,7 @@
 
 /**
  * @file
- * This file implements the glue code between Libav's and VA API's
+ * This file implements the glue code between FFmpeg's and VA API's
  * structures for H.264 decoding.
  */
 
@@ -43,10 +43,10 @@ static void init_vaapi_pic(VAPictureH264 *va_pic)
 }
 
 /**
- * Translate an Libav Picture into its VA API form.
+ * Translate an FFmpeg Picture into its VA API form.
  *
  * @param[out] va_pic          A pointer to VA API's own picture struct
- * @param[in]  pic             A pointer to the Libav picture struct to convert
+ * @param[in]  pic             A pointer to the FFmpeg picture struct to convert
  * @param[in]  pic_structure   The picture field type (as defined in mpegvideo.h),
  *                             supersedes pic's field type if nonzero.
  */
@@ -147,11 +147,11 @@ static int fill_vaapi_ReferenceFrames(VAPictureParameterBufferH264 *pic_param,
 }
 
 /**
- * Fill in VA API reference picture lists from the Libav reference
+ * Fill in VA API reference picture lists from the FFmpeg reference
  * picture list.
  *
  * @param[out] RefPicList  VA API internal reference picture list
- * @param[in]  ref_list    A pointer to the Libav reference list
+ * @param[in]  ref_list    A pointer to the FFmpeg reference list
  * @param[in]  ref_count   The number of reference pictures in ref_list
  */
 static void fill_vaapi_RefPicList(VAPictureH264 RefPicList[32],
@@ -219,17 +219,16 @@ static void fill_vaapi_plain_pred_weight_table(H264Context   *h,
 }
 
 /** Initialize and start decoding a frame with VA API. */
-static int start_frame(AVCodecContext          *avctx,
-                       av_unused const uint8_t *buffer,
-                       av_unused uint32_t       size)
+static int vaapi_h264_start_frame(AVCodecContext          *avctx,
+                                  av_unused const uint8_t *buffer,
+                                  av_unused uint32_t       size)
 {
     H264Context * const h = avctx->priv_data;
-    MpegEncContext * const s = &h->s;
     struct vaapi_context * const vactx = avctx->hwaccel_context;
     VAPictureParameterBufferH264 *pic_param;
     VAIQMatrixBufferH264 *iq_matrix;
 
-    av_dlog(avctx, "start_frame()\n");
+    av_dlog(avctx, "vaapi_h264_start_frame()\n");
 
     vactx->slice_param_size = sizeof(VASliceParameterBufferH264);
 
@@ -237,11 +236,11 @@ static int start_frame(AVCodecContext          *avctx,
     pic_param = ff_vaapi_alloc_pic_param(vactx, sizeof(VAPictureParameterBufferH264));
     if (!pic_param)
         return -1;
-    fill_vaapi_pic(&pic_param->CurrPic, s->current_picture_ptr, s->picture_structure);
+    fill_vaapi_pic(&pic_param->CurrPic, h->cur_pic_ptr, h->picture_structure);
     if (fill_vaapi_ReferenceFrames(pic_param, h) < 0)
         return -1;
-    pic_param->picture_width_in_mbs_minus1                      = s->mb_width - 1;
-    pic_param->picture_height_in_mbs_minus1                     = s->mb_height - 1;
+    pic_param->picture_width_in_mbs_minus1                      = h->mb_width - 1;
+    pic_param->picture_height_in_mbs_minus1                     = h->mb_height - 1;
     pic_param->bit_depth_luma_minus8                            = h->sps.bit_depth_luma - 8;
     pic_param->bit_depth_chroma_minus8                          = h->sps.bit_depth_chroma - 8;
     pic_param->num_ref_frames                                   = h->sps.ref_frame_count;
@@ -259,7 +258,7 @@ static int start_frame(AVCodecContext          *avctx,
     pic_param->seq_fields.bits.delta_pic_order_always_zero_flag = h->sps.delta_pic_order_always_zero_flag;
     pic_param->num_slice_groups_minus1                          = h->pps.slice_group_count - 1;
     pic_param->slice_group_map_type                             = h->pps.mb_slice_group_map_type;
-    pic_param->slice_group_change_rate_minus1                   = 0; /* XXX: unimplemented in Libav */
+    pic_param->slice_group_change_rate_minus1                   = 0; /* XXX: unimplemented in FFmpeg */
     pic_param->pic_init_qp_minus26                              = h->pps.init_qp - 26;
     pic_param->pic_init_qs_minus26                              = h->pps.init_qs - 26;
     pic_param->chroma_qp_index_offset                           = h->pps.chroma_qp_index_offset[0];
@@ -269,7 +268,7 @@ static int start_frame(AVCodecContext          *avctx,
     pic_param->pic_fields.bits.weighted_pred_flag               = h->pps.weighted_pred;
     pic_param->pic_fields.bits.weighted_bipred_idc              = h->pps.weighted_bipred_idc;
     pic_param->pic_fields.bits.transform_8x8_mode_flag          = h->pps.transform_8x8_mode;
-    pic_param->pic_fields.bits.field_pic_flag                   = s->picture_structure != PICT_FRAME;
+    pic_param->pic_fields.bits.field_pic_flag                   = h->picture_structure != PICT_FRAME;
     pic_param->pic_fields.bits.constrained_intra_pred_flag      = h->pps.constrained_intra_pred;
     pic_param->pic_fields.bits.pic_order_present_flag           = h->pps.pic_order_present;
     pic_param->pic_fields.bits.deblocking_filter_control_present_flag = h->pps.deblocking_filter_parameters_present;
@@ -282,42 +281,57 @@ static int start_frame(AVCodecContext          *avctx,
     if (!iq_matrix)
         return -1;
     memcpy(iq_matrix->ScalingList4x4, h->pps.scaling_matrix4, sizeof(iq_matrix->ScalingList4x4));
-    memcpy(iq_matrix->ScalingList8x8, h->pps.scaling_matrix8, sizeof(iq_matrix->ScalingList8x8));
+    memcpy(iq_matrix->ScalingList8x8[0], h->pps.scaling_matrix8[0], sizeof(iq_matrix->ScalingList8x8[0]));
+    memcpy(iq_matrix->ScalingList8x8[1], h->pps.scaling_matrix8[3], sizeof(iq_matrix->ScalingList8x8[0]));
     return 0;
 }
 
 /** End a hardware decoding based frame. */
-static int end_frame(AVCodecContext *avctx)
+static int vaapi_h264_end_frame(AVCodecContext *avctx)
 {
+    struct vaapi_context * const vactx = avctx->hwaccel_context;
     H264Context * const h = avctx->priv_data;
+    int ret;
 
-    av_dlog(avctx, "end_frame()\n");
-    return ff_vaapi_common_end_frame(&h->s);
+    av_dlog(avctx, "vaapi_h264_end_frame()\n");
+    ret = ff_vaapi_commit_slices(vactx);
+    if (ret < 0)
+        goto finish;
+
+    ret = ff_vaapi_render_picture(vactx, ff_vaapi_get_surface_id(h->cur_pic_ptr));
+    if (ret < 0)
+        goto finish;
+
+    ff_h264_draw_horiz_band(h, 0, h->avctx->height);
+
+finish:
+    ff_vaapi_common_end_frame(avctx);
+    return ret;
 }
 
 /** Decode the given H.264 slice with VA API. */
-static int decode_slice(AVCodecContext *avctx,
-                        const uint8_t  *buffer,
-                        uint32_t        size)
+static int vaapi_h264_decode_slice(AVCodecContext *avctx,
+                                   const uint8_t  *buffer,
+                                   uint32_t        size)
 {
     H264Context * const h = avctx->priv_data;
-    MpegEncContext * const s = &h->s;
     VASliceParameterBufferH264 *slice_param;
 
-    av_dlog(avctx, "decode_slice(): buffer %p, size %d\n", buffer, size);
+    av_dlog(avctx, "vaapi_h264_decode_slice(): buffer %p, size %d\n",
+            buffer, size);
 
     /* Fill in VASliceParameterBufferH264. */
     slice_param = (VASliceParameterBufferH264 *)ff_vaapi_alloc_slice(avctx->hwaccel_context, buffer, size);
     if (!slice_param)
         return -1;
-    slice_param->slice_data_bit_offset          = get_bits_count(&h->s.gb) + 8; /* bit buffer started beyond nal_unit_type */
-    slice_param->first_mb_in_slice              = (s->mb_y >> FIELD_OR_MBAFF_PICTURE) * s->mb_width + s->mb_x;
+    slice_param->slice_data_bit_offset          = get_bits_count(&h->gb) + 8; /* bit buffer started beyond nal_unit_type */
+    slice_param->first_mb_in_slice              = (h->mb_y >> FIELD_OR_MBAFF_PICTURE) * h->mb_width + h->mb_x;
     slice_param->slice_type                     = ff_h264_get_slice_type(h);
     slice_param->direct_spatial_mv_pred_flag    = h->slice_type == AV_PICTURE_TYPE_B ? h->direct_spatial_mv_pred : 0;
     slice_param->num_ref_idx_l0_active_minus1   = h->list_count > 0 ? h->ref_count[0] - 1 : 0;
     slice_param->num_ref_idx_l1_active_minus1   = h->list_count > 1 ? h->ref_count[1] - 1 : 0;
     slice_param->cabac_init_idc                 = h->cabac_init_idc;
-    slice_param->slice_qp_delta                 = s->qscale - h->pps.init_qp;
+    slice_param->slice_qp_delta                 = h->qscale - h->pps.init_qp;
     slice_param->disable_deblocking_filter_idc  = h->deblocking_filter < 2 ? !h->deblocking_filter : h->deblocking_filter;
     slice_param->slice_alpha_c0_offset_div2     = h->slice_alpha_c0_offset / 2 - 26;
     slice_param->slice_beta_offset_div2         = h->slice_beta_offset     / 2 - 26;
@@ -341,7 +355,7 @@ AVHWAccel ff_h264_vaapi_hwaccel = {
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = AV_CODEC_ID_H264,
     .pix_fmt        = AV_PIX_FMT_VAAPI_VLD,
-    .start_frame    = start_frame,
-    .end_frame      = end_frame,
-    .decode_slice   = decode_slice,
+    .start_frame    = vaapi_h264_start_frame,
+    .end_frame      = vaapi_h264_end_frame,
+    .decode_slice   = vaapi_h264_decode_slice,
 };

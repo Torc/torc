@@ -8,20 +8,20 @@
  * aspecting, new decode_frame mechanism and apple mjpeg-b support
  *                                  by Alex Beregszaszi
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -33,7 +33,8 @@
 #ifndef AVCODEC_MJPEGENC_H
 #define AVCODEC_MJPEGENC_H
 
-#include "dsputil.h"
+#include <stdint.h>
+
 #include "mpegvideo.h"
 
 typedef struct MJpegContext {
@@ -52,9 +53,9 @@ int  ff_mjpeg_encode_init(MpegEncContext *s);
 void ff_mjpeg_encode_close(MpegEncContext *s);
 void ff_mjpeg_encode_picture_header(MpegEncContext *s);
 void ff_mjpeg_encode_picture_trailer(MpegEncContext *s);
-void ff_mjpeg_encode_stuffing(PutBitContext *pbc);
+void ff_mjpeg_encode_stuffing(MpegEncContext *s);
 void ff_mjpeg_encode_dc(MpegEncContext *s, int val,
                         uint8_t *huff_size, uint16_t *huff_code);
-void ff_mjpeg_encode_mb(MpegEncContext *s, DCTELEM block[6][64]);
+void ff_mjpeg_encode_mb(MpegEncContext *s, int16_t block[6][64]);
 
 #endif /* AVCODEC_MJPEGENC_H */

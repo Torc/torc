@@ -2,20 +2,20 @@
  * Session Announcement Protocol (RFC 2974) muxer
  * Copyright (c) 2010 Martin Storsjo
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -23,8 +23,10 @@
 #include "libavutil/parseutils.h"
 #include "libavutil/random_seed.h"
 #include "libavutil/avstring.h"
+#include "libavutil/dict.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/time.h"
+#include "libavutil/dict.h"
 #include "internal.h"
 #include "network.h"
 #include "os_support.h"
@@ -76,6 +78,7 @@ static int sap_write_header(AVFormatContext *s)
     struct sockaddr_storage localaddr;
     socklen_t addrlen = sizeof(localaddr);
     int udp_fd;
+    AVDictionaryEntry* title = av_dict_get(s->metadata, "title", NULL, 0);
 
     if (!ff_network_init())
         return AVERROR(EIO);
@@ -151,12 +154,15 @@ static int sap_write_header(AVFormatContext *s)
             ret = AVERROR(EIO);
             goto fail;
         }
-        ret = ff_rtp_chain_mux_open(&contexts[i], s, s->streams[i], fd, 0);
+        ret = ff_rtp_chain_mux_open(&contexts[i], s, s->streams[i], fd, 0, i);
         if (ret < 0)
             goto fail;
         s->streams[i]->priv_data = contexts[i];
         av_strlcpy(contexts[i]->filename, url, sizeof(contexts[i]->filename));
     }
+
+    if (s->nb_streams > 0 && title)
+        av_dict_set(&contexts[0]->metadata, "title", title->value, 0);
 
     ff_url_join(url, sizeof(url), "udp", NULL, announce_addr, port,
                 "?ttl=%d&connect=1", ttl);

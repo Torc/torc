@@ -17,6 +17,10 @@ subtitle and user-defined streams in a simple, yet efficient, way.
 It was created by a group of FFmpeg and MPlayer developers in 2003
 and was finalized in 2008.
 
+The official nut specification is at svn://svn.mplayerhq.hu/nut
+In case of any differences between this text and the official specification,
+the official specification shall prevail.
+
 @chapter Container-specific codec tags
 
 @section Generic raw YUVA formats
@@ -64,6 +68,12 @@ PFD[32]   would for example be signed 32 bit little-endian IEEE float
 @item SSA[0] @tab SubStation Alpha
 @item DVDS   @tab DVD subtitles
 @item DVBS   @tab DVB subtitles
+@end multitable
+
+@section Raw Data
+
+@multitable @columnfractions .4 .4
+@item UTF8   @tab Raw UTF-8
 @end multitable
 
 @section Codecs

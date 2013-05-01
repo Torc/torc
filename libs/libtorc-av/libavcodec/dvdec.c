@@ -13,20 +13,20 @@
  * Many thanks to Dan Dennedy <dan@dennedy.org> for providing wealth
  * of DV technical info.
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -35,9 +35,11 @@
  * DV decoder
  */
 
+#include "libavutil/avassert.h"
+#include "libavutil/internal.h"
 #include "libavutil/pixdesc.h"
 #include "avcodec.h"
-#include "dsputil.h"
+#include "internal.h"
 #include "get_bits.h"
 #include "put_bits.h"
 #include "simple_idct.h"
@@ -47,7 +49,7 @@ typedef struct BlockInfo {
     const uint32_t *factor_table;
     const uint8_t *scan_table;
     uint8_t pos; /* position in block */
-    void (*idct_put)(uint8_t *dest, int line_size, DCTELEM *block);
+    void (*idct_put)(uint8_t *dest, int line_size, int16_t *block);
     uint8_t partial_bit_count;
     uint32_t partial_bit_buffer;
     int shift_offset;
@@ -56,7 +58,7 @@ typedef struct BlockInfo {
 static const int dv_iweight_bits = 14;
 
 /* decode AC coefficients */
-static void dv_decode_ac(GetBitContext *gb, BlockInfo *mb, DCTELEM *block)
+static void dv_decode_ac(GetBitContext *gb, BlockInfo *mb, int16_t *block)
 {
     int last_index = gb->size_in_bits;
     const uint8_t  *scan_table   = mb->scan_table;
@@ -134,21 +136,21 @@ static int dv_decode_video_segment(AVCodecContext *avctx, void *arg)
     int quant, dc, dct_mode, class1, j;
     int mb_index, mb_x, mb_y, last_index;
     int y_stride, linesize;
-    DCTELEM *block, *block1;
+    int16_t *block, *block1;
     int c_offset;
     uint8_t *y_ptr;
     const uint8_t *buf_ptr;
     PutBitContext pb, vs_pb;
     GetBitContext gb;
     BlockInfo mb_data[5 * DV_MAX_BPM], *mb, *mb1;
-    LOCAL_ALIGNED_16(DCTELEM, sblock, [5*DV_MAX_BPM], [64]);
+    LOCAL_ALIGNED_16(int16_t, sblock, [5*DV_MAX_BPM], [64]);
     LOCAL_ALIGNED_16(uint8_t, mb_bit_buffer, [  80 + FF_INPUT_BUFFER_PADDING_SIZE]); /* allow some slack */
     LOCAL_ALIGNED_16(uint8_t, vs_bit_buffer, [5*80 + FF_INPUT_BUFFER_PADDING_SIZE]); /* allow some slack */
-    const int log2_blocksize = 3;
+    const int log2_blocksize = 3-s->avctx->lowres;
     int is_field_mode[5];
 
-    assert((((int)mb_bit_buffer) & 7) == 0);
-    assert((((int)vs_bit_buffer) & 7) == 0);
+    av_assert1((((int)mb_bit_buffer) & 7) == 0);
+    av_assert1((((int)vs_bit_buffer) & 7) == 0);
 
     memset(sblock, 0, 5*DV_MAX_BPM*sizeof(*sblock));
 
@@ -310,7 +312,7 @@ static int dv_decode_video_segment(AVCodecContext *avctx, void *arg)
 /* NOTE: exactly one frame must be given (120000 bytes for NTSC,
    144000 bytes for PAL - or twice those for 50Mbps) */
 static int dvvideo_decode_frame(AVCodecContext *avctx,
-                                 void *data, int *data_size,
+                                 void *data, int *got_frame,
                                  AVPacket *avpkt)
 {
     uint8_t *buf = avpkt->data;
@@ -319,7 +321,7 @@ static int dvvideo_decode_frame(AVCodecContext *avctx,
     const uint8_t* vsc_pack;
     int apt, is16_9;
 
-    s->sys = avpriv_dv_frame_profile(s->sys, buf, buf_size);
+    s->sys = avpriv_dv_frame_profile2(avctx, s->sys, buf, buf_size);
     if (!s->sys || buf_size < s->sys->frame_size || ff_dv_init_dynamic_tables(s->sys)) {
         av_log(avctx, AV_LOG_ERROR, "could not find dv frame profile\n");
         return -1; /* NOTE: we only accept several full frames */
@@ -328,18 +330,28 @@ static int dvvideo_decode_frame(AVCodecContext *avctx,
     if (s->picture.data[0])
         avctx->release_buffer(avctx, &s->picture);
 
+    avcodec_get_frame_defaults(&s->picture);
     s->picture.reference = 0;
     s->picture.key_frame = 1;
     s->picture.pict_type = AV_PICTURE_TYPE_I;
     avctx->pix_fmt   = s->sys->pix_fmt;
     avctx->time_base = s->sys->time_base;
     avcodec_set_dimensions(avctx, s->sys->width, s->sys->height);
-    if (avctx->get_buffer(avctx, &s->picture) < 0) {
+    if (ff_get_buffer(avctx, &s->picture) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return -1;
     }
     s->picture.interlaced_frame = 1;
     s->picture.top_field_first  = 0;
+
+    /* Determine the codec's sample_aspect ratio and field order from the packet */
+    vsc_pack = buf + 80*5 + 48 + 5;
+    if ( *vsc_pack == dv_video_control ) {
+        apt = buf[4] & 0x07;
+        is16_9 = (vsc_pack[2] & 0x07) == 0x02 || (!apt && (vsc_pack[2] & 0x07) == 0x07);
+        avctx->sample_aspect_ratio = s->sys->sar[is16_9];
+        s->picture.top_field_first = !(vsc_pack[3] & 0x40);
+    }
 
     s->buf = buf;
     avctx->execute(avctx, dv_decode_video_segment, s->sys->work_chunks, NULL,
@@ -348,16 +360,8 @@ static int dvvideo_decode_frame(AVCodecContext *avctx,
     emms_c();
 
     /* return image */
-    *data_size = sizeof(AVFrame);
+    *got_frame = 1;
     *(AVFrame*)data = s->picture;
-
-    /* Determine the codec's sample_aspect ratio from the packet */
-    vsc_pack = buf + 80*5 + 48 + 5;
-    if ( *vsc_pack == dv_video_control ) {
-        apt = buf[4] & 0x07;
-        is16_9 = (vsc_pack && ((vsc_pack[2] & 0x07) == 0x02 || (!apt && (vsc_pack[2] & 0x07) == 0x07)));
-        avctx->sample_aspect_ratio = s->sys->sar[is16_9];
-    }
 
     return s->sys->frame_size;
 }
@@ -381,5 +385,6 @@ AVCodec ff_dvvideo_decoder = {
     .close          = dvvideo_close,
     .decode         = dvvideo_decode_frame,
     .capabilities   = CODEC_CAP_DR1 | CODEC_CAP_SLICE_THREADS,
+    .max_lowres     = 3,
     .long_name      = NULL_IF_CONFIG_SMALL("DV (Digital Video)"),
 };

@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2007 The Libav Project
+ * Copyright (c) 2007 The FFmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,6 +27,7 @@
 #include "config.h"
 #include "libavutil/error.h"
 #include "os_support.h"
+#include "avio.h"
 
 #if HAVE_UNISTD_H
 #include <unistd.h>
@@ -80,6 +81,18 @@ void ff_tls_init(void);
 void ff_tls_deinit(void);
 
 int ff_network_wait_fd(int fd, int write);
+
+/**
+ * This works similarly to ff_network_wait_fd, but waits up to 'timeout' microseconds
+ * Uses ff_network_wait_fd in a loop
+ *
+ * @fd Socket descriptor
+ * @write Set 1 to wait for socket able to be read, 0 to be written
+ * @timeout Timeout interval, in microseconds. Actual precision is 100000 mcs, due to ff_network_wait_fd usage
+ * @param int_cb Interrupt callback, is checked after each ff_network_wait_fd call
+ * @return 0 if data can be read/written, AVERROR(ETIMEDOUT) if timeout expired, or negative error code
+ */
+int ff_network_wait_fd_timeout(int fd, int write, int64_t timeout, AVIOInterruptCB *int_cb);
 
 int ff_inet_aton (const char * str, struct in_addr * add);
 

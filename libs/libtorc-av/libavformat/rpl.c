@@ -2,20 +2,20 @@
  * ARMovie/RPL demuxer
  * Copyright (c) 2007 Christian Ohm, 2008 Eli Friedman
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -58,7 +58,7 @@ static int read_line(AVIOContext * pb, char* line, int bufsize)
             break;
         if (b == '\n') {
             line[i] = '\0';
-            return 0;
+            return url_feof(pb) ? -1 : 0;
         }
         line[i] = b;
     }
@@ -164,11 +164,9 @@ static int rpl_read_header(AVFormatContext *s)
             // The header is wrong here, at least sometimes
             vst->codec->bits_per_coded_sample = 16;
             break;
-#if 0
         case 130:
             vst->codec->codec_id = AV_CODEC_ID_ESCAPE130;
             break;
-#endif
         default:
             av_log(s, AV_LOG_WARNING,
                    "RPL video format %i not supported yet!\n",
@@ -254,7 +252,7 @@ static int rpl_read_header(AVFormatContext *s)
     // Read the index
     avio_seek(pb, chunk_catalog_offset, SEEK_SET);
     total_audio_size = 0;
-    for (i = 0; i < number_of_chunks; i++) {
+    for (i = 0; !error && i < number_of_chunks; i++) {
         int64_t offset, video_size, audio_size;
         error |= read_line(pb, line, sizeof(line));
         if (3 != sscanf(line, "%"PRId64" , %"PRId64" ; %"PRId64,
@@ -289,7 +287,7 @@ static int rpl_read_packet(AVFormatContext *s, AVPacket *pkt)
     stream = s->streams[rpl->chunk_part];
 
     if (rpl->chunk_number >= stream->nb_index_entries)
-        return -1;
+        return AVERROR_EOF;
 
     index_entry = &stream->index_entries[rpl->chunk_number];
 

@@ -2,20 +2,20 @@
  * AAC encoder
  * Copyright (C) 2008 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -34,7 +34,6 @@
 #include "libavutil/opt.h"
 #include "avcodec.h"
 #include "put_bits.h"
-#include "dsputil.h"
 #include "internal.h"
 #include "mpeg4audio.h"
 #include "kbdwin.h"
@@ -146,7 +145,7 @@ static const uint8_t aac_chan_configs[6][5] = {
 };
 
 /**
- * Table to remap channels from Libav's default order to AAC order.
+ * Table to remap channels from libavcodec's default order to AAC order.
  */
 static const uint8_t aac_chan_maps[AAC_MAX_CHANNELS][AAC_MAX_CHANNELS] = {
     { 0 },
@@ -183,7 +182,7 @@ static void put_audio_specific_config(AVCodecContext *avctx)
 }
 
 #define WINDOW_FUNC(type) \
-static void apply_ ##type ##_window(DSPContext *dsp, AVFloatDSPContext *fdsp, \
+static void apply_ ##type ##_window(AVFloatDSPContext *fdsp, \
                                     SingleChannelElement *sce, \
                                     const float *audio)
 
@@ -191,21 +190,21 @@ WINDOW_FUNC(only_long)
 {
     const float *lwindow = sce->ics.use_kb_window[0] ? ff_aac_kbd_long_1024 : ff_sine_1024;
     const float *pwindow = sce->ics.use_kb_window[1] ? ff_aac_kbd_long_1024 : ff_sine_1024;
-    float *out = sce->ret;
+    float *out = sce->ret_buf;
 
-    fdsp->vector_fmul       (out,        audio,        lwindow, 1024);
-    dsp->vector_fmul_reverse(out + 1024, audio + 1024, pwindow, 1024);
+    fdsp->vector_fmul        (out,        audio,        lwindow, 1024);
+    fdsp->vector_fmul_reverse(out + 1024, audio + 1024, pwindow, 1024);
 }
 
 WINDOW_FUNC(long_start)
 {
     const float *lwindow = sce->ics.use_kb_window[1] ? ff_aac_kbd_long_1024 : ff_sine_1024;
     const float *swindow = sce->ics.use_kb_window[0] ? ff_aac_kbd_short_128 : ff_sine_128;
-    float *out = sce->ret;
+    float *out = sce->ret_buf;
 
     fdsp->vector_fmul(out, audio, lwindow, 1024);
     memcpy(out + 1024, audio + 1024, sizeof(out[0]) * 448);
-    dsp->vector_fmul_reverse(out + 1024 + 448, audio + 1024 + 448, swindow, 128);
+    fdsp->vector_fmul_reverse(out + 1024 + 448, audio + 1024 + 448, swindow, 128);
     memset(out + 1024 + 576, 0, sizeof(out[0]) * 448);
 }
 
@@ -213,12 +212,12 @@ WINDOW_FUNC(long_stop)
 {
     const float *lwindow = sce->ics.use_kb_window[0] ? ff_aac_kbd_long_1024 : ff_sine_1024;
     const float *swindow = sce->ics.use_kb_window[1] ? ff_aac_kbd_short_128 : ff_sine_128;
-    float *out = sce->ret;
+    float *out = sce->ret_buf;
 
     memset(out, 0, sizeof(out[0]) * 448);
     fdsp->vector_fmul(out + 448, audio + 448, swindow, 128);
     memcpy(out + 576, audio + 576, sizeof(out[0]) * 448);
-    dsp->vector_fmul_reverse(out + 1024, audio + 1024, lwindow, 1024);
+    fdsp->vector_fmul_reverse(out + 1024, audio + 1024, lwindow, 1024);
 }
 
 WINDOW_FUNC(eight_short)
@@ -226,19 +225,19 @@ WINDOW_FUNC(eight_short)
     const float *swindow = sce->ics.use_kb_window[0] ? ff_aac_kbd_short_128 : ff_sine_128;
     const float *pwindow = sce->ics.use_kb_window[1] ? ff_aac_kbd_short_128 : ff_sine_128;
     const float *in = audio + 448;
-    float *out = sce->ret;
+    float *out = sce->ret_buf;
     int w;
 
     for (w = 0; w < 8; w++) {
-        fdsp->vector_fmul       (out, in, w ? pwindow : swindow, 128);
+        fdsp->vector_fmul        (out, in, w ? pwindow : swindow, 128);
         out += 128;
         in  += 128;
-        dsp->vector_fmul_reverse(out, in, swindow, 128);
+        fdsp->vector_fmul_reverse(out, in, swindow, 128);
         out += 128;
     }
 }
 
-static void (*const apply_window[4])(DSPContext *dsp, AVFloatDSPContext *fdsp,
+static void (*const apply_window[4])(AVFloatDSPContext *fdsp,
                                      SingleChannelElement *sce,
                                      const float *audio) = {
     [ONLY_LONG_SEQUENCE]   = apply_only_long_window,
@@ -251,9 +250,9 @@ static void apply_window_and_mdct(AACEncContext *s, SingleChannelElement *sce,
                                   float *audio)
 {
     int i;
-    float *output = sce->ret;
+    float *output = sce->ret_buf;
 
-    apply_window[sce->ics.window_sequence[0]](&s->dsp, &s->fdsp, sce, audio);
+    apply_window[sce->ics.window_sequence[0]](&s->fdsp, sce, audio);
 
     if (sce->ics.window_sequence[0] != EIGHT_SHORT_SEQUENCE)
         s->mdct1024.mdct_calc(&s->mdct1024, sce->coeffs, output);
@@ -302,7 +301,7 @@ static void encode_ms_info(PutBitContext *pb, ChannelElement *cpe)
 /**
  * Produce integer coefficients from scalefactors provided by the model.
  */
-static void adjust_frame_information(AACEncContext *apc, ChannelElement *cpe, int chans)
+static void adjust_frame_information(ChannelElement *cpe, int chans)
 {
     int i, w, w2, g, ch;
     int start, maxsfb, cmaxsfb;
@@ -385,8 +384,7 @@ static void encode_scale_factors(AVCodecContext *avctx, AACEncContext *s,
         for (i = 0; i < sce->ics.max_sfb; i++) {
             if (!sce->zeroes[w*16 + i]) {
                 diff = sce->sf_idx[w*16 + i] - off + SCALE_DIFF_ZERO;
-                if (diff < 0 || diff > 120)
-                    av_log(avctx, AV_LOG_ERROR, "Scalefactor difference is too big to be coded\n");
+                av_assert0(diff >= 0 && diff <= 120);
                 off = sce->sf_idx[w*16 + i];
                 put_bits(&s->pb, ff_aac_scalefactor_bits[diff], ff_aac_scalefactor_code[diff]);
             }
@@ -460,8 +458,7 @@ static int encode_individual_channel(AVCodecContext *avctx, AACEncContext *s,
 /**
  * Write some auxiliary information about the created AAC file.
  */
-static void put_bitstream_info(AVCodecContext *avctx, AACEncContext *s,
-                               const char *name)
+static void put_bitstream_info(AACEncContext *s, const char *name)
 {
     int i, namelen, padbits;
 
@@ -480,7 +477,7 @@ static void put_bitstream_info(AVCodecContext *avctx, AACEncContext *s,
 
 /*
  * Copy input samples.
- * Channels are reordered from Libav's default order to AAC order.
+ * Channels are reordered from libavcodec's default order to AAC order.
  */
 static void copy_input_samples(AACEncContext *s, const AVFrame *frame)
 {
@@ -519,7 +516,7 @@ static int aac_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
 
     /* add current frame to queue */
     if (frame) {
-        if ((ret = ff_af_queue_add(&s->afq, frame) < 0))
+        if ((ret = ff_af_queue_add(&s->afq, frame)) < 0)
             return ret;
     }
 
@@ -573,18 +570,15 @@ static int aac_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
         }
         start_ch += chans;
     }
-    if ((ret = ff_alloc_packet(avpkt, 768 * s->channels))) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, 8192 * s->channels)) < 0)
         return ret;
-    }
-
     do {
         int frame_bits;
 
         init_put_bits(&s->pb, avpkt->data, avpkt->size);
 
         if ((avctx->frame_number & 0xFF)==1 && !(avctx->flags & CODEC_FLAG_BITEXACT))
-            put_bitstream_info(avctx, s, LIBAVCODEC_IDENT);
+            put_bitstream_info(s, LIBAVCODEC_IDENT);
         start_ch = 0;
         memset(chan_el_counter, 0, sizeof(chan_el_counter));
         for (i = 0; i < s->chan_map[0]; i++) {
@@ -626,7 +620,7 @@ static int aac_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
                     s->coder->search_for_ms(s, cpe, s->lambda);
                 }
             }
-            adjust_frame_information(s, cpe, chans);
+            adjust_frame_information(cpe, chans);
             if (chans == 2) {
                 put_bits(&s->pb, 1, cpe->common_window);
                 if (cpe->common_window) {
@@ -695,7 +689,6 @@ static av_cold int dsp_init(AVCodecContext *avctx, AACEncContext *s)
 {
     int ret = 0;
 
-    ff_dsputil_init(&s->dsp, avctx);
     avpriv_float_dsp_init(&s->fdsp, avctx->flags & CODEC_FLAG_BITEXACT);
 
     // window init
@@ -779,7 +772,7 @@ static av_cold int aac_encode_init(AVCodecContext *avctx)
     if (ret = ff_psy_init(&s->psy, avctx, 2, sizes, lengths, s->chan_map[0], grouping))
         goto fail;
     s->psypp = ff_psy_preprocess_init(avctx);
-    s->coder = &ff_aac_coders[2];
+    s->coder = &ff_aac_coders[s->options.aac_coder];
 
     s->lambda = avctx->global_quality ? avctx->global_quality : 120;
 
@@ -803,6 +796,7 @@ static const AVOption aacenc_options[] = {
         {"auto",     "Selected by the Encoder", 0, AV_OPT_TYPE_CONST, {.i64 = -1 }, INT_MIN, INT_MAX, AACENC_FLAGS, "stereo_mode"},
         {"ms_off",   "Disable Mid/Side coding", 0, AV_OPT_TYPE_CONST, {.i64 =  0 }, INT_MIN, INT_MAX, AACENC_FLAGS, "stereo_mode"},
         {"ms_force", "Force Mid/Side for the whole frame if possible", 0, AV_OPT_TYPE_CONST, {.i64 =  1 }, INT_MIN, INT_MAX, AACENC_FLAGS, "stereo_mode"},
+    {"aac_coder", "", offsetof(AACEncContext, options.aac_coder), AV_OPT_TYPE_INT, {.i64 = 2}, 0, AAC_CODER_NB-1, AACENC_FLAGS},
     {NULL}
 };
 
@@ -813,6 +807,13 @@ static const AVClass aacenc_class = {
     LIBAVUTIL_VERSION_INT,
 };
 
+/* duplicated from avpriv_mpeg4audio_sample_rates to avoid shared build
+ * failures */
+static const int mpeg4audio_sample_rates[16] = {
+    96000, 88200, 64000, 48000, 44100, 32000,
+    24000, 22050, 16000, 12000, 11025, 8000, 7350
+};
+
 AVCodec ff_aac_encoder = {
     .name           = "aac",
     .type           = AVMEDIA_TYPE_AUDIO,
@@ -821,6 +822,7 @@ AVCodec ff_aac_encoder = {
     .init           = aac_encode_init,
     .encode2        = aac_encode_frame,
     .close          = aac_encode_end,
+    .supported_samplerates = mpeg4audio_sample_rates,
     .capabilities   = CODEC_CAP_SMALL_LAST_FRAME | CODEC_CAP_DELAY |
                       CODEC_CAP_EXPERIMENTAL,
     .sample_fmts    = (const enum AVSampleFormat[]){ AV_SAMPLE_FMT_FLTP,

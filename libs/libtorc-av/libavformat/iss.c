@@ -2,20 +2,20 @@
  * ISS (.iss) file demuxer
  * Copyright (c) 2008 Jaikrishnan Menon <realityman@gmx.net>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -26,6 +26,7 @@
  * @see http://wiki.multimedia.cx/index.php?title=FunCom_ISS
  */
 
+#include "libavutil/channel_layout.h"
 #include "avformat.h"
 #include "internal.h"
 #include "libavutil/avstring.h"
@@ -87,6 +88,11 @@ static av_cold int iss_read_header(AVFormatContext *s)
     get_token(pb, token, sizeof(token)); //Version ID
     get_token(pb, token, sizeof(token)); //Size
 
+    if (iss->packet_size <= 0) {
+        av_log(s, AV_LOG_ERROR, "packet_size %d is invalid\n", iss->packet_size);
+        return AVERROR_INVALIDDATA;
+    }
+
     iss->sample_start_pos = avio_tell(pb);
 
     st = avformat_new_stream(s, NULL);
@@ -94,7 +100,13 @@ static av_cold int iss_read_header(AVFormatContext *s)
         return AVERROR(ENOMEM);
     st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
     st->codec->codec_id = AV_CODEC_ID_ADPCM_IMA_ISS;
-    st->codec->channels = stereo ? 2 : 1;
+    if (stereo) {
+        st->codec->channels       = 2;
+        st->codec->channel_layout = AV_CH_LAYOUT_STEREO;
+    } else {
+        st->codec->channels       = 1;
+        st->codec->channel_layout = AV_CH_LAYOUT_MONO;
+    }
     st->codec->sample_rate = 44100;
     if(rate_divisor > 0)
          st->codec->sample_rate /= rate_divisor;

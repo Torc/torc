@@ -1,19 +1,19 @@
 /*
  * Copyright (c) 2010 Stefano Sabatini
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -189,7 +189,7 @@ static int set_params(AVFilterContext *ctx, const char *params)
         case F0R_PARAM_POSITION:
             v = &pos;
             frei0r->get_param_value(frei0r->instance, v, i);
-            av_log(ctx, AV_LOG_DEBUG, "%lf/%lf", pos.x, pos.y);
+            av_log(ctx, AV_LOG_DEBUG, "%f/%f", pos.x, pos.y);
             break;
         default: /* F0R_PARAM_STRING */
             v = s;
@@ -204,13 +204,15 @@ static int set_params(AVFilterContext *ctx, const char *params)
     return 0;
 }
 
-static void *load_path(AVFilterContext *ctx, const char *prefix, const char *name)
+static int load_path(AVFilterContext *ctx, void **handle_ptr, const char *prefix, const char *name)
 {
-    char path[1024];
-
-    snprintf(path, sizeof(path), "%s%s%s", prefix, name, SLIBSUF);
+    char *path = av_asprintf("%s%s%s", prefix, name, SLIBSUF);
+    if (!path)
+        return AVERROR(ENOMEM);
     av_log(ctx, AV_LOG_DEBUG, "Looking for frei0r effect in '%s'\n", path);
-    return dlopen(path, RTLD_NOW|RTLD_LOCAL);
+    *handle_ptr = dlopen(path, RTLD_NOW|RTLD_LOCAL);
+    av_free(path);
+    return 0;
 }
 
 static av_cold int frei0r_init(AVFilterContext *ctx,
@@ -221,24 +223,55 @@ static av_cold int frei0r_init(AVFilterContext *ctx,
     f0r_get_plugin_info_f f0r_get_plugin_info;
     f0r_plugin_info_t *pi;
     char *path;
+    int ret = 0;
 
-    /* see: http://piksel.org/frei0r/1.2/spec/1.2/spec/group__pluglocations.html */
+    /* see: http://frei0r.dyne.org/codedoc/html/group__pluglocations.html */
     if ((path = av_strdup(getenv("FREI0R_PATH")))) {
+#ifdef _WIN32
+        const char *separator = ";";
+#else
+        const char *separator = ":";
+#endif
         char *p, *ptr = NULL;
-        for (p = path; p = strtok_r(p, ":", &ptr); p = NULL)
-            if (frei0r->dl_handle = load_path(ctx, p, dl_name))
+        for (p = path; p = av_strtok(p, separator, &ptr); p = NULL) {
+            /* add additional trailing slash in case it is missing */
+            char *p1 = av_asprintf("%s/", p);
+            if (!p1) {
+                ret = AVERROR(ENOMEM);
+                goto check_path_end;
+            }
+            ret = load_path(ctx, &frei0r->dl_handle, p1, dl_name);
+            av_free(p1);
+            if (ret < 0)
+                goto check_path_end;
+            if (frei0r->dl_handle)
                 break;
+        }
+
+    check_path_end:
         av_free(path);
+        if (ret < 0)
+            return ret;
     }
     if (!frei0r->dl_handle && (path = getenv("HOME"))) {
-        char prefix[1024];
-        snprintf(prefix, sizeof(prefix), "%s/.frei0r-1/lib/", path);
-        frei0r->dl_handle = load_path(ctx, prefix, dl_name);
+        char *prefix = av_asprintf("%s/.frei0r-1/lib/", path);
+        if (!prefix)
+            return AVERROR(ENOMEM);
+        ret = load_path(ctx, &frei0r->dl_handle, prefix, dl_name);
+        av_free(prefix);
+        if (ret < 0)
+            return ret;
     }
-    if (!frei0r->dl_handle)
-        frei0r->dl_handle = load_path(ctx, "/usr/local/lib/frei0r-1/", dl_name);
-    if (!frei0r->dl_handle)
-        frei0r->dl_handle = load_path(ctx, "/usr/lib/frei0r-1/", dl_name);
+    if (!frei0r->dl_handle) {
+        ret = load_path(ctx, &frei0r->dl_handle, "/usr/local/lib/frei0r-1/", dl_name);
+        if (ret < 0)
+            return ret;
+    }
+    if (!frei0r->dl_handle) {
+        ret = load_path(ctx, &frei0r->dl_handle, "/usr/lib/frei0r-1/", dl_name);
+        if (ret < 0)
+            return ret;
+    }
     if (!frei0r->dl_handle) {
         av_log(ctx, AV_LOG_ERROR, "Could not find module '%s'\n", dl_name);
         return AVERROR(EINVAL);
@@ -256,7 +289,7 @@ static av_cold int frei0r_init(AVFilterContext *ctx,
         return AVERROR(EINVAL);
 
     if (f0r_init() < 0) {
-        av_log(ctx, AV_LOG_ERROR, "Could not init the frei0r module");
+        av_log(ctx, AV_LOG_ERROR, "Could not init the frei0r module\n");
         return AVERROR(EINVAL);
     }
 
@@ -316,7 +349,7 @@ static int config_input_props(AVFilterLink *inlink)
     Frei0rContext *frei0r = ctx->priv;
 
     if (!(frei0r->instance = frei0r->construct(inlink->w, inlink->h))) {
-        av_log(ctx, AV_LOG_ERROR, "Impossible to load frei0r instance");
+        av_log(ctx, AV_LOG_ERROR, "Impossible to load frei0r instance\n");
         return AVERROR(EINVAL);
     }
 
@@ -346,35 +379,34 @@ static int query_formats(AVFilterContext *ctx)
     return 0;
 }
 
-static int null_draw_slice(AVFilterLink *inlink, int y, int h, int slice_dir)
-{
-    return 0;
-}
-
-static int end_frame(AVFilterLink *inlink)
+static int filter_frame(AVFilterLink *inlink, AVFilterBufferRef *in)
 {
     Frei0rContext *frei0r = inlink->dst->priv;
     AVFilterLink *outlink = inlink->dst->outputs[0];
-    AVFilterBufferRef  *inpicref =  inlink->cur_buf;
-    AVFilterBufferRef *outpicref = outlink->out_buf;
-    int ret;
+    AVFilterBufferRef *out;
 
-    frei0r->update(frei0r->instance, inpicref->pts * av_q2d(inlink->time_base) * 1000,
-                   (const uint32_t *)inpicref->data[0],
-                   (uint32_t *)outpicref->data[0]);
-    if ((ret = ff_draw_slice(outlink, 0, outlink->h, 1)) ||
-        (ret = ff_end_frame(outlink)) < 0)
-        return ret;
-    return 0;
+    out = ff_get_video_buffer(outlink, AV_PERM_WRITE, outlink->w, outlink->h);
+    if (!out) {
+        avfilter_unref_bufferp(&in);
+        return AVERROR(ENOMEM);
+    }
+    avfilter_copy_buffer_ref_props(out, in);
+
+    frei0r->update(frei0r->instance, in->pts * av_q2d(inlink->time_base) * 1000,
+                   (const uint32_t *)in->data[0],
+                   (uint32_t *)out->data[0]);
+
+    avfilter_unref_bufferp(&in);
+
+    return ff_filter_frame(outlink, out);
 }
 
 static const AVFilterPad avfilter_vf_frei0r_inputs[] = {
     {
         .name         = "default",
         .type         = AVMEDIA_TYPE_VIDEO,
-        .draw_slice   = null_draw_slice,
         .config_props = config_input_props,
-        .end_frame    = end_frame,
+        .filter_frame = filter_frame,
         .min_perms    = AV_PERM_READ
     },
     { NULL }
@@ -422,8 +454,7 @@ static av_cold int source_init(AVFilterContext *ctx, const char *args)
         return AVERROR(EINVAL);
     }
 
-    if (av_parse_video_rate(&frame_rate_q, frame_rate) < 0 ||
-        frame_rate_q.den <= 0 || frame_rate_q.num <= 0) {
+    if (av_parse_video_rate(&frame_rate_q, frame_rate) < 0) {
         av_log(ctx, AV_LOG_ERROR, "Invalid frame rate: '%s'\n", frame_rate);
         return AVERROR(EINVAL);
     }
@@ -443,9 +474,10 @@ static int source_config_props(AVFilterLink *outlink)
     outlink->w = frei0r->w;
     outlink->h = frei0r->h;
     outlink->time_base = frei0r->time_base;
+    outlink->sample_aspect_ratio = (AVRational){1,1};
 
     if (!(frei0r->instance = frei0r->construct(outlink->w, outlink->h))) {
-        av_log(ctx, AV_LOG_ERROR, "Impossible to load frei0r instance");
+        av_log(ctx, AV_LOG_ERROR, "Impossible to load frei0r instance\n");
         return AVERROR(EINVAL);
     }
 
@@ -456,38 +488,18 @@ static int source_request_frame(AVFilterLink *outlink)
 {
     Frei0rContext *frei0r = outlink->src->priv;
     AVFilterBufferRef *picref = ff_get_video_buffer(outlink, AV_PERM_WRITE, outlink->w, outlink->h);
-    AVFilterBufferRef *buf_out;
-    int ret;
 
     if (!picref)
         return AVERROR(ENOMEM);
 
-    picref->video->pixel_aspect = (AVRational) {1, 1};
+    picref->video->sample_aspect_ratio = (AVRational) {1, 1};
     picref->pts = frei0r->pts++;
     picref->pos = -1;
 
-    buf_out = avfilter_ref_buffer(picref, ~0);
-    if (!buf_out) {
-        ret = AVERROR(ENOMEM);
-        goto fail;
-    }
-
-    ret = ff_start_frame(outlink, buf_out);
-    if (ret < 0)
-        goto fail;
-
     frei0r->update(frei0r->instance, av_rescale_q(picref->pts, frei0r->time_base, (AVRational){1,1000}),
                    NULL, (uint32_t *)picref->data[0]);
-    ret = ff_draw_slice(outlink, 0, outlink->h, 1);
-    if (ret < 0)
-        goto fail;
 
-    ret = ff_end_frame(outlink);
-
-fail:
-    avfilter_unref_buffer(picref);
-
-    return ret;
+    return ff_filter_frame(outlink, picref);
 }
 
 static const AVFilterPad avfilter_vsrc_frei0r_src_outputs[] = {

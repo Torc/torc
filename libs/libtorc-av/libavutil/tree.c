@@ -1,20 +1,20 @@
 /*
  * copyright (c) 2006 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -28,9 +28,7 @@ typedef struct AVTreeNode {
     int state;
 } AVTreeNode;
 
-#if FF_API_CONTEXT_SIZE
 const int av_tree_node_size = sizeof(AVTreeNode);
-#endif
 
 struct AVTreeNode *av_tree_node_alloc(void)
 {
@@ -212,13 +210,13 @@ int main (void)
     av_lfg_init(&prng, 1);
 
     for (i = 0; i < 10000; i++) {
-        int j = av_lfg_get(&prng) % 86294;
+        intptr_t j = av_lfg_get(&prng) % 86294;
         if (check(root) > 999) {
             av_log(NULL, AV_LOG_ERROR, "FATAL error %d\n", i);
         print(root, 0);
             return -1;
         }
-        av_log(NULL, AV_LOG_ERROR, "inserting %4d\n", j);
+        av_log(NULL, AV_LOG_ERROR, "inserting %4d\n", (int)j);
         if (!node)
             node = av_tree_node_alloc();
         av_tree_insert(&root, (void *) (j + 1), cmp, &node);
@@ -226,7 +224,7 @@ int main (void)
         j = av_lfg_get(&prng) % 86294;
         {
             AVTreeNode *node2 = NULL;
-            av_log(NULL, AV_LOG_ERROR, "removing %4d\n", j);
+            av_log(NULL, AV_LOG_ERROR, "removing %4d\n", (int)j);
             av_tree_insert(&root, (void *) (j + 1), cmp, &node2);
             k = av_tree_find(root, (void *) (j + 1), cmp, NULL);
             if (k)

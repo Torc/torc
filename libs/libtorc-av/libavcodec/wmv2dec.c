@@ -1,25 +1,24 @@
 /*
- * Copyright (c) 2002 The Libav Project
+ * Copyright (c) 2002 The FFmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "avcodec.h"
-#include "dsputil.h"
 #include "mpegvideo.h"
 #include "h263.h"
 #include "mathops.h"
@@ -291,7 +290,7 @@ static int16_t *wmv2_pred_motion(Wmv2Context *w, int *px, int *py){
     return mot_val;
 }
 
-static inline int wmv2_decode_inter_block(Wmv2Context *w, DCTELEM *block, int n, int cbp){
+static inline int wmv2_decode_inter_block(Wmv2Context *w, int16_t *block, int n, int cbp){
     MpegEncContext * const s= &w->s;
     static const int sub_cbp_table[3]= {2,3,1};
     int sub_cbp;
@@ -331,7 +330,7 @@ static inline int wmv2_decode_inter_block(Wmv2Context *w, DCTELEM *block, int n,
 }
 
 
-int ff_wmv2_decode_mb(MpegEncContext *s, DCTELEM block[6][64])
+int ff_wmv2_decode_mb(MpegEncContext *s, int16_t block[6][64])
 {
     Wmv2Context * const w= (Wmv2Context*)s;
     int cbp, code, i;
@@ -446,10 +445,6 @@ int ff_wmv2_decode_mb(MpegEncContext *s, DCTELEM block[6][64])
 
 static av_cold int wmv2_decode_init(AVCodecContext *avctx){
     Wmv2Context * const w= avctx->priv_data;
-
-    if(avctx->idct_algo==FF_IDCT_AUTO){
-        avctx->idct_algo=FF_IDCT_WMV2;
-    }
 
     if(ff_msmpeg4_decode_init(avctx) < 0)
         return -1;

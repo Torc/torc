@@ -1,25 +1,26 @@
 /*
  * Copyright (c) 2011 Janne Grunau <janne-libav@jannau.net>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include <stdint.h>
 
+#include "libavutil/attributes.h"
 #include "libavcodec/avcodec.h"
 #include "libavcodec/rv34dsp.h"
 #include "libavutil/arm/cpu.h"
@@ -69,7 +70,7 @@ void ff_rv40_v_weak_loop_filter_neon(uint8_t *src, ptrdiff_t stride, int filter_
                                      int filter_q1, int alpha, int beta,
                                      int lim_p0q0, int lim_q1, int lim_p1);
 
-static void ff_rv40dsp_init_neon(RV34DSPContext *c)
+static av_cold void ff_rv40dsp_init_neon(RV34DSPContext *c)
 {
     c->put_pixels_tab[0][ 1] = ff_put_rv40_qpel16_mc10_neon;
     c->put_pixels_tab[0][ 3] = ff_put_rv40_qpel16_mc30_neon;
@@ -138,7 +139,7 @@ static void ff_rv40dsp_init_neon(RV34DSPContext *c)
     c->rv40_weak_loop_filter[1]     = ff_rv40_v_weak_loop_filter_neon;
 }
 
-void ff_rv40dsp_init_arm(RV34DSPContext *c, DSPContext* dsp)
+av_cold void ff_rv40dsp_init_arm(RV34DSPContext *c)
 {
     int cpu_flags = av_get_cpu_flags();
 

@@ -2,20 +2,20 @@
  * FLAC parser
  * Copyright (c) 2010 Michael Chinen
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -457,8 +457,12 @@ static int get_best_header(FLACParseContext* fpc, const uint8_t **poutbuf,
         check_header_mismatch(fpc, header, child, 0);
     }
 
+    if (header->fi.channels != fpc->avctx->channels ||
+        !fpc->avctx->channel_layout) {
+        fpc->avctx->channels = header->fi.channels;
+        ff_flac_set_channel_layout(fpc->avctx);
+    }
     fpc->avctx->sample_rate = header->fi.samplerate;
-    fpc->avctx->channels    = header->fi.channels;
     fpc->pc->duration       = header->fi.blocksize;
     *poutbuf = flac_fifo_read_wrap(fpc, header->offset, *poutbuf_size,
                                         &fpc->wrap_buf,
@@ -541,14 +545,18 @@ static int flac_parse(AVCodecParserContext *s, AVCodecContext *avctx,
         av_freep(&fpc->best_header);
     }
 
-    /* Find and score new headers. */
-    while ((buf && read_end < buf + buf_size &&
+    /* Find and score new headers.                                     */
+    /* buf_size is to zero when padding, so check for this since we do */
+    /* not want to try to read more input once we have found the end.  */
+    /* Note that as (non-modified) parameters, buf can be non-NULL,    */
+    /* while buf_size is 0.                                            */
+    while ((buf && buf_size && read_end < buf + buf_size &&
             fpc->nb_headers_buffered < FLAC_MIN_HEADERS)
-           || (!buf && !fpc->end_padded)) {
+           || ((!buf || !buf_size) && !fpc->end_padded)) {
         int start_offset;
 
         /* Pad the end once if EOF, to check the final region for headers. */
-        if (!buf) {
+        if (!buf || !buf_size) {
             fpc->end_padded      = 1;
             buf_size = MAX_FRAME_HEADER_SIZE;
             read_end = read_start + MAX_FRAME_HEADER_SIZE;
@@ -561,15 +569,15 @@ static int flac_parse(AVCodecParserContext *s, AVCodecContext *avctx,
         }
 
         /* Fill the buffer. */
-        if (av_fifo_realloc2(fpc->fifo_buf,
-                             (read_end - read_start) + av_fifo_size(fpc->fifo_buf)) < 0) {
+        if (   av_fifo_space(fpc->fifo_buf) < read_end - read_start
+            && av_fifo_realloc2(fpc->fifo_buf, (read_end - read_start) + 2*av_fifo_size(fpc->fifo_buf)) < 0) {
             av_log(avctx, AV_LOG_ERROR,
                    "couldn't reallocate buffer of size %td\n",
                    (read_end - read_start) + av_fifo_size(fpc->fifo_buf));
             goto handle_error;
         }
 
-        if (buf) {
+        if (buf && buf_size) {
             av_fifo_generic_write(fpc->fifo_buf, (void*) read_start,
                                   read_end - read_start, NULL);
         } else {
@@ -606,10 +614,11 @@ static int flac_parse(AVCodecParserContext *s, AVCodecContext *avctx,
 
         /* restore the state pre-padding */
         if (fpc->end_padded) {
+            int warp = fpc->fifo_buf->wptr - fpc->fifo_buf->buffer < MAX_FRAME_HEADER_SIZE;
             /* HACK: drain the tail of the fifo */
             fpc->fifo_buf->wptr -= MAX_FRAME_HEADER_SIZE;
             fpc->fifo_buf->wndx -= MAX_FRAME_HEADER_SIZE;
-            if (fpc->fifo_buf->wptr < 0) {
+            if (warp) {
                 fpc->fifo_buf->wptr += fpc->fifo_buf->end -
                     fpc->fifo_buf->buffer;
             }

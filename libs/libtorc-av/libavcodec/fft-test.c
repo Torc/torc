@@ -1,20 +1,20 @@
 /*
  * (c) 2002 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -148,7 +148,7 @@ static void mdct_ref(FFTSample *output, FFTSample *input, int nbits)
 }
 
 #if CONFIG_FFT_FLOAT
-static void idct_ref(float *output, float *input, int nbits)
+static void idct_ref(FFTSample *output, FFTSample *input, int nbits)
 {
     int n = 1<<nbits;
     int k, i;
@@ -164,7 +164,7 @@ static void idct_ref(float *output, float *input, int nbits)
         output[i] = 2 * s / n;
     }
 }
-static void dct_ref(float *output, float *input, int nbits)
+static void dct_ref(FFTSample *output, FFTSample *input, int nbits)
 {
     int n = 1<<nbits;
     int k, i;
@@ -205,7 +205,7 @@ static int check_diff(FFTSample *tab1, FFTSample *tab2, int n, double scale)
         error+= e*e;
         if(e>max) max= e;
     }
-    av_log(NULL, AV_LOG_INFO, "max:%f e:%g\n", max, sqrt(error)/n);
+    av_log(NULL, AV_LOG_INFO, "max:%f e:%g\n", max, sqrt(error/n));
     return err;
 }
 
@@ -288,10 +288,12 @@ int main(int argc, char **argv)
             scale = atof(optarg);
             break;
         case 'c':
-            cpuflags = av_parse_cpu_flags(optarg);
-            if (cpuflags < 0)
+            cpuflags = av_get_cpu_flags();
+
+            if (av_parse_cpu_caps(&cpuflags, optarg) < 0)
                 return 1;
-            av_set_cpu_flags_mask(cpuflags);
+
+            av_force_cpu_flags(cpuflags);
             break;
         }
     }
@@ -408,11 +410,11 @@ int main(int argc, char **argv)
         break;
     case TRANSFORM_DCT:
         memcpy(tab, tab1, fft_size * sizeof(FFTComplex));
-        d->dct_calc(d, tab);
+        d->dct_calc(d, (FFTSample *)tab);
         if (do_inverse) {
-            idct_ref(tab_ref, tab1, fft_nbits);
+            idct_ref((FFTSample*)tab_ref, (FFTSample *)tab1, fft_nbits);
         } else {
-            dct_ref(tab_ref, tab1, fft_nbits);
+            dct_ref((FFTSample*)tab_ref, (FFTSample *)tab1, fft_nbits);
         }
         err = check_diff((float *)tab_ref, (float *)tab, fft_size, 1.0);
         break;

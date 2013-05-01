@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2007 Bobby Bingham
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -29,6 +29,7 @@
 #include "libavutil/mem.h"
 #include "libavutil/pixdesc.h"
 #include "avfilter.h"
+#include "internal.h"
 #include "formats.h"
 #include "internal.h"
 #include "video.h"
@@ -48,7 +49,7 @@ static av_cold int init(AVFilterContext *ctx, const char *args)
     FormatContext *format = ctx->priv;
     const char *cur, *sep;
     char             pix_fmt_name[AV_PIX_FMT_NAME_MAXSIZE];
-    int              pix_fmt_name_len;
+    int              pix_fmt_name_len, ret;
     enum AVPixelFormat pix_fmt;
 
     /* parse the list of formats */
@@ -64,12 +65,9 @@ static av_cold int init(AVFilterContext *ctx, const char *args)
 
         memcpy(pix_fmt_name, cur, pix_fmt_name_len);
         pix_fmt_name[pix_fmt_name_len] = 0;
-        pix_fmt = av_get_pix_fmt(pix_fmt_name);
 
-        if (pix_fmt == AV_PIX_FMT_NONE) {
-            av_log(ctx, AV_LOG_ERROR, "Unknown pixel format: %s\n", pix_fmt_name);
-            return -1;
-        }
+        if ((ret = ff_parse_pixel_format(&pix_fmt, pix_fmt_name, ctx)) < 0)
+            return ret;
 
         format->listed_pix_fmt_flags[pix_fmt] = 1;
     }
@@ -104,9 +102,6 @@ static const AVFilterPad avfilter_vf_format_inputs[] = {
         .name             = "default",
         .type             = AVMEDIA_TYPE_VIDEO,
         .get_video_buffer = ff_null_get_video_buffer,
-        .start_frame      = ff_null_start_frame,
-        .draw_slice       = ff_null_draw_slice,
-        .end_frame        = ff_null_end_frame,
     },
     { NULL }
 };
@@ -146,9 +141,6 @@ static const AVFilterPad avfilter_vf_noformat_inputs[] = {
         .name             = "default",
         .type             = AVMEDIA_TYPE_VIDEO,
         .get_video_buffer = ff_null_get_video_buffer,
-        .start_frame      = ff_null_start_frame,
-        .draw_slice       = ff_null_draw_slice,
-        .end_frame        = ff_null_end_frame,
     },
     { NULL }
 };

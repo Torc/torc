@@ -2,66 +2,76 @@
  * PNM image format
  * Copyright (c) 2002, 2003 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "avcodec.h"
-#include "bytestream.h"
+#include "internal.h"
 #include "put_bits.h"
 #include "pnm.h"
 
 
 static int pnm_decode_frame(AVCodecContext *avctx, void *data,
-                            int *data_size, AVPacket *avpkt)
+                            int *got_frame, AVPacket *avpkt)
 {
     const uint8_t *buf   = avpkt->data;
     int buf_size         = avpkt->size;
     PNMContext * const s = avctx->priv_data;
     AVFrame *picture     = data;
     AVFrame * const p    = &s->picture;
-    int i, j, n, linesize, h, upgrade = 0;
+    int i, j, n, linesize, h, upgrade = 0, is_mono = 0;
     unsigned char *ptr;
-    int components, sample_len;
+    int components, sample_len, ret;
 
     s->bytestream_start =
-    s->bytestream       = buf;
-    s->bytestream_end   = buf + buf_size;
+    s->bytestream       = (uint8_t *)buf;
+    s->bytestream_end   = (uint8_t *)buf + buf_size;
 
-    if (ff_pnm_decode_header(avctx, s) < 0)
-        return -1;
+    if ((ret = ff_pnm_decode_header(avctx, s)) < 0)
+        return ret;
 
     if (p->data[0])
         avctx->release_buffer(avctx, p);
 
     p->reference = 0;
-    if (avctx->get_buffer(avctx, p) < 0) {
+    if ((ret = ff_get_buffer(avctx, p)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
-        return -1;
+        return ret;
     }
     p->pict_type = AV_PICTURE_TYPE_I;
     p->key_frame = 1;
 
     switch (avctx->pix_fmt) {
     default:
-        return -1;
+        return AVERROR(EINVAL);
+    case AV_PIX_FMT_RGBA64BE:
+        n = avctx->width * 8;
+        components=4;
+        sample_len=16;
+        goto do_read;
     case AV_PIX_FMT_RGB48BE:
         n = avctx->width * 6;
         components=3;
         sample_len=16;
+        goto do_read;
+    case AV_PIX_FMT_RGBA:
+        n = avctx->width * 4;
+        components=4;
+        sample_len=8;
         goto do_read;
     case AV_PIX_FMT_RGB24:
         n = avctx->width * 3;
@@ -74,6 +84,11 @@ static int pnm_decode_frame(AVCodecContext *avctx, void *data,
         sample_len=8;
         if (s->maxval < 255)
             upgrade = 1;
+        goto do_read;
+    case AV_PIX_FMT_GRAY8A:
+        n = avctx->width * 2;
+        components=2;
+        sample_len=8;
         goto do_read;
     case AV_PIX_FMT_GRAY16BE:
     case AV_PIX_FMT_GRAY16LE:
@@ -88,26 +103,34 @@ static int pnm_decode_frame(AVCodecContext *avctx, void *data,
         n = (avctx->width + 7) >> 3;
         components=1;
         sample_len=1;
+        is_mono = 1;
     do_read:
         ptr      = p->data[0];
         linesize = p->linesize[0];
         if (s->bytestream + n * avctx->height > s->bytestream_end)
-            return -1;
-        if(s->type < 4){
+            return AVERROR_INVALIDDATA;
+        if(s->type < 4 || (is_mono && s->type==7)){
             for (i=0; i<avctx->height; i++) {
                 PutBitContext pb;
                 init_put_bits(&pb, ptr, linesize);
                 for(j=0; j<avctx->width * components; j++){
                     unsigned int c=0;
                     int v=0;
+                    if(s->type < 4)
                     while(s->bytestream < s->bytestream_end && (*s->bytestream < '0' || *s->bytestream > '9' ))
                         s->bytestream++;
                     if(s->bytestream >= s->bytestream_end)
-                        return -1;
-                    do{
-                        v= 10*v + c;
-                        c= (*s->bytestream++) - '0';
-                    }while(c <= 9);
+                        return AVERROR_INVALIDDATA;
+                    if (is_mono) {
+                        /* read a single digit */
+                        v = (*s->bytestream++)&1;
+                    } else {
+                        /* read a sequence of digits */
+                        do {
+                            v = 10*v + c;
+                            c = (*s->bytestream++) - '0';
+                        } while (c <= 9);
+                    }
                     put_bits(&pb, sample_len, (((1<<sample_len)-1)*v + (s->maxval>>1))/s->maxval);
                 }
                 flush_put_bits(&pb);
@@ -134,14 +157,18 @@ static int pnm_decode_frame(AVCodecContext *avctx, void *data,
         }
         break;
     case AV_PIX_FMT_YUV420P:
+    case AV_PIX_FMT_YUV420P9BE:
+    case AV_PIX_FMT_YUV420P10BE:
         {
             unsigned char *ptr1, *ptr2;
 
             n        = avctx->width;
             ptr      = p->data[0];
             linesize = p->linesize[0];
+            if (s->maxval >= 256)
+                n *= 2;
             if (s->bytestream + n * avctx->height * 3 / 2 > s->bytestream_end)
-                return -1;
+                return AVERROR_INVALIDDATA;
             for (i = 0; i < avctx->height; i++) {
                 memcpy(ptr, s->bytestream, n);
                 s->bytestream += n;
@@ -161,27 +188,50 @@ static int pnm_decode_frame(AVCodecContext *avctx, void *data,
             }
         }
         break;
-    case AV_PIX_FMT_RGB32:
-        ptr      = p->data[0];
-        linesize = p->linesize[0];
-        if (s->bytestream + avctx->width * avctx->height * 4 > s->bytestream_end)
-            return -1;
-        for (i = 0; i < avctx->height; i++) {
-            int j, r, g, b, a;
+    case AV_PIX_FMT_YUV420P16:
+        {
+            uint16_t *ptr1, *ptr2;
+            const int f = (65535 * 32768 + s->maxval / 2) / s->maxval;
+            unsigned int j, v;
 
-            for (j = 0; j < avctx->width; j++) {
-                r = *s->bytestream++;
-                g = *s->bytestream++;
-                b = *s->bytestream++;
-                a = *s->bytestream++;
-                ((uint32_t *)ptr)[j] = (a << 24) | (r << 16) | (g << 8) | b;
+            n        = avctx->width * 2;
+            ptr      = p->data[0];
+            linesize = p->linesize[0];
+            if (s->bytestream + n * avctx->height * 3 / 2 > s->bytestream_end)
+                return AVERROR_INVALIDDATA;
+            for (i = 0; i < avctx->height; i++) {
+                for (j = 0; j < n / 2; j++) {
+                    v = av_be2ne16(((uint16_t *)s->bytestream)[j]);
+                    ((uint16_t *)ptr)[j] = (v * f + 16384) >> 15;
+                }
+                s->bytestream += n;
+                ptr           += linesize;
             }
-            ptr += linesize;
+            ptr1 = (uint16_t*)p->data[1];
+            ptr2 = (uint16_t*)p->data[2];
+            n >>= 1;
+            h = avctx->height >> 1;
+            for (i = 0; i < h; i++) {
+                for (j = 0; j < n / 2; j++) {
+                    v = av_be2ne16(((uint16_t *)s->bytestream)[j]);
+                    ptr1[j] = (v * f + 16384) >> 15;
+                }
+                s->bytestream += n;
+
+                for (j = 0; j < n / 2; j++) {
+                    v = av_be2ne16(((uint16_t *)s->bytestream)[j]);
+                    ptr2[j] = (v * f + 16384) >> 15;
+                }
+                s->bytestream += n;
+
+                ptr1 += p->linesize[1] / 2;
+                ptr2 += p->linesize[2] / 2;
+            }
         }
         break;
     }
     *picture   = s->picture;
-    *data_size = sizeof(AVPicture);
+    *got_frame = 1;
 
     return s->bytestream - s->bytestream_start;
 }

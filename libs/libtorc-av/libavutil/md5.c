@@ -13,20 +13,20 @@
  * If you use gcc, then version 4.1 or later and -fomit-frame-pointer is
  * strongly recommended.
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -42,9 +42,7 @@ typedef struct AVMD5{
     uint32_t ABCD[4];
 } AVMD5;
 
-#if FF_API_CONTEXT_SIZE
 const int av_md5_size = sizeof(AVMD5);
-#endif
 
 struct AVMD5 *av_md5_alloc(void)
 {
@@ -96,12 +94,12 @@ static const uint32_t T[64] = { // T[i]= fabs(sin(i+1)<<32)
 
 static void body(uint32_t ABCD[4], uint32_t X[16])
 {
-    int t;
     int i av_unused;
-    unsigned int a = ABCD[3];
-    unsigned int b = ABCD[2];
-    unsigned int c = ABCD[1];
-    unsigned int d = ABCD[0];
+    uint32_t t;
+    uint32_t a = ABCD[3];
+    uint32_t b = ABCD[2];
+    uint32_t c = ABCD[1];
+    uint32_t d = ABCD[0];
 
 #if HAVE_BIGENDIAN
     for (i = 0; i < 16; i++)
@@ -182,7 +180,6 @@ void av_md5_sum(uint8_t *dst, const uint8_t *src, const int len)
 }
 
 #ifdef TEST
-#undef printf
 #include <stdio.h>
 
 static void print_md5(uint8_t *md5)

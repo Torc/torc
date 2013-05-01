@@ -2,20 +2,20 @@
  * buffered file I/O
  * Copyright (c) 2001 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -34,6 +34,14 @@
 #include "os_support.h"
 #include "url.h"
 
+/* Some systems may not have S_ISFIFO */
+#ifndef S_ISFIFO
+#  ifdef S_IFIFO
+#    define S_ISFIFO(m) (((m) & S_IFMT) == S_IFIFO)
+#  else
+#    define S_ISFIFO(m) 0
+#  endif
+#endif
 
 /* standard file protocol */
 
@@ -58,13 +66,15 @@ static const AVClass file_class = {
 static int file_read(URLContext *h, unsigned char *buf, int size)
 {
     FileContext *c = h->priv_data;
-    return read(c->fd, buf, size);
+    int r = read(c->fd, buf, size);
+    return (-1 == r)?AVERROR(errno):r;
 }
 
 static int file_write(URLContext *h, const unsigned char *buf, int size)
 {
     FileContext *c = h->priv_data;
-    return write(c->fd, buf, size);
+    int r = write(c->fd, buf, size);
+    return (-1 == r)?AVERROR(errno):r;
 }
 
 static int file_get_handle(URLContext *h)
@@ -75,6 +85,17 @@ static int file_get_handle(URLContext *h)
 
 static int file_check(URLContext *h, int mask)
 {
+#if HAVE_ACCESS && defined(R_OK)
+    int ret = 0;
+    if (access(h->filename, F_OK) < 0)
+        return AVERROR(errno);
+    if (mask&AVIO_FLAG_READ)
+        if (access(h->filename, R_OK) >= 0)
+            ret |= AVIO_FLAG_READ;
+    if (mask&AVIO_FLAG_WRITE)
+        if (access(h->filename, W_OK) >= 0)
+            ret |= AVIO_FLAG_WRITE;
+#else
     struct stat st;
     int ret = stat(h->filename, &st);
     if (ret < 0)
@@ -82,7 +103,7 @@ static int file_check(URLContext *h, int mask)
 
     ret |= st.st_mode&S_IRUSR ? mask&AVIO_FLAG_READ  : 0;
     ret |= st.st_mode&S_IWUSR ? mask&AVIO_FLAG_WRITE : 0;
-
+#endif
     return ret;
 }
 
@@ -93,6 +114,7 @@ static int file_open(URLContext *h, const char *filename, int flags)
     FileContext *c = h->priv_data;
     int access;
     int fd;
+    struct stat st;
 
     av_strstart(filename, "file:", &filename);
 
@@ -114,6 +136,9 @@ static int file_open(URLContext *h, const char *filename, int flags)
     if (fd == -1)
         return AVERROR(errno);
     c->fd = fd;
+
+    h->is_streamed = !fstat(fd, &st) && S_ISFIFO(st.st_mode);
+
     return 0;
 }
 
@@ -125,9 +150,8 @@ static int64_t file_seek(URLContext *h, int64_t pos, int whence)
 
     if (whence == AVSEEK_SIZE) {
         struct stat st;
-
         ret = fstat(c->fd, &st);
-        return ret < 0 ? AVERROR(errno) : st.st_size;
+        return ret < 0 ? AVERROR(errno) : (S_ISFIFO(st.st_mode) ? 0 : st.st_size);
     }
 
     ret = lseek(c->fd, pos, whence);

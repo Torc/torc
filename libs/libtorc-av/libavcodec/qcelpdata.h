@@ -2,20 +2,20 @@
  * QCELP decoder
  * Copyright (c) 2007 Reynaldo H. Verdejo Pinochet
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -26,7 +26,7 @@
  * @file
  * Data tables for the QCELP decoder
  * @author Reynaldo H. Verdejo Pinochet
- * @remark Libav merging spearheaded by Kenan Gillet
+ * @remark FFmpeg merging spearheaded by Kenan Gillet
  * @remark Development mentored by Benjamin Larson
  */
 
@@ -257,7 +257,7 @@ static const QCELPBitmap qcelp_rate_octave_bitmap[] = {
     QCELP_OF(lspv   [8], 0, 1), //  8
     QCELP_OF(cbsign[15], 0, 1), //  7
     QCELP_OF(lspv   [9], 0, 1), //  6
-    QCELP_OF(cbgain [0], 0, 2), //  7
+    QCELP_OF(cbgain [0], 0, 2), //  5
     QCELP_OF(reserved,   0, 4)  //  3
 };
 

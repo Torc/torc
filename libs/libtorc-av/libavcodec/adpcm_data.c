@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2001-2003 The ffmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -49,6 +49,14 @@ const int16_t ff_adpcm_step_table[89] = {
     15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767
 };
 
+const int16_t ff_adpcm_oki_step_table[49] = {
+     16,  17,  19,  21,   23,   25,   28,   31,   34,  37,
+     41,  45,  50,  55,   60,   66,   73,   80,   88,  97,
+    107, 118, 130, 143,  157,  173,  190,  209,  230, 253,
+    279, 307, 337, 371,  408,  449,  494,  544,  598, 658,
+    724, 796, 876, 963, 1060, 1166, 1282, 1411, 1552
+};
+
 /* These are for MS-ADPCM */
 /* ff_adpcm_AdaptationTable[], ff_adpcm_AdaptCoeff1[], and
    ff_adpcm_AdaptCoeff2[] are from libsndfile */
@@ -75,4 +83,9 @@ const int16_t ff_adpcm_yamaha_indexscale[] = {
 const int8_t ff_adpcm_yamaha_difflookup[] = {
      1,  3,  5,  7,  9,  11,  13,  15,
     -1, -3, -5, -7, -9, -11, -13, -15
+};
+
+const int16_t ff_adpcm_afc_coeffs[2][16] = {
+    { 0, 2048, 0, 1024, 4096, 3584, 3072, 4608, 4200, 4800, 5120, 2048, 1024, 64512, 64512, 63488 },
+    { 0, 0, 2048, 1024, 63488, 64000, 64512, 62976, 63288, 63236, 62464, 63488, 64512, 1024, 0, 0 }
 };

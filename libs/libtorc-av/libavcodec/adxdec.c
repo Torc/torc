@@ -2,20 +2,20 @@
  * ADX ADPCM codecs
  * Copyright (c) 2001,2003 BERO
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -23,6 +23,7 @@
 #include "avcodec.h"
 #include "adx.h"
 #include "get_bits.h"
+#include "internal.h"
 
 /**
  * @file
@@ -50,9 +51,6 @@ static av_cold int adx_decode_init(AVCodecContext *avctx)
     }
 
     avctx->sample_fmt = AV_SAMPLE_FMT_S16P;
-
-    avcodec_get_frame_defaults(&c->frame);
-    avctx->coded_frame = &c->frame;
 
     return 0;
 }
@@ -97,11 +95,13 @@ static int adx_decode(ADXContext *c, int16_t *out, int offset,
 static int adx_decode_frame(AVCodecContext *avctx, void *data,
                             int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame      = data;
     int buf_size        = avpkt->size;
     ADXContext *c       = avctx->priv_data;
     int16_t **samples;
     int samples_offset;
     const uint8_t *buf  = avpkt->data;
+    const uint8_t *buf_end = buf + avpkt->size;
     int num_blocks, ch, ret;
 
     if (c->eof) {
@@ -141,17 +141,17 @@ static int adx_decode_frame(AVCodecContext *avctx, void *data,
     }
 
     /* get output buffer */
-    c->frame.nb_samples = num_blocks * BLOCK_SAMPLES;
-    if ((ret = avctx->get_buffer(avctx, &c->frame)) < 0) {
+    frame->nb_samples = num_blocks * BLOCK_SAMPLES;
+    if ((ret = ff_get_buffer(avctx, frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
-    samples = (int16_t **)c->frame.extended_data;
+    samples = (int16_t **)frame->extended_data;
     samples_offset = 0;
 
     while (num_blocks--) {
         for (ch = 0; ch < c->channels; ch++) {
-            if (adx_decode(c, samples[ch], samples_offset, buf, ch)) {
+            if (buf_end - buf < BLOCK_SIZE || adx_decode(c, samples[ch], samples_offset, buf, ch)) {
                 c->eof = 1;
                 buf = avpkt->data + avpkt->size;
                 break;
@@ -162,8 +162,7 @@ static int adx_decode_frame(AVCodecContext *avctx, void *data,
         samples_offset += BLOCK_SAMPLES;
     }
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = c->frame;
+    *got_frame_ptr = 1;
 
     return buf - avpkt->data;
 }

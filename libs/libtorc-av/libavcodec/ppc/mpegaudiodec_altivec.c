@@ -2,26 +2,27 @@
  * Altivec optimized MP3 decoding functions
  * Copyright (c) 2010 Vitor Sessak
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "dsputil_altivec.h"
+#include "libavutil/attributes.h"
+#include "libavutil/internal.h"
 #include "libavutil/ppc/util_altivec.h"
-#include "libavcodec/dsputil.h"
 #include "libavcodec/mpegaudiodsp.h"
 
 #define MACS(rt, ra, rb) rt+=(ra)*(rb)
@@ -123,7 +124,7 @@ static void apply_window_mp3(float *in, float *win, int *unused, float *out,
     *out = sum;
 }
 
-void ff_mpadsp_init_altivec(MPADSPContext *s)
+av_cold void ff_mpadsp_init_altivec(MPADSPContext *s)
 {
     s->apply_window_float = apply_window_mp3;
 }

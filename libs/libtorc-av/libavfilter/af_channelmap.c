@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2012 Google, Inc.
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,8 +25,8 @@
 
 #include <ctype.h>
 
-#include "libavutil/audioconvert.h"
 #include "libavutil/avstring.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/opt.h"
@@ -68,11 +68,12 @@ typedef struct ChannelMapContext {
 
 #define OFFSET(x) offsetof(ChannelMapContext, x)
 #define A AV_OPT_FLAG_AUDIO_PARAM
+#define F AV_OPT_FLAG_FILTERING_PARAM
 static const AVOption options[] = {
     { "map", "A comma-separated list of input channel numbers in output order.",
-          OFFSET(mapping_str),        AV_OPT_TYPE_STRING, .flags = A },
+          OFFSET(mapping_str),        AV_OPT_TYPE_STRING, .flags = A|F },
     { "channel_layout", "Output channel layout.",
-          OFFSET(channel_layout_str), AV_OPT_TYPE_STRING, .flags = A },
+          OFFSET(channel_layout_str), AV_OPT_TYPE_STRING, .flags = A|F },
     { NULL },
 };
 
@@ -124,7 +125,6 @@ static av_cold int channelmap_init(AVFilterContext *ctx, const char *args)
     ChannelMapContext *s = ctx->priv;
     int ret;
     char *mapping;
-    enum mode;
     int map_entries = 0;
     char buf[256];
     enum MappingMode mode;
@@ -139,10 +139,8 @@ static av_cold int channelmap_init(AVFilterContext *ctx, const char *args)
     s->class = &channelmap_class;
     av_opt_set_defaults(s);
 
-    if ((ret = av_set_options_string(s, args, "=", ":")) < 0) {
-        av_log(ctx, AV_LOG_ERROR, "Error parsing options string '%s'.\n", args);
+    if ((ret = av_set_options_string(s, args, "=", ":")) < 0)
         return ret;
-    }
 
     mapping = s->mapping_str;
 
@@ -314,7 +312,7 @@ static int channelmap_query_formats(AVFilterContext *ctx)
     return 0;
 }
 
-static int channelmap_filter_samples(AVFilterLink *inlink, AVFilterBufferRef *buf)
+static int channelmap_filter_frame(AVFilterLink *inlink, AVFilterBufferRef *buf)
 {
     AVFilterContext  *ctx = inlink->dst;
     AVFilterLink *outlink = ctx->outputs[0];
@@ -356,7 +354,7 @@ static int channelmap_filter_samples(AVFilterLink *inlink, AVFilterBufferRef *bu
         memcpy(buf->data, buf->extended_data,
            FFMIN(FF_ARRAY_ELEMS(buf->data), nch_out) * sizeof(buf->data[0]));
 
-    return ff_filter_samples(outlink, buf);
+    return ff_filter_frame(outlink, buf);
 }
 
 static int channelmap_config_input(AVFilterLink *inlink)
@@ -390,7 +388,8 @@ static const AVFilterPad avfilter_af_channelmap_inputs[] = {
     {
         .name           = "default",
         .type           = AVMEDIA_TYPE_AUDIO,
-        .filter_samples = channelmap_filter_samples,
+        .min_perms      = AV_PERM_READ | AV_PERM_WRITE,
+        .filter_frame   = channelmap_filter_frame,
         .config_props   = channelmap_config_input
     },
     { NULL }
@@ -413,4 +412,5 @@ AVFilter avfilter_af_channelmap = {
 
     .inputs        = avfilter_af_channelmap_inputs,
     .outputs       = avfilter_af_channelmap_outputs,
+    .priv_class    = &channelmap_class,
 };

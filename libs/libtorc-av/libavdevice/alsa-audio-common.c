@@ -3,20 +3,20 @@
  * Copyright (c) 2007 Luca Abeni ( lucabe72 email it )
  * Copyright (c) 2007 Benoit Fouet ( benoit fouet free fr )
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -29,9 +29,9 @@
  */
 
 #include <alsa/asoundlib.h>
-#include "libavformat/avformat.h"
+#include "avdevice.h"
 #include "libavutil/avassert.h"
-#include "libavutil/audioconvert.h"
+#include "libavutil/channel_layout.h"
 
 #include "alsa-audio.h"
 
@@ -62,48 +62,45 @@ static av_cold snd_pcm_format_t codec_id_to_pcm_format(int codec_id)
     }
 }
 
-#define REORDER_OUT_50(NAME, TYPE) \
-static void alsa_reorder_ ## NAME ## _out_50(const void *in_v, void *out_v, int n) \
-{ \
-    const TYPE *in = in_v; \
-    TYPE      *out = out_v; \
-\
-    while (n-- > 0) { \
+#define MAKE_REORDER_FUNC(NAME, TYPE, CHANNELS, LAYOUT, MAP)                \
+static void alsa_reorder_ ## NAME ## _ ## LAYOUT(const void *in_v,          \
+                                                 void *out_v,               \
+                                                 int n)                     \
+{                                                                           \
+    const TYPE *in = in_v;                                                  \
+    TYPE      *out = out_v;                                                 \
+                                                                            \
+    while (n-- > 0) {                                                       \
+        MAP                                                                 \
+        in  += CHANNELS;                                                    \
+        out += CHANNELS;                                                    \
+    }                                                                       \
+}
+
+#define MAKE_REORDER_FUNCS(CHANNELS, LAYOUT, MAP) \
+    MAKE_REORDER_FUNC(int8,  int8_t,  CHANNELS, LAYOUT, MAP) \
+    MAKE_REORDER_FUNC(int16, int16_t, CHANNELS, LAYOUT, MAP) \
+    MAKE_REORDER_FUNC(int32, int32_t, CHANNELS, LAYOUT, MAP) \
+    MAKE_REORDER_FUNC(f32,   float,   CHANNELS, LAYOUT, MAP)
+
+MAKE_REORDER_FUNCS(5, out_50, \
         out[0] = in[0]; \
         out[1] = in[1]; \
         out[2] = in[3]; \
         out[3] = in[4]; \
         out[4] = in[2]; \
-        in  += 5; \
-        out += 5; \
-    } \
-}
+        );
 
-#define REORDER_OUT_51(NAME, TYPE) \
-static void alsa_reorder_ ## NAME ## _out_51(const void *in_v, void *out_v, int n) \
-{ \
-    const TYPE *in = in_v; \
-    TYPE      *out = out_v; \
-\
-    while (n-- > 0) { \
+MAKE_REORDER_FUNCS(6, out_51, \
         out[0] = in[0]; \
         out[1] = in[1]; \
         out[2] = in[4]; \
         out[3] = in[5]; \
         out[4] = in[2]; \
         out[5] = in[3]; \
-        in  += 6; \
-        out += 6; \
-    } \
-}
+        );
 
-#define REORDER_OUT_71(NAME, TYPE) \
-static void alsa_reorder_ ## NAME ## _out_71(const void *in_v, void *out_v, int n) \
-{ \
-    const TYPE *in = in_v; \
-    TYPE      *out = out_v; \
-\
-    while (n-- > 0) { \
+MAKE_REORDER_FUNCS(8, out_71, \
         out[0] = in[0]; \
         out[1] = in[1]; \
         out[2] = in[4]; \
@@ -112,23 +109,7 @@ static void alsa_reorder_ ## NAME ## _out_71(const void *in_v, void *out_v, int 
         out[5] = in[3]; \
         out[6] = in[6]; \
         out[7] = in[7]; \
-        in  += 8; \
-        out += 8; \
-    } \
-}
-
-REORDER_OUT_50(int8, int8_t)
-REORDER_OUT_51(int8, int8_t)
-REORDER_OUT_71(int8, int8_t)
-REORDER_OUT_50(int16, int16_t)
-REORDER_OUT_51(int16, int16_t)
-REORDER_OUT_71(int16, int16_t)
-REORDER_OUT_50(int32, int32_t)
-REORDER_OUT_51(int32, int32_t)
-REORDER_OUT_71(int32, int32_t)
-REORDER_OUT_50(f32, float)
-REORDER_OUT_51(f32, float)
-REORDER_OUT_71(f32, float)
+        );
 
 #define FORMAT_I8  0
 #define FORMAT_I16 1
@@ -320,6 +301,8 @@ av_cold int ff_alsa_close(AVFormatContext *s1)
     AlsaData *s = s1->priv_data;
 
     av_freep(&s->reorder_buf);
+    if (CONFIG_ALSA_INDEV)
+        ff_timefilter_destroy(s->timefilter);
     snd_pcm_close(s->h);
     return 0;
 }

@@ -2,20 +2,20 @@
  * Musepack SV7 decoder
  * Copyright (c) 2006 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,19 +25,17 @@
  * divided into 32 subbands.
  */
 
+#include "libavutil/channel_layout.h"
+#include "libavutil/internal.h"
 #include "libavutil/lfg.h"
 #include "avcodec.h"
 #include "get_bits.h"
 #include "dsputil.h"
+#include "internal.h"
 #include "mpegaudiodsp.h"
-#include "libavutil/audioconvert.h"
 
 #include "mpc.h"
 #include "mpc7data.h"
-
-#define BANDS            32
-#define SAMPLES_PER_BAND 36
-#define MPC_FRAME_SIZE   (BANDS * SAMPLES_PER_BAND)
 
 static VLC scfi_vlc, dscf_vlc, hdr_vlc, quant_vlc[MPC7_QUANT_VLC_TABLES][2];
 
@@ -137,9 +135,6 @@ static av_cold int mpc7_decode_init(AVCodecContext * avctx)
     }
     vlc_initialized = 1;
 
-    avcodec_get_frame_defaults(&c->frame);
-    avctx->coded_frame = &c->frame;
-
     return 0;
 }
 
@@ -193,12 +188,13 @@ static int get_scale_idx(GetBitContext *gb, int ref)
     int t = get_vlc2(gb, dscf_vlc.table, MPC7_DSCF_BITS, 1) - 7;
     if (t == 8)
         return get_bits(gb, 6);
-    return av_clip_uintp2(ref + t, 7);
+    return ref + t;
 }
 
 static int mpc7_decode_frame(AVCodecContext * avctx, void *data,
                              int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size;
     MPCContext *c = avctx->priv_data;
@@ -228,8 +224,8 @@ static int mpc7_decode_frame(AVCodecContext * avctx, void *data,
     buf_size  -= 4;
 
     /* get output buffer */
-    c->frame.nb_samples = last_frame ? c->lastframelen : MPC_FRAME_SIZE;
-    if ((ret = avctx->get_buffer(avctx, &c->frame)) < 0) {
+    frame->nb_samples = MPC_FRAME_SIZE;
+    if ((ret = ff_get_buffer(avctx, frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
@@ -247,7 +243,11 @@ static int mpc7_decode_frame(AVCodecContext * avctx, void *data,
             int t = 4;
             if(i) t = get_vlc2(&gb, hdr_vlc.table, MPC7_HDR_BITS, 1) - 5;
             if(t == 4) bands[i].res[ch] = get_bits(&gb, 4);
-            else bands[i].res[ch] = av_clip(bands[i-1].res[ch] + t, 0, 17);
+            else bands[i].res[ch] = bands[i-1].res[ch] + t;
+            if (bands[i].res[ch] < -1 || bands[i].res[ch] > 17) {
+                av_log(avctx, AV_LOG_ERROR, "subband index invalid\n");
+                return AVERROR_INVALIDDATA;
+            }
         }
 
         if(bands[i].res[0] || bands[i].res[1]){
@@ -293,7 +293,9 @@ static int mpc7_decode_frame(AVCodecContext * avctx, void *data,
         for(ch = 0; ch < 2; ch++)
             idx_to_quant(c, &gb, bands[i].res[ch], c->Q[ch] + off);
 
-    ff_mpc_dequantize_and_synth(c, mb, (int16_t **)c->frame.extended_data, 2);
+    ff_mpc_dequantize_and_synth(c, mb, (int16_t **)frame->extended_data, 2);
+    if(last_frame)
+        frame->nb_samples = c->lastframelen;
 
     bits_used = get_bits_count(&gb);
     bits_avail = buf_size * 8;
@@ -307,8 +309,7 @@ static int mpc7_decode_frame(AVCodecContext * avctx, void *data,
         return avpkt->size;
     }
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = c->frame;
+    *got_frame_ptr = 1;
 
     return avpkt->size;
 }

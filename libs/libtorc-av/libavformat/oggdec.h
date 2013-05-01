@@ -55,6 +55,7 @@ struct ogg_codec {
      * Number of expected headers
      */
     int nb_header;
+    void (*cleanup)(AVFormatContext *s, int idx);
 };
 
 struct ogg_stream {
@@ -80,6 +81,8 @@ struct ogg_stream {
     int incomplete; ///< whether we're expecting a continuation in the next page
     int page_end;   ///< current packet is the last one completed in the page
     int keyframe_seek;
+    int got_start;
+    int got_data;   ///< 1 if the stream got some data (non-initial packets), 0 otherwise
     int nb_header; ///< set to the number of parsed headers
     void *private;
 };
@@ -97,6 +100,7 @@ struct ogg {
     int nstreams;
     int headers;
     int curidx;
+    int64_t page_pos;                   ///< file offset of the current page
     struct ogg_state *state;
 };
 
@@ -104,7 +108,7 @@ struct ogg {
 #define OGG_FLAG_BOS  2
 #define OGG_FLAG_EOS  4
 
-#define OGG_NOGRANULE_VALUE -1ull
+#define OGG_NOGRANULE_VALUE (-1ull)
 
 extern const struct ogg_codec ff_celt_codec;
 extern const struct ogg_codec ff_dirac_codec;
@@ -115,6 +119,7 @@ extern const struct ogg_codec ff_ogm_text_codec;
 extern const struct ogg_codec ff_ogm_video_codec;
 extern const struct ogg_codec ff_old_dirac_codec;
 extern const struct ogg_codec ff_old_flac_codec;
+extern const struct ogg_codec ff_opus_codec;
 extern const struct ogg_codec ff_skeleton_codec;
 extern const struct ogg_codec ff_speex_codec;
 extern const struct ogg_codec ff_theora_codec;

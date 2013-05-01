@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2010 Mans Rullgard <mans@mansr.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -28,7 +28,7 @@
 
 #if HAVE_INLINE_ASM
 
-#if HAVE_ARMV6
+#if HAVE_ARMV6_INLINE
 
 #define av_clip_uint8 av_clip_uint8_arm
 static av_always_inline av_const unsigned av_clip_uint8_arm(int a)
@@ -86,7 +86,7 @@ static av_always_inline int av_sat_dadd32_arm(int a, int b)
     return r;
 }
 
-#endif /* HAVE_ARMV6 */
+#endif /* HAVE_ARMV6_INLINE */
 
 #if HAVE_ASM_MOD_Q
 

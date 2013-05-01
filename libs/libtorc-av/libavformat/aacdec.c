@@ -3,20 +3,20 @@
  * Copyright (c) 2008 Michael Niedermayer <michaelni@gmx.at>
  * Copyright (c) 2009 Robert Swain ( rob opendot cl )
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -31,10 +31,10 @@ static int adts_aac_probe(AVProbeData *p)
 {
     int max_frames = 0, first_frames = 0;
     int fsize, frames;
-    uint8_t *buf0 = p->buf;
-    uint8_t *buf2;
-    uint8_t *buf;
-    uint8_t *end = buf0 + p->buf_size - 7;
+    const uint8_t *buf0 = p->buf;
+    const uint8_t *buf2;
+    const uint8_t *buf;
+    const uint8_t *end = buf0 + p->buf_size - 7;
 
     buf = buf0;
 
@@ -48,6 +48,7 @@ static int adts_aac_probe(AVProbeData *p)
             fsize = (AV_RB32(buf2 + 3) >> 13) & 0x1FFF;
             if(fsize < 7)
                 break;
+            fsize = FFMIN(fsize, end - buf2);
             buf2 += fsize;
         }
         max_frames = FFMAX(max_frames, frames);
@@ -71,7 +72,7 @@ static int adts_aac_read_header(AVFormatContext *s)
 
     st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
     st->codec->codec_id = s->iformat->raw_codec_id;
-    st->need_parsing = AVSTREAM_PARSE_FULL;
+    st->need_parsing = AVSTREAM_PARSE_FULL_RAW;
 
     ff_id3v1_read(s);
 

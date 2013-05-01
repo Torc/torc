@@ -3,73 +3,33 @@
  *
  * Copyright (c) 2006 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "config.h"
 #include <xvid.h>
 #include <unistd.h>
-#if !HAVE_MKSTEMP
-#include <fcntl.h>
-#endif
-
+#include "libavutil/file.h"
 #include "avcodec.h"
 #include "libxvid.h"
-//#include "dsputil.h"
 #include "mpegvideo.h"
 
 #undef NDEBUG
 #include <assert.h>
-
-/* Wrapper to work around the lack of mkstemp() on mingw.
- * Also, tries to create file in /tmp first, if possible.
- * *prefix can be a character constant; *filename will be allocated internally.
- * @return file descriptor of opened file (or -1 on error)
- * and opened file name in **filename. */
-int ff_tempfile(const char *prefix, char **filename) {
-    int fd=-1;
-#if !HAVE_MKSTEMP
-    *filename = tempnam(".", prefix);
-#else
-    size_t len = strlen(prefix) + 12; /* room for "/tmp/" and "XXXXXX\0" */
-    *filename = av_malloc(len);
-#endif
-    /* -----common section-----*/
-    if (*filename == NULL) {
-        av_log(NULL, AV_LOG_ERROR, "ff_tempfile: Cannot allocate file name\n");
-        return -1;
-    }
-#if !HAVE_MKSTEMP
-    fd = open(*filename, O_RDWR | O_BINARY | O_CREAT, 0444);
-#else
-    snprintf(*filename, len, "/tmp/%sXXXXXX", prefix);
-    fd = mkstemp(*filename);
-    if (fd < 0) {
-        snprintf(*filename, len, "./%sXXXXXX", prefix);
-        fd = mkstemp(*filename);
-    }
-#endif
-    /* -----common section-----*/
-    if (fd < 0) {
-        av_log(NULL, AV_LOG_ERROR, "ff_tempfile: Cannot open temporary file %s\n", *filename);
-        return -1;
-    }
-    return fd; /* success */
-}
 
 int ff_xvid_rate_control_init(MpegEncContext *s){
     char *tmp_name;
@@ -77,7 +37,7 @@ int ff_xvid_rate_control_init(MpegEncContext *s){
     xvid_plg_create_t xvid_plg_create = { 0 };
     xvid_plugin_2pass2_t xvid_2pass2  = { 0 };
 
-    fd=ff_tempfile("xvidrc.", &tmp_name);
+    fd=av_tempfile("xvidrc.", &tmp_name, 0, s->avctx);
     if (fd == -1) {
         av_log(NULL, AV_LOG_ERROR, "Can't create temporary pass2 file.\n");
         return -1;
@@ -94,7 +54,12 @@ int ff_xvid_rate_control_init(MpegEncContext *s){
             frame_types[rce->pict_type], (int)lrintf(rce->qscale / FF_QP2LAMBDA), rce->i_count, s->mb_num - rce->i_count - rce->skip_count,
             rce->skip_count, (rce->i_tex_bits + rce->p_tex_bits + rce->misc_bits+7)/8, (rce->header_bits+rce->mv_bits+7)/8);
 
-        write(fd, tmp, strlen(tmp));
+        if (write(fd, tmp, strlen(tmp)) < 0) {
+            av_log(NULL, AV_LOG_ERROR, "Error %s writing 2pass logfile\n", strerror(errno));
+            av_free(tmp_name);
+            close(fd);
+            return AVERROR(errno);
+        }
     }
 
     close(fd);

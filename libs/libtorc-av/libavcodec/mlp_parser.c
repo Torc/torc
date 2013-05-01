@@ -2,20 +2,20 @@
  * MLP parser
  * Copyright (c) 2007 Ian Caulfield
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -26,8 +26,8 @@
 
 #include <stdint.h>
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/crc.h"
-#include "libavutil/audioconvert.h"
 #include "get_bits.h"
 #include "parser.h"
 #include "mlp_parser.h"
@@ -43,28 +43,28 @@ static const uint8_t mlp_channels[32] = {
     5, 6, 5, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-static const uint64_t mlp_layout[32] = {
+const uint64_t ff_mlp_layout[32] = {
     AV_CH_LAYOUT_MONO,
     AV_CH_LAYOUT_STEREO,
     AV_CH_LAYOUT_2_1,
-    AV_CH_LAYOUT_2_2,
+    AV_CH_LAYOUT_QUAD,
     AV_CH_LAYOUT_STEREO|AV_CH_LOW_FREQUENCY,
     AV_CH_LAYOUT_2_1|AV_CH_LOW_FREQUENCY,
-    AV_CH_LAYOUT_2_2|AV_CH_LOW_FREQUENCY,
+    AV_CH_LAYOUT_QUAD|AV_CH_LOW_FREQUENCY,
     AV_CH_LAYOUT_SURROUND,
     AV_CH_LAYOUT_4POINT0,
-    AV_CH_LAYOUT_5POINT0,
+    AV_CH_LAYOUT_5POINT0_BACK,
     AV_CH_LAYOUT_SURROUND|AV_CH_LOW_FREQUENCY,
     AV_CH_LAYOUT_4POINT0|AV_CH_LOW_FREQUENCY,
-    AV_CH_LAYOUT_5POINT1,
+    AV_CH_LAYOUT_5POINT1_BACK,
     AV_CH_LAYOUT_4POINT0,
-    AV_CH_LAYOUT_5POINT0,
+    AV_CH_LAYOUT_5POINT0_BACK,
     AV_CH_LAYOUT_SURROUND|AV_CH_LOW_FREQUENCY,
     AV_CH_LAYOUT_4POINT0|AV_CH_LOW_FREQUENCY,
-    AV_CH_LAYOUT_5POINT1,
-    AV_CH_LAYOUT_2_2|AV_CH_LOW_FREQUENCY,
-    AV_CH_LAYOUT_5POINT0,
-    AV_CH_LAYOUT_5POINT1,
+    AV_CH_LAYOUT_5POINT1_BACK,
+    AV_CH_LAYOUT_QUAD|AV_CH_LOW_FREQUENCY,
+    AV_CH_LAYOUT_5POINT0_BACK,
+    AV_CH_LAYOUT_5POINT1_BACK,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
@@ -107,7 +107,7 @@ static int truehd_channels(int chanmap)
     return channels;
 }
 
-static uint64_t truehd_layout(int chanmap)
+uint64_t ff_truehd_layout(int chanmap)
 {
     int i;
     uint64_t layout = 0;
@@ -126,10 +126,10 @@ static uint64_t truehd_layout(int chanmap)
 
 int ff_mlp_read_major_sync(void *log, MLPHeaderInfo *mh, GetBitContext *gb)
 {
-    int ratebits;
+    int ratebits, channel_arrangement;
     uint16_t checksum;
 
-    assert(get_bits_count(gb) == 0);
+    av_assert1(get_bits_count(gb) == 0);
 
     if (gb->size_in_bits < 28 << 3) {
         av_log(log, AV_LOG_ERROR, "packet too short, unable to read major sync\n");
@@ -157,7 +157,10 @@ int ff_mlp_read_major_sync(void *log, MLPHeaderInfo *mh, GetBitContext *gb)
 
         skip_bits(gb, 11);
 
-        mh->channels_mlp = get_bits(gb, 5);
+        mh->channel_arrangement=
+        channel_arrangement    = get_bits(gb, 5);
+        mh->channels_mlp       = mlp_channels[channel_arrangement];
+        mh->channel_layout_mlp = ff_mlp_layout[channel_arrangement];
     } else if (mh->stream_type == 0xba) {
         mh->group1_bits = 24; // TODO: Is this information actually conveyed anywhere?
         mh->group2_bits = 0;
@@ -168,11 +171,16 @@ int ff_mlp_read_major_sync(void *log, MLPHeaderInfo *mh, GetBitContext *gb)
 
         skip_bits(gb, 8);
 
-        mh->channels_thd_stream1 = get_bits(gb, 5);
+        mh->channel_arrangement=
+        channel_arrangement            = get_bits(gb, 5);
+        mh->channels_thd_stream1       = truehd_channels(channel_arrangement);
+        mh->channel_layout_thd_stream1 = ff_truehd_layout(channel_arrangement);
 
         skip_bits(gb, 2);
 
-        mh->channels_thd_stream2 = get_bits(gb, 13);
+        channel_arrangement            = get_bits(gb, 13);
+        mh->channels_thd_stream2       = truehd_channels(channel_arrangement);
+        mh->channel_layout_thd_stream2 = ff_truehd_layout(channel_arrangement);
     } else
         return AVERROR_INVALIDDATA;
 
@@ -239,7 +247,8 @@ static int mlp_parse(AVCodecParserContext *s,
         }
 
         if (!mp->in_sync) {
-            ff_combine_frame(&mp->pc, END_NOT_FOUND, &buf, &buf_size);
+            if (ff_combine_frame(&mp->pc, END_NOT_FOUND, &buf, &buf_size) != -1)
+                av_log(avctx, AV_LOG_WARNING, "ff_combine_frame failed\n");
             return buf_size;
         }
 
@@ -257,13 +266,17 @@ static int mlp_parse(AVCodecParserContext *s,
         }
 
         if (mp->pc.index + buf_size < 2) {
-            ff_combine_frame(&mp->pc, END_NOT_FOUND, &buf, &buf_size);
+            if (ff_combine_frame(&mp->pc, END_NOT_FOUND, &buf, &buf_size) != -1)
+                av_log(avctx, AV_LOG_WARNING, "ff_combine_frame failed\n");
             return buf_size;
         }
 
         mp->bytes_left = ((mp->pc.index > 0 ? mp->pc.buffer[0] : buf[0]) << 8)
                        |  (mp->pc.index > 1 ? mp->pc.buffer[1] : buf[1-mp->pc.index]);
         mp->bytes_left = (mp->bytes_left & 0xfff) * 2;
+        if (mp->bytes_left <= 0) { // prevent infinite loop
+            goto lost_sync;
+        }
         mp->bytes_left -= mp->pc.index;
     }
 
@@ -314,19 +327,50 @@ static int mlp_parse(AVCodecParserContext *s,
         avctx->sample_rate = mh.group1_samplerate;
         s->duration = mh.access_unit_size;
 
+        if(!avctx->channels || !avctx->channel_layout) {
         if (mh.stream_type == 0xbb) {
             /* MLP stream */
-            avctx->channels = mlp_channels[mh.channels_mlp];
-            avctx->channel_layout = mlp_layout[mh.channels_mlp];
+#if FF_API_REQUEST_CHANNELS
+            if (avctx->request_channels > 0 && avctx->request_channels <= 2 &&
+                mh.num_substreams > 1) {
+                avctx->channels       = 2;
+                avctx->channel_layout = AV_CH_LAYOUT_STEREO;
+            } else
+#endif
+            if (avctx->request_channel_layout == AV_CH_LAYOUT_STEREO &&
+                mh.num_substreams > 1) {
+                avctx->channels       = 2;
+                avctx->channel_layout = AV_CH_LAYOUT_STEREO;
+            } else {
+                avctx->channels       = mh.channels_mlp;
+                avctx->channel_layout = mh.channel_layout_mlp;
+            }
         } else { /* mh.stream_type == 0xba */
             /* TrueHD stream */
-            if (mh.channels_thd_stream2) {
-                avctx->channels = truehd_channels(mh.channels_thd_stream2);
-                avctx->channel_layout = truehd_layout(mh.channels_thd_stream2);
+#if FF_API_REQUEST_CHANNELS
+            if (avctx->request_channels > 0 && avctx->request_channels <= 2 &&
+                mh.num_substreams > 1) {
+                avctx->channels       = 2;
+                avctx->channel_layout = AV_CH_LAYOUT_STEREO;
+            } else if (avctx->request_channels > 0 &&
+                       avctx->request_channels <= mh.channels_thd_stream1) {
+                avctx->channels       = mh.channels_thd_stream1;
+                avctx->channel_layout = mh.channel_layout_thd_stream1;
+            } else
+#endif
+            if (avctx->request_channel_layout == AV_CH_LAYOUT_STEREO &&
+                mh.num_substreams > 1) {
+                avctx->channels       = 2;
+                avctx->channel_layout = AV_CH_LAYOUT_STEREO;
+            } else if (avctx->request_channel_layout == mh.channel_layout_thd_stream1 ||
+                       !mh.channels_thd_stream2) {
+                avctx->channels       = mh.channels_thd_stream1;
+                avctx->channel_layout = mh.channel_layout_thd_stream1;
             } else {
-                avctx->channels = truehd_channels(mh.channels_thd_stream1);
-                avctx->channel_layout = truehd_layout(mh.channels_thd_stream1);
+                avctx->channels       = mh.channels_thd_stream2;
+                avctx->channel_layout = mh.channel_layout_thd_stream2;
             }
+        }
         }
 
         if (!mh.is_vbr) /* Stream is CBR */

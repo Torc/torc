@@ -2,23 +2,24 @@
  * Motion Pixels MVI Demuxer
  * Copyright (c) 2008 Gregory Montoir (cyx@users.sourceforge.net)
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/channel_layout.h"
 #include "avformat.h"
 #include "internal.h"
 
@@ -53,6 +54,8 @@ static int read_header(AVFormatContext *s)
 
     vst->codec->extradata_size = 2;
     vst->codec->extradata = av_mallocz(2 + FF_INPUT_BUFFER_PADDING_SIZE);
+    if (!vst->codec->extradata)
+        return AVERROR(ENOMEM);
 
     version                  = avio_r8(pb);
     vst->codec->extradata[0] = avio_r8(pb);
@@ -81,16 +84,22 @@ static int read_header(AVFormatContext *s)
     ast->codec->codec_type      = AVMEDIA_TYPE_AUDIO;
     ast->codec->codec_id        = AV_CODEC_ID_PCM_U8;
     ast->codec->channels        = 1;
+    ast->codec->channel_layout  = AV_CH_LAYOUT_MONO;
     ast->codec->bits_per_coded_sample = 8;
     ast->codec->bit_rate        = ast->codec->sample_rate * 8;
 
     avpriv_set_pts_info(vst, 64, msecs_per_frame, 1000000);
+    vst->avg_frame_rate    = av_inv_q(vst->time_base);
     vst->codec->codec_type = AVMEDIA_TYPE_VIDEO;
     vst->codec->codec_id   = AV_CODEC_ID_MOTIONPIXELS;
 
     mvi->get_int = (vst->codec->width * vst->codec->height < (1 << 16)) ? avio_rl16 : avio_rl24;
 
     mvi->audio_frame_size   = ((uint64_t)mvi->audio_data_size << MVI_FRAC_BITS) / frames_count;
+    if (!mvi->audio_frame_size) {
+        av_log(s, AV_LOG_ERROR, "audio_frame_size is 0\n");
+        return AVERROR_INVALIDDATA;
+    }
     mvi->audio_size_counter = (ast->codec->sample_rate * 830 / mvi->audio_frame_size - 1) * mvi->audio_frame_size;
     mvi->audio_size_left    = mvi->audio_data_size;
 

@@ -2,20 +2,20 @@
  * R3D REDCODE demuxer
  * Copyright (c) 2008 Baptiste Coudurier <baptiste dot coudurier at gmail dot com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -141,8 +141,7 @@ static int r3d_read_rdvo(AVFormatContext *s, Atom *atom)
 
     if (st->avg_frame_rate.num)
         st->duration = av_rescale_q(r3d->video_offsets_count,
-                                    (AVRational){st->avg_frame_rate.den,
-                                                 st->avg_frame_rate.num},
+                                    av_inv_q(st->avg_frame_rate),
                                     st->time_base);
     av_dlog(s, "duration %"PRId64"\n", st->duration);
 
@@ -286,6 +285,10 @@ static int r3d_read_reda(AVFormatContext *s, AVPacket *pkt, Atom *atom)
     dts = avio_rb32(s->pb);
 
     st->codec->sample_rate = avio_rb32(s->pb);
+    if (st->codec->sample_rate < 0) {
+        av_log(s, AV_LOG_ERROR, "negative sample rate\n");
+        return AVERROR_INVALIDDATA;
+    }
 
     samples = avio_rb32(s->pb);
 
@@ -313,7 +316,8 @@ static int r3d_read_reda(AVFormatContext *s, AVPacket *pkt, Atom *atom)
 
     pkt->stream_index = 1;
     pkt->dts = dts;
-    pkt->duration = av_rescale(samples, st->time_base.den, st->codec->sample_rate);
+    if (st->codec->sample_rate)
+        pkt->duration = av_rescale(samples, st->time_base.den, st->codec->sample_rate);
     av_dlog(s, "pkt dts %"PRId64" duration %d samples %d sample rate %d\n",
             pkt->dts, pkt->duration, samples, st->codec->sample_rate);
 
@@ -370,7 +374,7 @@ static int r3d_seek(AVFormatContext *s, int stream_index, int64_t sample_time, i
         return -1;
 
     frame_num = av_rescale_q(sample_time, st->time_base,
-                             (AVRational){st->avg_frame_rate.den, st->avg_frame_rate.num});
+                             av_inv_q(st->avg_frame_rate));
     av_dlog(s, "seek frame num %d timestamp %"PRId64"\n",
             frame_num, sample_time);
 

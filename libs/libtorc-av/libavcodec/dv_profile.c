@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include "libavutil/common.h"
+#include "libavutil/intreadwrite.h"
 #include "libavutil/log.h"
 #include "libavutil/pixdesc.h"
 #include "avcodec.h"
@@ -280,21 +281,29 @@ static const DVprofile dv_profiles[] = {
     }
 };
 
-const DVprofile* avpriv_dv_frame_profile(const DVprofile *sys,
+const DVprofile* avpriv_dv_frame_profile2(AVCodecContext* codec, const DVprofile *sys,
                                   const uint8_t* frame, unsigned buf_size)
 {
     int i, dsf, stype;
 
-    if (buf_size < 80 * 5 + 48 + 4)
+    if(buf_size < DV_PROFILE_BYTES)
         return NULL;
 
     dsf = (frame[3] & 0x80) >> 7;
     stype = frame[80 * 5 + 48 + 3] & 0x1f;
 
     /* 576i50 25Mbps 4:1:1 is a special case */
-    if (dsf == 1 && stype == 0 && frame[4] & 0x07 /* the APT field */) {
+    if ((dsf == 1 && stype == 0 && frame[4] & 0x07 /* the APT field */) ||
+        (stype == 31 && codec && codec->codec_tag==AV_RL32("SL25") && codec->coded_width==720 && codec->coded_height==576)) {
         return &dv_profiles[2];
     }
+
+    if(   stype == 0
+       && codec
+       && (codec->codec_tag==AV_RL32("dvsd") || codec->codec_tag==AV_RL32("CDVC"))
+       && codec->coded_width ==720
+       && codec->coded_height==576)
+        return &dv_profiles[1];
 
     for (i = 0; i < FF_ARRAY_ELEMS(dv_profiles); i++)
         if (dsf == dv_profiles[i].dsf && stype == dv_profiles[i].video_stype)
@@ -304,17 +313,36 @@ const DVprofile* avpriv_dv_frame_profile(const DVprofile *sys,
     if (sys && buf_size == sys->frame_size)
         return sys;
 
+    /* hack for trac issue #217, dv files created with QuickTime 3 */
+    if ((frame[3] & 0x7f) == 0x3f && frame[80 * 5 + 48 + 3] == 0xff)
+        return &dv_profiles[dsf];
+
     return NULL;
+}
+
+const DVprofile* avpriv_dv_frame_profile(const DVprofile *sys,
+                                  const uint8_t* frame, unsigned buf_size)
+{
+    return avpriv_dv_frame_profile2(NULL, sys, frame, buf_size);
 }
 
 const DVprofile* avpriv_dv_codec_profile(AVCodecContext* codec)
 {
     int i;
+    int w, h;
+
+    if (codec->coded_width || codec->coded_height) {
+        w = codec->coded_width;
+        h = codec->coded_height;
+    } else {
+        w = codec->width;
+        h = codec->height;
+    }
 
     for (i=0; i<FF_ARRAY_ELEMS(dv_profiles); i++)
-       if (codec->height  == dv_profiles[i].height  &&
+       if (h == dv_profiles[i].height  &&
            codec->pix_fmt == dv_profiles[i].pix_fmt &&
-           codec->width   == dv_profiles[i].width)
+           w == dv_profiles[i].width)
                return &dv_profiles[i];
 
     return NULL;

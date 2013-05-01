@@ -110,16 +110,16 @@ theora_header (AVFormatContext * s, int idx)
         st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
         st->codec->codec_id = AV_CODEC_ID_THEORA;
         st->need_parsing = AVSTREAM_PARSE_HEADERS;
-
     }
     break;
     case 0x81:
-        ff_vorbis_comment(s, &st->metadata, os->buf + os->pstart + 7, os->psize - 8);
+        ff_vorbis_comment(s, &st->metadata, os->buf + os->pstart + 7, os->psize - 7);
     case 0x82:
         if (!thp->version)
             return -1;
         break;
     default:
+        av_log(s, AV_LOG_ERROR, "Unknown header type %X\n", os->buf[os->pstart]);
         return -1;
     }
 
@@ -160,10 +160,47 @@ theora_gptopts(AVFormatContext *ctx, int idx, uint64_t gp, int64_t *dts)
     return iframe + pframe;
 }
 
+static int theora_packet(AVFormatContext *s, int idx)
+{
+    struct ogg *ogg = s->priv_data;
+    struct ogg_stream *os = ogg->streams + idx;
+    int duration;
+
+    /* first packet handling
+       here we parse the duration of each packet in the first page and compare
+       the total duration to the page granule to find the encoder delay and
+       set the first timestamp */
+
+    if ((!os->lastpts || os->lastpts == AV_NOPTS_VALUE) && !(os->flags & OGG_FLAG_EOS)) {
+        int seg;
+
+        duration = 1;
+        for (seg = os->segp; seg < os->nsegs; seg++) {
+            if (os->segments[seg] < 255)
+                duration ++;
+        }
+
+        os->lastpts = os->lastdts   = theora_gptopts(s, idx, os->granule, NULL) - duration;
+        if(s->streams[idx]->start_time == AV_NOPTS_VALUE) {
+            s->streams[idx]->start_time = os->lastpts;
+            if (s->streams[idx]->duration)
+                s->streams[idx]->duration -= s->streams[idx]->start_time;
+        }
+    }
+
+    /* parse packet duration */
+    if (os->psize > 0) {
+        os->pduration = 1;
+    }
+
+    return 0;
+}
+
 const struct ogg_codec ff_theora_codec = {
     .magic = "\200theora",
     .magicsize = 7,
     .header = theora_header,
+    .packet = theora_packet,
     .gptopts = theora_gptopts,
     .nb_header = 3,
 };

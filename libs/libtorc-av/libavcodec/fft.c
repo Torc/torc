@@ -4,20 +4,20 @@
  * Copyright (c) 2002 Fabrice Bellard
  * Partly based on libdjbfft by D. J. Bernstein
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -162,6 +162,7 @@ av_cold int ff_fft_init(FFTContext *s, int nbits, int inverse)
     if (HAVE_ALTIVEC) ff_fft_init_altivec(s);
     if (ARCH_X86)     ff_fft_init_x86(s);
     if (CONFIG_MDCT)  s->mdct_calcw = s->mdct_calc;
+    if (HAVE_MIPSFPU) ff_fft_init_mips(s);
 #else
     if (CONFIG_MDCT)  s->mdct_calcw = ff_mdct_calcw_c;
     if (ARCH_ARM)     ff_fft_fixed_init_arm(s);

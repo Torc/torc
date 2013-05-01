@@ -1,20 +1,20 @@
 /*
  * Copyright (C) 2006  Aurelien Jacobs <aurel@gnuage.org>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,7 +27,6 @@
 #include <string.h>
 
 #include "avcodec.h"
-#include "dsputil.h"
 #include "get_bits.h"
 
 #include "vp56.h"
@@ -35,8 +34,7 @@
 #include "vp5data.h"
 
 
-static int vp5_parse_header(VP56Context *s, const uint8_t *buf, int buf_size,
-                            int *golden_frame)
+static int vp5_parse_header(VP56Context *s, const uint8_t *buf, int buf_size)
 {
     VP56RangeCoder *c = &s->c;
     int rows, cols;
@@ -49,18 +47,18 @@ static int vp5_parse_header(VP56Context *s, const uint8_t *buf, int buf_size,
     {
         vp56_rac_gets(c, 8);
         if(vp56_rac_gets(c, 5) > 5)
-            return 0;
+            return AVERROR_INVALIDDATA;
         vp56_rac_gets(c, 2);
         if (vp56_rac_get(c)) {
             av_log(s->avctx, AV_LOG_ERROR, "interlacing not supported\n");
-            return 0;
+            return AVERROR_PATCHWELCOME;
         }
         rows = vp56_rac_gets(c, 8);  /* number of stored macroblock rows */
         cols = vp56_rac_gets(c, 8);  /* number of stored macroblock cols */
         if (!rows || !cols) {
             av_log(s->avctx, AV_LOG_ERROR, "Invalid size %dx%d\n",
                    cols << 4, rows << 4);
-            return 0;
+            return AVERROR_INVALIDDATA;
         }
         vp56_rac_gets(c, 8);  /* number of displayed macroblock rows */
         vp56_rac_gets(c, 8);  /* number of displayed macroblock cols */
@@ -69,11 +67,11 @@ static int vp5_parse_header(VP56Context *s, const uint8_t *buf, int buf_size,
             16*cols != s->avctx->coded_width ||
             16*rows != s->avctx->coded_height) {
             avcodec_set_dimensions(s->avctx, 16*cols, 16*rows);
-            return 2;
+            return VP56_SIZE_CHANGE;
         }
     } else if (!s->macroblocks)
-        return 0;
-    return 1;
+        return AVERROR_INVALIDDATA;
+    return 0;
 }
 
 static void vp5_parse_vector_adjustment(VP56Context *s, VP56mv *vect)

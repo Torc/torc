@@ -2,20 +2,20 @@
  * Miro VideoXL codec
  * Copyright (c) 2004 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,6 +27,7 @@
 #include "libavutil/common.h"
 #include "libavutil/intreadwrite.h"
 #include "avcodec.h"
+#include "internal.h"
 
 typedef struct VideoXLContext{
     AVCodecContext *avctx;
@@ -37,10 +38,11 @@ static const int xl_table[32] = {
    0,   1,   2,   3,   4,   5,   6,   7,
    8,   9,  12,  15,  20,  25,  34,  46,
   64,  82,  94, 103, 108, 113, 116, 119,
- 120, 121, 122, 123, 124, 125, 126, 127};
+ 120, 121, 122, 123, 124, 125, 126, 127
+};
 
 static int decode_frame(AVCodecContext *avctx,
-                        void *data, int *data_size,
+                        void *data, int *got_frame,
                         AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
@@ -48,32 +50,37 @@ static int decode_frame(AVCodecContext *avctx,
     VideoXLContext * const a = avctx->priv_data;
     AVFrame * const p = &a->pic;
     uint8_t *Y, *U, *V;
-    int i, j;
+    int i, j, ret;
     int stride;
     uint32_t val;
     int y0, y1, y2, y3 = 0, c0 = 0, c1 = 0;
 
-    if(p->data[0])
+    if (avctx->width & 3) {
+        av_log(avctx, AV_LOG_ERROR, "width is not a multiple of 4\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    if (buf_size < avctx->width * avctx->height) {
+        av_log(avctx, AV_LOG_ERROR, "Packet is too small\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    if (p->data[0])
         avctx->release_buffer(avctx, p);
 
     p->reference = 0;
-    if(avctx->get_buffer(avctx, p) < 0){
+    if ((ret = ff_get_buffer(avctx, p)) < 0){
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
-        return -1;
+        return ret;
     }
-    p->pict_type= AV_PICTURE_TYPE_I;
-    p->key_frame= 1;
+    p->pict_type = AV_PICTURE_TYPE_I;
+    p->key_frame = 1;
 
     Y = a->pic.data[0];
     U = a->pic.data[1];
     V = a->pic.data[2];
 
     stride = avctx->width - 4;
-
-    if (buf_size < avctx->width * avctx->height) {
-        av_log(avctx, AV_LOG_ERROR, "Packet is too small\n");
-        return AVERROR_INVALIDDATA;
-    }
 
     for (i = 0; i < avctx->height; i++) {
         /* lines are stored in reversed order */
@@ -121,21 +128,24 @@ static int decode_frame(AVCodecContext *avctx,
         V += a->pic.linesize[2];
     }
 
-    *data_size = sizeof(AVFrame);
+    *got_frame = 1;
     *(AVFrame*)data = a->pic;
 
     return buf_size;
 }
 
-static av_cold int decode_init(AVCodecContext *avctx){
-//    VideoXLContext * const a = avctx->priv_data;
+static av_cold int decode_init(AVCodecContext *avctx)
+{
+    VideoXLContext * const a = avctx->priv_data;
 
-    avctx->pix_fmt= AV_PIX_FMT_YUV411P;
+    avcodec_get_frame_defaults(&a->pic);
+    avctx->pix_fmt = AV_PIX_FMT_YUV411P;
 
     return 0;
 }
 
-static av_cold int decode_end(AVCodecContext *avctx){
+static av_cold int decode_end(AVCodecContext *avctx)
+{
     VideoXLContext * const a = avctx->priv_data;
     AVFrame *pic = &a->pic;
 

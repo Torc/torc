@@ -3,22 +3,24 @@
  * Copyright (c) 2003 Fabrice Bellard
  * Copyright (c) 2003 Michael Niedermayer
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#define UNCHECKED_BITSTREAM_READER 1
 
 #include "parser.h"
 #include "mpegvideo.h"
@@ -91,6 +93,13 @@ static int av_mpeg4_decode_header(AVCodecParserContext *s1,
     if (s->width && (!avctx->width || !avctx->height || !avctx->coded_width || !avctx->coded_height)) {
         avcodec_set_dimensions(avctx, s->width, s->height);
     }
+    if((s1->flags & PARSER_FLAG_USE_CODEC_TS) && s->avctx->time_base.den>0 && ret>=0){
+        av_assert1(s1->pts == AV_NOPTS_VALUE);
+        av_assert1(s1->dts == AV_NOPTS_VALUE);
+
+        s1->pts = av_rescale_q(s->time, (AVRational){1, s->avctx->time_base.den}, (AVRational){1, 1200000});
+    }
+
     s1->pict_type= s->pict_type;
     pc->first_picture = 0;
     return ret;
@@ -100,7 +109,10 @@ static av_cold int mpeg4video_parse_init(AVCodecParserContext *s)
 {
     struct Mp4vParseContext *pc = s->priv_data;
 
+    ff_mpeg4videodec_static_init();
+
     pc->first_picture = 1;
+    pc->enc.quant_precision=5;
     pc->enc.slice_context_count = 1;
     return 0;
 }

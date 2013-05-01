@@ -2,20 +2,20 @@
  * ADX ADPCM codecs
  * Copyright (c) 2001,2003 BERO
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -107,6 +107,14 @@ static int adx_encode_header(AVCodecContext *avctx, uint8_t *buf, int bufsize)
     return HEADER_SIZE;
 }
 
+#if FF_API_OLD_ENCODE_AUDIO
+static av_cold int adx_encode_close(AVCodecContext *avctx)
+{
+    av_freep(&avctx->coded_frame);
+    return 0;
+}
+#endif
+
 static av_cold int adx_encode_init(AVCodecContext *avctx)
 {
     ADXContext *c = avctx->priv_data;
@@ -118,8 +126,8 @@ static av_cold int adx_encode_init(AVCodecContext *avctx)
     avctx->frame_size = BLOCK_SAMPLES;
 
 #if FF_API_OLD_ENCODE_AUDIO
-    avcodec_get_frame_defaults(&c->frame);
-    avctx->coded_frame = &c->frame;
+    if (!(avctx->coded_frame = avcodec_alloc_frame()))
+        return AVERROR(ENOMEM);
 #endif
 
     /* the cutoff can be adjusted, but this seems to work pretty well */
@@ -138,10 +146,8 @@ static int adx_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     int ch, out_size, ret;
 
     out_size = BLOCK_SIZE * avctx->channels + !c->header_parsed * HEADER_SIZE;
-    if ((ret = ff_alloc_packet(avpkt, out_size)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, out_size)) < 0)
         return ret;
-    }
     dst = avpkt->data;
 
     if (!c->header_parsed) {
@@ -169,6 +175,9 @@ AVCodec ff_adpcm_adx_encoder = {
     .id             = AV_CODEC_ID_ADPCM_ADX,
     .priv_data_size = sizeof(ADXContext),
     .init           = adx_encode_init,
+#if FF_API_OLD_ENCODE_AUDIO
+    .close          = adx_encode_close,
+#endif
     .encode2        = adx_encode_frame,
     .sample_fmts    = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_S16,
                                                       AV_SAMPLE_FMT_NONE },

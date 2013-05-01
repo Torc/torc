@@ -5,28 +5,28 @@
  * MMX-optimized DSP functions, based on H.264 optimizations by
  * Michael Niedermayer and Loren Merritt
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/attributes.h"
 #include "libavutil/common.h"
 #include "libavutil/cpu.h"
 #include "libavutil/x86/asm.h"
 #include "libavutil/x86/cpu.h"
-#include "libavcodec/dsputil.h"
 #include "libavcodec/cavsdsp.h"
 #include "dsputil_mmx.h"
 #include "config.h"
@@ -430,7 +430,7 @@ static void ff_ ## OPNAME ## cavs_qpel ## SIZE ## _mc03_ ## MMX(uint8_t *dst, ui
 "mov" #size " " #b ", " #temp "   \n\t"\
 "pavgusb " #temp ", " #a "        \n\t"\
 "mov" #size " " #a ", " #b "      \n\t"
-#define AVG_MMX2_OP(a,b,temp, size) \
+#define AVG_MMXEXT_OP(a, b, temp, size) \
 "mov" #size " " #b ", " #temp "   \n\t"\
 "pavgb " #temp ", " #a "          \n\t"\
 "mov" #size " " #a ", " #b "      \n\t"
@@ -438,21 +438,23 @@ static void ff_ ## OPNAME ## cavs_qpel ## SIZE ## _mc03_ ## MMX(uint8_t *dst, ui
 #endif /* (HAVE_MMXEXT_INLINE || HAVE_AMD3DNOW_INLINE) */
 
 #if HAVE_MMXEXT_INLINE
-QPEL_CAVS(put_,       PUT_OP, mmx2)
-QPEL_CAVS(avg_,  AVG_MMX2_OP, mmx2)
+QPEL_CAVS(put_,        PUT_OP, mmxext)
+QPEL_CAVS(avg_, AVG_MMXEXT_OP, mmxext)
 
-CAVS_MC(put_, 8, mmx2)
-CAVS_MC(put_, 16,mmx2)
-CAVS_MC(avg_, 8, mmx2)
-CAVS_MC(avg_, 16,mmx2)
+CAVS_MC(put_,  8, mmxext)
+CAVS_MC(put_, 16, mmxext)
+CAVS_MC(avg_,  8, mmxext)
+CAVS_MC(avg_, 16, mmxext)
 
-static void ff_cavsdsp_init_mmx2(CAVSDSPContext* c, AVCodecContext *avctx) {
+static av_cold void ff_cavsdsp_init_mmxext(CAVSDSPContext *c,
+                                           AVCodecContext *avctx)
+{
 #define dspfunc(PFX, IDX, NUM) \
-    c->PFX ## _pixels_tab[IDX][ 0] = ff_ ## PFX ## NUM ## _mc00_mmx2; \
-    c->PFX ## _pixels_tab[IDX][ 2] = ff_ ## PFX ## NUM ## _mc20_mmx2; \
-    c->PFX ## _pixels_tab[IDX][ 4] = ff_ ## PFX ## NUM ## _mc01_mmx2; \
-    c->PFX ## _pixels_tab[IDX][ 8] = ff_ ## PFX ## NUM ## _mc02_mmx2; \
-    c->PFX ## _pixels_tab[IDX][12] = ff_ ## PFX ## NUM ## _mc03_mmx2; \
+    c->PFX ## _pixels_tab[IDX][ 0] = ff_ ## PFX ## NUM ## _mc00_mmxext; \
+    c->PFX ## _pixels_tab[IDX][ 2] = ff_ ## PFX ## NUM ## _mc20_mmxext; \
+    c->PFX ## _pixels_tab[IDX][ 4] = ff_ ## PFX ## NUM ## _mc01_mmxext; \
+    c->PFX ## _pixels_tab[IDX][ 8] = ff_ ## PFX ## NUM ## _mc02_mmxext; \
+    c->PFX ## _pixels_tab[IDX][12] = ff_ ## PFX ## NUM ## _mc03_mmxext; \
 
     dspfunc(put_cavs_qpel, 0, 16);
     dspfunc(put_cavs_qpel, 1, 8);
@@ -473,9 +475,11 @@ CAVS_MC(put_, 16,3dnow)
 CAVS_MC(avg_, 8, 3dnow)
 CAVS_MC(avg_, 16,3dnow)
 
-static void ff_cavsdsp_init_3dnow(CAVSDSPContext* c, AVCodecContext *avctx) {
+static av_cold void ff_cavsdsp_init_3dnow(CAVSDSPContext *c,
+                                          AVCodecContext *avctx)
+{
 #define dspfunc(PFX, IDX, NUM) \
-    c->PFX ## _pixels_tab[IDX][ 0] = ff_ ## PFX ## NUM ## _mc00_mmx2; \
+    c->PFX ## _pixels_tab[IDX][ 0] = ff_ ## PFX ## NUM ## _mc00_mmxext; \
     c->PFX ## _pixels_tab[IDX][ 2] = ff_ ## PFX ## NUM ## _mc20_3dnow; \
     c->PFX ## _pixels_tab[IDX][ 4] = ff_ ## PFX ## NUM ## _mc01_3dnow; \
     c->PFX ## _pixels_tab[IDX][ 8] = ff_ ## PFX ## NUM ## _mc02_3dnow; \
@@ -496,7 +500,7 @@ av_cold void ff_cavsdsp_init_x86(CAVSDSPContext *c, AVCodecContext *avctx)
     int mm_flags = av_get_cpu_flags();
 
 #if HAVE_MMXEXT_INLINE
-    if (mm_flags & AV_CPU_FLAG_MMXEXT) ff_cavsdsp_init_mmx2(c, avctx);
+    if (mm_flags & AV_CPU_FLAG_MMXEXT) ff_cavsdsp_init_mmxext(c, avctx);
 #endif /* HAVE_MMXEXT_INLINE */
 #if HAVE_AMD3DNOW_INLINE
     if (mm_flags & AV_CPU_FLAG_3DNOW) ff_cavsdsp_init_3dnow(c, avctx);

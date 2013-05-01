@@ -2,20 +2,20 @@
  * Copyright (c) 2003 Fabrice Bellard
  * Copyright (c) 2007 Michael Niedermayer
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,9 +27,6 @@
 #include "libavutil/common.h"
 #include "libavutil/mathematics.h"
 #include "libavformat/avformat.h"
-
-#undef printf
-#undef fprintf
 
 static char buffer[20];
 
@@ -48,13 +45,12 @@ static const char *ret_str(int v)
 
 static void ts_str(char buffer[60], int64_t ts, AVRational base)
 {
-    double tsval;
     if (ts == AV_NOPTS_VALUE) {
         strcpy(buffer, " NOPTS   ");
         return;
     }
-    tsval = ts * av_q2d(base);
-    snprintf(buffer, 60, "%9f", tsval);
+    ts= av_rescale_q(ts, base, (AVRational){1, 1000000});
+    snprintf(buffer, 60, "%c%"PRId64".%06"PRId64"", ts<0 ? '-' : ' ', FFABS(ts)/1000000, FFABS(ts)%1000000);
 }
 
 int main(int argc, char **argv)
@@ -62,8 +58,25 @@ int main(int argc, char **argv)
     const char *filename;
     AVFormatContext *ic = NULL;
     int i, ret, stream_id;
+    int j;
     int64_t timestamp;
     AVDictionary *format_opts = NULL;
+    int64_t seekfirst = AV_NOPTS_VALUE;
+    int firstback=0;
+    int frame_count = 1;
+
+    for(i=2; i<argc; i+=2){
+        if       (!strcmp(argv[i], "-seekforw")){
+            seekfirst = atoi(argv[i+1]);
+        } else if(!strcmp(argv[i], "-seekback")){
+            seekfirst = atoi(argv[i+1]);
+            firstback = 1;
+        } else if(!strcmp(argv[i], "-frames")){
+            frame_count = atoi(argv[i+1]);
+        } else {
+            argc = 1;
+        }
+    }
 
     av_dict_set(&format_opts, "channels", "1", 0);
     av_dict_set(&format_opts, "sample_rate", "22050", 0);
@@ -71,7 +84,7 @@ int main(int argc, char **argv)
     /* initialize libavcodec, and register all codecs and formats */
     av_register_all();
 
-    if (argc != 2) {
+    if (argc < 2) {
         printf("usage: %s input_file\n"
                "\n", argv[0]);
         return 1;
@@ -92,12 +105,17 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if(seekfirst != AV_NOPTS_VALUE){
+        if(firstback)   avformat_seek_file(ic, -1, INT64_MIN, seekfirst, seekfirst, 0);
+        else            avformat_seek_file(ic, -1, seekfirst, seekfirst, INT64_MAX, 0);
+    }
     for(i=0; ; i++){
         AVPacket pkt = { 0 };
         AVStream *av_uninit(st);
         char ts_buf[60];
 
         if(ret>=0){
+            for(j=0; j<frame_count; j++) {
             ret= av_read_frame(ic, &pkt);
             if(ret>=0){
                 char dts_buf[60];
@@ -109,6 +127,7 @@ int main(int argc, char **argv)
             } else
                 printf("ret:%s", ret_str(ret)); // necessary to avoid trailing whitespace
             printf("\n");
+            }
         }
 
         if(i>25) break;

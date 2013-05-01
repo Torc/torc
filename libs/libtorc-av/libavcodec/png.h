@@ -2,20 +2,20 @@
  * PNG image format
  * Copyright (c) 2003 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -49,14 +49,11 @@
 
 #define NB_PASSES 7
 
-extern const uint8_t ff_pngsig[8];
-extern const uint8_t ff_mngsig[8];
+#define PNGSIG 0x89504e470d0a1a0a
+#define MNGSIG 0x8a4d4e470d0a1a0a
 
 /* Mask to determine which y pixels are valid in a pass */
 extern const uint8_t ff_png_pass_ymask[NB_PASSES];
-
-/* Mask to determine which pixels are valid in a pass */
-extern const uint8_t ff_png_pass_mask[NB_PASSES];
 
 void *ff_png_zalloc(void *opaque, unsigned int items, unsigned int size);
 

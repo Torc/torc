@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2003 Michael Niedermayer
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -28,6 +28,7 @@
 
 #include "asv.h"
 #include "avcodec.h"
+#include "internal.h"
 #include "mathops.h"
 #include "mpeg12data.h"
 
@@ -55,7 +56,7 @@ static inline void asv2_put_level(PutBitContext *pb, int level){
     }
 }
 
-static inline void asv1_encode_block(ASV1Context *a, DCTELEM block[64]){
+static inline void asv1_encode_block(ASV1Context *a, int16_t block[64]){
     int i;
     int nc_count=0;
 
@@ -88,7 +89,7 @@ static inline void asv1_encode_block(ASV1Context *a, DCTELEM block[64]){
     put_bits(&a->pb, ff_asv_ccp_tab[16][1], ff_asv_ccp_tab[16][0]);
 }
 
-static inline void asv2_encode_block(ASV1Context *a, DCTELEM block[64]){
+static inline void asv2_encode_block(ASV1Context *a, int16_t block[64]){
     int i;
     int count=0;
 
@@ -114,7 +115,7 @@ static inline void asv2_encode_block(ASV1Context *a, DCTELEM block[64]){
         if( (block[index + 1] = (block[index + 1]*a->q_intra_matrix[index + 1] + (1<<15))>>16) ) ccp |= 2;
         if( (block[index + 9] = (block[index + 9]*a->q_intra_matrix[index + 9] + (1<<15))>>16) ) ccp |= 1;
 
-        assert(i || ccp<8);
+        av_assert2(i || ccp<8);
         if(i) put_bits(&a->pb, ff_asv_ac_ccp_tab[ccp][1], ff_asv_ac_ccp_tab[ccp][0]);
         else  put_bits(&a->pb, ff_asv_dc_ccp_tab[ccp][1], ff_asv_dc_ccp_tab[ccp][0]);
 
@@ -129,7 +130,7 @@ static inline void asv2_encode_block(ASV1Context *a, DCTELEM block[64]){
 
 #define MAX_MB_SIZE (30*16*16*3/2/8)
 
-static inline int encode_mb(ASV1Context *a, DCTELEM block[6][64]){
+static inline int encode_mb(ASV1Context *a, int16_t block[6][64]){
     int i;
 
     if (a->pb.buf_end - a->pb.buf - (put_bits_count(&a->pb)>>3) < MAX_MB_SIZE) {
@@ -148,7 +149,7 @@ static inline int encode_mb(ASV1Context *a, DCTELEM block[6][64]){
 }
 
 static inline void dct_get(ASV1Context *a, int mb_x, int mb_y){
-    DCTELEM (*block)[64]= a->block;
+    int16_t (*block)[64]= a->block;
     int linesize= a->picture.linesize[0];
     int i;
 
@@ -179,12 +180,9 @@ static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     int size, ret;
     int mb_x, mb_y;
 
-    if (!pkt->data &&
-        (ret = av_new_packet(pkt, a->mb_height*a->mb_width*MAX_MB_SIZE +
-                                  FF_MIN_BUFFER_SIZE)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet.\n");
+    if ((ret = ff_alloc_packet2(avctx, pkt, a->mb_height*a->mb_width*MAX_MB_SIZE +
+                                  FF_MIN_BUFFER_SIZE)) < 0)
         return ret;
-    }
 
     init_put_bits(&a->pb, pkt->data, pkt->size);
 
@@ -269,7 +267,8 @@ AVCodec ff_asv1_encoder = {
     .priv_data_size = sizeof(ASV1Context),
     .init           = encode_init,
     .encode2        = encode_frame,
-    .pix_fmts       = (const enum PixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
+    .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P,
+                                                    AV_PIX_FMT_NONE },
     .long_name      = NULL_IF_CONFIG_SMALL("ASUS V1"),
 };
 #endif
@@ -282,7 +281,8 @@ AVCodec ff_asv2_encoder = {
     .priv_data_size = sizeof(ASV1Context),
     .init           = encode_init,
     .encode2        = encode_frame,
-    .pix_fmts       = (const enum PixelFormat[]){ AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE },
+    .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_YUV420P,
+                                                    AV_PIX_FMT_NONE },
     .long_name      = NULL_IF_CONFIG_SMALL("ASUS V2"),
 };
 #endif

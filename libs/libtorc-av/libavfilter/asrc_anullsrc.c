@@ -1,18 +1,21 @@
 /*
- * This file is part of Libav.
+ * Copyright 2010 S.N. Hemanth Meenakshisundaram <smeenaks ucsd edu>
+ * Copyright 2010 Stefano Sabatini <stefano.sabatini-lala poste it>
  *
- * Libav is free software; you can redistribute it and/or
+ * This file is part of FFmpeg.
+ *
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -24,64 +27,95 @@
 #include <inttypes.h>
 #include <stdio.h>
 
+#include "libavutil/channel_layout.h"
+#include "libavutil/internal.h"
+#include "libavutil/opt.h"
+#include "audio.h"
 #include "avfilter.h"
 #include "internal.h"
-#include "libavutil/audioconvert.h"
-#include "libavutil/internal.h"
 
 typedef struct {
+    const AVClass *class;
+    char   *channel_layout_str;
     uint64_t channel_layout;
-    int64_t sample_rate;
+    char   *sample_rate_str;
+    int     sample_rate;
+    int nb_samples;             ///< number of samples per requested frame
+    int64_t pts;
 } ANullContext;
+
+#define OFFSET(x) offsetof(ANullContext, x)
+#define FLAGS AV_OPT_FLAG_AUDIO_PARAM|AV_OPT_FLAG_FILTERING_PARAM
+
+static const AVOption anullsrc_options[]= {
+    { "channel_layout", "set channel_layout", OFFSET(channel_layout_str), AV_OPT_TYPE_STRING, {.str = "stereo"}, 0, 0, FLAGS },
+    { "cl",             "set channel_layout", OFFSET(channel_layout_str), AV_OPT_TYPE_STRING, {.str = "stereo"}, 0, 0, FLAGS },
+    { "sample_rate",    "set sample rate",    OFFSET(sample_rate_str)   , AV_OPT_TYPE_STRING, {.str = "44100"}, 0, 0, FLAGS },
+    { "r",              "set sample rate",    OFFSET(sample_rate_str)   , AV_OPT_TYPE_STRING, {.str = "44100"}, 0, 0, FLAGS },
+    { "nb_samples",     "set the number of samples per requested frame", OFFSET(nb_samples), AV_OPT_TYPE_INT, {.i64 = 1024}, 0, INT_MAX, FLAGS },
+    { "n",              "set the number of samples per requested frame", OFFSET(nb_samples), AV_OPT_TYPE_INT, {.i64 = 1024}, 0, INT_MAX, FLAGS },
+    { NULL },
+};
+
+AVFILTER_DEFINE_CLASS(anullsrc);
 
 static int init(AVFilterContext *ctx, const char *args)
 {
-    ANullContext *priv = ctx->priv;
-    char channel_layout_str[128] = "";
+    ANullContext *null = ctx->priv;
+    int ret;
 
-    priv->sample_rate = 44100;
-    priv->channel_layout = AV_CH_LAYOUT_STEREO;
+    null->class = &anullsrc_class;
+    av_opt_set_defaults(null);
 
-    if (args)
-        sscanf(args, "%"PRId64":%s", &priv->sample_rate, channel_layout_str);
+    if ((ret = (av_set_options_string(null, args, "=", ":"))) < 0)
+        return ret;
 
-    if (priv->sample_rate < 0) {
-        av_log(ctx, AV_LOG_ERROR, "Invalid negative sample rate: %"PRId64"\n", priv->sample_rate);
-        return AVERROR(EINVAL);
-    }
+    if ((ret = ff_parse_sample_rate(&null->sample_rate,
+                                     null->sample_rate_str, ctx)) < 0)
+        return ret;
 
-    if (*channel_layout_str)
-        if (!(priv->channel_layout = av_get_channel_layout(channel_layout_str))
-            && sscanf(channel_layout_str, "%"PRId64, &priv->channel_layout) != 1) {
-            av_log(ctx, AV_LOG_ERROR, "Invalid value '%s' for channel layout\n",
-                   channel_layout_str);
-            return AVERROR(EINVAL);
-        }
+    if ((ret = ff_parse_channel_layout(&null->channel_layout,
+                                        null->channel_layout_str, ctx)) < 0)
+        return ret;
 
     return 0;
 }
 
 static int config_props(AVFilterLink *outlink)
 {
-    ANullContext *priv = outlink->src->priv;
+    ANullContext *null = outlink->src->priv;
     char buf[128];
     int chans_nb;
 
-    outlink->sample_rate = priv->sample_rate;
-    outlink->channel_layout = priv->channel_layout;
+    outlink->sample_rate = null->sample_rate;
+    outlink->channel_layout = null->channel_layout;
 
-    chans_nb = av_get_channel_layout_nb_channels(priv->channel_layout);
-    av_get_channel_layout_string(buf, sizeof(buf), chans_nb, priv->channel_layout);
+    chans_nb = av_get_channel_layout_nb_channels(null->channel_layout);
+    av_get_channel_layout_string(buf, sizeof(buf), chans_nb, null->channel_layout);
     av_log(outlink->src, AV_LOG_VERBOSE,
-           "sample_rate:%"PRId64 " channel_layout:%"PRId64 " channel_layout_description:'%s'\n",
-           priv->sample_rate, priv->channel_layout, buf);
+           "sample_rate:%d channel_layout:'%s' nb_samples:%d\n",
+           null->sample_rate, buf, null->nb_samples);
 
     return 0;
 }
 
-static int request_frame(AVFilterLink *link)
+static int request_frame(AVFilterLink *outlink)
 {
-    return -1;
+    ANullContext *null = outlink->src->priv;
+    AVFilterBufferRef *samplesref;
+
+    samplesref =
+        ff_get_audio_buffer(outlink, AV_PERM_WRITE, null->nb_samples);
+    samplesref->pts = null->pts;
+    samplesref->pos = -1;
+    samplesref->audio->channel_layout = null->channel_layout;
+    samplesref->audio->sample_rate = outlink->sample_rate;
+
+    ff_filter_frame(outlink, avfilter_ref_buffer(samplesref, ~0));
+    avfilter_unref_buffer(samplesref);
+
+    null->pts += null->nb_samples;
+    return 0;
 }
 
 static const AVFilterPad avfilter_asrc_anullsrc_outputs[] = {
@@ -96,7 +130,7 @@ static const AVFilterPad avfilter_asrc_anullsrc_outputs[] = {
 
 AVFilter avfilter_asrc_anullsrc = {
     .name        = "anullsrc",
-    .description = NULL_IF_CONFIG_SMALL("Null audio source, never return audio frames."),
+    .description = NULL_IF_CONFIG_SMALL("Null audio source, return empty audio frames."),
 
     .init        = init,
     .priv_size   = sizeof(ANullContext),
@@ -104,4 +138,5 @@ AVFilter avfilter_asrc_anullsrc = {
     .inputs      = NULL,
 
     .outputs     = avfilter_asrc_anullsrc_outputs,
+    .priv_class = &anullsrc_class,
 };

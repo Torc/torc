@@ -1,18 +1,18 @@
 /*
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,6 +25,30 @@
  */
 
 #include "avfilter.h"
+#include "avfiltergraph.h"
+#include "formats.h"
+#include "video.h"
+
+#define POOL_SIZE 32
+typedef struct AVFilterPool {
+    AVFilterBufferRef *pic[POOL_SIZE];
+    int count;
+    int refcount;
+    int draining;
+} AVFilterPool;
+
+typedef struct AVFilterCommand {
+    double time;                ///< time expressed in seconds
+    char *command;              ///< command
+    char *arg;                  ///< optional argument for the command
+    int flags;
+    struct AVFilterCommand *next;
+} AVFilterCommand;
+
+/**
+ * Update the position of a link in the age heap.
+ */
+void ff_avfilter_graph_update_heap(AVFilterGraph *graph, AVFilterLink *link);
 
 #if !FF_API_AVFILTERPAD_PUBLIC
 /**
@@ -64,20 +88,8 @@ struct AVFilterPad {
     int rej_perms;
 
     /**
-     * Callback called before passing the first slice of a new frame. If
-     * NULL, the filter layer will default to storing a reference to the
-     * picture inside the link structure.
-     *
-     * Input video pads only.
-     *
-     * @return >= 0 on success, a negative AVERROR on error. picref will be
-     * unreferenced by the caller in case of error.
-     */
-    void (*start_frame)(AVFilterLink *link, AVFilterBufferRef *picref);
-
-    /**
      * Callback function to get a video buffer. If NULL, the filter system will
-     * use avfilter_default_get_video_buffer().
+     * use ff_default_get_video_buffer().
      *
      * Input video pads only.
      */
@@ -85,7 +97,7 @@ struct AVFilterPad {
 
     /**
      * Callback function to get an audio buffer. If NULL, the filter system will
-     * use avfilter_default_get_audio_buffer().
+     * use ff_default_get_audio_buffer().
      *
      * Input audio pads only.
      */
@@ -93,37 +105,16 @@ struct AVFilterPad {
                                            int nb_samples);
 
     /**
-     * Callback called after the slices of a frame are completely sent. If
-     * NULL, the filter layer will default to releasing the reference stored
-     * in the link structure during start_frame().
+     * Filtering callback. This is where a filter receives a frame with
+     * audio/video data and should do its processing.
      *
-     * Input video pads only.
-     *
-     * @return >= 0 on success, a negative AVERROR on error.
-     */
-    int (*end_frame)(AVFilterLink *link);
-
-    /**
-     * Slice drawing callback. This is where a filter receives video data
-     * and should do its processing.
-     *
-     * Input video pads only.
-     *
-     * @return >= 0 on success, a negative AVERROR on error.
-     */
-    int (*draw_slice)(AVFilterLink *link, int y, int height, int slice_dir);
-
-    /**
-     * Samples filtering callback. This is where a filter receives audio data
-     * and should do its processing.
-     *
-     * Input audio pads only.
+     * Input pads only.
      *
      * @return >= 0 on success, a negative AVERROR on error. This function
      * must ensure that samplesref is properly unreferenced on error if it
      * hasn't been passed on to another filter.
      */
-    int (*filter_samples)(AVFilterLink *link, AVFilterBufferRef *samplesref);
+    int (*filter_frame)(AVFilterLink *link, AVFilterBufferRef *frame);
 
     /**
      * Frame poll callback. This returns the number of immediately available
@@ -177,9 +168,93 @@ void ff_avfilter_default_free_buffer(AVFilterBuffer *buf);
 /** Tell is a format is contained in the provided list terminated by -1. */
 int ff_fmt_is_in(int fmt, const int *fmts);
 
-#define FF_DPRINTF_START(ctx, func) av_dlog(NULL, "%-16s: ", #func)
+/**
+ * Return a copy of a list of integers terminated by -1, or NULL in
+ * case of copy failure.
+ */
+int *ff_copy_int_list(const int * const list);
 
-void ff_dlog_link(void *ctx, AVFilterLink *link, int end);
+/**
+ * Return a copy of a list of 64-bit integers, or NULL in case of
+ * copy failure.
+ */
+int64_t *ff_copy_int64_list(const int64_t * const list);
+
+/* Functions to parse audio format arguments */
+
+/**
+ * Parse a pixel format.
+ *
+ * @param ret pixel format pointer to where the value should be written
+ * @param arg string to parse
+ * @param log_ctx log context
+ * @return 0 in case of success, a negative AVERROR code on error
+ */
+int ff_parse_pixel_format(enum AVPixelFormat *ret, const char *arg, void *log_ctx);
+
+/**
+ * Parse a sample rate.
+ *
+ * @param ret unsigned integer pointer to where the value should be written
+ * @param arg string to parse
+ * @param log_ctx log context
+ * @return 0 in case of success, a negative AVERROR code on error
+ */
+int ff_parse_sample_rate(int *ret, const char *arg, void *log_ctx);
+
+/**
+ * Parse a time base.
+ *
+ * @param ret unsigned AVRational pointer to where the value should be written
+ * @param arg string to parse
+ * @param log_ctx log context
+ * @return 0 in case of success, a negative AVERROR code on error
+ */
+int ff_parse_time_base(AVRational *ret, const char *arg, void *log_ctx);
+
+/**
+ * Parse a sample format name or a corresponding integer representation.
+ *
+ * @param ret integer pointer to where the value should be written
+ * @param arg string to parse
+ * @param log_ctx log context
+ * @return 0 in case of success, a negative AVERROR code on error
+ */
+int ff_parse_sample_format(int *ret, const char *arg, void *log_ctx);
+
+/**
+ * Parse a channel layout or a corresponding integer representation.
+ *
+ * @param ret 64bit integer pointer to where the value should be written.
+ * @param arg string to parse
+ * @param log_ctx log context
+ * @return 0 in case of success, a negative AVERROR code on error
+ */
+int ff_parse_channel_layout(int64_t *ret, const char *arg, void *log_ctx);
+
+void ff_update_link_current_pts(AVFilterLink *link, int64_t pts);
+
+void ff_free_pool(AVFilterPool *pool);
+
+void ff_command_queue_pop(AVFilterContext *filter);
+
+/* misc trace functions */
+
+/* #define FF_AVFILTER_TRACE */
+
+#ifdef FF_AVFILTER_TRACE
+#    define ff_tlog(pctx, ...) av_log(pctx, AV_LOG_DEBUG, __VA_ARGS__)
+#else
+#    define ff_tlog(pctx, ...) do { if (0) av_log(pctx, AV_LOG_DEBUG, __VA_ARGS__); } while (0)
+#endif
+
+#define FF_TPRINTF_START(ctx, func) ff_tlog(NULL, "%-16s: ", #func)
+
+char *ff_get_ref_perms_string(char *buf, size_t buf_size, int perms);
+
+void ff_tlog_ref(void *ctx, AVFilterBufferRef *ref, int end);
+
+void ff_tlog_link(void *ctx, AVFilterLink *link, int end);
 
 /**
  * Insert a new pad.
@@ -236,5 +311,41 @@ int ff_poll_frame(AVFilterLink *link);
  * @return     zero on success
  */
 int ff_request_frame(AVFilterLink *link);
+
+#define AVFILTER_DEFINE_CLASS(fname)            \
+    static const AVClass fname##_class = {      \
+        .class_name = #fname,                   \
+        .item_name  = av_default_item_name,     \
+        .option     = fname##_options,          \
+        .version    = LIBAVUTIL_VERSION_INT,    \
+        .category   = AV_CLASS_CATEGORY_FILTER, \
+    }
+
+AVFilterBufferRef *ff_copy_buffer_ref(AVFilterLink *outlink,
+                                      AVFilterBufferRef *ref);
+
+/**
+ * Find the index of a link.
+ *
+ * I.e. find i such that link == ctx->(in|out)puts[i]
+ */
+#define FF_INLINK_IDX(link)  ((int)((link)->dstpad - (link)->dst->input_pads))
+#define FF_OUTLINK_IDX(link) ((int)((link)->srcpad - (link)->src->output_pads))
+
+int ff_buffersink_read_compat(AVFilterContext *ctx, AVFilterBufferRef **buf);
+int ff_buffersink_read_samples_compat(AVFilterContext *ctx, AVFilterBufferRef **pbuf,
+                                      int nb_samples);
+/**
+ * Send a frame of data to the next filter.
+ *
+ * @param link   the output link over which the data is being sent
+ * @param frame a reference to the buffer of data being sent. The
+ *              receiving filter will free this reference when it no longer
+ *              needs it or pass it on to the next filter.
+ *
+ * @return >= 0 on success, a negative AVERROR on error. The receiving filter
+ * is responsible for unreferencing frame in case of error.
+ */
+int ff_filter_frame(AVFilterLink *link, AVFilterBufferRef *frame);
 
 #endif /* AVFILTER_INTERNAL_H */

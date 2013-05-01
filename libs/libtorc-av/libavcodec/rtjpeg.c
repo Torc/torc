@@ -2,25 +2,24 @@
  * RTJpeg decoding functions
  * Copyright (c) 2006 Reimar Doeffinger
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "libavutil/common.h"
 #include "get_bits.h"
-#include "dsputil.h"
 #include "rtjpeg.h"
 
 #define PUT_COEFF(c) \
@@ -44,7 +43,7 @@
  * aligned this could be done faster in a different way, e.g. as it is done
  * in MPlayer libmpcodecs/native/rtjpegn.c.
  */
-static inline int get_block(GetBitContext *gb, DCTELEM *block, const uint8_t *scan,
+static inline int get_block(GetBitContext *gb, int16_t *block, const uint8_t *scan,
                             const uint32_t *quant) {
     int coeff, i, n;
     int8_t ac;
@@ -61,7 +60,7 @@ static inline int get_block(GetBitContext *gb, DCTELEM *block, const uint8_t *sc
 
     // normally we would only need to clear the (63 - coeff) last values,
     // but since we do not know where they are we just clear the whole block
-    memset(block, 0, 64 * sizeof(DCTELEM));
+    memset(block, 0, 64 * sizeof(int16_t));
 
     // 2 bits per coefficient
     while (coeff) {
@@ -121,7 +120,7 @@ int ff_rtjpeg_decode_frame_yuv420(RTJpegContext *c, AVFrame *f,
     if (res > 0) \
         c->dsp->idct_put(dst, stride, block); \
 } while (0)
-            DCTELEM *block = c->block;
+            int16_t *block = c->block;
             BLOCK(c->lquant, y1, f->linesize[0]);
             y1 += 8;
             BLOCK(c->lquant, y1, f->linesize[0]);

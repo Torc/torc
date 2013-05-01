@@ -2,31 +2,34 @@
  * CDXL video decoder
  * Copyright (c) 2011-2012 Paul B Mahol
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#define UNCHECKED_BITSTREAM_READER 1
 
 #include "libavutil/intreadwrite.h"
 #include "libavutil/imgutils.h"
 #include "avcodec.h"
 #include "get_bits.h"
+#include "internal.h"
 
 #define BIT_PLANAR   0x00
-#define BYTE_PLANAR  0x20
-#define CHUNKY       0x40
+#define CHUNKY       0x20
+#define BYTE_PLANAR  0x40
 #define BIT_LINE     0x80
 #define BYTE_LINE    0xC0
 
@@ -64,7 +67,7 @@ static void import_palette(CDXLVideoContext *c, uint32_t *new_palette)
         unsigned r   = ((rgb >> 8) & 0xF) * 0x11;
         unsigned g   = ((rgb >> 4) & 0xF) * 0x11;
         unsigned b   =  (rgb       & 0xF) * 0x11;
-        AV_WN32(&new_palette[i], (r << 16) | (g << 8) | b);
+        AV_WN32(&new_palette[i], (0xFFU << 24) | (r << 16) | (g << 8) | b);
     }
 }
 
@@ -116,6 +119,7 @@ static void cdxl_decode_rgb(CDXLVideoContext *c)
 {
     uint32_t *new_palette = (uint32_t *)c->frame.data[1];
 
+    memset(c->frame.data[1], 0, AVPALETTE_SIZE);
     import_palette(c, new_palette);
     import_format(c, c->frame.linesize[0], c->frame.data[0]);
 }
@@ -207,7 +211,7 @@ static void cdxl_decode_ham8(CDXLVideoContext *c)
 }
 
 static int cdxl_decode_frame(AVCodecContext *avctx, void *data,
-                             int *data_size, AVPacket *pkt)
+                             int *got_frame, AVPacket *pkt)
 {
     CDXLVideoContext *c = avctx->priv_data;
     AVFrame * const p = &c->frame;
@@ -262,7 +266,7 @@ static int cdxl_decode_frame(AVCodecContext *avctx, void *data,
         avctx->release_buffer(avctx, p);
 
     p->reference = 0;
-    if ((ret = avctx->get_buffer(avctx, p)) < 0) {
+    if ((ret = ff_get_buffer(avctx, p)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
@@ -280,7 +284,7 @@ static int cdxl_decode_frame(AVCodecContext *avctx, void *data,
     } else {
         cdxl_decode_rgb(c);
     }
-    *data_size      = sizeof(AVFrame);
+    *got_frame = 1;
     *(AVFrame*)data = c->frame;
 
     return buf_size;

@@ -2,28 +2,24 @@
  * PNG image format
  * Copyright (c) 2003 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "avcodec.h"
-#include "bytestream.h"
 #include "png.h"
-
-const uint8_t ff_pngsig[8] = {137, 80, 78, 71, 13, 10, 26, 10};
-const uint8_t ff_mngsig[8] = {138, 77, 78, 71, 13, 10, 26, 10};
 
 /* Mask to determine which y pixels are valid in a pass */
 const uint8_t ff_png_pass_ymask[NB_PASSES] = {
@@ -38,11 +34,6 @@ static const uint8_t ff_png_pass_xmin[NB_PASSES] = {
 /* x shift to get row width */
 static const uint8_t ff_png_pass_xshift[NB_PASSES] = {
     3, 3, 2, 2, 1, 1, 0
-};
-
-/* Mask to determine which pixels are valid in a pass */
-const uint8_t ff_png_pass_mask[NB_PASSES] = {
-    0x80, 0x08, 0x88, 0x22, 0xaa, 0x55, 0xff
 };
 
 void *ff_png_zalloc(void *opaque, unsigned int items, unsigned int size)

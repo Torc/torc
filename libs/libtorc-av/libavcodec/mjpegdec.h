@@ -4,20 +4,20 @@
  * Copyright (c) 2003 Alex Beregszaszi
  * Copyright (c) 2003-2004 Michael Niedermayer
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -58,6 +58,9 @@ typedef struct MJpegDecodeContext {
     int ls;
     int progressive;
     int rgb;
+    int upscale_h;
+    int chroma_height;
+    int upscale_v;
     int rct;            /* standard rct */
     int pegasus_rct;    /* pegasus reversible colorspace transform */
     int bits;           /* bits per component */
@@ -65,7 +68,7 @@ typedef struct MJpegDecodeContext {
     int maxval;
     int near;         ///< near lossless bound (si 0 for lossless)
     int t1,t2,t3;
-    int reset;        ///< context halfing intervall ?rename
+    int reset;        ///< context halfing interval ?rename
 
     int width, height;
     int mb_width, mb_height;
@@ -88,8 +91,8 @@ typedef struct MJpegDecodeContext {
     int got_picture;                                ///< we found a SOF and picture is valid, too.
     int linesize[MAX_COMPONENTS];                   ///< linesize << interlaced
     int8_t *qscale_table;
-    DECLARE_ALIGNED(16, DCTELEM, block)[64];
-    DCTELEM (*blocks[MAX_COMPONENTS])[64]; ///< intermediate sums (progressive mode)
+    DECLARE_ALIGNED(16, int16_t, block)[64];
+    int16_t (*blocks[MAX_COMPONENTS])[64]; ///< intermediate sums (progressive mode)
     uint8_t *last_nnz[MAX_COMPONENTS];
     uint64_t coefs_finished[MAX_COMPONENTS]; ///< bitmask of which coefs have been completely decoded (progressive mode)
     ScanTable scantable;
@@ -116,7 +119,7 @@ typedef struct MJpegDecodeContext {
 int ff_mjpeg_decode_init(AVCodecContext *avctx);
 int ff_mjpeg_decode_end(AVCodecContext *avctx);
 int ff_mjpeg_decode_frame(AVCodecContext *avctx,
-                          void *data, int *data_size,
+                          void *data, int *got_frame,
                           AVPacket *avpkt);
 int ff_mjpeg_decode_dqt(MJpegDecodeContext *s);
 int ff_mjpeg_decode_dht(MJpegDecodeContext *s);

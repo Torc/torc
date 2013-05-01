@@ -2,20 +2,20 @@
  * Sierra VMD Format Demuxer
  * Copyright (c) 2004 The ffmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,9 +27,11 @@
  *   http://www.pcisys.net/~melanson/codecs/
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "internal.h"
+#include "avio_internal.h"
 
 #define VMD_HEADER_SIZE 0x0330
 #define BYTES_PER_FRAME_RECORD 16
@@ -132,7 +134,13 @@ static int vmd_read_header(AVFormatContext *s)
         st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
         st->codec->codec_id = AV_CODEC_ID_VMDAUDIO;
         st->codec->codec_tag = 0;  /* no fourcc */
-        st->codec->channels = (vmd->vmd_header[811] & 0x80) ? 2 : 1;
+        if (vmd->vmd_header[811] & 0x80) {
+            st->codec->channels       = 2;
+            st->codec->channel_layout = AV_CH_LAYOUT_STEREO;
+        } else {
+            st->codec->channels       = 1;
+            st->codec->channel_layout = AV_CH_LAYOUT_MONO;
+        }
         st->codec->sample_rate = vmd->sample_rate;
         st->codec->block_align = AV_RL16(&vmd->vmd_header[806]);
         if (st->codec->block_align & 0x8000) {
@@ -147,7 +155,7 @@ static int vmd_read_header(AVFormatContext *s)
         /* calculate pts */
         num = st->codec->block_align;
         den = st->codec->sample_rate * st->codec->channels;
-        av_reduce(&den, &num, den, num, (1UL<<31)-1);
+        av_reduce(&num, &den, num, den, (1UL<<31)-1);
         avpriv_set_pts_info(vst, 33, num, den);
         avpriv_set_pts_info(st, 33, num, den);
     }
@@ -239,12 +247,14 @@ static int vmd_read_packet(AVFormatContext *s,
     vmd_frame *frame;
 
     if (vmd->current_frame >= vmd->frame_count)
-        return AVERROR(EIO);
+        return AVERROR_EOF;
 
     frame = &vmd->frame_table[vmd->current_frame];
     /* position the stream (will probably be there already) */
     avio_seek(pb, frame->frame_offset, SEEK_SET);
 
+    if(ffio_limit(pb, frame->frame_size) != frame->frame_size)
+        return AVERROR(EIO);
     if (av_new_packet(pkt, frame->frame_size + BYTES_PER_FRAME_RECORD))
         return AVERROR(ENOMEM);
     pkt->pos= avio_tell(pb);

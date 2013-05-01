@@ -2,20 +2,20 @@
  * Ut Video encoder
  * Copyright (c) 2012 Jan Ekström
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -417,7 +417,7 @@ static int encode_plane(AVCodecContext *avctx, uint8_t *src,
         /* If non-zero count is found, see if it matches width * height */
         if (counts[symbol]) {
             /* Special case if only one symbol was used */
-            if (counts[symbol] == width * height) {
+            if (counts[symbol] == width * (int64_t)height) {
                 /*
                  * Write a zero for the single symbol
                  * used in the plane, else 0xFF.
@@ -515,15 +515,11 @@ static int utvideo_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     int i, ret = 0;
 
     /* Allocate a new packet if needed, and set it to the pointer dst */
-    ret = ff_alloc_packet(pkt, (256 + 4 * c->slices + width * height) *
-                          c->planes + 4);
+    ret = ff_alloc_packet2(avctx, pkt, (256 + 4 * c->slices + width * height) *
+                           c->planes + 4);
 
-    if (ret < 0) {
-        av_log(avctx, AV_LOG_ERROR,
-               "Error allocating the output packet, or the provided packet "
-               "was too small.\n");
+    if (ret < 0)
         return ret;
-    }
 
     dst = pkt->data;
 
@@ -598,7 +594,6 @@ static int utvideo_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
      * At least currently Ut Video is IDR only.
      * Set flags accordingly.
      */
-    avctx->coded_frame->reference = 0;
     avctx->coded_frame->key_frame = 1;
     avctx->coded_frame->pict_type = AV_PICTURE_TYPE_I;
 

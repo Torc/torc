@@ -3,20 +3,20 @@
  * Copyright (c) 2006-2008 Maxim Poliakovski
  * Copyright (c) 2006-2008 Benjamin Larsson
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -37,11 +37,13 @@
 #include <stdio.h>
 
 #include "libavutil/float_dsp.h"
+#include "libavutil/libm.h"
 #include "avcodec.h"
 #include "bytestream.h"
 #include "fft.h"
 #include "fmtconvert.h"
 #include "get_bits.h"
+#include "internal.h"
 
 #include "atrac.h"
 #include "atrac3data.h"
@@ -85,7 +87,6 @@ typedef struct ChannelUnit {
 } ChannelUnit;
 
 typedef struct ATRAC3Context {
-    AVFrame frame;
     GetBitContext gb;
     //@{
     /** stream data */
@@ -122,7 +123,7 @@ static float gain_tab1[16];
 static float gain_tab2[31];
 
 
-/*
+/**
  * Regular 512 points IMDCT without overlapping, with the exception of the
  * swapping of odd bands caused by the reverse spectra of the QMF.
  *
@@ -201,7 +202,7 @@ static av_cold int atrac3_decode_close(AVCodecContext *avctx)
     return 0;
 }
 
-/*
+/**
  * Mantissa decoding
  *
  * @param selector     which table the output values are coded with
@@ -263,7 +264,7 @@ static void read_quant_spectral_coeffs(GetBitContext *gb, int selector,
     }
 }
 
-/*
+/**
  * Restore the quantized band spectrum coefficients
  *
  * @return subband count, fix for broken specification/files
@@ -320,7 +321,7 @@ static int decode_spectrum(GetBitContext *gb, float *output)
     return num_subbands;
 }
 
-/*
+/**
  * Restore the quantized tonal components
  *
  * @param components tonal components
@@ -404,7 +405,7 @@ static int decode_tonal_components(GetBitContext *gb,
     return component_count;
 }
 
-/*
+/**
  * Decode gain parameters for the coded bands
  *
  * @param block      the gainblock for the current band
@@ -439,7 +440,7 @@ static int decode_gain_control(GetBitContext *gb, GainBlock *block,
     return 0;
 }
 
-/*
+/**
  * Apply gain parameters and perform the MDCT overlapping part
  *
  * @param input   input buffer
@@ -496,7 +497,7 @@ static void gain_compensate_and_overlap(float *input, float *prev,
     memcpy(prev, &input[256], 256 * sizeof(*prev));
 }
 
-/*
+/**
  * Combine the tonal band spectrum and regular band spectrum
  *
  * @param spectrum        output spectrum buffer
@@ -516,7 +517,7 @@ static int add_tonal_components(float *spectrum, int num_components,
         output   = &spectrum[components[i].pos];
 
         for (j = 0; j < components[i].num_coefs; j++)
-            output[i] += input[i];
+            output[j] += input[j];
     }
 
     return last_pos;
@@ -582,7 +583,7 @@ static void reverse_matrixing(float *su1, float *su2, int *prev_code,
             }
             break;
         default:
-            assert(0);
+            av_assert1(0);
         }
     }
 }
@@ -623,7 +624,7 @@ static void channel_weighting(float *su1, float *su2, int *p3)
     }
 }
 
-/*
+/**
  * Decode a Sound Unit
  *
  * @param snd           the channel unit to be used
@@ -738,7 +739,7 @@ static int decode_frame(AVCodecContext *avctx, const uint8_t *databuf,
 
 
         /* set the bitstream reader at the start of the second Sound Unit*/
-        init_get_bits(&q->gb, ptr1, avctx->block_align * 8);
+        init_get_bits8(&q->gb, ptr1, q->decoded_bytes_buffer + avctx->block_align - ptr1);
 
         /* Fill the Weighting coeffs delay buffer */
         memmove(q->weighting_delay, &q->weighting_delay[2],
@@ -797,6 +798,7 @@ static int decode_frame(AVCodecContext *avctx, const uint8_t *databuf,
 static int atrac3_decode_frame(AVCodecContext *avctx, void *data,
                                int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     ATRAC3Context *q = avctx->priv_data;
@@ -810,8 +812,8 @@ static int atrac3_decode_frame(AVCodecContext *avctx, void *data,
     }
 
     /* get output buffer */
-    q->frame.nb_samples = SAMPLES_PER_FRAME;
-    if ((ret = avctx->get_buffer(avctx, &q->frame)) < 0) {
+    frame->nb_samples = SAMPLES_PER_FRAME;
+    if ((ret = ff_get_buffer(avctx, frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
@@ -824,19 +826,18 @@ static int atrac3_decode_frame(AVCodecContext *avctx, void *data,
         databuf = buf;
     }
 
-    ret = decode_frame(avctx, databuf, (float **)q->frame.extended_data);
+    ret = decode_frame(avctx, databuf, (float **)frame->extended_data);
     if (ret) {
         av_log(NULL, AV_LOG_ERROR, "Frame decoding error!\n");
         return ret;
     }
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = q->frame;
+    *got_frame_ptr = 1;
 
     return avctx->block_align;
 }
 
-static void atrac3_init_static_data(AVCodec *codec)
+static void atrac3_init_static_data(void)
 {
     int i;
 
@@ -855,14 +856,15 @@ static void atrac3_init_static_data(AVCodec *codec)
 
     /* Generate gain tables */
     for (i = 0; i < 16; i++)
-        gain_tab1[i] = powf(2.0, (4 - i));
+        gain_tab1[i] = exp2f (4 - i);
 
     for (i = -15; i < 16; i++)
-        gain_tab2[i + 15] = powf(2.0, i * -0.125);
+        gain_tab2[i + 15] = exp2f (i * -0.125);
 }
 
 static av_cold int atrac3_decode_init(AVCodecContext *avctx)
 {
+    static int static_init_done;
     int i, ret;
     int version, delay, samples_per_frame, frame_factor;
     const uint8_t *edata_ptr = avctx->extradata;
@@ -872,6 +874,10 @@ static av_cold int atrac3_decode_init(AVCodecContext *avctx)
         av_log(avctx, AV_LOG_ERROR, "Channel configuration error!\n");
         return AVERROR(EINVAL);
     }
+
+    if (!static_init_done)
+        atrac3_init_static_data();
+    static_init_done = 1;
 
     /* Take care of the codec-specific extradata. */
     if (avctx->extradata_size == 14) {
@@ -901,7 +907,7 @@ static av_cold int atrac3_decode_init(AVCodecContext *avctx)
                    avctx->channels, frame_factor);
             return AVERROR_INVALIDDATA;
         }
-    } else if (avctx->extradata_size == 10) {
+    } else if (avctx->extradata_size == 12 || avctx->extradata_size == 10) {
         /* Parse the extradata, RM format. */
         version                = bytestream_get_be32(&edata_ptr);
         samples_per_frame      = bytestream_get_be16(&edata_ptr);
@@ -912,6 +918,12 @@ static av_cold int atrac3_decode_init(AVCodecContext *avctx)
     } else {
         av_log(NULL, AV_LOG_ERROR, "Unknown extradata size %d.\n",
                avctx->extradata_size);
+        return AVERROR(EINVAL);
+    }
+
+    if (q->coding_mode == JOINT_STEREO && avctx->channels < 2) {
+        av_log(avctx, AV_LOG_ERROR, "Invalid coding mode\n");
+        return AVERROR_INVALIDDATA;
     }
 
     /* Check the extradata */
@@ -984,9 +996,6 @@ static av_cold int atrac3_decode_init(AVCodecContext *avctx)
         return AVERROR(ENOMEM);
     }
 
-    avcodec_get_frame_defaults(&q->frame);
-    avctx->coded_frame = &q->frame;
-
     return 0;
 }
 
@@ -996,7 +1005,6 @@ AVCodec ff_atrac3_decoder = {
     .id               = AV_CODEC_ID_ATRAC3,
     .priv_data_size   = sizeof(ATRAC3Context),
     .init             = atrac3_decode_init,
-    .init_static_data = atrac3_init_static_data,
     .close            = atrac3_decode_close,
     .decode           = atrac3_decode_frame,
     .capabilities     = CODEC_CAP_SUBFRAMES | CODEC_CAP_DR1,

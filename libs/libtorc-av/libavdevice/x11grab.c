@@ -1,9 +1,9 @@
 /*
  * X11 video grab interface
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav integration:
+ * FFmpeg integration:
  * Copyright (C) 2006 Clemens Fruhwirth <clemens@endorphin.org>
  *                    Edouard Gomez <ed.gomez@free.fr>
  *
@@ -14,18 +14,18 @@
  * Copyright (C) 1997-1998 Rasca, Berlin
  *               2003-2004 Karl H. Beckers, Frankfurt
  *
- * Libav is free software; you can redistribute it and/or modify
+ * FFmpeg is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with Libav; if not, write to the Free Software
+ * along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -37,13 +37,13 @@
  */
 
 #include "config.h"
-#include "libavformat/avformat.h"
 #include "libavformat/internal.h"
 #include "libavutil/log.h"
 #include "libavutil/opt.h"
 #include "libavutil/parseutils.h"
 #include "libavutil/time.h"
 #include <time.h>
+#include <X11/cursorfont.h>
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/Xlibint.h>
@@ -53,6 +53,7 @@
 #include <X11/extensions/shape.h>
 #include <X11/extensions/XShm.h>
 #include <X11/extensions/Xfixes.h>
+#include "avdevice.h"
 
 /**
  * X11 Device Demuxer context
@@ -63,9 +64,8 @@ struct x11grab {
     AVRational time_base;    /**< Time base */
     int64_t time_frame;      /**< Current time */
 
-    char *video_size;        /**< String describing video size, set by a private option. */
-    int height;              /**< Height of the grab frame */
     int width;               /**< Width of the grab frame */
+    int height;              /**< Height of the grab frame */
     int x_off;               /**< Horizontal top-left corner coordinate */
     int y_off;               /**< Vertical top-left corner coordinate */
 
@@ -164,33 +164,35 @@ x11grab_read_header(AVFormatContext *s1)
     int y_off = 0;
     int screen;
     int use_shm;
-    char *param, *offset;
+    char *dpyname, *offset;
     int ret = 0;
     AVRational framerate;
 
-    param = av_strdup(s1->filename);
-    if (!param)
+    dpyname = av_strdup(s1->filename);
+    if (!dpyname)
         goto out;
 
-    offset = strchr(param, '+');
+    offset = strchr(dpyname, '+');
     if (offset) {
         sscanf(offset, "%d,%d", &x_off, &y_off);
-        x11grab->draw_mouse = !strstr(offset, "nomouse");
+        if (strstr(offset, "nomouse")) {
+            av_log(s1, AV_LOG_WARNING,
+                   "'nomouse' specification in argument is deprecated: "
+                   "use 'draw_mouse' option with value 0 instead\n");
+            x11grab->draw_mouse = 0;
+        }
         *offset= 0;
     }
 
-    if ((ret = av_parse_video_size(&x11grab->width, &x11grab->height, x11grab->video_size)) < 0) {
-        av_log(s1, AV_LOG_ERROR, "Couldn't parse video size.\n");
-        goto out;
-    }
     if ((ret = av_parse_video_rate(&framerate, x11grab->framerate)) < 0) {
         av_log(s1, AV_LOG_ERROR, "Could not parse framerate: %s.\n", x11grab->framerate);
         goto out;
     }
     av_log(s1, AV_LOG_INFO, "device: %s -> display: %s x: %d y: %d width: %d height: %d\n",
-           s1->filename, param, x_off, y_off, x11grab->width, x11grab->height);
+           s1->filename, dpyname, x_off, y_off, x11grab->width, x11grab->height);
 
-    dpy = XOpenDisplay(param);
+    dpy = XOpenDisplay(dpyname);
+    av_freep(&dpyname);
     if(!dpy) {
         av_log(s1, AV_LOG_ERROR, "Could not open X display.\n");
         ret = AVERROR(EIO);
@@ -221,7 +223,7 @@ x11grab_read_header(AVFormatContext *s1)
     }
 
     use_shm = XShmQueryExtension(dpy);
-    av_log(s1, AV_LOG_INFO, "shared memory extension %s found\n", use_shm ? "" : "not");
+    av_log(s1, AV_LOG_INFO, "shared memory extension%s found\n", use_shm ? "" : " not");
 
     if(use_shm) {
         int scr = XDefaultScreen(dpy);
@@ -296,7 +298,7 @@ x11grab_read_header(AVFormatContext *s1)
         }
         break;
     case 32:
-        input_pixfmt = AV_PIX_FMT_RGB32;
+        input_pixfmt = AV_PIX_FMT_0RGB32;
         break;
     default:
         av_log(s1, AV_LOG_ERROR, "image depth %i not supported ... aborting\n", image->bits_per_pixel);
@@ -306,7 +308,7 @@ x11grab_read_header(AVFormatContext *s1)
 
     x11grab->frame_size = x11grab->width * x11grab->height * image->bits_per_pixel/8;
     x11grab->dpy = dpy;
-    x11grab->time_base  = (AVRational){framerate.den, framerate.num};
+    x11grab->time_base  = av_inv_q(framerate);
     x11grab->time_frame = av_gettime() / av_q2d(x11grab->time_base);
     x11grab->x_off = x_off;
     x11grab->y_off = y_off;
@@ -322,7 +324,7 @@ x11grab_read_header(AVFormatContext *s1)
     st->codec->bit_rate = x11grab->frame_size * 1/av_q2d(x11grab->time_base) * 8;
 
 out:
-    av_free(param);
+    av_free(dpyname);
     return ret;
 }
 
@@ -351,10 +353,18 @@ paint_mouse_pointer(XImage *image, struct x11grab *s)
      * Anyone who performs further investigation of the xlib API likely risks
      * permanent brain damage. */
     uint8_t *pix = image->data;
+    Cursor c;
+    Window w;
+    XSetWindowAttributes attr;
 
     /* Code doesn't currently support 16-bit or PAL8 */
     if (image->bits_per_pixel != 24 && image->bits_per_pixel != 32)
         return;
+
+    c = XCreateFontCursor(dpy, XC_left_ptr);
+    w = DefaultRootWindow(dpy);
+    attr.cursor = c;
+    XChangeWindowAttributes(dpy, w, CWCursor, &attr);
 
     xcim = XFixesGetCursorImage(dpy);
 
@@ -585,13 +595,16 @@ x11grab_read_close(AVFormatContext *s1)
 #define OFFSET(x) offsetof(struct x11grab, x)
 #define DEC AV_OPT_FLAG_DECODING_PARAM
 static const AVOption options[] = {
-    { "video_size", "A string describing frame size, such as 640x480 or hd720.", OFFSET(video_size), AV_OPT_TYPE_STRING, {.str = "vga"}, 0, 0, DEC },
-    { "framerate", "", OFFSET(framerate), AV_OPT_TYPE_STRING, {.str = "ntsc"}, 0, 0, DEC },
-    { "draw_mouse", "Draw the mouse pointer.", OFFSET(draw_mouse), AV_OPT_TYPE_INT, { .i64 = 1 }, 0, 1, DEC },
-    { "follow_mouse", "Move the grabbing region when the mouse pointer reaches within specified amount of pixels to the edge of region.",
-      OFFSET(follow_mouse), AV_OPT_TYPE_INT, { .i64 = 0 }, -1, INT_MAX, DEC, "follow_mouse" },
-    { "centered", "Keep the mouse pointer at the center of grabbing region when following.", 0, AV_OPT_TYPE_CONST, { .i64 = -1 }, INT_MIN, INT_MAX, DEC, "follow_mouse" },
-    { "show_region", "Show the grabbing region.", OFFSET(show_region), AV_OPT_TYPE_INT, { .i64 = 0 }, 0, 1, DEC },
+    { "draw_mouse", "draw the mouse pointer", OFFSET(draw_mouse), AV_OPT_TYPE_INT, {.i64 = 1}, 0, 1, DEC },
+
+    { "follow_mouse", "move the grabbing region when the mouse pointer reaches within specified amount of pixels to the edge of region",
+      OFFSET(follow_mouse), AV_OPT_TYPE_INT, {.i64 = 0}, -1, INT_MAX, DEC, "follow_mouse" },
+    { "centered",     "keep the mouse pointer at the center of grabbing region when following",
+      0, AV_OPT_TYPE_CONST, {.i64 = -1}, INT_MIN, INT_MAX, DEC, "follow_mouse" },
+
+    { "framerate",  "set video frame rate",      OFFSET(framerate),   AV_OPT_TYPE_STRING,     {.str = "ntsc"}, 0, 0, DEC },
+    { "show_region", "show the grabbing region", OFFSET(show_region), AV_OPT_TYPE_INT,        {.i64 = 0}, 0, 1, DEC },
+    { "video_size",  "set video frame size",     OFFSET(width),       AV_OPT_TYPE_IMAGE_SIZE, {.str = "vga"}, 0, 0, DEC },
     { NULL },
 };
 

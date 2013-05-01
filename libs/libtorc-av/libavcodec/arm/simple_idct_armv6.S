@@ -4,20 +4,20 @@
  * Copyright (c) 2001 Michael Niedermayer <michaelni@gmx.at>
  * Copyright (c) 2007 Mans Rullgard <mans@mansr.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -375,7 +375,7 @@ endfunc
         sub    r0, r0, #(16*7)
         .endm
 
-/* void ff_simple_idct_armv6(DCTELEM *data); */
+/* void ff_simple_idct_armv6(int16_t *data); */
 function ff_simple_idct_armv6, export=1
         push   {r4-r11, lr}
         sub    sp, sp, #128
@@ -390,7 +390,7 @@ function ff_simple_idct_armv6, export=1
         pop    {r4-r11, pc}
 endfunc
 
-/* ff_simple_idct_add_armv6(uint8_t *dest, int line_size, DCTELEM *data); */
+/* ff_simple_idct_add_armv6(uint8_t *dest, int line_size, int16_t *data); */
 function ff_simple_idct_add_armv6, export=1
         push   {r0, r1, r4-r11, lr}
         sub    sp, sp, #128
@@ -407,7 +407,7 @@ function ff_simple_idct_add_armv6, export=1
         pop    {r4-r11, pc}
 endfunc
 
-/* ff_simple_idct_put_armv6(uint8_t *dest, int line_size, DCTELEM *data); */
+/* ff_simple_idct_put_armv6(uint8_t *dest, int line_size, int16_t *data); */
 function ff_simple_idct_put_armv6, export=1
         push   {r0, r1, r4-r11, lr}
         sub    sp, sp, #128

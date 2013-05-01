@@ -1,23 +1,25 @@
 /*
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifndef AVCODEC_OLD_CODEC_IDS_H
 #define AVCODEC_OLD_CODEC_IDS_H
+
+#include "libavutil/common.h"
 
 /*
  * This header exists to prevent new codec IDs from being accidentally added to
@@ -198,6 +200,19 @@
     CODEC_ID_TSCC2,
     CODEC_ID_MTS2,
     CODEC_ID_CLLC,
+    CODEC_ID_Y41P       = MKBETAG('Y','4','1','P'),
+    CODEC_ID_ESCAPE130  = MKBETAG('E','1','3','0'),
+    CODEC_ID_EXR        = MKBETAG('0','E','X','R'),
+    CODEC_ID_AVRP       = MKBETAG('A','V','R','P'),
+
+    CODEC_ID_G2M        = MKBETAG( 0 ,'G','2','M'),
+    CODEC_ID_AVUI       = MKBETAG('A','V','U','I'),
+    CODEC_ID_AYUV       = MKBETAG('A','Y','U','V'),
+    CODEC_ID_V308       = MKBETAG('V','3','0','8'),
+    CODEC_ID_V408       = MKBETAG('V','4','0','8'),
+    CODEC_ID_YUV4       = MKBETAG('Y','U','V','4'),
+    CODEC_ID_SANM       = MKBETAG('S','A','N','M'),
+    CODEC_ID_PAF_VIDEO  = MKBETAG('P','A','F','V'),
 
     /* various PCM "codecs" */
     CODEC_ID_FIRST_AUDIO = 0x10000,     ///< A dummy id pointing at the start of audio codecs
@@ -261,6 +276,7 @@
     CODEC_ID_ADPCM_IMA_ISS,
     CODEC_ID_ADPCM_G722,
     CODEC_ID_ADPCM_IMA_APC,
+    CODEC_ID_VIMA       = MKBETAG('V','I','M','A'),
 
     /* AMR */
     CODEC_ID_AMR_NB = 0x12000,
@@ -338,6 +354,12 @@
     CODEC_ID_RALF,
     CODEC_ID_IAC,
     CODEC_ID_ILBC,
+    CODEC_ID_FFWAVESYNTH = MKBETAG('F','F','W','S'),
+    CODEC_ID_8SVX_RAW    = MKBETAG('8','S','V','X'),
+    CODEC_ID_SONIC       = MKBETAG('S','O','N','C'),
+    CODEC_ID_SONIC_LS    = MKBETAG('S','O','N','L'),
+    CODEC_ID_PAF_AUDIO   = MKBETAG('P','A','F','A'),
+    CODEC_ID_OPUS        = MKBETAG('O','P','U','S'),
 
     /* subtitle codecs */
     CODEC_ID_FIRST_SUBTITLE = 0x17000,          ///< A dummy ID pointing at the start of subtitle codecs.
@@ -350,10 +372,20 @@
     CODEC_ID_HDMV_PGS_SUBTITLE,
     CODEC_ID_DVB_TELETEXT,
     CODEC_ID_SRT,
+    CODEC_ID_MICRODVD   = MKBETAG('m','D','V','D'),
+    CODEC_ID_EIA_608    = MKBETAG('c','6','0','8'),
+    CODEC_ID_JACOSUB    = MKBETAG('J','S','U','B'),
+    CODEC_ID_SAMI       = MKBETAG('S','A','M','I'),
+    CODEC_ID_REALTEXT   = MKBETAG('R','T','X','T'),
+    CODEC_ID_SUBVIEWER  = MKBETAG('S','u','b','V'),
 
     /* other specific kind of codecs (generally used for attachments) */
     CODEC_ID_FIRST_UNKNOWN = 0x18000,           ///< A dummy ID pointing at the start of various fake codecs.
     CODEC_ID_TTF = 0x18000,
+    CODEC_ID_BINTEXT    = MKBETAG('B','T','X','T'),
+    CODEC_ID_XBIN       = MKBETAG('X','B','I','N'),
+    CODEC_ID_IDF        = MKBETAG( 0 ,'I','D','F'),
+    CODEC_ID_OTF        = MKBETAG( 0 ,'O','T','F'),
 
     CODEC_ID_PROBE = 0x19000, ///< codec_id is not known (like CODEC_ID_NONE) but lavf should attempt to identify it
 

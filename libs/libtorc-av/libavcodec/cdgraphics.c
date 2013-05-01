@@ -2,25 +2,26 @@
  * CD Graphics Video Decoder
  * Copyright (c) 2009 Michael Tison
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "avcodec.h"
 #include "bytestream.h"
+#include "internal.h"
 
 /**
  * @file
@@ -126,7 +127,7 @@ static void cdg_load_palette(CDGraphicsContext *cc, uint8_t *data, int low)
         r = ((color >> 8) & 0x000F) * 17;
         g = ((color >> 4) & 0x000F) * 17;
         b = ((color     ) & 0x000F) * 17;
-        palette[i + array_offset] = r << 16 | g << 8 | b;
+        palette[i + array_offset] = 0xFFU << 24 | r << 16 | g << 8 | b;
     }
     cc->frame.palette_has_changed = 1;
 }
@@ -218,7 +219,7 @@ static void cdg_scroll(CDGraphicsContext *cc, uint8_t *data,
     vscmd = (data[2] & 0x30) >> 4;
 
     h_off =  FFMIN(data[1] & 0x07, CDG_BORDER_WIDTH  - 1);
-    v_off =  FFMIN(data[2] & 0x07, CDG_BORDER_HEIGHT - 1);
+    v_off =  FFMIN(data[2] & 0x0F, CDG_BORDER_HEIGHT - 1);
 
     /// find the difference and save the offset for cdg_tile_block usage
     hinc = h_off - cc->hscroll;
@@ -266,7 +267,7 @@ static void cdg_scroll(CDGraphicsContext *cc, uint8_t *data,
 }
 
 static int cdg_decode_frame(AVCodecContext *avctx,
-                            void *data, int *data_size, AVPacket *avpkt)
+                            void *data, int *got_frame, AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
     int buf_size       = avpkt->size;
@@ -280,11 +281,19 @@ static int cdg_decode_frame(AVCodecContext *avctx,
         av_log(avctx, AV_LOG_ERROR, "buffer too small for decoder\n");
         return AVERROR(EINVAL);
     }
+    if (buf_size > CDG_HEADER_SIZE + CDG_DATA_SIZE) {
+        av_log(avctx, AV_LOG_ERROR, "buffer too big for decoder\n");
+        return AVERROR(EINVAL);
+    }
 
     ret = avctx->reget_buffer(avctx, &cc->frame);
     if (ret) {
         av_log(avctx, AV_LOG_ERROR, "reget_buffer() failed\n");
         return ret;
+    }
+    if (!avctx->frame_number) {
+        memset(cc->frame.data[0], 0, cc->frame.linesize[0] * avctx->height);
+        memset(cc->frame.data[1], 0, AVPALETTE_SIZE);
     }
 
     command = bytestream_get_byte(&buf);
@@ -333,7 +342,7 @@ static int cdg_decode_frame(AVCodecContext *avctx,
             }
 
             cdg_init_frame(&new_frame);
-            ret = avctx->get_buffer(avctx, &new_frame);
+            ret = ff_get_buffer(avctx, &new_frame);
             if (ret) {
                 av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
                 return ret;
@@ -347,9 +356,9 @@ static int cdg_decode_frame(AVCodecContext *avctx,
             break;
         }
 
-        *data_size = sizeof(AVFrame);
+        *got_frame = 1;
     } else {
-        *data_size = 0;
+        *got_frame = 0;
         buf_size   = 0;
     }
 

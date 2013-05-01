@@ -3,20 +3,20 @@
  * Copyright (c) 2008-2010 Peter Ross (pross@xvid.org)
  * Copyright (c) 2009 Daniel Verkamp (daniel@drv.nu)
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -28,6 +28,7 @@
  *  http://wiki.multimedia.cx/index.php?title=Bink_Container
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "internal.h"
@@ -111,10 +112,13 @@ static int read_header(AVFormatContext *s)
         return AVERROR(EIO);
     }
     avpriv_set_pts_info(vst, 64, fps_den, fps_num);
+    vst->avg_frame_rate = av_inv_q(vst->time_base);
 
     vst->codec->codec_type = AVMEDIA_TYPE_VIDEO;
     vst->codec->codec_id   = AV_CODEC_ID_BINKVIDEO;
     vst->codec->extradata  = av_mallocz(4 + FF_INPUT_BUFFER_PADDING_SIZE);
+    if (!vst->codec->extradata)
+        return AVERROR(ENOMEM);
     vst->codec->extradata_size = 4;
     avio_read(pb, vst->codec->extradata, 4);
 
@@ -141,7 +145,13 @@ static int read_header(AVFormatContext *s)
             flags = avio_rl16(pb);
             ast->codec->codec_id = flags & BINK_AUD_USEDCT ?
                                    AV_CODEC_ID_BINKAUDIO_DCT : AV_CODEC_ID_BINKAUDIO_RDFT;
-            ast->codec->channels = flags & BINK_AUD_STEREO ? 2 : 1;
+            if (flags & BINK_AUD_STEREO) {
+                ast->codec->channels       = 2;
+                ast->codec->channel_layout = AV_CH_LAYOUT_STEREO;
+            } else {
+                ast->codec->channels       = 1;
+                ast->codec->channel_layout = AV_CH_LAYOUT_MONO;
+            }
             ast->codec->extradata = av_mallocz(4 + FF_INPUT_BUFFER_PADDING_SIZE);
             if (!ast->codec->extradata)
                 return AVERROR(ENOMEM);
@@ -192,7 +202,7 @@ static int read_packet(AVFormatContext *s, AVPacket *pkt)
         AVStream *st = s->streams[0]; // stream 0 is video stream with index
 
         if (bink->video_pts >= st->duration)
-            return AVERROR(EIO);
+            return AVERROR_EOF;
 
         index_entry = av_index_search_timestamp(st, bink->video_pts,
                                                 AVSEEK_FLAG_ANY);

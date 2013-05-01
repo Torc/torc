@@ -2,20 +2,20 @@
  * mtv demuxer
  * Copyright (c) 2006 Reynaldo H. Verdejo Pinochet
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -57,7 +57,7 @@ static int mtv_probe(AVProbeData *p)
         return 0;
 
     /* Check for nonzero in bpp and (width|height) header fields */
-    if(!(p->buf[51] && AV_RL16(&p->buf[52]) | AV_RL16(&p->buf[54])))
+    if(p->buf_size < 57 || !(p->buf[51] && AV_RL16(&p->buf[52]) | AV_RL16(&p->buf[54])))
         return 0;
 
     /* If width or height are 0 then imagesize header field should not */
@@ -96,20 +96,26 @@ static int mtv_read_header(AVFormatContext *s)
 
     /* Calculate width and height if missing from header */
 
-    if(!mtv->img_width)
+    if(mtv->img_bpp>>3){
+    if(!mtv->img_width && mtv->img_height)
         mtv->img_width=mtv->img_segment_size / (mtv->img_bpp>>3)
                         / mtv->img_height;
 
-    if(!mtv->img_height)
+    if(!mtv->img_height && mtv->img_width)
         mtv->img_height=mtv->img_segment_size / (mtv->img_bpp>>3)
                         / mtv->img_width;
+    }
+    if(!mtv->img_height || !mtv->img_width){
+        av_log(s, AV_LOG_ERROR, "width or height is invalid and I cannot calculate them from other information\n");
+        return AVERROR(EINVAL);
+    }
 
     avio_skip(pb, 4);
     audio_subsegments = avio_rl16(pb);
 
     if (audio_subsegments == 0) {
         av_log_ask_for_sample(s, "MTV files without audio are not supported\n");
-        return AVERROR_INVALIDDATA;
+        return AVERROR_PATCHWELCOME;
     }
 
     mtv->full_segment_size =

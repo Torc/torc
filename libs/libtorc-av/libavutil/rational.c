@@ -2,20 +2,20 @@
  * rational numbers
  * Copyright (c) 2003 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -144,3 +144,31 @@ int av_find_nearest_q_idx(AVRational q, const AVRational* q_list)
 
     return nearest_q_idx;
 }
+
+#ifdef TEST
+int main(void)
+{
+    AVRational a,b,r;
+    for (a.num = -2; a.num <= 2; a.num++) {
+        for (a.den = -2; a.den <= 2; a.den++) {
+            for (b.num = -2; b.num <= 2; b.num++) {
+                for (b.den = -2; b.den <= 2; b.den++) {
+                    int c = av_cmp_q(a,b);
+                    double d = av_q2d(a) == av_q2d(b) ?
+                               0 : (av_q2d(a) - av_q2d(b));
+                    if (d > 0)       d = 1;
+                    else if (d < 0)  d = -1;
+                    else if (d != d) d = INT_MIN;
+                    if (c != d)
+                        av_log(NULL, AV_LOG_ERROR, "%d/%d %d/%d, %d %f\n", a.num,
+                               a.den, b.num, b.den, c,d);
+                    r = av_sub_q(av_add_q(b,a), b);
+                    if(b.den && (r.num*a.den != a.num*r.den || !r.num != !a.num || !r.den != !a.den))
+                        av_log(NULL, AV_LOG_ERROR, "%d/%d ", r.num, r.den);
+                }
+            }
+        }
+    }
+    return 0;
+}
+#endif

@@ -2,20 +2,20 @@
  * Tiertex Limited SEQ File Demuxer
  * Copyright (c) 2006 Gregory Montoir (cyx@users.sourceforge.net)
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -24,6 +24,7 @@
  * Tiertex Limited SEQ file demuxer
  */
 
+#include "libavutil/channel_layout.h"
 #include "avformat.h"
 #include "internal.h"
 
@@ -231,6 +232,7 @@ static int seq_read_header(AVFormatContext *s)
     st->codec->codec_id = AV_CODEC_ID_PCM_S16BE;
     st->codec->codec_tag = 0;  /* no tag */
     st->codec->channels = 1;
+    st->codec->channel_layout = AV_CH_LAYOUT_MONO;
     st->codec->sample_rate = SEQ_SAMPLE_RATE;
     st->codec->bits_per_coded_sample = 16;
     st->codec->bit_rate = st->codec->sample_rate * st->codec->bits_per_coded_sample * st->codec->channels;

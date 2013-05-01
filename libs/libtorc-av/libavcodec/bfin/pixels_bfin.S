@@ -2,26 +2,26 @@
  * Blackfin Pixel Operations
  * Copyright (C) 2007 Marc Hoffman <marc.hoffman@analog.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "config_bfin.h"
 
 DEFUN(put_pixels_clamped,mL1,
-        (DCTELEM *block, uint8_t *dest, int line_size)):
+        (int16_t *block, uint8_t *dest, int line_size)):
     [--SP] = (R7:4);
     R4 = 0;
     R5.l = 0x00ff;
@@ -51,7 +51,7 @@ ppc$1: R2 = Max(R0, R4) (V)      || [I1++M1] = R6;
 DEFUN_END(put_pixels_clamped)
 
 DEFUN(add_pixels_clamped,mL1,
-        (DCTELEM *block, uint8_t *dest, int line_size)):
+        (int16_t *block, uint8_t *dest, int line_size)):
     [-- SP] = (R7:4);
     R4 = 0;
     I0 = 0;
@@ -84,7 +84,7 @@ apc$3: R6 = BYTEOP3P(R1:0, R3:2) (LO)    || [I2++M0] = R6   || R2 = [I1];
 DEFUN_END(add_pixels_clamped)
 
 
-/*
+/**
   motion compensation
   primitives
 
@@ -442,7 +442,7 @@ LE$8OT: DISALGNEXCPT                       || R2  =[I1++]   || [I3++M2] = R5;
         rts;
 
 DEFUN(diff_pixels,mL1,
-       (DCTELEM *block, uint8_t *s1, uint8_t *s2, int stride)):
+       (int16_t *block, uint8_t *s1, uint8_t *s2, int stride)):
         link 0;
         [--sp] = (r7:4);
         p0=8;
@@ -518,7 +518,7 @@ DEFUN_END(pix_sum)
 
 
 DEFUN(get_pixels,mL1,
-        (DCTELEM *restrict block, const uint8_t *pixels, int line_size)):
+        (int16_t *av_restrict block, const uint8_t *pixels, int line_size)):
         [--sp] = (r7:4);
         i3=r0;        // dest
         i0=r1;        // src0

@@ -3,20 +3,20 @@
  * Copyright (c) 2008-2009 Robert Swain ( rob opendot cl )
  * Copyright (c) 2010      Alex Converse <alex.converse@gmail.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -33,6 +33,8 @@
 #include "fft.h"
 #include "aacps.h"
 #include "sbrdsp.h"
+
+typedef struct AACContext AACContext;
 
 /**
  * Spectral Band Replication header - spectrum parameters that invoke a reset if they differ from the previous header.
@@ -108,10 +110,31 @@ typedef struct SBRData {
     /** @} */
 } SBRData;
 
+typedef struct SpectralBandReplication SpectralBandReplication;
+
+/**
+ * aacsbr functions pointers
+ */
+typedef struct AACSBRContext {
+    int (*sbr_lf_gen)(AACContext *ac, SpectralBandReplication *sbr,
+                      float X_low[32][40][2], const float W[2][32][32][2],
+                      int buf_idx);
+    void (*sbr_hf_assemble)(float Y1[38][64][2],
+                            const float X_high[64][40][2],
+                            SpectralBandReplication *sbr, SBRData *ch_data,
+                            const int e_a[2]);
+    int (*sbr_x_gen)(SpectralBandReplication *sbr, float X[2][38][64],
+                     const float Y0[38][64][2], const float Y1[38][64][2],
+                     const float X_low[32][40][2], int ch);
+    void (*sbr_hf_inverse_filter)(SBRDSPContext *dsp,
+                                  float (*alpha0)[2], float (*alpha1)[2],
+                                  const float X_low[32][40][2], int k0);
+} AACSBRContext;
+
 /**
  * Spectral Band Replication
  */
-typedef struct SpectralBandReplication {
+struct SpectralBandReplication {
     int                sample_rate;
     int                start;
     int                reset;
@@ -153,7 +176,7 @@ typedef struct SpectralBandReplication {
     ///Frequency borders for noise floors
     uint16_t           f_tablenoise[6];
     ///Frequency borders for the limiter
-    uint16_t           f_tablelim[29];
+    uint16_t           f_tablelim[30];
     unsigned           num_patches;
     uint8_t            patch_num_subbands[6];
     uint8_t            patch_start_subband[6];
@@ -184,6 +207,7 @@ typedef struct SpectralBandReplication {
     FFTContext         mdct_ana;
     FFTContext         mdct;
     SBRDSPContext      dsp;
-} SpectralBandReplication;
+    AACSBRContext      c;
+};
 
 #endif /* AVCODEC_SBR_H */

@@ -71,37 +71,37 @@ run(){
 }
 
 probefmt(){
-    run avprobe -show_format_entry format_name -v 0 "$@"
+    run ffprobe -show_entries format=format_name -print_format default=nw=1:nk=1 -v 0 "$@"
 }
 
-avconv(){
+ffmpeg(){
     dec_opts="-threads $threads -thread_type $thread_type"
-    avconv_args="-nostats -cpuflags $cpuflags"
+    ffmpeg_args="-nostats -cpuflags $cpuflags"
     for arg in $@; do
-        [ ${arg} = -i ] && avconv_args="${avconv_args} ${dec_opts}"
-        avconv_args="${avconv_args} ${arg}"
+        [ x${arg} = x-i ] && ffmpeg_args="${ffmpeg_args} ${dec_opts}"
+        ffmpeg_args="${ffmpeg_args} ${arg}"
     done
-    run avconv ${avconv_args}
+    run ffmpeg ${ffmpeg_args}
 }
 
 framecrc(){
-    avconv "$@" -f framecrc -
+    ffmpeg "$@" -f framecrc -
 }
 
 framemd5(){
-    avconv "$@" -f framemd5 -
+    ffmpeg "$@" -f framemd5 -
 }
 
 crc(){
-    avconv "$@" -f crc -
+    ffmpeg "$@" -f crc -
 }
 
 md5(){
-    avconv "$@" md5:
+    ffmpeg "$@" md5:
 }
 
 pcm(){
-    avconv "$@" -vn -f s16le -
+    ffmpeg "$@" -vn -f s16le -
 }
 
 enc_dec_pcm(){
@@ -113,8 +113,8 @@ enc_dec_pcm(){
     encfile="${outdir}/${test}.${out_fmt}"
     cleanfiles=$encfile
     encfile=$(target_path ${encfile})
-    avconv -i $src_file "$@" -f $out_fmt -y ${encfile} || return
-    avconv -f $out_fmt -i ${encfile} -c:a pcm_${pcm_fmt} -f ${dec_fmt} -
+    ffmpeg -i $src_file "$@" -f $out_fmt -y ${encfile} || return
+    ffmpeg -flags +bitexact -i ${encfile} -c:a pcm_${pcm_fmt} -f ${dec_fmt} -
 }
 
 FLAGS="-flags +bitexact -sws_flags +accurate_rnd+bitexact"
@@ -135,11 +135,11 @@ enc_dec(){
     tsrcfile=$(target_path $srcfile)
     tencfile=$(target_path $encfile)
     tdecfile=$(target_path $decfile)
-    avconv -f $src_fmt $DEC_OPTS -i $tsrcfile $ENC_OPTS $enc_opt $FLAGS \
+    ffmpeg -f $src_fmt $DEC_OPTS -i $tsrcfile $ENC_OPTS $enc_opt $FLAGS \
         -f $enc_fmt -y $tencfile || return
     do_md5sum $encfile
     echo $(wc -c $encfile)
-    avconv $DEC_OPTS -i $tencfile $ENC_OPTS $dec_opt $FLAGS \
+    ffmpeg $8 $DEC_OPTS -i $tencfile $ENC_OPTS $dec_opt $FLAGS \
         -f $dec_fmt -y $tdecfile || return
     do_md5sum $decfile
     tests/tiny_psnr $srcfile $decfile $cmp_unit $cmp_shift
@@ -148,7 +148,11 @@ enc_dec(){
 regtest(){
     t="${test#$2-}"
     ref=${base}/ref/$2/$t
-    ${base}/${1}-regression.sh $t $2 $3 "$target_exec" "$target_path" "$threads" "$thread_type" "$cpuflags"
+    ${base}/${1}-regression.sh $t $2 $3 "$target_exec" "$target_path" "$threads" "$thread_type" "$cpuflags" "$samples"
+}
+
+lavffatetest(){
+    regtest lavf lavf-fate tests/vsynth1
 }
 
 lavftest(){
@@ -160,22 +164,11 @@ lavfitest(){
     regtest lavfi lavfi tests/vsynth1
 }
 
-seektest(){
-    t="${test#seek-}"
-    ref=${base}/ref/seek/$t
-    case $t in
-        image_*) file="tests/data/images/${t#image_}/%02d.${t#image_}" ;;
-        *)       file=$(echo $t | tr _ '?')
-                 for d in fate/acodec- fate/vsynth2- lavf/; do
-                     test -f tests/data/$d$file && break
-                 done
-                 file=$(echo tests/data/$d$file)
-                 ;;
-    esac
-    run libavformat/seek-test $target_path/$file
-}
-
 mkdir -p "$outdir"
+
+# Disable globbing: command arguments may contain globbing characters and
+# must be kept verbatim
+set -f
 
 exec 3>&2
 eval $command >"$outfile" 2>$errfile
@@ -204,5 +197,9 @@ fi
 
 echo "${test}:${sig:-$err}:$($base64 <$cmpfile):$($base64 <$errfile)" >$repfile
 
-test $err = 0 && rm -f $outfile $errfile $cmpfile $cleanfiles
+if test $err = 0; then
+    rm -f $outfile $errfile $cmpfile $cleanfiles
+else
+    echo "Test $test failed. Look at $errfile for details."
+fi
 exit $err

@@ -1,25 +1,24 @@
 /*
  * Copyright (c) 2001-2003 The ffmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "avcodec.h"
-#include "get_bits.h"
 #include "put_bits.h"
 #include "bytestream.h"
 #include "adpcm.h"
@@ -58,6 +57,8 @@ typedef struct ADPCMEncodeContext {
 } ADPCMEncodeContext;
 
 #define FREEZE_INTERVAL 128
+
+static av_cold int adpcm_encode_close(AVCodecContext *avctx);
 
 static av_cold int adpcm_encode_init(AVCodecContext *avctx)
 {
@@ -100,6 +101,7 @@ static av_cold int adpcm_encode_init(AVCodecContext *avctx)
         /* seems frame_size isn't taken into account...
            have to buffer the samples :-( */
         avctx->block_align = BLKSIZE;
+        avctx->bits_per_coded_sample = 4;
         break;
     case AV_CODEC_ID_ADPCM_IMA_QT:
         avctx->frame_size  = 64;
@@ -108,8 +110,8 @@ static av_cold int adpcm_encode_init(AVCodecContext *avctx)
     case AV_CODEC_ID_ADPCM_MS:
         /* each 16 bits sample gives one nibble
            and we have 7 bytes per channel overhead */
-        avctx->frame_size = (BLKSIZE - 7 * avctx->channels) * 2 /
-                             avctx->channels + 2;
+        avctx->frame_size = (BLKSIZE - 7 * avctx->channels) * 2 / avctx->channels + 2;
+        avctx->bits_per_coded_sample = 4;
         avctx->block_align    = BLKSIZE;
         if (!(avctx->extradata = av_malloc(32 + FF_INPUT_BUFFER_PADDING_SIZE)))
             goto error;
@@ -149,10 +151,7 @@ static av_cold int adpcm_encode_init(AVCodecContext *avctx)
 
     return 0;
 error:
-    av_freep(&s->paths);
-    av_freep(&s->node_buf);
-    av_freep(&s->nodep_buf);
-    av_freep(&s->trellis_hash);
+    adpcm_encode_close(avctx);
     return ret;
 }
 
@@ -188,24 +187,27 @@ static inline uint8_t adpcm_ima_qt_compress_sample(ADPCMChannelStatus *c,
                                                    int16_t sample)
 {
     int delta  = sample - c->prev_sample;
-    int mask, step = ff_adpcm_step_table[c->step_index];
-    int diff   = step >> 3;
-    int nibble = 0;
+    int diff, step = ff_adpcm_step_table[c->step_index];
+    int nibble = 8*(delta < 0);
 
-    if (delta < 0) {
-        nibble = 8;
-        delta  = -delta;
-    }
+    delta= abs(delta);
+    diff = delta + (step >> 3);
 
-    for (mask = 4; mask;) {
-        if (delta >= step) {
-            nibble |= mask;
-            delta  -= step;
-            diff   += step;
-        }
-        step >>= 1;
-        mask >>= 1;
+    if (delta >= step) {
+        nibble |= 4;
+        delta  -= step;
     }
+    step >>= 1;
+    if (delta >= step) {
+        nibble |= 2;
+        delta  -= step;
+    }
+    step >>= 1;
+    if (delta >= step) {
+        nibble |= 1;
+        delta  -= step;
+    }
+    diff -= delta;
 
     if (nibble & 8)
         c->prev_sample -= diff;
@@ -373,7 +375,7 @@ static void adpcm_compress_trellis(AVCodecContext *avctx,
                     *h = generation;\
                     u  = nodes_next[pos];\
                     if (!u) {\
-                        assert(pathn < FREEZE_INTERVAL << avctx->trellis);\
+                        av_assert1(pathn < FREEZE_INTERVAL << avctx->trellis);\
                         u = t++;\
                         nodes_next[pos] = u;\
                         u->path = pathn++;\
@@ -492,10 +494,8 @@ static int adpcm_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
         pkt_size = (2 + avctx->channels * (22 + 4 * (frame->nb_samples - 1)) + 7) / 8;
     else
         pkt_size = avctx->block_align;
-    if ((ret = ff_alloc_packet(avpkt, pkt_size))) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, pkt_size)) < 0)
         return ret;
-    }
     dst = avpkt->data;
 
     switch(avctx->codec->id) {

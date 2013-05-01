@@ -2,25 +2,28 @@
  * RealAudio 2.0 (28.8K)
  * Copyright (c) 2003 the ffmpeg project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/float_dsp.h"
+#include "libavutil/internal.h"
 #include "avcodec.h"
+#include "internal.h"
 #define BITSTREAM_READER_LE
 #include "get_bits.h"
 #include "ra288.h"
@@ -35,8 +38,6 @@
 #define RA288_BLOCKS_PER_FRAME 32
 
 typedef struct {
-    AVFrame frame;
-    DSPContext dsp;
     AVFloatDSPContext fdsp;
     DECLARE_ALIGNED(32, float,   sp_lpc)[FFALIGN(36, 16)];   ///< LPC coefficients for speech data (spec: A)
     DECLARE_ALIGNED(32, float, gain_lpc)[FFALIGN(10, 16)];   ///< LPC coefficients for gain        (spec: GB)
@@ -61,11 +62,17 @@ typedef struct {
 static av_cold int ra288_decode_init(AVCodecContext *avctx)
 {
     RA288Context *ractx = avctx->priv_data;
-    avctx->sample_fmt = AV_SAMPLE_FMT_FLT;
-    avpriv_float_dsp_init(&ractx->fdsp, avctx->flags & CODEC_FLAG_BITEXACT);
 
-    avcodec_get_frame_defaults(&ractx->frame);
-    avctx->coded_frame = &ractx->frame;
+    avctx->channels       = 1;
+    avctx->channel_layout = AV_CH_LAYOUT_MONO;
+    avctx->sample_fmt     = AV_SAMPLE_FMT_FLT;
+
+    if (avctx->block_align <= 0) {
+        av_log_ask_for_sample(avctx, "unsupported block align\n");
+        return AVERROR_PATCHWELCOME;
+    }
+
+    avpriv_float_dsp_init(&ractx->fdsp, avctx->flags & CODEC_FLAG_BITEXACT);
 
     return 0;
 }
@@ -73,7 +80,7 @@ static av_cold int ra288_decode_init(AVCodecContext *avctx)
 static void convolve(float *tgt, const float *src, int len, int n)
 {
     for (; n >= 0; n--)
-        tgt[n] = ff_scalarproduct_float_c(src, src - n, len);
+        tgt[n] = avpriv_scalarproduct_float_c(src, src - n, len);
 
 }
 
@@ -102,14 +109,14 @@ static void decode(RA288Context *ractx, float gain, int cb_coef)
     for (i=0; i < 5; i++)
         buffer[i] = codetable[cb_coef][i] * sumsum;
 
-    sum = ff_scalarproduct_float_c(buffer, buffer, 5) * ((1 << 24) / 5.);
+    sum = avpriv_scalarproduct_float_c(buffer, buffer, 5);
 
-    sum = FFMAX(sum, 1);
+    sum = FFMAX(sum, 5. / (1<<24));
 
     /* shift and store */
     memmove(gain_block, gain_block + 1, 9 * sizeof(*gain_block));
 
-    gain_block[9] = 10 * log10(sum) - 32;
+    gain_block[9] = 10 * log10(sum) + (10*log10(((1<<24)/5.)) - 32);
 
     ff_celp_lp_synthesis_filterf(block, ractx->sp_lpc, buffer, 5, 36);
 }
@@ -136,6 +143,8 @@ static void do_hybrid_window(RA288Context *ractx,
     LOCAL_ALIGNED(32, float, work, [FFALIGN(MAX_BACKWARD_FILTER_ORDER +
                                             MAX_BACKWARD_FILTER_LEN   +
                                             MAX_BACKWARD_FILTER_NONREC, 16)]);
+
+    av_assert2(order>=0);
 
     ractx->fdsp.vector_fmul(work, window, hist, FFALIGN(order + n + non_rec, 16));
 
@@ -172,6 +181,7 @@ static void backward_filter(RA288Context *ractx,
 static int ra288_decode_frame(AVCodecContext * avctx, void *data,
                               int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     float *out;
@@ -187,12 +197,12 @@ static int ra288_decode_frame(AVCodecContext * avctx, void *data,
     }
 
     /* get output buffer */
-    ractx->frame.nb_samples = RA288_BLOCK_SIZE * RA288_BLOCKS_PER_FRAME;
-    if ((ret = avctx->get_buffer(avctx, &ractx->frame)) < 0) {
+    frame->nb_samples = RA288_BLOCK_SIZE * RA288_BLOCKS_PER_FRAME;
+    if ((ret = ff_get_buffer(avctx, frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
-    out = (float *)ractx->frame.data[0];
+    out = (float *)frame->data[0];
 
     init_get_bits(&gb, buf, avctx->block_align * 8);
 
@@ -214,8 +224,7 @@ static int ra288_decode_frame(AVCodecContext * avctx, void *data,
         }
     }
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = ractx->frame;
+    *got_frame_ptr = 1;
 
     return avctx->block_align;
 }

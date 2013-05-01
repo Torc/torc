@@ -2,20 +2,20 @@
  * RTSP definitions
  * Copyright (c) 2002 Fabrice Bellard
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #ifndef AVFORMAT_RTSP_H
@@ -42,6 +42,10 @@ enum RTSPLowerTransport {
     RTSP_LOWER_TRANSPORT_HTTP = 8,          /**< HTTP tunneled - not a proper
                                                  transport mode as such,
                                                  only for use via AVOptions */
+    RTSP_LOWER_TRANSPORT_CUSTOM = 16,       /**< Custom IO - not a public
+                                                 option for lower_transport_mask,
+                                                 but set in the SDP demuxer based
+                                                 on a flag. */
 };
 
 /**
@@ -71,7 +75,7 @@ enum RTSPControlTransport {
 #define RTSP_DEFAULT_NB_AUDIO_CHANNELS 1
 #define RTSP_DEFAULT_AUDIO_SAMPLERATE 44100
 #define RTSP_RTP_PORT_MIN 5000
-#define RTSP_RTP_PORT_MAX 10000
+#define RTSP_RTP_PORT_MAX 65000
 
 /**
  * This describes a single item in the "Transport:" line of one stream as
@@ -396,6 +400,7 @@ typedef struct RTSPState {
                                           receive packets only from the right
                                           source address and port. */
 #define RTSP_FLAG_LISTEN      0x2    /**< Wait for incoming connections. */
+#define RTSP_FLAG_CUSTOM_IO   0x4    /**< Do all IO via the AVIOContext. */
 
 /**
  * Describe a single stream, as identified by a single m= line block in the
@@ -432,6 +437,12 @@ typedef struct RTSPStream {
     /** private data associated with the dynamic protocol */
     PayloadContext *dynamic_protocol_context;
     //@}
+
+    /** Enable sending RTCP feedback messages according to RFC 4585 */
+    int feedback;
+
+    char crypto_suite[40];
+    char crypto_params[100];
 } RTSPStream;
 
 void ff_rtsp_parse_line(RTSPMessageHeader *reply, const char *buf,

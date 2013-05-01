@@ -3,20 +3,20 @@
  * copyright (c) 2006 Konstantin Shishkov
  * (c) 2005 anonymous, Alex Beregszaszi, Michael Niedermayer
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -183,15 +183,15 @@ extern const uint8_t ff_vc1_2ref_mvdata_bits[8][126];
 /* DC differentials low+hi-mo, p217 are the same as in msmpeg4data .h */
 
 /* Scantables/ZZ scan are at 11.9 (p262) and 8.1.1.12 (p10) */
-extern const int8_t ff_vc1_simple_progressive_4x4_zz [16];
-extern const int8_t ff_vc1_adv_progressive_8x4_zz [32];
-extern const int8_t ff_vc1_adv_progressive_4x8_zz [32];
-extern const int8_t ff_vc1_adv_interlaced_8x8_zz [64];
-extern const int8_t ff_vc1_adv_interlaced_8x4_zz [32];
-extern const int8_t ff_vc1_adv_interlaced_4x8_zz [32];
-extern const int8_t ff_vc1_adv_interlaced_4x4_zz [16];
-extern const int8_t ff_vc1_intra_horz_8x8_zz [64];
-extern const int8_t ff_vc1_intra_vert_8x8_zz [64];
+extern const uint8_t ff_vc1_simple_progressive_4x4_zz [16];
+extern const uint8_t ff_vc1_adv_progressive_8x4_zz [32];
+extern const uint8_t ff_vc1_adv_progressive_4x8_zz [32];
+extern const uint8_t ff_vc1_adv_interlaced_8x8_zz [64];
+extern const uint8_t ff_vc1_adv_interlaced_8x4_zz [32];
+extern const uint8_t ff_vc1_adv_interlaced_4x8_zz [32];
+extern const uint8_t ff_vc1_adv_interlaced_4x4_zz [16];
+extern const uint8_t ff_vc1_intra_horz_8x8_zz [64];
+extern const uint8_t ff_vc1_intra_vert_8x8_zz [64];
 
 /* DQScale as specified in 8.1.3.9 - almost identical to 0x40000/i */
 extern const int32_t ff_vc1_dqscale[63];

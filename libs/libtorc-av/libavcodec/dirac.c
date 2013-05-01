@@ -1,28 +1,29 @@
 /*
  * Copyright (C) 2007 Marco Gerards <marco@gnu.org>
  * Copyright (C) 2009 David Conrad
+ * Copyright (C) 2011 Jordi Ortiz
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 /**
  * @file
  * Dirac Decoder
- * @author Marco Gerards <marco@gnu.org>
+ * @author Marco Gerards <marco@gnu.org>, David Conrad, Jordi Ortiz <nenjordi@gmail.com>
  */
 
 #include "libavutil/imgutils.h"
@@ -31,7 +32,7 @@
 #include "golomb.h"
 #include "mpeg12data.h"
 
-// defaults for source parameters
+/* defaults for source parameters */
 static const dirac_source_params dirac_source_parameters_defaults[] = {
     { 640,  480,  2, 0, 0, 1,  1, 640,  480,  0, 0, 1, 0 },
     { 176,  120,  2, 0, 0, 9,  2, 176,  120,  0, 0, 1, 1 },
@@ -42,7 +43,6 @@ static const dirac_source_params dirac_source_parameters_defaults[] = {
     { 704,  576,  2, 0, 1, 10, 3, 704,  576,  0, 0, 1, 2 },
     { 720,  480,  1, 1, 0, 4,  2, 704,  480,  8, 0, 3, 1 },
     { 720,  576,  1, 1, 1, 3,  3, 704,  576,  8, 0, 3, 2 },
-
     { 1280, 720,  1, 0, 1, 7,  1, 1280, 720,  0, 0, 3, 3 },
     { 1280, 720,  1, 0, 1, 6,  1, 1280, 720,  0, 0, 3, 3 },
     { 1920, 1080, 1, 1, 1, 4,  1, 1920, 1080, 0, 0, 3, 3 },
@@ -51,7 +51,6 @@ static const dirac_source_params dirac_source_parameters_defaults[] = {
     { 1920, 1080, 1, 0, 1, 6,  1, 1920, 1080, 0, 0, 3, 3 },
     { 2048, 1080, 0, 0, 1, 2,  1, 2048, 1080, 0, 0, 4, 4 },
     { 4096, 2160, 0, 0, 1, 2,  1, 4096, 2160, 0, 0, 4, 4 },
-
     { 3840, 2160, 1, 0, 1, 7,  1, 3840, 2160, 0, 0, 3, 3 },
     { 3840, 2160, 1, 0, 1, 6,  1, 3840, 2160, 0, 0, 3, 3 },
     { 7680, 4320, 1, 0, 1, 7,  1, 3840, 2160, 0, 0, 3, 3 },
@@ -120,6 +119,7 @@ static int parse_source_parameters(AVCodecContext *avctx, GetBitContext *gb,
     AVRational frame_rate = {0,0};
     unsigned luma_depth = 8, luma_offset = 16;
     int idx;
+    int chroma_x_shift, chroma_y_shift;
 
     /* [DIRAC_STD] 10.3.2 Frame size. frame_size(video_params) */
     /* [DIRAC_STD] custom_dimensions_flag */
@@ -134,7 +134,7 @@ static int parse_source_parameters(AVCodecContext *avctx, GetBitContext *gb,
     if (get_bits1(gb))
         /* [DIRAC_STD] CHROMA_FORMAT_INDEX */
         source->chroma_format = svq3_get_ue_golomb(gb);
-    if (source->chroma_format > 2) {
+    if (source->chroma_format > 2U) {
         av_log(avctx, AV_LOG_ERROR, "Unknown chroma format %d\n",
                source->chroma_format);
         return AVERROR_INVALIDDATA;
@@ -145,14 +145,14 @@ static int parse_source_parameters(AVCodecContext *avctx, GetBitContext *gb,
     if (get_bits1(gb))
         /* [DIRAC_STD] SOURCE_SAMPLING */
         source->interlaced = svq3_get_ue_golomb(gb);
-    if (source->interlaced > 1)
+    if (source->interlaced > 1U)
         return AVERROR_INVALIDDATA;
 
     /* [DIRAC_STD] 10.3.5 Frame Rate. frame_rate(video_params) */
     if (get_bits1(gb)) { /* [DIRAC_STD] custom_frame_rate_flag */
         source->frame_rate_index = svq3_get_ue_golomb(gb);
 
-        if (source->frame_rate_index > 10)
+        if (source->frame_rate_index > 10U)
             return AVERROR_INVALIDDATA;
 
         if (!source->frame_rate_index) {
@@ -179,7 +179,7 @@ static int parse_source_parameters(AVCodecContext *avctx, GetBitContext *gb,
          /* [DIRAC_STD] index */
         source->aspect_ratio_index = svq3_get_ue_golomb(gb);
 
-        if (source->aspect_ratio_index > 6)
+        if (source->aspect_ratio_index > 6U)
             return AVERROR_INVALIDDATA;
 
         if (!source->aspect_ratio_index) {
@@ -191,7 +191,7 @@ static int parse_source_parameters(AVCodecContext *avctx, GetBitContext *gb,
      *  aspect ratio values */
     if (source->aspect_ratio_index > 0)
         avctx->sample_aspect_ratio =
-                dirac_preset_aspect_ratios[source->aspect_ratio_index-1];
+            dirac_preset_aspect_ratios[source->aspect_ratio_index-1];
 
     /* [DIRAC_STD] 10.3.7 Clean area. clean_area(video_params) */
     if (get_bits1(gb)) { /* [DIRAC_STD] custom_clean_area_flag */
@@ -212,10 +212,10 @@ static int parse_source_parameters(AVCodecContext *avctx, GetBitContext *gb,
         /* [DIRAC_STD] index */
         source->pixel_range_index = svq3_get_ue_golomb(gb);
 
-        if (source->pixel_range_index > 4)
+        if (source->pixel_range_index > 4U)
             return AVERROR_INVALIDDATA;
 
-        // This assumes either fullrange or MPEG levels only
+        /* This assumes either fullrange or MPEG levels only */
         if (!source->pixel_range_index) {
             luma_offset = svq3_get_ue_golomb(gb);
             luma_depth  = av_log2(svq3_get_ue_golomb(gb))+1;
@@ -233,16 +233,22 @@ static int parse_source_parameters(AVCodecContext *avctx, GetBitContext *gb,
     }
 
     if (luma_depth > 8)
-        av_log(avctx, AV_LOG_WARNING, "Bitdepth greater than 8");
+        av_log(avctx, AV_LOG_WARNING, "Bitdepth greater than 8\n");
 
     avctx->pix_fmt = dirac_pix_fmt[!luma_offset][source->chroma_format];
+    avcodec_get_chroma_sub_sample(avctx->pix_fmt, &chroma_x_shift, &chroma_y_shift);
+    if ((source->width % (1<<chroma_x_shift)) || (source->height % (1<<chroma_y_shift))) {
+        av_log(avctx, AV_LOG_ERROR, "Dimensions must be a integer multiply of the chroma subsampling\n");
+        return AVERROR_INVALIDDATA;
+    }
+
 
     /* [DIRAC_STD] 10.3.9 Colour specification. colour_spec(video_params) */
     if (get_bits1(gb)) { /* [DIRAC_STD] custom_colour_spec_flag */
          /* [DIRAC_STD] index */
         idx = source->color_spec_index = svq3_get_ue_golomb(gb);
 
-        if (source->color_spec_index > 4)
+        if (source->color_spec_index > 4U)
             return AVERROR_INVALIDDATA;
 
         avctx->color_primaries = dirac_color_presets[idx].color_primaries;
@@ -253,7 +259,7 @@ static int parse_source_parameters(AVCodecContext *avctx, GetBitContext *gb,
             /* [DIRAC_STD] 10.3.9.1 Colour primaries */
             if (get_bits1(gb)) {
                 idx = svq3_get_ue_golomb(gb);
-                if (idx < 3)
+                if (idx < 3U)
                     avctx->color_primaries = dirac_primaries[idx];
             }
             /* [DIRAC_STD] 10.3.9.2 Colour matrix */
@@ -300,10 +306,10 @@ int avpriv_dirac_parse_sequence_header(AVCodecContext *avctx, GetBitContext *gb,
     else if (version_major > 2)
         av_log(avctx, AV_LOG_WARNING, "Stream may have unhandled features\n");
 
-    if (video_format > 20)
+    if (video_format > 20U)
         return AVERROR_INVALIDDATA;
 
-    // Fill in defaults for the source parameters.
+    /* Fill in defaults for the source parameters. */
     *source = dirac_source_parameters_defaults[video_format];
 
     /* [DIRAC_STD] 10.3 Source Parameters
@@ -320,7 +326,7 @@ int avpriv_dirac_parse_sequence_header(AVCodecContext *avctx, GetBitContext *gb,
      * currently only used to signal field coding */
     picture_coding_mode = svq3_get_ue_golomb(gb);
     if (picture_coding_mode != 0) {
-        av_log(avctx, AV_LOG_ERROR, "Unsupported picture coding mode %d",
+        av_log(avctx, AV_LOG_ERROR, "Unsupported picture coding mode %d\n",
                picture_coding_mode);
         return AVERROR_INVALIDDATA;
     }

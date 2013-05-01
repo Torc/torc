@@ -3,20 +3,20 @@
  * Copyright (c) 2003 Michael Niedermayer
  * Copyright (c) 2006 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,10 +27,10 @@
 
 #include "avcodec.h"
 #include "get_bits.h"
+#include "put_bits.h"
 #include "golomb.h"
 #include "internal.h"
 #include "mathops.h"
-#include "dsputil.h"
 #include "mjpeg.h"
 #include "jpegls.h"
 
@@ -249,11 +249,9 @@ static int encode_picture_ls(AVCodecContext *avctx, AVPacket *pkt,
     else
         comps = 3;
 
-    if ((ret = ff_alloc_packet(pkt, avctx->width*avctx->height*comps*4 +
-                                    FF_MIN_BUFFER_SIZE)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet.\n");
+    if ((ret = ff_alloc_packet2(avctx, pkt, avctx->width*avctx->height*comps*4 +
+                                    FF_MIN_BUFFER_SIZE)) < 0)
         return ret;
-    }
 
     buf2 = av_malloc(pkt->size);
 
@@ -294,7 +292,11 @@ static int encode_picture_ls(AVCodecContext *avctx, AVPacket *pkt,
 
     ls_store_lse(state, &pb);
 
-    zero = av_mallocz(p->linesize[0]);
+    zero = av_mallocz(FFABS(p->linesize[0]));
+    if (!zero) {
+        av_free(state);
+        return AVERROR(ENOMEM);
+    }
     last = zero;
     cur = p->data[0];
     if(avctx->pix_fmt == AV_PIX_FMT_GRAY8){
@@ -343,8 +345,8 @@ static int encode_picture_ls(AVCodecContext *avctx, AVPacket *pkt,
         }
     }
 
-    av_free(zero);
-    av_free(state);
+    av_freep(&zero);
+    av_freep(&state);
 
     // the specification says that after doing 0xff escaping unused bits in the
     // last byte must be set to 0, so just append 7 "optional" zero-bits to
@@ -392,7 +394,7 @@ static av_cold int encode_init_ls(AVCodecContext *ctx) {
     return 0;
 }
 
-AVCodec ff_jpegls_encoder = { //FIXME avoid MPV_* lossless JPEG should not need them
+AVCodec ff_jpegls_encoder = {
     .name           = "jpegls",
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = AV_CODEC_ID_JPEGLS,

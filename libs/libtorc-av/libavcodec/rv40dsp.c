@@ -2,20 +2,20 @@
  * RV40 decoder motion compensation functions
  * Copyright (c) 2008 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,8 +25,9 @@
  */
 
 #include "avcodec.h"
-#include "dsputil.h"
+#include "h264qpel.h"
 #include "rv34dsp.h"
+#include "libavutil/avassert.h"
 #include "libavutil/common.h"
 
 #define RV40_LOWPASS(OPNAME, OP) \
@@ -206,7 +207,7 @@ static void OPNAME ## rv40_chroma_mc4_c(uint8_t *dst/*align 8*/, uint8_t *src/*a
     int i;\
     int bias = rv40_bias[y>>1][x>>1];\
     \
-    assert(x<8 && y<8 && x>=0 && y>=0);\
+    av_assert2(x<8 && y<8 && x>=0 && y>=0);\
 \
     if(D){\
         for(i = 0; i < h; i++){\
@@ -239,7 +240,7 @@ static void OPNAME ## rv40_chroma_mc8_c(uint8_t *dst/*align 8*/, uint8_t *src/*a
     int i;\
     int bias = rv40_bias[y>>1][x>>1];\
     \
-    assert(x<8 && y<8 && x>=0 && y>=0);\
+    av_assert2(x<8 && y<8 && x>=0 && y>=0);\
 \
     if(D){\
         for(i = 0; i < h; i++){\
@@ -517,19 +518,22 @@ static int rv40_v_loop_filter_strength(uint8_t *src, ptrdiff_t stride,
     return rv40_loop_filter_strength(src, 1, stride, beta, beta2, edge, p1, q1);
 }
 
-av_cold void ff_rv40dsp_init(RV34DSPContext *c, DSPContext* dsp) {
+av_cold void ff_rv40dsp_init(RV34DSPContext *c)
+{
+    H264QpelContext qpel;
 
-    ff_rv34dsp_init(c, dsp);
+    ff_rv34dsp_init(c);
+    ff_h264qpel_init(&qpel, 8);
 
-    c->put_pixels_tab[0][ 0] = dsp->put_h264_qpel_pixels_tab[0][0];
+    c->put_pixels_tab[0][ 0] = qpel.put_h264_qpel_pixels_tab[0][0];
     c->put_pixels_tab[0][ 1] = put_rv40_qpel16_mc10_c;
-    c->put_pixels_tab[0][ 2] = dsp->put_h264_qpel_pixels_tab[0][2];
+    c->put_pixels_tab[0][ 2] = qpel.put_h264_qpel_pixels_tab[0][2];
     c->put_pixels_tab[0][ 3] = put_rv40_qpel16_mc30_c;
     c->put_pixels_tab[0][ 4] = put_rv40_qpel16_mc01_c;
     c->put_pixels_tab[0][ 5] = put_rv40_qpel16_mc11_c;
     c->put_pixels_tab[0][ 6] = put_rv40_qpel16_mc21_c;
     c->put_pixels_tab[0][ 7] = put_rv40_qpel16_mc31_c;
-    c->put_pixels_tab[0][ 8] = dsp->put_h264_qpel_pixels_tab[0][8];
+    c->put_pixels_tab[0][ 8] = qpel.put_h264_qpel_pixels_tab[0][8];
     c->put_pixels_tab[0][ 9] = put_rv40_qpel16_mc12_c;
     c->put_pixels_tab[0][10] = put_rv40_qpel16_mc22_c;
     c->put_pixels_tab[0][11] = put_rv40_qpel16_mc32_c;
@@ -537,15 +541,15 @@ av_cold void ff_rv40dsp_init(RV34DSPContext *c, DSPContext* dsp) {
     c->put_pixels_tab[0][13] = put_rv40_qpel16_mc13_c;
     c->put_pixels_tab[0][14] = put_rv40_qpel16_mc23_c;
     c->put_pixels_tab[0][15] = ff_put_rv40_qpel16_mc33_c;
-    c->avg_pixels_tab[0][ 0] = dsp->avg_h264_qpel_pixels_tab[0][0];
+    c->avg_pixels_tab[0][ 0] = qpel.avg_h264_qpel_pixels_tab[0][0];
     c->avg_pixels_tab[0][ 1] = avg_rv40_qpel16_mc10_c;
-    c->avg_pixels_tab[0][ 2] = dsp->avg_h264_qpel_pixels_tab[0][2];
+    c->avg_pixels_tab[0][ 2] = qpel.avg_h264_qpel_pixels_tab[0][2];
     c->avg_pixels_tab[0][ 3] = avg_rv40_qpel16_mc30_c;
     c->avg_pixels_tab[0][ 4] = avg_rv40_qpel16_mc01_c;
     c->avg_pixels_tab[0][ 5] = avg_rv40_qpel16_mc11_c;
     c->avg_pixels_tab[0][ 6] = avg_rv40_qpel16_mc21_c;
     c->avg_pixels_tab[0][ 7] = avg_rv40_qpel16_mc31_c;
-    c->avg_pixels_tab[0][ 8] = dsp->avg_h264_qpel_pixels_tab[0][8];
+    c->avg_pixels_tab[0][ 8] = qpel.avg_h264_qpel_pixels_tab[0][8];
     c->avg_pixels_tab[0][ 9] = avg_rv40_qpel16_mc12_c;
     c->avg_pixels_tab[0][10] = avg_rv40_qpel16_mc22_c;
     c->avg_pixels_tab[0][11] = avg_rv40_qpel16_mc32_c;
@@ -553,15 +557,15 @@ av_cold void ff_rv40dsp_init(RV34DSPContext *c, DSPContext* dsp) {
     c->avg_pixels_tab[0][13] = avg_rv40_qpel16_mc13_c;
     c->avg_pixels_tab[0][14] = avg_rv40_qpel16_mc23_c;
     c->avg_pixels_tab[0][15] = ff_avg_rv40_qpel16_mc33_c;
-    c->put_pixels_tab[1][ 0] = dsp->put_h264_qpel_pixels_tab[1][0];
+    c->put_pixels_tab[1][ 0] = qpel.put_h264_qpel_pixels_tab[1][0];
     c->put_pixels_tab[1][ 1] = put_rv40_qpel8_mc10_c;
-    c->put_pixels_tab[1][ 2] = dsp->put_h264_qpel_pixels_tab[1][2];
+    c->put_pixels_tab[1][ 2] = qpel.put_h264_qpel_pixels_tab[1][2];
     c->put_pixels_tab[1][ 3] = put_rv40_qpel8_mc30_c;
     c->put_pixels_tab[1][ 4] = put_rv40_qpel8_mc01_c;
     c->put_pixels_tab[1][ 5] = put_rv40_qpel8_mc11_c;
     c->put_pixels_tab[1][ 6] = put_rv40_qpel8_mc21_c;
     c->put_pixels_tab[1][ 7] = put_rv40_qpel8_mc31_c;
-    c->put_pixels_tab[1][ 8] = dsp->put_h264_qpel_pixels_tab[1][8];
+    c->put_pixels_tab[1][ 8] = qpel.put_h264_qpel_pixels_tab[1][8];
     c->put_pixels_tab[1][ 9] = put_rv40_qpel8_mc12_c;
     c->put_pixels_tab[1][10] = put_rv40_qpel8_mc22_c;
     c->put_pixels_tab[1][11] = put_rv40_qpel8_mc32_c;
@@ -569,15 +573,15 @@ av_cold void ff_rv40dsp_init(RV34DSPContext *c, DSPContext* dsp) {
     c->put_pixels_tab[1][13] = put_rv40_qpel8_mc13_c;
     c->put_pixels_tab[1][14] = put_rv40_qpel8_mc23_c;
     c->put_pixels_tab[1][15] = ff_put_rv40_qpel8_mc33_c;
-    c->avg_pixels_tab[1][ 0] = dsp->avg_h264_qpel_pixels_tab[1][0];
+    c->avg_pixels_tab[1][ 0] = qpel.avg_h264_qpel_pixels_tab[1][0];
     c->avg_pixels_tab[1][ 1] = avg_rv40_qpel8_mc10_c;
-    c->avg_pixels_tab[1][ 2] = dsp->avg_h264_qpel_pixels_tab[1][2];
+    c->avg_pixels_tab[1][ 2] = qpel.avg_h264_qpel_pixels_tab[1][2];
     c->avg_pixels_tab[1][ 3] = avg_rv40_qpel8_mc30_c;
     c->avg_pixels_tab[1][ 4] = avg_rv40_qpel8_mc01_c;
     c->avg_pixels_tab[1][ 5] = avg_rv40_qpel8_mc11_c;
     c->avg_pixels_tab[1][ 6] = avg_rv40_qpel8_mc21_c;
     c->avg_pixels_tab[1][ 7] = avg_rv40_qpel8_mc31_c;
-    c->avg_pixels_tab[1][ 8] = dsp->avg_h264_qpel_pixels_tab[1][8];
+    c->avg_pixels_tab[1][ 8] = qpel.avg_h264_qpel_pixels_tab[1][8];
     c->avg_pixels_tab[1][ 9] = avg_rv40_qpel8_mc12_c;
     c->avg_pixels_tab[1][10] = avg_rv40_qpel8_mc22_c;
     c->avg_pixels_tab[1][11] = avg_rv40_qpel8_mc32_c;
@@ -604,7 +608,7 @@ av_cold void ff_rv40dsp_init(RV34DSPContext *c, DSPContext* dsp) {
     c->rv40_loop_filter_strength[1] = rv40_v_loop_filter_strength;
 
     if (ARCH_X86)
-        ff_rv40dsp_init_x86(c, dsp);
+        ff_rv40dsp_init_x86(c);
     if (ARCH_ARM)
-        ff_rv40dsp_init_arm(c, dsp);
+        ff_rv40dsp_init_arm(c);
 }

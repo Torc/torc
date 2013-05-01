@@ -1,10 +1,11 @@
 All the numerical options, if not specified otherwise, accept in input
 a string representing a number, which may contain one of the
-International System number postfixes, for example 'K', 'M', 'G'.
-If 'i' is appended after the postfix, powers of 2 are used instead of
-powers of 10. The 'B' postfix multiplies the value for 8, and can be
-appended after another postfix or used alone. This allows using for
-example 'KB', 'MiB', 'G' and 'B' as postfix.
+SI unit prefixes, for example 'K', 'M', 'G'.
+If 'i' is appended after the prefix, binary prefixes are used,
+which are based on powers of 1024 instead of powers of 1000.
+The 'B' postfix multiplies the value by 8, and can be
+appended after a unit prefix or used alone. This allows using for
+example 'KB', 'MiB', 'G' and 'B' as number postfix.
 
 Options which do not take arguments are boolean options, and set the
 corresponding value to true. They can be set to false by prefixing
@@ -18,10 +19,10 @@ are used to precisely specify which stream(s) does a given option belong to.
 
 A stream specifier is a string generally appended to the option name and
 separated from it by a colon. E.g. @code{-codec:a:1 ac3} option contains
-@code{a:1} stream specifer, which matches the second audio stream. Therefore it
+@code{a:1} stream specifier, which matches the second audio stream. Therefore it
 would select the ac3 codec for the second audio stream.
 
-A stream specifier can match several stream, the option is then applied to all
+A stream specifier can match several streams, the option is then applied to all
 of them. E.g. the stream specifier in @code{-b:a 128k} matches all audio
 streams.
 
@@ -41,7 +42,10 @@ streams of this type.
 @item p:@var{program_id}[:@var{stream_index}]
 If @var{stream_index} is given, then matches stream number @var{stream_index} in
 program with id @var{program_id}. Otherwise matches all streams in this program.
+@item #@var{stream_id}
+Matches the stream by format-specific ID.
 @end table
+
 @section Generic options
 
 These options are shared amongst the av* tools.
@@ -116,6 +120,9 @@ Show available pixel formats.
 @item -sample_fmts
 Show available sample formats.
 
+@item -layouts
+Show channel names and standard channel layouts.
+
 @item -loglevel @var{loglevel} | -v @var{loglevel}
 Set the logging level used by the library.
 @var{loglevel} is a number or a string containing one of the following values:
@@ -136,7 +143,39 @@ can be disabled setting the environment variable
 @env{AV_LOG_FORCE_NOCOLOR} or @env{NO_COLOR}, or can be forced setting
 the environment variable @env{AV_LOG_FORCE_COLOR}.
 The use of the environment variable @env{NO_COLOR} is deprecated and
-will be dropped in a following Libav version.
+will be dropped in a following FFmpeg version.
+
+@item -report
+Dump full command line and console output to a file named
+@code{@var{program}-@var{YYYYMMDD}-@var{HHMMSS}.log} in the current
+directory.
+This file can be useful for bug reports.
+It also implies @code{-loglevel verbose}.
+
+Setting the environment variable @code{FFREPORT} to any value has the
+same effect. If the value is a ':'-separated key=value sequence, these
+options will affect the report; options values must be escaped if they
+contain special characters or the options delimiter ':' (see the
+``Quoting and escaping'' section in the ffmpeg-utils manual). The
+following option is recognized:
+@table @option
+@item file
+set the file name to use for the report; @code{%p} is expanded to the name
+of the program, @code{%t} is expanded to a timestamp, @code{%%} is expanded
+to a plain @code{%}
+@end table
+
+Errors in parsing the environment variable are not fatal, and will not
+appear in the report.
+
+@item -cpuflags flags (@emph{global})
+Allows setting and clearing cpu flags. This option is intended
+for testing. Do not use it unless you know what you're doing.
+@example
+ffmpeg -cpuflags -sse+mmx ...
+ffmpeg -cpuflags mmx ...
+ffmpeg -cpuflags 0 ...
+@end example
 
 @end table
 
@@ -159,7 +198,7 @@ For example to write an ID3v2.3 header instead of a default ID3v2.4 to
 an MP3 file, use the @option{id3v2_version} private option of the MP3
 muxer:
 @example
-avconv -i input.flac -id3v2_version 3 out.mp3
+ffmpeg -i input.flac -id3v2_version 3 out.mp3
 @end example
 
 All codec AVOptions are obviously per-stream, so the chapter on stream
@@ -170,6 +209,3 @@ use @option{-option 0}/@option{-option 1}.
 
 Note2 old undocumented way of specifying per-stream AVOptions by prepending
 v/a/s to the options name is now obsolete and will be removed soon.
-
-@include avoptions_codec.texi
-@include avoptions_format.texi

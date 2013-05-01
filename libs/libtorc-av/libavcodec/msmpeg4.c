@@ -5,20 +5,20 @@
  *
  * msmpeg4v1 & v2 stuff by Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -36,6 +36,7 @@
 #include "mpeg4video.h"
 #include "msmpeg4data.h"
 #include "vc1data.h"
+#include "libavutil/imgutils.h"
 
 /*
  * You can also call this codec : MPEG4 with a twist !
@@ -60,6 +61,9 @@
 static av_cold void init_h263_dc_for_msmpeg4(void)
 {
         int level, uni_code, uni_len;
+
+        if(ff_v2_dc_chroma_table[255 + 256][1])
+            return;
 
         for(level=-256; level<256; level++){
             int size, v, l;
@@ -113,8 +117,6 @@ static av_cold void init_h263_dc_for_msmpeg4(void)
 
 av_cold void ff_msmpeg4_common_init(MpegEncContext *s)
 {
-    static int initialized=0;
-
     switch(s->msmpeg4_version){
     case 1:
     case 2:
@@ -153,11 +155,7 @@ av_cold void ff_msmpeg4_common_init(MpegEncContext *s)
     }
     //Note the default tables are set in common_init in mpegvideo.c
 
-    if(!initialized){
-        initialized=1;
-
-        init_h263_dc_for_msmpeg4();
-    }
+    init_h263_dc_for_msmpeg4();
 }
 
 /* predict coded block */
@@ -406,9 +404,10 @@ static int msmpeg4v2_decode_motion(MpegEncContext * s, int pred, int f_code)
     return val;
 }
 
-static int msmpeg4v12_decode_mb(MpegEncContext *s, DCTELEM block[6][64])
+static int msmpeg4v12_decode_mb(MpegEncContext *s, int16_t block[6][64])
 {
     int cbp, code, i;
+    uint32_t * const mb_type_ptr = &s->current_picture.f.mb_type[s->mb_x + s->mb_y*s->mb_stride];
 
     if (s->pict_type == AV_PICTURE_TYPE_P) {
         if (s->use_skip_mb_code) {
@@ -422,6 +421,7 @@ static int msmpeg4v12_decode_mb(MpegEncContext *s, DCTELEM block[6][64])
                 s->mv[0][0][0] = 0;
                 s->mv[0][0][1] = 0;
                 s->mb_skipped = 1;
+                *mb_type_ptr = MB_TYPE_SKIP | MB_TYPE_L0 | MB_TYPE_16x16;
                 return 0;
             }
         }
@@ -470,6 +470,7 @@ static int msmpeg4v12_decode_mb(MpegEncContext *s, DCTELEM block[6][64])
         s->mv_type = MV_TYPE_16X16;
         s->mv[0][0][0] = mx;
         s->mv[0][0][1] = my;
+        *mb_type_ptr = MB_TYPE_L0 | MB_TYPE_16x16;
     } else {
         if(s->msmpeg4_version==2){
             s->ac_pred = get_bits1(&s->gb);
@@ -479,6 +480,7 @@ static int msmpeg4v12_decode_mb(MpegEncContext *s, DCTELEM block[6][64])
             cbp|= get_vlc2(&s->gb, ff_h263_cbpy_vlc.table, CBPY_VLC_BITS, 1)<<2; //FIXME check errors
             if(s->pict_type==AV_PICTURE_TYPE_P) cbp^=0x3C;
         }
+        *mb_type_ptr = MB_TYPE_INTRA;
     }
 
     s->dsp.clear_blocks(s->block[0]);
@@ -492,7 +494,7 @@ static int msmpeg4v12_decode_mb(MpegEncContext *s, DCTELEM block[6][64])
     return 0;
 }
 
-static int msmpeg4v34_decode_mb(MpegEncContext *s, DCTELEM block[6][64])
+static int msmpeg4v34_decode_mb(MpegEncContext *s, int16_t block[6][64])
 {
     int cbp, code, i;
     uint8_t *coded_val;
@@ -588,9 +590,12 @@ static int msmpeg4v34_decode_mb(MpegEncContext *s, DCTELEM block[6][64])
 av_cold int ff_msmpeg4_decode_init(AVCodecContext *avctx)
 {
     MpegEncContext *s = avctx->priv_data;
-    static int done = 0;
-    int i;
+    static volatile int done = 0;
+    int i, ret;
     MVTable *mv;
+
+    if ((ret = av_image_check_size(avctx->width, avctx->height, 0, avctx)) < 0)
+        return ret;
 
     if (ff_h263_decode_init(avctx) < 0)
         return -1;
@@ -598,8 +603,6 @@ av_cold int ff_msmpeg4_decode_init(AVCodecContext *avctx)
     ff_msmpeg4_common_init(s);
 
     if (!done) {
-        done = 1;
-
         for(i=0;i<NB_RL_TABLES;i++) {
             ff_init_rl(&ff_rl_table[i], ff_static_rl_table_store[i]);
         }
@@ -669,6 +672,7 @@ av_cold int ff_msmpeg4_decode_init(AVCodecContext *avctx)
         INIT_VLC_STATIC(&ff_inter_intra_vlc, INTER_INTRA_VLC_BITS, 4,
                  &ff_table_inter_intra[0][1], 2, 1,
                  &ff_table_inter_intra[0][0], 2, 1, 8);
+        done = 1;
     }
 
     switch(s->msmpeg4_version){
@@ -934,7 +938,7 @@ static int msmpeg4_decode_dc(MpegEncContext * s, int n, int *dir_ptr)
 }
 
 //#define ERROR_DETAILS
-int ff_msmpeg4_decode_block(MpegEncContext * s, DCTELEM * block,
+int ff_msmpeg4_decode_block(MpegEncContext * s, int16_t * block,
                               int n, int coded, const uint8_t *scan_table)
 {
     int level, i, last, run, run_diff;
@@ -1139,8 +1143,9 @@ int ff_msmpeg4_decode_block(MpegEncContext * s, DCTELEM * block,
             i-= 192;
             if(i&(~63)){
                 const int left= get_bits_left(&s->gb);
-                if(((i+192 == 64 && level/qmul==-1) || !(s->err_recognition&AV_EF_BITSTREAM)) && left>=0){
+                if(((i+192 == 64 && level/qmul==-1) || !(s->err_recognition&(AV_EF_BITSTREAM|AV_EF_COMPLIANT))) && left>=0){
                     av_log(s->avctx, AV_LOG_ERROR, "ignoring overflow at %d %d\n", s->mb_x, s->mb_y);
+                    i = 63;
                     break;
                 }else{
                     av_log(s->avctx, AV_LOG_ERROR, "ac-tex damaged at %d %d\n", s->mb_x, s->mb_y);
@@ -1216,6 +1221,7 @@ AVCodec ff_msmpeg4v1_decoder = {
     .close          = ff_h263_decode_end,
     .decode         = ff_h263_decode_frame,
     .capabilities   = CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1,
+    .max_lowres     = 3,
     .long_name      = NULL_IF_CONFIG_SMALL("MPEG-4 part 2 Microsoft variant version 1"),
     .pix_fmts       = ff_pixfmt_list_420,
 };
@@ -1229,6 +1235,7 @@ AVCodec ff_msmpeg4v2_decoder = {
     .close          = ff_h263_decode_end,
     .decode         = ff_h263_decode_frame,
     .capabilities   = CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1,
+    .max_lowres     = 3,
     .long_name      = NULL_IF_CONFIG_SMALL("MPEG-4 part 2 Microsoft variant version 2"),
     .pix_fmts       = ff_pixfmt_list_420,
 };
@@ -1242,6 +1249,7 @@ AVCodec ff_msmpeg4v3_decoder = {
     .close          = ff_h263_decode_end,
     .decode         = ff_h263_decode_frame,
     .capabilities   = CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1,
+    .max_lowres     = 3,
     .long_name      = NULL_IF_CONFIG_SMALL("MPEG-4 part 2 Microsoft variant version 3"),
     .pix_fmts       = ff_pixfmt_list_420,
 };
@@ -1255,6 +1263,7 @@ AVCodec ff_wmv1_decoder = {
     .close          = ff_h263_decode_end,
     .decode         = ff_h263_decode_frame,
     .capabilities   = CODEC_CAP_DRAW_HORIZ_BAND | CODEC_CAP_DR1,
+    .max_lowres     = 3,
     .long_name      = NULL_IF_CONFIG_SMALL("Windows Media Video 7"),
     .pix_fmts       = ff_pixfmt_list_420,
 };

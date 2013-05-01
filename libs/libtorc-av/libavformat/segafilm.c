@@ -2,20 +2,20 @@
  * Sega FILM Format (CPK) Demuxer
  * Copyright (c) 2003 The ffmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -30,6 +30,7 @@
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "internal.h"
+#include "avio_internal.h"
 
 #define FILM_TAG MKBETAG('F', 'I', 'L', 'M')
 #define FDSC_TAG MKBETAG('F', 'D', 'S', 'C')
@@ -112,7 +113,7 @@ static int film_read_header(AVFormatContext *s)
         film->audio_samplerate = AV_RB16(&scratch[24]);
         film->audio_channels = scratch[21];
         film->audio_bits = scratch[22];
-        if (scratch[23] == 2)
+        if (scratch[23] == 2 && film->audio_channels > 0)
             film->audio_type = AV_CODEC_ID_ADPCM_ADX;
         else if (film->audio_channels > 0) {
             if (film->audio_bits == 8)
@@ -247,7 +248,7 @@ static int film_read_packet(AVFormatContext *s,
     int left, right;
 
     if (film->current_sample >= film->sample_count)
-        return AVERROR(EIO);
+        return AVERROR_EOF;
 
     sample = &film->sample_table[film->current_sample];
 
@@ -266,6 +267,8 @@ static int film_read_packet(AVFormatContext *s,
         (film->audio_type != AV_CODEC_ID_ADPCM_ADX)) {
         /* stereo PCM needs to be interleaved */
 
+        if (ffio_limit(pb, sample->sample_size) != sample->sample_size)
+            return AVERROR(EIO);
         if (av_new_packet(pkt, sample->sample_size))
             return AVERROR(ENOMEM);
 
@@ -287,7 +290,7 @@ static int film_read_packet(AVFormatContext *s,
 
         left = 0;
         right = sample->sample_size / 2;
-        for (i = 0; i < sample->sample_size; ) {
+        for (i = 0; i + 1 + 2*(film->audio_bits != 8) < sample->sample_size; ) {
             if (film->audio_bits == 8) {
                 pkt->data[i++] = film->stereo_buffer[left++];
                 pkt->data[i++] = film->stereo_buffer[right++];

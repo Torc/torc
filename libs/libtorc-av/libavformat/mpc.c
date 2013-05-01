@@ -2,23 +2,24 @@
  * Musepack demuxer
  * Copyright (c) 2006 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavcodec/get_bits.h"
 #include "avformat.h"
 #include "internal.h"
@@ -91,6 +92,7 @@ static int mpc_read_header(AVFormatContext *s)
     st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
     st->codec->codec_id = AV_CODEC_ID_MUSEPACK7;
     st->codec->channels = 2;
+    st->codec->channel_layout = AV_CH_LAYOUT_STEREO;
     st->codec->bits_per_coded_sample = 16;
 
     st->codec->extradata_size = 16;
@@ -194,11 +196,11 @@ static int mpc_read_seek(AVFormatContext *s, int stream_index, int64_t timestamp
     MPCContext *c = s->priv_data;
     AVPacket pkt1, *pkt = &pkt1;
     int ret;
-    int index = av_index_search_timestamp(st, timestamp - DELAY_FRAMES, flags);
+    int index = av_index_search_timestamp(st, FFMAX(timestamp - DELAY_FRAMES, 0), flags);
     uint32_t lastframe;
 
     /* if found, seek there */
-    if (index >= 0){
+    if (index >= 0 && st->index_entries[st->nb_index_entries-1].timestamp >= timestamp - DELAY_FRAMES){
         c->curframe = st->index_entries[index].pos;
         return 0;
     }

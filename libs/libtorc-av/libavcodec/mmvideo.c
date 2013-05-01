@@ -2,20 +2,20 @@
  * American Laser Games MM Video Decoder
  * Copyright (c) 2006,2008 Peter Ross
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -60,7 +60,8 @@ static av_cold int mm_decode_init(AVCodecContext *avctx)
 
     avctx->pix_fmt = AV_PIX_FMT_PAL8;
 
-    s->frame.reference = 1;
+    avcodec_get_frame_defaults(&s->frame);
+    s->frame.reference = 3;
 
     return 0;
 }
@@ -71,7 +72,7 @@ static int mm_decode_pal(MmContext *s)
 
     bytestream2_skip(&s->gb, 4);
     for (i = 0; i < 128; i++) {
-        s->palette[i] = bytestream2_get_be24(&s->gb);
+        s->palette[i] = 0xFFU << 24 | bytestream2_get_be24(&s->gb);
         s->palette[i+128] = s->palette[i]<<2;
     }
 
@@ -119,13 +120,13 @@ static int mm_decode_intra(MmContext * s, int half_horiz, int half_vert)
     return 0;
 }
 
-/*
+/**
  * @param half_horiz Half horizontal resolution (0 or 1)
  * @param half_vert Half vertical resolution (0 or 1)
  */
 static int mm_decode_inter(MmContext * s, int half_horiz, int half_vert)
 {
-    int data_off = bytestream2_get_le16(&s->gb), y;
+    int data_off = bytestream2_get_le16(&s->gb), y = 0;
     GetByteContext data_ptr;
 
     if (bytestream2_get_bytes_left(&s->gb) < data_off)
@@ -172,7 +173,7 @@ static int mm_decode_inter(MmContext * s, int half_horiz, int half_vert)
 }
 
 static int mm_decode_frame(AVCodecContext *avctx,
-                            void *data, int *data_size,
+                            void *data, int *got_frame,
                             AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
@@ -187,13 +188,13 @@ static int mm_decode_frame(AVCodecContext *avctx,
     buf_size -= MM_PREAMBLE_SIZE;
     bytestream2_init(&s->gb, buf, buf_size);
 
-    if (avctx->reget_buffer(avctx, &s->frame) < 0) {
+    if ((res = avctx->reget_buffer(avctx, &s->frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "reget_buffer() failed\n");
-        return -1;
+        return res;
     }
 
     switch(type) {
-    case MM_TYPE_PALETTE   : res = mm_decode_pal(s); return buf_size;
+    case MM_TYPE_PALETTE   : res = mm_decode_pal(s); return avpkt->size;
     case MM_TYPE_INTRA     : res = mm_decode_intra(s, 0, 0); break;
     case MM_TYPE_INTRA_HH  : res = mm_decode_intra(s, 1, 0); break;
     case MM_TYPE_INTRA_HHV : res = mm_decode_intra(s, 1, 1); break;
@@ -209,10 +210,10 @@ static int mm_decode_frame(AVCodecContext *avctx,
 
     memcpy(s->frame.data[1], s->palette, AVPALETTE_SIZE);
 
-    *data_size = sizeof(AVFrame);
+    *got_frame      = 1;
     *(AVFrame*)data = s->frame;
 
-    return buf_size;
+    return avpkt->size;
 }
 
 static av_cold int mm_decode_end(AVCodecContext *avctx)

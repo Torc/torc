@@ -3,20 +3,20 @@
  * Copyright (c) 2009 Colin McQuillian
  * Copyright (c) 2010 Josh Allmann
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,11 +27,10 @@
  * @author Josh Allmann <joshua.allmann@gmail.com>
  */
 
+#include "libavutil/avassert.h"
 #include "libavutil/avstring.h"
 #include "libavutil/base64.h"
 #include "libavcodec/bytestream.h"
-
-#include <assert.h>
 
 #include "rtpdec.h"
 #include "rtpdec_formats.h"
@@ -70,12 +69,20 @@ static void xiph_free_context(PayloadContext * data)
     av_free(data);
 }
 
-static int xiph_handle_packet(AVFormatContext * ctx,
-                              PayloadContext * data,
-                              AVStream * st,
-                              AVPacket * pkt,
-                              uint32_t * timestamp,
-                              const uint8_t * buf, int len, int flags)
+static int xiph_vorbis_init(AVFormatContext *ctx, int st_index,
+                            PayloadContext *data)
+{
+    if (st_index < 0)
+        return 0;
+    ctx->streams[st_index]->need_parsing = AVSTREAM_PARSE_HEADERS;
+    return 0;
+}
+
+
+static int xiph_handle_packet(AVFormatContext *ctx, PayloadContext *data,
+                              AVStream *st, AVPacket *pkt, uint32_t *timestamp,
+                              const uint8_t *buf, int len, uint16_t seq,
+                              int flags)
 {
 
     int ident, fragmented, tdt, num_pkts, pkt_len;
@@ -183,7 +190,7 @@ static int xiph_handle_packet(AVFormatContext * ctx,
         data->timestamp = *timestamp;
 
     } else {
-        assert(fragmented < 4);
+        av_assert1(fragmented < 4);
         if (data->timestamp != *timestamp) {
             // skip if fragmented timestamp is incorrect;
             // a start packet has been lost somewhere
@@ -202,19 +209,12 @@ static int xiph_handle_packet(AVFormatContext * ctx,
 
         if (fragmented == 3) {
             // end of xiph data packet
-            av_init_packet(pkt);
-            pkt->size = avio_close_dyn_buf(data->fragment, &pkt->data);
-
-            if (pkt->size < 0) {
+            int ret = ff_rtp_finalize_packet(pkt, &data->fragment, st->index);
+            if (ret < 0) {
                 av_log(ctx, AV_LOG_ERROR,
                        "Error occurred when getting fragment buffer.");
-                return pkt->size;
+                return ret;
             }
-
-            pkt->stream_index = st->index;
-            pkt->destruct = av_destruct_packet;
-
-            data->fragment = NULL;
 
             return 0;
         }
@@ -401,6 +401,7 @@ RTPDynamicProtocolHandler ff_vorbis_dynamic_handler = {
     .enc_name         = "vorbis",
     .codec_type       = AVMEDIA_TYPE_AUDIO,
     .codec_id         = AV_CODEC_ID_VORBIS,
+    .init             = xiph_vorbis_init,
     .parse_sdp_a_line = xiph_parse_sdp_line,
     .alloc            = xiph_new_context,
     .free             = xiph_free_context,

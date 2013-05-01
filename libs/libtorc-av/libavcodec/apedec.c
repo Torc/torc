@@ -3,29 +3,30 @@
  * Copyright (c) 2007 Benjamin Zores <ben@geexbox.org>
  *  based upon libdemac from Dave Chapman.
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/avassert.h"
+#include "libavutil/channel_layout.h"
+#include "libavutil/opt.h"
 #include "avcodec.h"
 #include "dsputil.h"
 #include "bytestream.h"
-#include "libavutil/audioconvert.h"
-#include "libavutil/avassert.h"
-#include "libavutil/opt.h"
+#include "internal.h"
 
 /**
  * @file
@@ -128,7 +129,6 @@ typedef struct APEPredictor {
 typedef struct APEContext {
     AVClass *class;                          ///< class for AVOptions
     AVCodecContext *avctx;
-    AVFrame frame;
     DSPContext dsp;
     int channels;
     int samples;                             ///< samples left to decode in current frame
@@ -217,7 +217,7 @@ static av_cold int ape_decode_init(AVCodecContext *avctx)
 
     av_log(avctx, AV_LOG_DEBUG, "Compression Level: %d - Flags: %d\n",
            s->compression_level, s->flags);
-    if (s->compression_level % 1000 || s->compression_level > COMPRESSION_LEVEL_INSANE) {
+    if (s->compression_level % 1000 || s->compression_level > COMPRESSION_LEVEL_INSANE || !s->compression_level) {
         av_log(avctx, AV_LOG_ERROR, "Incorrect compression level %d\n",
                s->compression_level);
         return AVERROR_INVALIDDATA;
@@ -233,9 +233,6 @@ static av_cold int ape_decode_init(AVCodecContext *avctx)
 
     ff_dsputil_init(&s->dsp, avctx);
     avctx->channel_layout = (avctx->channels==2) ? AV_CH_LAYOUT_STEREO : AV_CH_LAYOUT_MONO;
-
-    avcodec_get_frame_defaults(&s->frame);
-    avctx->coded_frame = &s->frame;
 
     return 0;
 filter_alloc_fail:
@@ -825,6 +822,7 @@ static void ape_unpack_stereo(APEContext *ctx, int count)
 static int ape_decode_frame(AVCodecContext *avctx, void *data,
                             int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     APEContext *s = avctx->priv_data;
     uint8_t *sample8;
@@ -832,7 +830,6 @@ static int ape_decode_frame(AVCodecContext *avctx, void *data,
     int32_t *sample24;
     int i, ch, ret;
     int blockstodecode;
-    int bytes_used = 0;
 
     /* this should never be negative, but bad things will happen if it is, so
        check it just to make sure. */
@@ -887,8 +884,6 @@ static int ape_decode_frame(AVCodecContext *avctx, void *data,
             av_log(avctx, AV_LOG_ERROR, "Error reading frame header\n");
             return AVERROR_INVALIDDATA;
         }
-
-        bytes_used = avpkt->size;
     }
 
     if (!s->data) {
@@ -908,8 +903,8 @@ static int ape_decode_frame(AVCodecContext *avctx, void *data,
     s->decoded[1] = s->decoded_buffer + FFALIGN(blockstodecode, 8);
 
     /* get output buffer */
-    s->frame.nb_samples = blockstodecode;
-    if ((ret = avctx->get_buffer(avctx, &s->frame)) < 0) {
+    frame->nb_samples = blockstodecode;
+    if ((ret = ff_get_buffer(avctx, frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
@@ -931,21 +926,21 @@ static int ape_decode_frame(AVCodecContext *avctx, void *data,
     switch (s->bps) {
     case 8:
         for (ch = 0; ch < s->channels; ch++) {
-            sample8 = (uint8_t *)s->frame.data[ch];
+            sample8 = (uint8_t *)frame->data[ch];
             for (i = 0; i < blockstodecode; i++)
                 *sample8++ = (s->decoded[ch][i] + 0x80) & 0xff;
         }
         break;
     case 16:
         for (ch = 0; ch < s->channels; ch++) {
-            sample16 = (int16_t *)s->frame.data[ch];
+            sample16 = (int16_t *)frame->data[ch];
             for (i = 0; i < blockstodecode; i++)
                 *sample16++ = s->decoded[ch][i];
         }
         break;
     case 24:
         for (ch = 0; ch < s->channels; ch++) {
-            sample24 = (int32_t *)s->frame.data[ch];
+            sample24 = (int32_t *)frame->data[ch];
             for (i = 0; i < blockstodecode; i++)
                 *sample24++ = s->decoded[ch][i] << 8;
         }
@@ -954,10 +949,9 @@ static int ape_decode_frame(AVCodecContext *avctx, void *data,
 
     s->samples -= blockstodecode;
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = s->frame;
+    *got_frame_ptr = 1;
 
-    return bytes_used;
+    return !s->samples ? avpkt->size : 0;
 }
 
 static void ape_flush(AVCodecContext *avctx)

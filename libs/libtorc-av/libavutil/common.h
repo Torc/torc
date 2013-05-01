@@ -1,20 +1,20 @@
 /*
  * copyright (c) 2006 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -26,7 +26,6 @@
 #ifndef AVUTIL_COMMON_H
 #define AVUTIL_COMMON_H
 
-#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -49,6 +48,8 @@
 #define RSHIFT(a,b) ((a) > 0 ? ((a) + ((1<<(b))>>1))>>(b) : ((a) + ((1<<(b))>>1)-1)>>(b))
 /* assume b>0 */
 #define ROUNDED_DIV(a,b) (((a)>0 ? (a) + ((b)>>1) : (a) - ((b)>>1))/(b))
+#define FFUDIV(a,b) (((a)>0 ?(a):(a)-(b)+1) / (b))
+#define FFUMOD(a,b) ((a)-(b)*FFUDIV(a,b))
 #define FFABS(a) ((a) >= 0 ? (a) : (-(a)))
 #define FFSIGN(a) ((a) > 0 ? 1 : -1)
 
@@ -63,6 +64,9 @@
 
 /* misc math functions */
 
+/**
+ * Reverse the order of the bits of an 8-bits unsigned integer.
+ */
 #if FF_API_AV_REVERSE
 extern attribute_deprecated const uint8_t av_reverse[256];
 #endif
@@ -92,6 +96,26 @@ av_const int av_log2_16bit(unsigned v);
  */
 static av_always_inline av_const int av_clip_c(int a, int amin, int amax)
 {
+#if defined(HAVE_AV_CONFIG_H) && defined(ASSERT_LEVEL) && ASSERT_LEVEL >= 2
+    if (amin > amax) abort();
+#endif
+    if      (a < amin) return amin;
+    else if (a > amax) return amax;
+    else               return a;
+}
+
+/**
+ * Clip a signed 64bit integer value into the amin-amax range.
+ * @param a value to clip
+ * @param amin minimum value of the clip range
+ * @param amax maximum value of the clip range
+ * @return clipped value
+ */
+static av_always_inline av_const int64_t av_clip64_c(int64_t a, int64_t amin, int64_t amax)
+{
+#if defined(HAVE_AV_CONFIG_H) && defined(ASSERT_LEVEL) && ASSERT_LEVEL >= 2
+    if (amin > amax) abort();
+#endif
     if      (a < amin) return amin;
     else if (a > amax) return amax;
     else               return a;
@@ -149,7 +173,7 @@ static av_always_inline av_const int16_t av_clip_int16_c(int a)
 static av_always_inline av_const int32_t av_clipl_int32_c(int64_t a)
 {
     if ((a+0x80000000u) & ~UINT64_C(0xFFFFFFFF)) return (a>>63) ^ 0x7FFFFFFF;
-    else                                         return a;
+    else                                         return (int32_t)a;
 }
 
 /**
@@ -197,6 +221,9 @@ static av_always_inline int av_sat_dadd32_c(int a, int b)
  */
 static av_always_inline av_const float av_clipf_c(float a, float amin, float amax)
 {
+#if defined(HAVE_AV_CONFIG_H) && defined(ASSERT_LEVEL) && ASSERT_LEVEL >= 2
+    if (amin > amax) abort();
+#endif
     if      (a < amin) return amin;
     else if (a > amax) return amax;
     else               return a;
@@ -232,7 +259,7 @@ static av_always_inline av_const int av_popcount_c(uint32_t x)
  */
 static av_always_inline av_const int av_popcount64_c(uint64_t x)
 {
-    return av_popcount(x) + av_popcount(x >> 32);
+    return av_popcount((uint32_t)x) + av_popcount(x >> 32);
 }
 
 #define MKTAG(a,b,c,d) ((a) | ((b) << 8) | ((c) << 16) | ((unsigned)(d) << 24))
@@ -252,16 +279,17 @@ static av_always_inline av_const int av_popcount64_c(uint64_t x)
 #define GET_UTF8(val, GET_BYTE, ERROR)\
     val= GET_BYTE;\
     {\
-        int ones= 7 - av_log2(val ^ 255);\
-        if(ones==1)\
+        uint32_t top = (val & 128) >> 1;\
+        if ((val & 0xc0) == 0x80)\
             ERROR\
-        val&= 127>>ones;\
-        while(--ones > 0){\
+        while (val & top) {\
             int tmp= GET_BYTE - 128;\
             if(tmp>>6)\
                 ERROR\
             val= (val<<6) + tmp;\
+            top <<= 5;\
         }\
+        val &= (top << 1) - 1;\
     }
 
 /**
@@ -369,6 +397,9 @@ static av_always_inline av_const int av_popcount64_c(uint64_t x)
 #endif
 #ifndef av_clip
 #   define av_clip          av_clip_c
+#endif
+#ifndef av_clip64
+#   define av_clip64        av_clip64_c
 #endif
 #ifndef av_clip_uint8
 #   define av_clip_uint8    av_clip_uint8_c

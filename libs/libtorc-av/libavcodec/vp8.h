@@ -6,20 +6,20 @@
  * Copyright (C) 2010 Jason Garrett-Glaser
  * Copyright (C) 2012 Daniel Kang
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -34,6 +34,8 @@
 #include <pthread.h>
 #elif HAVE_W32THREADS
 #include "w32pthreads.h"
+#elif HAVE_OS2THREADS
+#include "os2threads.h"
 #endif
 
 #define VP8_MAX_QUANT 127
@@ -94,8 +96,8 @@ typedef struct VP8Macroblock {
 } VP8Macroblock;
 
 typedef struct VP8ThreadData {
-    DECLARE_ALIGNED(16, DCTELEM, block)[6][4][16];
-    DECLARE_ALIGNED(16, DCTELEM, block_dc)[16];
+    DECLARE_ALIGNED(16, int16_t, block)[6][4][16];
+    DECLARE_ALIGNED(16, int16_t, block_dc)[16];
     /**
      * This is the index plus one of the last non-zero coeff
      * for each of the blocks in the current macroblock.
@@ -247,7 +249,7 @@ typedef struct VP8Context {
      */
     int num_coeff_partitions;
     VP56RangeCoder coeff_partition[8];
-    DSPContext dsp;
+    VideoDSPContext vdsp;
     VP8DSPContext vp8dsp;
     H264PredContext hpc;
     vp8_mc_func put_pixels_tab[3][3][3];

@@ -16,20 +16,20 @@
  * Many thanks to Dan Dennedy <dan@dennedy.org> for providing wealth
  * of DV technical info.
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -38,9 +38,9 @@
  * DV codec.
  */
 
+#include "libavutil/internal.h"
 #include "libavutil/pixdesc.h"
 #include "avcodec.h"
-#include "dsputil.h"
 #include "get_bits.h"
 #include "internal.h"
 #include "put_bits.h"
@@ -275,7 +275,7 @@ av_cold int ff_dvvideo_init(AVCodecContext *avctx)
            to accelerate the parsing of partial codes */
         init_vlc(&dv_vlc, TEX_VLC_BITS, j,
                  new_dv_vlc_len, 1, 1, new_dv_vlc_bits, 2, 2, 0);
-        assert(dv_vlc.table_size == 1184);
+        av_assert1(dv_vlc.table_size == 1184);
 
         for (i = 0; i < dv_vlc.table_size; i++){
             int code = dv_vlc.table[i][0];
@@ -297,6 +297,7 @@ av_cold int ff_dvvideo_init(AVCodecContext *avctx)
     }
 
     /* Generic DSP setup */
+    memset(&dsp,0, sizeof(dsp));
     ff_dsputil_init(&dsp, avctx);
     ff_set_cmp(&dsp, dsp.ildct_cmp, avctx->ildct_cmp);
     s->get_pixels = dsp.get_pixels;
@@ -311,7 +312,13 @@ av_cold int ff_dvvideo_init(AVCodecContext *avctx)
     /* 248DCT setup */
     s->fdct[1]     = dsp.fdct248;
     s->idct_put[1] = ff_simple_idct248_put;  // FIXME: need to add it to DSP
-    memcpy(s->dv_zigzag[1], ff_zigzag248_direct, 64);
+    if (avctx->lowres){
+        for (i = 0; i < 64; i++){
+            int j = ff_zigzag248_direct[i];
+            s->dv_zigzag[1][i] = dsp.idct_permutation[(j & 7) + (j & 8) * 4 + (j & 48) / 2];
+        }
+    }else
+        memcpy(s->dv_zigzag[1], ff_zigzag248_direct, 64);
 
     avctx->coded_frame = &s->picture;
     s->avctx = avctx;
@@ -328,6 +335,10 @@ static av_cold int dvvideo_init_encoder(AVCodecContext *avctx)
                avctx->width, avctx->height, av_get_pix_fmt_name(avctx->pix_fmt));
         ff_dv_print_profiles(avctx, AV_LOG_ERROR);
         return AVERROR(EINVAL);
+    }
+    if (avctx->height > 576) {
+        av_log(avctx, AV_LOG_ERROR, "DVCPRO HD encoding is not supported.\n");
+        return AVERROR_PATCHWELCOME;
     }
 
     dv_vlc_map_tableinit();
@@ -406,7 +417,7 @@ typedef struct EncBlockInfo {
     int      cur_ac;
     int      cno;
     int      dct_mode;
-    DCTELEM  mb[64];
+    int16_t  mb[64];
     uint8_t  next[64];
     uint8_t  sign[64];
     uint8_t  partial_bit_count;
@@ -495,13 +506,13 @@ static av_always_inline int dv_init_enc_block(EncBlockInfo* bi, uint8_t *data, i
 {
     const int *weight;
     const uint8_t* zigzag_scan;
-    LOCAL_ALIGNED_16(DCTELEM, blk, [64]);
+    LOCAL_ALIGNED_16(int16_t, blk, [64]);
     int i, area;
     /* We offer two different methods for class number assignment: the
        method suggested in SMPTE 314M Table 22, and an improved
        method. The SMPTE method is very conservative; it assigns class
        3 (i.e. severe quantization) to any block where the largest AC
-       component is greater than 36. Libav's DV encoder tracks AC bit
+       component is greater than 36. FFmpeg's DV encoder tracks AC bit
        consumption precisely, so there is no need to bias most blocks
        towards strongly lossy compression. Instead, we assign class 2
        to most blocks, and use class 3 only when strictly necessary
@@ -509,13 +520,13 @@ static av_always_inline int dv_init_enc_block(EncBlockInfo* bi, uint8_t *data, i
 
 #if 0 /* SMPTE spec method */
     static const int classes[] = {12, 24, 36, 0xffff};
-#else /* improved Libav method */
+#else /* improved FFmpeg method */
     static const int classes[] = {-1, -1, 255, 0xffff};
 #endif
     int max  = classes[0];
     int prev = 0;
 
-    assert((((int)blk) & 15) == 0);
+    av_assert2((((int)blk) & 15) == 0);
 
     bi->area_q[0] = bi->area_q[1] = bi->area_q[2] = bi->area_q[3] = 0;
     bi->partial_bit_count = 0;
@@ -606,7 +617,7 @@ static inline void dv_guess_qnos(EncBlockInfo* blks, int* qnos)
                     b->bit_size[a] = 1; // 4 areas 4 bits for EOB :)
                     b->area_q[a]++;
                     prev = b->prev[a];
-                    assert(b->next[prev] >= mb_area_start[a+1] || b->mb[prev]);
+                    av_assert2(b->next[prev] >= mb_area_start[a+1] || b->mb[prev]);
                     for (k = b->next[prev] ; k < mb_area_start[a+1]; k = b->next[k]) {
                        b->mb[k] >>= 1;
                        if (b->mb[k]) {
@@ -616,11 +627,11 @@ static inline void dv_guess_qnos(EncBlockInfo* blks, int* qnos)
                            if (b->next[k] >= mb_area_start[a+1] && b->next[k]<64){
                                 for (a2 = a + 1; b->next[k] >= mb_area_start[a2+1]; a2++)
                                     b->prev[a2] = prev;
-                                assert(a2 < 4);
-                                assert(b->mb[b->next[k]]);
+                                av_assert2(a2 < 4);
+                                av_assert2(b->mb[b->next[k]]);
                                 b->bit_size[a2] += dv_rl2vlc_size(b->next[k] - prev - 1, b->mb[b->next[k]])
                                                   -dv_rl2vlc_size(b->next[k] -    k - 1, b->mb[b->next[k]]);
-                                assert(b->prev[a2] == k && (a2 + 1 >= 4 || b->prev[a2+1] != k));
+                                av_assert2(b->prev[a2] == k && (a2 + 1 >= 4 || b->prev[a2+1] != k));
                                 b->prev[a2] = prev;
                            }
                            b->next[prev] = b->next[k];
@@ -807,6 +818,7 @@ static inline int dv_write_pack(enum dv_pack_type pack_id, DVVideoContext *c,
      *      compression scheme (if any).
      */
     int apt   = (c->sys->pix_fmt == AV_PIX_FMT_YUV420P ? 0 : 1);
+    int fs    = c->picture.top_field_first ? 0x00 : 0x40;
 
     uint8_t aspect = 0;
     if ((int)(av_q2d(c->avctx->sample_aspect_ratio) * c->avctx->width / c->avctx->height * 10) >= 17) /* 16:9 */
@@ -845,7 +857,7 @@ static inline int dv_write_pack(enum dv_pack_type pack_id, DVVideoContext *c,
           buf[2] = 0xc8 |     /* reserved -- always b11001xxx */
                    aspect;
           buf[3] = (1 << 7) | /* frame/field flag 1 -- frame, 0 -- field */
-                   (1 << 6) | /* first/second field flag 0 -- field 2, 1 -- field 1 */
+                   fs       | /* first/second field flag 0 -- field 2, 1 -- field 1 */
                    (1 << 5) | /* frame change flag 0 -- same picture as before, 1 -- different */
                    (1 << 4) | /* 1 - interlaced, 0 - noninterlaced */
                    0xc;       /* reserved -- always b1100 */
@@ -952,10 +964,8 @@ static int dvvideo_encode_frame(AVCodecContext *c, AVPacket *pkt,
     s->sys = avpriv_dv_codec_profile(c);
     if (!s->sys || ff_dv_init_dynamic_tables(s->sys))
         return -1;
-    if ((ret = ff_alloc_packet(pkt, s->sys->frame_size)) < 0) {
-        av_log(c, AV_LOG_ERROR, "Error getting output packet.\n");
+    if ((ret = ff_alloc_packet2(c, pkt, s->sys->frame_size)) < 0)
         return ret;
-    }
 
     c->pix_fmt           = s->sys->pix_fmt;
     s->picture           = *frame;

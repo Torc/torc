@@ -25,6 +25,10 @@
 #include "libavutil/rational.h"
 #include "avcodec.h"
 
+/* minimum number of bytes to read from a DV stream in order to
+   determine the profile */
+#define DV_PROFILE_BYTES (6*80) /* 6 DIF blocks */
+
 typedef struct DVwork_chunk {
     uint16_t  buf_offset;
     uint16_t  mb_coordinates[5];
@@ -62,6 +66,8 @@ typedef struct DVprofile {
 
 const DVprofile* avpriv_dv_frame_profile(const DVprofile *sys,
                                          const uint8_t* frame, unsigned buf_size);
+const DVprofile* avpriv_dv_frame_profile2(AVCodecContext* codec, const DVprofile *sys,
+                                  const uint8_t* frame, unsigned buf_size);
 const DVprofile* avpriv_dv_codec_profile(AVCodecContext* codec);
 
 /**

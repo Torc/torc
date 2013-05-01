@@ -2,27 +2,29 @@
  * MMX optimized DSP utils
  * Copyright (c) 2007  Aurelien Jacobs <aurel@gnuage.org>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #ifndef AVCODEC_X86_DSPUTIL_MMX_H
 #define AVCODEC_X86_DSPUTIL_MMX_H
 
+#include <stddef.h>
 #include <stdint.h>
+
 #include "libavcodec/dsputil.h"
 #include "libavutil/x86/asm.h"
 
@@ -30,8 +32,6 @@ typedef struct xmm_reg { uint64_t a, b; } xmm_reg;
 
 extern const uint64_t ff_bone;
 extern const uint64_t ff_wtwo;
-
-extern const uint64_t ff_pdw_80000000[2];
 
 extern const xmm_reg  ff_pw_3;
 extern const xmm_reg  ff_pw_4;
@@ -85,22 +85,28 @@ extern const double ff_pd_2[2];
 void ff_dsputilenc_init_mmx(DSPContext* c, AVCodecContext *avctx);
 void ff_dsputil_init_pix_mmx(DSPContext* c, AVCodecContext *avctx);
 
-void ff_add_pixels_clamped_mmx(const DCTELEM *block, uint8_t *pixels, int line_size);
-void ff_put_pixels_clamped_mmx(const DCTELEM *block, uint8_t *pixels, int line_size);
-void ff_put_signed_pixels_clamped_mmx(const DCTELEM *block, uint8_t *pixels, int line_size);
+void ff_add_pixels_clamped_mmx(const int16_t *block, uint8_t *pixels, int line_size);
+void ff_put_pixels_clamped_mmx(const int16_t *block, uint8_t *pixels, int line_size);
+void ff_put_signed_pixels_clamped_mmx(const int16_t *block, uint8_t *pixels, int line_size);
 
-void ff_put_cavs_qpel8_mc00_mmx2(uint8_t *dst, uint8_t *src, int stride);
-void ff_avg_cavs_qpel8_mc00_mmx2(uint8_t *dst, uint8_t *src, int stride);
-void ff_put_cavs_qpel16_mc00_mmx2(uint8_t *dst, uint8_t *src, int stride);
-void ff_avg_cavs_qpel16_mc00_mmx2(uint8_t *dst, uint8_t *src, int stride);
+void ff_avg_pixels8_mmxext(uint8_t *block, const uint8_t *pixels,
+                           ptrdiff_t line_size, int h);
+
+void ff_put_cavs_qpel8_mc00_mmxext(uint8_t *dst, uint8_t *src, int stride);
+void ff_avg_cavs_qpel8_mc00_mmxext(uint8_t *dst, uint8_t *src, int stride);
+void ff_put_cavs_qpel16_mc00_mmxext(uint8_t *dst, uint8_t *src, int stride);
+void ff_avg_cavs_qpel16_mc00_mmxext(uint8_t *dst, uint8_t *src, int stride);
 
 void ff_put_vc1_mspel_mc00_mmx(uint8_t *dst, const uint8_t *src, int stride, int rnd);
-void ff_avg_vc1_mspel_mc00_mmx2(uint8_t *dst, const uint8_t *src, int stride, int rnd);
 
 void ff_put_rv40_qpel8_mc33_mmx(uint8_t *block, uint8_t *pixels, int line_size);
 void ff_put_rv40_qpel16_mc33_mmx(uint8_t *block, uint8_t *pixels, int line_size);
 void ff_avg_rv40_qpel8_mc33_mmx(uint8_t *block, uint8_t *pixels, int line_size);
 void ff_avg_rv40_qpel16_mc33_mmx(uint8_t *block, uint8_t *pixels, int line_size);
+
+void ff_mmx_idct(int16_t *block);
+void ff_mmxext_idct(int16_t *block);
+
 
 void ff_deinterlace_line_mmx(uint8_t *dst,
                              const uint8_t *lum_m4, const uint8_t *lum_m3,

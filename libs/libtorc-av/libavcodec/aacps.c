@@ -2,32 +2,32 @@
  * MPEG-4 Parametric Stereo decoding functions
  * Copyright (c) 2010 Alex Converse <alex.converse@gmail.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include <stdint.h>
 #include "libavutil/common.h"
+#include "libavutil/internal.h"
 #include "libavutil/mathematics.h"
 #include "avcodec.h"
 #include "get_bits.h"
 #include "aacps.h"
 #include "aacps_tablegen.h"
 #include "aacpsdata.c"
-#include "dsputil.h"
 
 #define PS_BASELINE 0  ///< Operate in Baseline PS mode
                        ///< Baseline implies 10 or 20 stereo bands,
@@ -139,7 +139,7 @@ static int ps_read_extension_data(GetBitContext *gb, PSContext *ps, int ps_exten
     return get_bits_count(gb) - count;
 }
 
-static void ipdopd_reset(int8_t *opd_hist, int8_t *ipd_hist)
+static void ipdopd_reset(int8_t *ipd_hist, int8_t *opd_hist)
 {
     int i;
     for (i = 0; i < PS_MAX_NR_IPDOPD; i++) {
@@ -236,6 +236,7 @@ int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb_host, PSContext *ps
     if (!ps->num_env || ps->border_position[ps->num_env] < numQMFSlots - 1) {
         //Create a fake envelope
         int source = ps->num_env ? ps->num_env - 1 : ps->num_env_old - 1;
+        int b;
         if (source >= 0 && source != ps->num_env) {
             if (ps->enable_iid) {
                 memcpy(ps->iid_par+ps->num_env, ps->iid_par+source, sizeof(ps->iid_par[0]));
@@ -246,6 +247,22 @@ int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb_host, PSContext *ps
             if (ps->enable_ipdopd) {
                 memcpy(ps->ipd_par+ps->num_env, ps->ipd_par+source, sizeof(ps->ipd_par[0]));
                 memcpy(ps->opd_par+ps->num_env, ps->opd_par+source, sizeof(ps->opd_par[0]));
+            }
+        }
+        if (ps->enable_iid){
+            for (b = 0; b < ps->nr_iid_par; b++) {
+                if (FFABS(ps->iid_par[ps->num_env][b]) > 7 + 8 * ps->iid_quant) {
+                    av_log(avctx, AV_LOG_ERROR, "iid_par invalid\n");
+                    goto err;
+                }
+            }
+        }
+        if (ps->enable_icc){
+            for (b = 0; b < ps->nr_iid_par; b++) {
+                if (ps->icc_par[ps->num_env][b] > 7U) {
+                    av_log(avctx, AV_LOG_ERROR, "icc_par invalid\n");
+                    goto err;
+                }
             }
         }
         ps->num_env++;
@@ -603,7 +620,6 @@ static void map_val_20_to_34(float par[PS_MAX_NR_IIDICC])
     par[ 3] =  par[ 2];
     par[ 2] =  par[ 1];
     par[ 1] = (par[ 0] + par[ 1]) * 0.5f;
-    par[ 0] =  par[ 0];
 }
 
 static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)

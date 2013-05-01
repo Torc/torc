@@ -3,20 +3,20 @@
  *
  * Copyright (c) 2008 Vladimir Voroshilov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -24,6 +24,55 @@
 #define AVCODEC_CELP_FILTERS_H
 
 #include <stdint.h>
+
+typedef struct CELPFContext {
+    /**
+     * LP synthesis filter.
+     * @param[out] out pointer to output buffer
+     *        - the array out[-filter_length, -1] must
+     *        contain the previous result of this filter
+     * @param filter_coeffs filter coefficients.
+     * @param in input signal
+     * @param buffer_length amount of data to process
+     * @param filter_length filter length (10 for 10th order LP filter). Must be
+     *                      greater than 4 and even.
+     *
+     * @note Output buffer must contain filter_length samples of past
+     *       speech data before pointer.
+     *
+     * Routine applies 1/A(z) filter to given speech data.
+     */
+    void (*celp_lp_synthesis_filterf)(float *out, const float *filter_coeffs,
+                                      const float *in, int buffer_length,
+                                      int filter_length);
+
+    /**
+     * LP zero synthesis filter.
+     * @param[out] out pointer to output buffer
+     * @param filter_coeffs filter coefficients.
+     * @param in input signal
+     *        - the array in[-filter_length, -1] must
+     *        contain the previous input of this filter
+     * @param buffer_length amount of data to process (should be a multiple of eight)
+     * @param filter_length filter length (10 for 10th order LP filter;
+     *                                      should be a multiple of two)
+     *
+     * @note Output buffer must contain filter_length samples of past
+     *       speech data before pointer.
+     *
+     * Routine applies A(z) filter to given speech data.
+     */
+    void (*celp_lp_zero_synthesis_filterf)(float *out, const float *filter_coeffs,
+                                           const float *in, int buffer_length,
+                                           int filter_length);
+
+}CELPFContext;
+
+/**
+ * Initialize CELPFContext.
+ */
+void ff_celp_filter_init(CELPFContext *c);
+void ff_celp_filter_init_mips(CELPFContext *c);
 
 /**
  * Circularly convolve fixed vector with a phase dispersion impulse

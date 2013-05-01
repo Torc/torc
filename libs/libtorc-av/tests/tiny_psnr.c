@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2003 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -53,6 +53,21 @@ uint64_t exp16_table[21] = {
        195360063,
     582360139072LL,
 };
+
+#if 0
+// 16.16 fixpoint exp()
+static unsigned int exp16(unsigned int a){
+    int i;
+    int out= 1<<16;
+
+    for(i=19;i>=0;i--){
+        if(a&(1<<i))
+            out= (out*exp16_table[i] + (1<<15))>>16;
+    }
+
+    return out;
+}
+#endif
 
 // 16.16 fixpoint log()
 static int64_t log16(uint64_t a)
@@ -107,77 +122,47 @@ static float get_f32l(uint8_t *p)
     return v.f;
 }
 
-int main(int argc, char *argv[])
+static int run_psnr(FILE *f[2], int len, int shift, int skip_bytes)
 {
     int i, j;
     uint64_t sse = 0;
     uint64_t dev;
-    FILE *f[2];
     uint8_t buf[2][SIZE];
     uint64_t psnr;
-    int len = 1;
-    int64_t max;
-    int shift      = argc < 5 ? 0 : atoi(argv[4]);
-    int skip_bytes = argc < 6 ? 0 : atoi(argv[5]);
+    int64_t max    = (1LL << (8 * len)) - 1;
     int size0      = 0;
     int size1      = 0;
     int maxdist    = 0;
+    int noseek;
 
-    if (argc < 3) {
-        printf("tiny_psnr <file1> <file2> [<elem size> [<shift> [<skip bytes>]]]\n");
-        printf("WAV headers are skipped automatically.\n");
-        return 1;
-    }
+    noseek = fseek(f[0], 0, SEEK_SET) ||
+             fseek(f[1], 0, SEEK_SET);
 
-    if (argc > 3) {
-        if (!strcmp(argv[3], "u8")) {
-            len = 1;
-        } else if (!strcmp(argv[3], "s16")) {
-            len = 2;
-        } else if (!strcmp(argv[3], "f32")) {
-            len = 4;
-        } else {
-            char *end;
-            len = strtol(argv[3], &end, 0);
-            if (*end || len < 1 || len > 2) {
-                fprintf(stderr, "Unsupported sample format: %s\n", argv[3]);
+    if (!noseek) {
+        for (i = 0; i < 2; i++) {
+            uint8_t *p = buf[i];
+            if (fread(p, 1, 12, f[i]) != 12)
                 return 1;
-            }
-        }
-    }
-
-    max = (1LL << (8 * len)) - 1;
-
-    f[0] = fopen(argv[1], "rb");
-    f[1] = fopen(argv[2], "rb");
-    if (!f[0] || !f[1]) {
-        fprintf(stderr, "Could not open input files.\n");
-        return 1;
-    }
-
-    for (i = 0; i < 2; i++) {
-        uint8_t *p = buf[i];
-        if (fread(p, 1, 12, f[i]) != 12)
-            return 1;
-        if (!memcmp(p, "RIFF", 4) &&
-            !memcmp(p + 8, "WAVE", 4)) {
-            if (fread(p, 1, 8, f[i]) != 8)
-                return 1;
-            while (memcmp(p, "data", 4)) {
-                int s = p[4] | p[5] << 8 | p[6] << 16 | p[7] << 24;
-                fseek(f[i], s, SEEK_CUR);
+            if (!memcmp(p, "RIFF", 4) &&
+                !memcmp(p + 8, "WAVE", 4)) {
                 if (fread(p, 1, 8, f[i]) != 8)
                     return 1;
+                while (memcmp(p, "data", 4)) {
+                    int s = p[4] | p[5] << 8 | p[6] << 16 | p[7] << 24;
+                    fseek(f[i], s, SEEK_CUR);
+                    if (fread(p, 1, 8, f[i]) != 8)
+                        return 1;
+                }
+            } else {
+                fseek(f[i], -12, SEEK_CUR);
             }
-        } else {
-            fseek(f[i], -12, SEEK_CUR);
         }
+
+        fseek(f[shift < 0], abs(shift), SEEK_CUR);
+
+        fseek(f[0], skip_bytes, SEEK_CUR);
+        fseek(f[1], skip_bytes, SEEK_CUR);
     }
-
-    fseek(f[shift < 0], abs(shift), SEEK_CUR);
-
-    fseek(f[0], skip_bytes, SEEK_CUR);
-    fseek(f[1], skip_bytes, SEEK_CUR);
 
     for (;;) {
         int s0 = fread(buf[0], 1, SIZE, f[0]);
@@ -222,5 +207,58 @@ int main(int argc, char *argv[])
            (int)(dev / F), (int)(dev % F),
            (int)(psnr / F), (int)(psnr % F),
            maxdist, size0, size1);
+    return psnr;
+}
+
+int main(int argc, char *argv[])
+{
+    FILE *f[2];
+    int len = 1;
+    int shift_first= argc < 5 ? 0 : atoi(argv[4]);
+    int skip_bytes = argc < 6 ? 0 : atoi(argv[5]);
+    int shift_last = shift_first + (argc < 7 ? 0 : atoi(argv[6]));
+    int shift;
+    int max_psnr   = -1;
+    int max_psnr_shift = 0;
+
+    if (argc > 3) {
+        if (!strcmp(argv[3], "u8")) {
+            len = 1;
+        } else if (!strcmp(argv[3], "s16")) {
+            len = 2;
+        } else if (!strcmp(argv[3], "f32")) {
+            len = 4;
+        } else {
+            char *end;
+            len = strtol(argv[3], &end, 0);
+            if (*end || len < 1 || len > 2) {
+                fprintf(stderr, "Unsupported sample format: %s\n", argv[3]);
+                return 1;
+            }
+        }
+    }
+
+    if (argc < 3) {
+        printf("tiny_psnr <file1> <file2> [<elem size> [<shift> [<skip bytes> [<shift search range>]]]]\n");
+        printf("WAV headers are skipped automatically.\n");
+        return 1;
+    }
+
+    f[0] = fopen(argv[1], "rb");
+    f[1] = fopen(argv[2], "rb");
+    if (!f[0] || !f[1]) {
+        fprintf(stderr, "Could not open input files.\n");
+        return 1;
+    }
+
+    for (shift = shift_first; shift <= shift_last; shift++) {
+        int psnr = run_psnr(f, len, shift, skip_bytes);
+        if (psnr > max_psnr || (shift < 0 && psnr == max_psnr)) {
+            max_psnr = psnr;
+            max_psnr_shift = shift;
+        }
+    }
+    if (shift_last > shift_first)
+        printf("Best PSNR is %3d.%02d for shift %i\n", (int)(max_psnr / F), (int)(max_psnr % F), max_psnr_shift);
     return 0;
 }

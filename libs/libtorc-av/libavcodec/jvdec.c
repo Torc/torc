@@ -2,20 +2,20 @@
  * Bitmap Brothers JV video decoder
  * Copyright (c) 2011 Peter Ross <pross@xvid.org>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -129,28 +129,34 @@ static inline void decode8x8(GetBitContext *gb, uint8_t *dst, int linesize, DSPC
 }
 
 static int decode_frame(AVCodecContext *avctx,
-                        void *data, int *data_size,
+                        void *data, int *got_frame,
                         AVPacket *avpkt)
 {
     JvContext *s           = avctx->priv_data;
-    int buf_size           = avpkt->size;
     const uint8_t *buf     = avpkt->data;
-    const uint8_t *buf_end = buf + buf_size;
-    int video_size, video_type, i, j;
+    const uint8_t *buf_end = buf + avpkt->size;
+    int video_size, video_type, ret, i, j;
+
+    if (avpkt->size < 6)
+        return AVERROR_INVALIDDATA;
 
     video_size = AV_RL32(buf);
     video_type = buf[4];
     buf += 5;
 
     if (video_size) {
-        if (avctx->reget_buffer(avctx, &s->frame) < 0) {
+        if (video_size < 0 || video_size > avpkt->size - 5) {
+            av_log(avctx, AV_LOG_ERROR, "video size %d invalid\n", video_size);
+            return AVERROR_INVALIDDATA;
+        }
+        if ((ret = avctx->reget_buffer(avctx, &s->frame)) < 0) {
             av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
-            return -1;
+            return ret;
         }
 
         if (video_type == 0 || video_type == 1) {
             GetBitContext gb;
-            init_get_bits(&gb, buf, 8 * FFMIN(video_size, buf_end - buf));
+            init_get_bits(&gb, buf, 8 * video_size);
 
             for (j = 0; j < avctx->height; j += 8)
                 for (i = 0; i < avctx->width; i += 8)
@@ -159,20 +165,19 @@ static int decode_frame(AVCodecContext *avctx,
 
             buf += video_size;
         } else if (video_type == 2) {
-            if (buf + 1 <= buf_end) {
-                int v = *buf++;
-                for (j = 0; j < avctx->height; j++)
-                    memset(s->frame.data[0] + j*s->frame.linesize[0], v, avctx->width);
-            }
+            int v = *buf++;
+            for (j = 0; j < avctx->height; j++)
+                memset(s->frame.data[0] + j*s->frame.linesize[0], v, avctx->width);
         } else {
             av_log(avctx, AV_LOG_WARNING, "unsupported frame type %i\n", video_type);
             return AVERROR_INVALIDDATA;
         }
     }
 
-    if (buf < buf_end) {
-        for (i = 0; i < AVPALETTE_COUNT && buf + 3 <= buf_end; i++) {
-            s->palette[i] = AV_RB24(buf) << 2;
+    if (buf_end - buf >= AVPALETTE_COUNT * 3) {
+        for (i = 0; i < AVPALETTE_COUNT; i++) {
+            uint32_t pal = AV_RB24(buf);
+            s->palette[i] = 0xFFU << 24 | pal << 2 | ((pal >> 4) & 0x30303);
             buf += 3;
         }
         s->palette_has_changed = 1;
@@ -185,11 +190,11 @@ static int decode_frame(AVCodecContext *avctx,
         s->palette_has_changed       = 0;
         memcpy(s->frame.data[1], s->palette, AVPALETTE_SIZE);
 
-        *data_size      = sizeof(AVFrame);
+        *got_frame = 1;
         *(AVFrame*)data = s->frame;
     }
 
-    return buf_size;
+    return avpkt->size;
 }
 
 static av_cold int decode_close(AVCodecContext *avctx)

@@ -7,24 +7,23 @@
  * and
  *           simple_grab.c Copyright (c) 1999 Roger Hardiman
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "libavformat/avformat.h"
 #include "libavformat/internal.h"
 #include "libavutil/log.h"
 #include "libavutil/opt.h"
@@ -48,6 +47,7 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <stdint.h>
+#include "avdevice.h"
 
 typedef struct {
     AVClass *class;
@@ -56,7 +56,6 @@ typedef struct {
     int width, height;
     uint64_t per_frame;
     int standard;
-    char *video_size; /**< String describing video size, set by a private option. */
     char *framerate;  /**< Set by a private option. */
 } VideoData;
 
@@ -102,7 +101,7 @@ static av_cold int bktr_init(const char *video_device, int width, int height,
     long ioctl_frequency;
     char *arg;
     int c;
-    struct sigaction act = { 0 }, old;
+    struct sigaction act = { {0} }, old;
 
     if (idev < 0 || idev > 4)
     {
@@ -246,14 +245,8 @@ static int grab_read_header(AVFormatContext *s1)
 {
     VideoData *s = s1->priv_data;
     AVStream *st;
-    int width, height;
     AVRational framerate;
     int ret = 0;
-
-    if ((ret = av_parse_video_size(&width, &height, s->video_size)) < 0) {
-        av_log(s1, AV_LOG_ERROR, "Could not parse video size '%s'.\n", s->video_size);
-        goto out;
-    }
 
     if (!s->framerate)
         switch (s->standard) {
@@ -277,20 +270,18 @@ static int grab_read_header(AVFormatContext *s1)
     }
     avpriv_set_pts_info(st, 64, 1, 1000000); /* 64 bits pts in use */
 
-    s->width = width;
-    s->height = height;
     s->per_frame = ((uint64_t)1000000 * framerate.den) / framerate.num;
 
     st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
     st->codec->pix_fmt = AV_PIX_FMT_YUV420P;
     st->codec->codec_id = AV_CODEC_ID_RAWVIDEO;
-    st->codec->width = width;
-    st->codec->height = height;
+    st->codec->width = s->width;
+    st->codec->height = s->height;
     st->codec->time_base.den = framerate.num;
     st->codec->time_base.num = framerate.den;
 
 
-    if (bktr_init(s1->filename, width, height, s->standard,
+    if (bktr_init(s1->filename, s->width, s->height, s->standard,
                   &s->video_fd, &s->tuner_fd, -1, 0.0) < 0) {
         ret = AVERROR(EIO);
         goto out;
@@ -331,7 +322,7 @@ static const AVOption options[] = {
     { "PALN",     "", 0, AV_OPT_TYPE_CONST, {.i64 = PALN},  0, 0, AV_OPT_FLAG_DECODING_PARAM, "standard" },
     { "PALM",     "", 0, AV_OPT_TYPE_CONST, {.i64 = PALM},  0, 0, AV_OPT_FLAG_DECODING_PARAM, "standard" },
     { "NTSCJ",    "", 0, AV_OPT_TYPE_CONST, {.i64 = NTSCJ}, 0, 0, AV_OPT_FLAG_DECODING_PARAM, "standard" },
-    { "video_size", "A string describing frame size, such as 640x480 or hd720.", OFFSET(video_size), AV_OPT_TYPE_STRING, {.str = "vga"}, 0, 0, DEC },
+    { "video_size", "A string describing frame size, such as 640x480 or hd720.", OFFSET(width), AV_OPT_TYPE_IMAGE_SIZE, {.str = "vga"}, 0, 0, DEC },
     { "framerate", "", OFFSET(framerate), AV_OPT_TYPE_STRING, {.str = NULL}, 0, 0, DEC },
     { NULL },
 };

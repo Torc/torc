@@ -3,20 +3,20 @@
  *
  * copyright (c) 2011 Sebastien Zwickert
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -29,12 +29,6 @@
  * Public libavcodec VDA header.
  */
 
-#include "libavcodec/version.h"
-
-#if FF_API_VDA_ASYNC
-#include <pthread.h>
-#endif
-
 #include <stdint.h>
 
 // emmintrin.h is unable to compile with -std=c99 -Werror=missing-prototypes
@@ -44,6 +38,12 @@
 #define Picture QuickdrawPicture
 #include <VideoDecodeAcceleration/VDADecoder.h>
 #undef Picture
+
+#include "libavcodec/version.h"
+
+#if FF_API_VDA_ASYNC
+#include <pthread.h>
+#endif
 
 /**
  * @defgroup lavc_codec_hwaccel_vda VDA
@@ -58,7 +58,7 @@
  *
  * @deprecated Use synchronous decoding mode.
  */
-typedef struct vda_frame {
+typedef struct {
     /**
      * The PTS of the frame.
      *
@@ -87,7 +87,7 @@ typedef struct vda_frame {
 
 /**
  * This structure is used to provide the necessary configurations and data
- * to the VDA Libav HWAccel implementation.
+ * to the VDA FFmpeg HWAccel implementation.
  *
  * The application must make it available as AVCodecContext.hwaccel_context.
  */
@@ -172,16 +172,25 @@ struct vda_context {
 
     /**
      * The current bitstream buffer.
+     *
+     * - encoding: unused
+     * - decoding: Set/Unset by libavcodec.
      */
     uint8_t             *priv_bitstream;
 
     /**
      * The current size of the bitstream.
+     *
+     * - encoding: unused
+     * - decoding: Set/Unset by libavcodec.
      */
     int                 priv_bitstream_size;
 
     /**
      * The reference size used for fast reallocation.
+     *
+     * - encoding: unused
+     * - decoding: Set/Unset by libavcodec.
      */
     int                 priv_allocated_size;
 };

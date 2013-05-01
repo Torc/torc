@@ -3,20 +3,20 @@
  * Copyright (c) 2007 Benjamin Zores <ben@geexbox.org>
  *  based upon libdemac from Dave Chapman.
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -26,8 +26,6 @@
 #include "apetag.h"
 #include "internal.h"
 
-#define APE_TAG_VERSION               2000
-#define APE_TAG_FOOTER_BYTES          32
 #define APE_TAG_FLAG_CONTAINS_HEADER  (1 << 31)
 #define APE_TAG_FLAG_IS_HEADER        (1 << 29)
 #define APE_TAG_FLAG_IS_BINARY        (1 << 1)
@@ -128,7 +126,7 @@ int64_t ff_ape_parse_tag(AVFormatContext *s)
     avio_seek(pb, file_size - APE_TAG_FOOTER_BYTES, SEEK_SET);
 
     avio_read(pb, buf, 8);     /* APETAGEX */
-    if (strncmp(buf, "APETAGEX", 8)) {
+    if (strncmp(buf, APE_TAG_PREAMBLE, 8)) {
         return 0;
     }
 
@@ -144,11 +142,11 @@ int64_t ff_ape_parse_tag(AVFormatContext *s)
         return 0;
     }
 
-    tag_start = file_size - tag_bytes - APE_TAG_FOOTER_BYTES;
-    if (tag_start < 0) {
+    if (tag_bytes > file_size - APE_TAG_FOOTER_BYTES) {
         av_log(s, AV_LOG_ERROR, "Invalid tag size %u.\n", tag_bytes);
         return 0;
     }
+    tag_start = file_size - tag_bytes - APE_TAG_FOOTER_BYTES;
 
     fields = avio_rl32(pb);    /* number of fields */
     if (fields > 65536) {

@@ -3,25 +3,24 @@
  *
  * Copyright (C) 2008-2009 Splitted-Desktop Systems
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "vaapi_internal.h"
-#include "dsputil.h"
 
 /** Reconstruct bitstream f_code */
 static inline int mpeg2_get_f_code(MpegEncContext *s)
@@ -99,11 +98,6 @@ static int vaapi_mpeg2_start_frame(AVCodecContext *avctx, av_unused const uint8_
     return 0;
 }
 
-static int vaapi_mpeg2_end_frame(AVCodecContext *avctx)
-{
-    return ff_vaapi_common_end_frame(avctx->priv_data);
-}
-
 static int vaapi_mpeg2_decode_slice(AVCodecContext *avctx, const uint8_t *buffer, uint32_t size)
 {
     MpegEncContext * const s = avctx->priv_data;
@@ -144,6 +138,6 @@ AVHWAccel ff_mpeg2_vaapi_hwaccel = {
     .id             = AV_CODEC_ID_MPEG2VIDEO,
     .pix_fmt        = AV_PIX_FMT_VAAPI_VLD,
     .start_frame    = vaapi_mpeg2_start_frame,
-    .end_frame      = vaapi_mpeg2_end_frame,
+    .end_frame      = ff_vaapi_mpeg_end_frame,
     .decode_slice   = vaapi_mpeg2_decode_slice,
 };

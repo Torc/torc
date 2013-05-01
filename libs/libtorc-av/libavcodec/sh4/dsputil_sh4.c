@@ -3,23 +3,24 @@
  *
  * Copyright (c) 2003 BERO <bero@geocities.co.jp>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/attributes.h"
 #include "libavcodec/avcodec.h"
 #include "libavcodec/dsputil.h"
 #include "dsputil_sh4.h"
@@ -47,12 +48,12 @@ static void memzero_align8(void *dst,size_t size)
         fp_single_leave(fpscr);
 }
 
-static void clear_blocks_sh4(DCTELEM *blocks)
+static void clear_blocks_sh4(int16_t *blocks)
 {
-        memzero_align8(blocks,sizeof(DCTELEM)*6*64);
+        memzero_align8(blocks,sizeof(int16_t)*6*64);
 }
 
-static void idct_put(uint8_t *dest, int line_size, DCTELEM *block)
+static void idct_put(uint8_t *dest, int line_size, int16_t *block)
 {
         int i;
         uint8_t *cm = ff_cropTbl + MAX_NEG_CROP;
@@ -70,7 +71,7 @@ static void idct_put(uint8_t *dest, int line_size, DCTELEM *block)
                 block+=8;
         }
 }
-static void idct_add(uint8_t *dest, int line_size, DCTELEM *block)
+static void idct_add(uint8_t *dest, int line_size, int16_t *block)
 {
         int i;
         uint8_t *cm = ff_cropTbl + MAX_NEG_CROP;
@@ -89,7 +90,7 @@ static void idct_add(uint8_t *dest, int line_size, DCTELEM *block)
         }
 }
 
-void ff_dsputil_init_sh4(DSPContext* c, AVCodecContext *avctx)
+av_cold void ff_dsputil_init_sh4(DSPContext *c, AVCodecContext *avctx)
 {
         const int idct_algo= avctx->idct_algo;
         const int high_bit_depth = avctx->bits_per_raw_sample > 8;

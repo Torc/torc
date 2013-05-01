@@ -2,20 +2,20 @@
  * Ut Video decoder
  * Copyright (c) 2011 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -320,7 +320,7 @@ static void restore_median_il(uint8_t *src, int step, int stride,
     }
 }
 
-static int decode_frame(AVCodecContext *avctx, void *data, int *data_size,
+static int decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
                         AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
@@ -335,14 +335,12 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size,
     if (c->pic.data[0])
         ff_thread_release_buffer(avctx, &c->pic);
 
-    c->pic.reference = 1;
+    c->pic.reference = 3;
     c->pic.buffer_hints = FF_BUFFER_HINTS_VALID;
     if ((ret = ff_thread_get_buffer(avctx, &c->pic)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
-
-    ff_thread_finish_setup(avctx);
 
     /* parse plane structure to get frame flags and validate slice offsets */
     bytestream2_init(&gb, buf, buf_size);
@@ -465,7 +463,7 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size,
     c->pic.pict_type = AV_PICTURE_TYPE_I;
     c->pic.interlaced_frame = !!c->interlaced;
 
-    *data_size = sizeof(AVFrame);
+    *got_frame      = 1;
     *(AVFrame*)data = c->pic;
 
     /* always report that the buffer was completely consumed */

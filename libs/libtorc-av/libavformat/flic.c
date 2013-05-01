@@ -2,20 +2,20 @@
  * FLI/FLC Animation File Demuxer
  * Copyright (c) 2003 The ffmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -31,8 +31,8 @@
  * special FLIs from the PC games "Magic Carpet" and "X-COM: Terror from the Deep".
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
-#include "libavutil/audioconvert.h"
 #include "avformat.h"
 #include "internal.h"
 
@@ -117,7 +117,7 @@ static int flic_read_header(AVFormatContext *s)
 
     if (!st->codec->width || !st->codec->height) {
         /* Ugly hack needed for the following sample: */
-        /* http://samples.libav.org/fli-flc/fli-bugs/specular.flc */
+        /* http://samples.mplayerhq.hu/fli-flc/fli-bugs/specular.flc */
         av_log(s, AV_LOG_WARNING,
                "File with no specified width/height. Trying 640x480.\n");
         st->codec->width  = 640;
@@ -158,7 +158,6 @@ static int flic_read_header(AVFormatContext *s)
         ast->codec->codec_tag = 0;
         ast->codec->sample_rate = FLIC_TFTD_SAMPLE_RATE;
         ast->codec->channels = 1;
-        ast->codec->sample_fmt = AV_SAMPLE_FMT_U8;
         ast->codec->bit_rate = st->codec->sample_rate * 8;
         ast->codec->bits_per_coded_sample = 8;
         ast->codec->channel_layout = AV_CH_LAYOUT_MONO;
@@ -187,7 +186,7 @@ static int flic_read_header(AVFormatContext *s)
                (magic_number == FLIC_FILE_MAGIC_3)) {
         avpriv_set_pts_info(st, 64, speed, 1000);
     } else {
-        av_log(s, AV_LOG_INFO, "Invalid or unsupported magic chunk in file\n");
+        av_log(s, AV_LOG_ERROR, "Invalid or unsupported magic chunk in file\n");
         return AVERROR_INVALIDDATA;
     }
 

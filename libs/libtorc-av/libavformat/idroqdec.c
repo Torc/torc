@@ -2,20 +2,20 @@
  * id RoQ (.roq) File Demuxer
  * Copyright (c) 2003 The ffmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,9 +27,11 @@
  *   http://www.csse.monash.edu.au/~timf/
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "internal.h"
+#include "avio_internal.h"
 
 #define RoQ_MAGIC_NUMBER 0x1084
 #define RoQ_CHUNK_PREAMBLE_SIZE 8
@@ -104,7 +106,7 @@ static int roq_read_packet(AVFormatContext *s,
 
     while (!packet_read) {
 
-        if (s->pb->eof_reached)
+        if (url_feof(s->pb))
             return AVERROR(EIO);
 
         /* get the next chunk preamble */
@@ -116,6 +118,8 @@ static int roq_read_packet(AVFormatContext *s,
         chunk_size = AV_RL32(&preamble[2]);
         if(chunk_size > INT_MAX)
             return AVERROR_INVALIDDATA;
+
+        chunk_size = ffio_limit(pb, chunk_size);
 
         switch (chunk_type) {
 
@@ -175,7 +179,14 @@ static int roq_read_packet(AVFormatContext *s,
                 st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
                 st->codec->codec_id = AV_CODEC_ID_ROQ_DPCM;
                 st->codec->codec_tag = 0;  /* no tag */
-                st->codec->channels = roq->audio_channels = chunk_type == RoQ_SOUND_STEREO ? 2 : 1;
+                if (chunk_type == RoQ_SOUND_STEREO) {
+                    st->codec->channels       = 2;
+                    st->codec->channel_layout = AV_CH_LAYOUT_STEREO;
+                } else {
+                    st->codec->channels       = 1;
+                    st->codec->channel_layout = AV_CH_LAYOUT_MONO;
+                }
+                roq->audio_channels    = st->codec->channels;
                 st->codec->sample_rate = RoQ_AUDIO_SAMPLE_RATE;
                 st->codec->bits_per_coded_sample = 16;
                 st->codec->bit_rate = st->codec->channels * st->codec->sample_rate *

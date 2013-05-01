@@ -2,20 +2,20 @@
  * Live smooth streaming fragmenter
  * Copyright (c) 2012 Martin Storsjo
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -51,7 +51,7 @@ typedef struct {
     char dirname[1024];
     uint8_t iobuf[32768];
     URLContext *out;  // Current output stream where all output is written
-    URLContext *out2; // Auxillary output stream where all output also is written
+    URLContext *out2; // Auxiliary output stream where all output is also written
     URLContext *tail_out; // The actual main output stream, if we're currently seeked back to write elsewhere
     int64_t tail_pos, cur_pos, cur_start_pos;
     int packets_written;
@@ -287,7 +287,11 @@ static int ism_write_header(AVFormatContext *s)
     int ret = 0, i;
     AVOutputFormat *oformat;
 
-    mkdir(s->filename, 0777);
+    if (mkdir(s->filename, 0777) < 0) {
+        av_log(s, AV_LOG_ERROR, "mkdir failed\n");
+        ret = AVERROR(errno);
+        goto fail;
+    }
 
     oformat = av_guess_format("ismv", NULL, NULL);
     if (!oformat) {
@@ -314,7 +318,11 @@ static int ism_write_header(AVFormatContext *s)
             goto fail;
         }
         snprintf(os->dirname, sizeof(os->dirname), "%s/QualityLevels(%d)", s->filename, s->streams[i]->codec->bit_rate);
-        mkdir(os->dirname, 0777);
+        if (mkdir(os->dirname, 0777) < 0) {
+            ret = AVERROR(errno);
+            av_log(s, AV_LOG_ERROR, "mkdir failed\n");
+            goto fail;
+        }
 
         ctx = avformat_alloc_context();
         if (!ctx) {
@@ -559,12 +567,15 @@ static int ism_write_packet(AVFormatContext *s, AVPacket *pkt)
     SmoothStreamingContext *c = s->priv_data;
     AVStream *st = s->streams[pkt->stream_index];
     OutputStream *os = &c->streams[pkt->stream_index];
-    int64_t end_pts = (c->nb_fragments + 1) * c->min_frag_duration;
+    int64_t end_dts = (c->nb_fragments + 1LL) * c->min_frag_duration;
     int ret;
 
+    if (st->first_dts == AV_NOPTS_VALUE)
+        st->first_dts = pkt->dts;
+
     if ((!c->has_video || st->codec->codec_type == AVMEDIA_TYPE_VIDEO) &&
-        av_compare_ts(pkt->pts, st->time_base,
-                      end_pts, AV_TIME_BASE_Q) >= 0 &&
+        av_compare_ts(pkt->dts - st->first_dts, st->time_base,
+                      end_dts, AV_TIME_BASE_Q) >= 0 &&
         pkt->flags & AV_PKT_FLAG_KEY && os->packets_written) {
 
         if ((ret = ism_flush(s, 0)) < 0)

@@ -1,3 +1,5 @@
+$(SUBDIR)x86/swscale_mmx.o: CFLAGS += $(NOREDZONE_FLAGS)
+
 OBJS-$(CONFIG_XMM_CLOBBER_TEST) += x86/w64xmmtest.o
 
 MMX-OBJS                        += x86/rgb2rgb.o                        \

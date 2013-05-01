@@ -2,20 +2,20 @@
  * Interplay MVE Video Decoder
  * Copyright (C) 2003 the ffmpeg project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -43,6 +43,7 @@
 #include "dsputil.h"
 #define BITSTREAM_READER_LE
 #include "get_bits.h"
+#include "internal.h"
 
 #define PALETTE_COUNT 256
 
@@ -72,12 +73,12 @@ static int copy_from(IpvideoContext *s, AVFrame *src, int delta_x, int delta_y)
     int motion_offset = current_offset + delta_y * s->current_frame.linesize[0]
                        + delta_x * (1 + s->is_16bpp);
     if (motion_offset < 0) {
-        av_log(s->avctx, AV_LOG_ERROR, " Interplay video: motion offset < 0 (%d)\n", motion_offset);
-        return -1;
+        av_log(s->avctx, AV_LOG_ERROR, "motion offset < 0 (%d)\n", motion_offset);
+        return AVERROR_INVALIDDATA;
     } else if (motion_offset > s->upper_motion_limit_offset) {
-        av_log(s->avctx, AV_LOG_ERROR, " Interplay video: motion offset above limit (%d >= %d)\n",
+        av_log(s->avctx, AV_LOG_ERROR, "motion offset above limit (%d >= %d)\n",
             motion_offset, s->upper_motion_limit_offset);
-        return -1;
+        return AVERROR_INVALIDDATA;
     }
     if (src->data[0] == NULL) {
         av_log(s->avctx, AV_LOG_ERROR, "Invalid decode type, corrupted header?\n");
@@ -118,7 +119,7 @@ static int ipvideo_decode_block_opcode_0x2(IpvideoContext *s)
         y =   8 + ((B - 56) / 29);
     }
 
-    av_dlog(NULL, "    motion byte = %d, (x, y) = (%d, %d)\n", B, x, y);
+    av_dlog(s->avctx, "motion byte = %d, (x, y) = (%d, %d)\n", B, x, y);
     return copy_from(s, &s->second_last_frame, x, y);
 }
 
@@ -144,7 +145,7 @@ static int ipvideo_decode_block_opcode_0x3(IpvideoContext *s)
         y = -(  8 + ((B - 56) / 29));
     }
 
-    av_dlog(NULL, "    motion byte = %d, (x, y) = (%d, %d)\n", B, x, y);
+    av_dlog(s->avctx, "motion byte = %d, (x, y) = (%d, %d)\n", B, x, y);
     return copy_from(s, &s->current_frame, x, y);
 }
 
@@ -165,7 +166,7 @@ static int ipvideo_decode_block_opcode_0x4(IpvideoContext *s)
     x = -8 + BL;
     y = -8 + BH;
 
-    av_dlog(NULL, "    motion byte = %d, (x, y) = (%d, %d)\n", B, x, y);
+    av_dlog(s->avctx, "motion byte = %d, (x, y) = (%d, %d)\n", B, x, y);
     return copy_from(s, &s->last_frame, x, y);
 }
 
@@ -178,14 +179,14 @@ static int ipvideo_decode_block_opcode_0x5(IpvideoContext *s)
     x = bytestream2_get_byte(&s->stream_ptr);
     y = bytestream2_get_byte(&s->stream_ptr);
 
-    av_dlog(NULL, "    motion bytes = %d, %d\n", x, y);
+    av_dlog(s->avctx, "motion bytes = %d, %d\n", x, y);
     return copy_from(s, &s->last_frame, x, y);
 }
 
 static int ipvideo_decode_block_opcode_0x6(IpvideoContext *s)
 {
     /* mystery opcode? skip multiple blocks? */
-    av_log(s->avctx, AV_LOG_ERROR, "  Interplay video: Help! Mystery opcode 0x6 seen\n");
+    av_log(s->avctx, AV_LOG_ERROR, "Help! Mystery opcode 0x6 seen\n");
 
     /* report success */
     return 0;
@@ -528,7 +529,7 @@ static int ipvideo_decode_block_opcode_0x6_16(IpvideoContext *s)
     x = bytestream2_get_byte(&s->stream_ptr);
     y = bytestream2_get_byte(&s->stream_ptr);
 
-    av_dlog(NULL, "    motion bytes = %d, %d\n", x, y);
+    av_dlog(s->avctx, "motion bytes = %d, %d\n", x, y);
     return copy_from(s, &s->second_last_frame, x, y);
 }
 
@@ -881,11 +882,7 @@ static void ipvideo_decode_opcodes(IpvideoContext *s)
     int x, y;
     unsigned char opcode;
     int ret;
-    static int frame = 0;
     GetBitContext gb;
-
-    av_dlog(NULL, "------------------ frame %d\n", frame);
-    frame++;
 
     bytestream2_skip(&s->stream_ptr, 14); /* data starts 14 bytes in */
     if (!s->is_16bpp) {
@@ -921,15 +918,15 @@ static void ipvideo_decode_opcodes(IpvideoContext *s)
                 ret = ipvideo_decode_block16[opcode](s);
             }
             if (ret != 0) {
-                av_log(s->avctx, AV_LOG_ERROR, " Interplay video: decode problem on frame %d, @ block (%d, %d)\n",
-                       frame, x, y);
+                av_log(s->avctx, AV_LOG_ERROR, "decode problem on frame %d, @ block (%d, %d)\n",
+                       s->avctx->frame_number, x, y);
                 return;
             }
         }
     }
     if (bytestream2_get_bytes_left(&s->stream_ptr) > 1) {
         av_log(s->avctx, AV_LOG_ERROR,
-               "Interplay video: decode finished with %d bytes left over\n",
+               "decode finished with %d bytes left over\n",
                bytestream2_get_bytes_left(&s->stream_ptr));
     }
 }
@@ -945,6 +942,10 @@ static av_cold int ipvideo_decode_init(AVCodecContext *avctx)
 
     ff_dsputil_init(&s->dsp, avctx);
 
+    avcodec_get_frame_defaults(&s->second_last_frame);
+    avcodec_get_frame_defaults(&s->last_frame);
+    avcodec_get_frame_defaults(&s->current_frame);
+
     s->current_frame.data[0] = s->last_frame.data[0] =
     s->second_last_frame.data[0] = NULL;
 
@@ -952,12 +953,13 @@ static av_cold int ipvideo_decode_init(AVCodecContext *avctx)
 }
 
 static int ipvideo_decode_frame(AVCodecContext *avctx,
-                                void *data, int *data_size,
+                                void *data, int *got_frame,
                                 AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     IpvideoContext *s = avctx->priv_data;
+    int ret;
 
     /* decoding map contains 4 bits of information per 8x8 block */
     s->decoding_map_size = avctx->width * avctx->height / (8 * 8 * 2);
@@ -967,14 +969,21 @@ static int ipvideo_decode_frame(AVCodecContext *avctx,
     if (buf_size < s->decoding_map_size)
         return buf_size;
 
+    if (s->last_frame.data[0] && av_packet_get_side_data(avpkt, AV_PKT_DATA_PARAM_CHANGE, NULL)) {
+        if (s->last_frame.data[0])
+            avctx->release_buffer(avctx, &s->last_frame);
+        if (s->second_last_frame.data[0])
+            avctx->release_buffer(avctx, &s->second_last_frame);
+    }
+
     s->decoding_map = buf;
     bytestream2_init(&s->stream_ptr, buf + s->decoding_map_size,
                      buf_size - s->decoding_map_size);
 
     s->current_frame.reference = 3;
-    if (avctx->get_buffer(avctx, &s->current_frame)) {
-        av_log(avctx, AV_LOG_ERROR, "  Interplay Video: get_buffer() failed\n");
-        return -1;
+    if ((ret = ff_get_buffer(avctx, &s->current_frame)) < 0) {
+        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+        return ret;
     }
 
     if (!s->is_16bpp) {
@@ -987,7 +996,7 @@ static int ipvideo_decode_frame(AVCodecContext *avctx,
 
     ipvideo_decode_opcodes(s);
 
-    *data_size = sizeof(AVFrame);
+    *got_frame = 1;
     *(AVFrame*)data = s->current_frame;
 
     /* shuffle frames */

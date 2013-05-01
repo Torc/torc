@@ -2,20 +2,20 @@
  * V.Flash PTX (.ptx) image decoder
  * Copyright (c) 2007 Ivo van Poorten
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -23,6 +23,7 @@
 #include "libavutil/intreadwrite.h"
 #include "libavutil/imgutils.h"
 #include "avcodec.h"
+#include "internal.h"
 
 typedef struct PTXContext {
     AVFrame picture;
@@ -37,7 +38,7 @@ static av_cold int ptx_init(AVCodecContext *avctx) {
     return 0;
 }
 
-static int ptx_decode_frame(AVCodecContext *avctx, void *data, int *data_size,
+static int ptx_decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
                             AVPacket *avpkt) {
     const uint8_t *buf = avpkt->data;
     const uint8_t *buf_end = avpkt->data + avpkt->size;
@@ -45,6 +46,7 @@ static int ptx_decode_frame(AVCodecContext *avctx, void *data, int *data_size,
     AVFrame *picture = data;
     AVFrame * const p = &s->picture;
     unsigned int offset, w, h, y, stride, bytes_per_pixel;
+    int ret;
     uint8_t *ptr;
 
     if (buf_end - buf < 14)
@@ -56,10 +58,10 @@ static int ptx_decode_frame(AVCodecContext *avctx, void *data, int *data_size,
 
     if (bytes_per_pixel != 2) {
         av_log_ask_for_sample(avctx, "Image format is not RGB15.\n");
-        return -1;
+        return AVERROR_PATCHWELCOME;
     }
 
-    avctx->pix_fmt = AV_PIX_FMT_RGB555;
+    avctx->pix_fmt = AV_PIX_FMT_BGR555LE;
 
     if (buf_end - buf < offset)
         return AVERROR_INVALIDDATA;
@@ -71,13 +73,13 @@ static int ptx_decode_frame(AVCodecContext *avctx, void *data, int *data_size,
     if (p->data[0])
         avctx->release_buffer(avctx, p);
 
-    if (av_image_check_size(w, h, 0, avctx))
-        return -1;
+    if ((ret = av_image_check_size(w, h, 0, avctx)) < 0)
+        return ret;
     if (w != avctx->width || h != avctx->height)
         avcodec_set_dimensions(avctx, w, h);
-    if (avctx->get_buffer(avctx, p) < 0) {
+    if ((ret = ff_get_buffer(avctx, p)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
-        return -1;
+        return ret;
     }
 
     p->pict_type = AV_PICTURE_TYPE_I;
@@ -86,19 +88,13 @@ static int ptx_decode_frame(AVCodecContext *avctx, void *data, int *data_size,
     stride = p->linesize[0];
 
     for (y = 0; y < h && buf_end - buf >= w * bytes_per_pixel; y++) {
-#if HAVE_BIGENDIAN
-        unsigned int x;
-        for (x=0; x<w*bytes_per_pixel; x+=bytes_per_pixel)
-            AV_WN16(ptr+x, AV_RL16(buf+x));
-#else
         memcpy(ptr, buf, w*bytes_per_pixel);
-#endif
         ptr += stride;
         buf += w*bytes_per_pixel;
     }
 
     *picture = s->picture;
-    *data_size = sizeof(AVPicture);
+    *got_frame = 1;
 
     if (y < h) {
         av_log(avctx, AV_LOG_WARNING, "incomplete packet\n");

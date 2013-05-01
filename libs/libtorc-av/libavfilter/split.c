@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2007 Bobby Bingham
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -52,6 +52,7 @@ static int split_init(AVFilterContext *ctx, const char *args)
         snprintf(name, sizeof(name), "output%d", i);
         pad.type = ctx->filter->inputs[0].type;
         pad.name = av_strdup(name);
+        pad.rej_perms = AV_PERM_WRITE;
 
         ff_insert_outpad(ctx, i, &pad);
     }
@@ -67,46 +68,27 @@ static void split_uninit(AVFilterContext *ctx)
         av_freep(&ctx->output_pads[i].name);
 }
 
-static int start_frame(AVFilterLink *inlink, AVFilterBufferRef *picref)
+static int filter_frame(AVFilterLink *inlink, AVFilterBufferRef *frame)
 {
     AVFilterContext *ctx = inlink->dst;
-    int i, ret = 0;
+    int i, ret = AVERROR_EOF;
 
     for (i = 0; i < ctx->nb_outputs; i++) {
-        AVFilterBufferRef *buf_out = avfilter_ref_buffer(picref, ~AV_PERM_WRITE);
-        if (!buf_out)
-            return AVERROR(ENOMEM);
+        AVFilterBufferRef *buf_out;
 
-        ret = ff_start_frame(ctx->outputs[i], buf_out);
+        if (ctx->outputs[i]->closed)
+            continue;
+        buf_out = avfilter_ref_buffer(frame, ~AV_PERM_WRITE);
+        if (!buf_out) {
+            ret = AVERROR(ENOMEM);
+            break;
+        }
+
+        ret = ff_filter_frame(ctx->outputs[i], buf_out);
         if (ret < 0)
             break;
     }
-    return ret;
-}
-
-static int draw_slice(AVFilterLink *inlink, int y, int h, int slice_dir)
-{
-    AVFilterContext *ctx = inlink->dst;
-    int i, ret = 0;
-
-    for (i = 0; i < ctx->nb_outputs; i++) {
-        ret = ff_draw_slice(ctx->outputs[i], y, h, slice_dir);
-        if (ret < 0)
-            break;
-    }
-    return ret;
-}
-
-static int end_frame(AVFilterLink *inlink)
-{
-    AVFilterContext *ctx = inlink->dst;
-    int i, ret = 0;
-
-    for (i = 0; i < ctx->nb_outputs; i++) {
-        ret = ff_end_frame(ctx->outputs[i]);
-        if (ret < 0)
-            break;
-    }
+    avfilter_unref_bufferp(&frame);
     return ret;
 }
 
@@ -115,16 +97,14 @@ static const AVFilterPad avfilter_vf_split_inputs[] = {
         .name             = "default",
         .type             = AVMEDIA_TYPE_VIDEO,
         .get_video_buffer = ff_null_get_video_buffer,
-        .start_frame      = start_frame,
-        .draw_slice       = draw_slice,
-        .end_frame        = end_frame,
+        .filter_frame     = filter_frame,
     },
     { NULL }
 };
 
 AVFilter avfilter_vf_split = {
     .name      = "split",
-    .description = NULL_IF_CONFIG_SMALL("Pass on the input to two outputs."),
+    .description = NULL_IF_CONFIG_SMALL("Pass on the input video to N outputs."),
 
     .init   = split_init,
     .uninit = split_uninit,
@@ -133,33 +113,12 @@ AVFilter avfilter_vf_split = {
     .outputs   = NULL,
 };
 
-static int filter_samples(AVFilterLink *inlink, AVFilterBufferRef *samplesref)
-{
-    AVFilterContext *ctx = inlink->dst;
-    int i, ret = 0;
-
-    for (i = 0; i < ctx->nb_outputs; i++) {
-        AVFilterBufferRef *buf_out = avfilter_ref_buffer(samplesref,
-                                                         ~AV_PERM_WRITE);
-        if (!buf_out) {
-            ret = AVERROR(ENOMEM);
-            break;
-        }
-
-        ret = ff_filter_samples(inlink->dst->outputs[i], buf_out);
-        if (ret < 0)
-            break;
-    }
-    avfilter_unref_buffer(samplesref);
-    return ret;
-}
-
 static const AVFilterPad avfilter_af_asplit_inputs[] = {
     {
         .name             = "default",
         .type             = AVMEDIA_TYPE_AUDIO,
         .get_audio_buffer = ff_null_get_audio_buffer,
-        .filter_samples   = filter_samples
+        .filter_frame     = filter_frame,
     },
     { NULL }
 };

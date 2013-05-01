@@ -4,20 +4,20 @@
  * copyright (c) 2002 Francois Revol <revol@free.fr>
  * copyright (c) 2006 Baptiste Coudurier <baptiste.coudurier@free.fr>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -94,6 +94,7 @@ typedef struct MOVSbgp {
 
 typedef struct MOVStreamContext {
     AVIOContext *pb;
+    int pb_is_copied;
     int ffindex;          ///< AVStream index
     int next_chunk;
     unsigned int chunk_count;
@@ -108,14 +109,17 @@ typedef struct MOVStreamContext {
     unsigned *stps_data;  ///< partial sync sample for mpeg-2 open gop
     int ctts_index;
     int ctts_sample;
-    unsigned int sample_size;
+    unsigned int sample_size; ///< may contain value calculated from stsd or value from stsz atom
+    unsigned int alt_sample_size; ///< always contains sample size from stsz atom
     unsigned int sample_count;
     int *sample_sizes;
     int keyframe_absent;
     unsigned int keyframe_count;
     int *keyframes;
     int time_scale;
-    int64_t time_offset;  ///< time offset of the first edit list entry
+    int64_t empty_duration; ///< empty duration of the first edit list entry
+    int64_t start_time;   ///< start time of the media
+    int64_t time_offset;  ///< time offset of the edit list entries
     int current_sample;
     unsigned int bytes_per_frame;
     unsigned int samples_per_frame;
@@ -125,6 +129,7 @@ typedef struct MOVStreamContext {
     unsigned drefs_count;
     MOVDref *drefs;
     int dref_id;
+    int timecode_track;
     int wrong_dts;        ///< dts are wrong due to huge ctts offset (iMovie files)
     int width;            ///< tkhd width
     int height;           ///< tkhd height
@@ -132,12 +137,15 @@ typedef struct MOVStreamContext {
     uint32_t palette[256];
     int has_palette;
     int64_t data_size;
+    uint32_t tmcd_flags;  ///< tmcd track flags
     int64_t track_end;    ///< used for dts generation in fragmented movie files
+    int start_pad;        ///< amount of samples to skip due to enc-dec delay
     unsigned int rap_group_count;
     MOVSbgp *rap_group;
 } MOVStreamContext;
 
 typedef struct MOVContext {
+    AVClass *avclass;
     AVFormatContext *fc;
     int time_scale;
     int64_t duration;     ///< duration of the longest track
@@ -151,6 +159,8 @@ typedef struct MOVContext {
     unsigned trex_count;
     int itunes_metadata;  ///< metadata are itunes style
     int chapter_track;
+    int use_absolute_path;
+    int ignore_editlist;
     int64_t next_root_atom; ///< offset of the next root atom
 } MOVContext;
 
@@ -194,5 +204,6 @@ int ff_mov_read_esds(AVFormatContext *fc, AVIOContext *pb, MOVAtom atom);
 enum AVCodecID ff_mov_get_lpcm_codec_id(int bps, int flags);
 
 int ff_mov_read_stsd_entries(MOVContext *c, AVIOContext *pb, int entries);
+void ff_mov_write_chan(AVIOContext *pb, int64_t channel_layout);
 
 #endif /* AVFORMAT_ISOM_H */

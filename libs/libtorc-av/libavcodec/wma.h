@@ -1,21 +1,21 @@
 /*
  * WMA compatible codec
- * Copyright (c) 2002-2007 The Libav Project
+ * Copyright (c) 2002-2007 The FFmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,7 +25,6 @@
 #include "libavutil/float_dsp.h"
 #include "get_bits.h"
 #include "put_bits.h"
-#include "dsputil.h"
 #include "fft.h"
 #include "fmtconvert.h"
 
@@ -66,14 +65,9 @@ typedef struct CoefVLCTable {
 
 typedef struct WMACodecContext {
     AVCodecContext* avctx;
-    AVFrame frame;
     GetBitContext gb;
     PutBitContext pb;
-    int sample_rate;
-    int nb_channels;
-    int bit_rate;
     int version;                            ///< 1 = 0x160 (WMAV1), 2 = 0x161 (WMAV2)
-    int block_align;
     int use_bit_reservoir;
     int use_variable_block_len;
     int use_exp_vlc;                        ///< exponent coding: 0 = lsp, 1 = vlc + delta
@@ -136,7 +130,6 @@ typedef struct WMACodecContext {
     float lsp_pow_e_table[256];
     float lsp_pow_m_table1[(1 << LSP_POW_BITS)];
     float lsp_pow_m_table2[(1 << LSP_POW_BITS)];
-    DSPContext dsp;
     FmtConvertContext fmt_conv;
     AVFloatDSPContext fdsp;
 

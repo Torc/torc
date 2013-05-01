@@ -4,20 +4,20 @@
  * Copyright (c) 2002 Francois Revol
  * Copyright (c) 2006 Baptiste Coudurier
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,8 +25,6 @@
  * First version by Francois Revol revol@free.fr
  *
  * Features and limitations:
- * - currently no compression is performed,
- *   in fact the size of the data is 9/8 the size of the image in 8bpp
  * - uses only a global standard palette
  * - tested with IE 5.0, Opera for BeOS, NetPositive (BeOS), and Mozilla (BeOS).
  *
@@ -34,11 +32,6 @@
  * http://www.goice.co.jp/member/mo/formats/gif.html
  * http://astronomy.swin.edu.au/pbourke/dataformats/gif/
  * http://www.dcs.ed.ac.uk/home/mxr/gfx/2d/GIF89a.txt
- *
- * this url claims to have an LZW algorithm not covered by Unisys patent:
- * http://www.msg.net/utility/whirlgif/gifencod.html
- * could help reduce the size of the files _a lot_...
- * some sites mentions an RLE type compression also.
  */
 
 #include "avcodec.h"
@@ -63,7 +56,7 @@ static int gif_image_write_header(AVCodecContext *avctx,
                                   uint8_t **bytestream, uint32_t *palette)
 {
     int i;
-    unsigned int v;
+    unsigned int v, smallest_alpha = 0xFF, alpha_component = 0;
 
     bytestream_put_buffer(bytestream, "GIF", 3);
     bytestream_put_buffer(bytestream, "89a", 3);
@@ -78,6 +71,20 @@ static int gif_image_write_header(AVCodecContext *avctx,
     for(i=0;i<256;i++) {
         v = palette[i];
         bytestream_put_be24(bytestream, v);
+        if (v >> 24 < smallest_alpha) {
+            smallest_alpha = v >> 24;
+            alpha_component = i;
+        }
+    }
+
+    if (smallest_alpha < 128) {
+        bytestream_put_byte(bytestream, 0x21); /* Extension Introducer */
+        bytestream_put_byte(bytestream, 0xf9); /* Graphic Control Label */
+        bytestream_put_byte(bytestream, 0x04); /* block length */
+        bytestream_put_byte(bytestream, 0x01); /* Transparent Color Flag */
+        bytestream_put_le16(bytestream, 0x00); /* no delay */
+        bytestream_put_byte(bytestream, alpha_component);
+        bytestream_put_byte(bytestream, 0x00);
     }
 
     return 0;
@@ -131,6 +138,11 @@ static av_cold int gif_encode_init(AVCodecContext *avctx)
 {
     GIFContext *s = avctx->priv_data;
 
+    if (avctx->width > 65535 || avctx->height > 65535) {
+        av_log(avctx, AV_LOG_ERROR, "GIF does not support resolutions above 65535x65535\n");
+        return -1;
+    }
+
     avctx->coded_frame = &s->picture;
     s->lzw = av_mallocz(ff_lzw_encode_state_size);
     if (!s->lzw)
@@ -150,10 +162,8 @@ static int gif_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
     uint8_t *outbuf_ptr, *end;
     int ret;
 
-    if ((ret = ff_alloc_packet(pkt, avctx->width*avctx->height*7/5 + FF_MIN_BUFFER_SIZE)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet.\n");
+    if ((ret = ff_alloc_packet2(avctx, pkt, avctx->width*avctx->height*7/5 + FF_MIN_BUFFER_SIZE)) < 0)
         return ret;
-    }
     outbuf_ptr = pkt->data;
     end        = pkt->data + pkt->size;
 

@@ -3,20 +3,20 @@
  * Copyright (c) 2007-2011 Peter Ross (pross@xvid.org)
  * Copyright (c) 2009 Daniel Verkamp (daniel@drv.nu)
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -28,13 +28,14 @@
  *  http://wiki.multimedia.cx/index.php?title=Bink_Audio
  */
 
+#include "libavutil/channel_layout.h"
 #include "avcodec.h"
 #define BITSTREAM_READER_LE
 #include "get_bits.h"
-#include "dsputil.h"
 #include "dct.h"
 #include "rdft.h"
 #include "fmtconvert.h"
+#include "internal.h"
 #include "libavutil/intfloat.h"
 
 extern const uint16_t ff_wma_critical_freqs[25];
@@ -45,7 +46,6 @@ static float quant_table[96];
 #define BINK_BLOCK_MAX_SIZE (MAX_CHANNELS << 11)
 
 typedef struct {
-    AVFrame frame;
     GetBitContext gb;
     int version_b;          ///< Bink version 'b'
     int first;
@@ -83,12 +83,14 @@ static av_cold int decode_init(AVCodecContext *avctx)
         frame_len_bits = 11;
     }
 
-    if (avctx->channels > MAX_CHANNELS) {
-        av_log(avctx, AV_LOG_ERROR, "too many channels: %d\n", avctx->channels);
-        return -1;
+    if (avctx->channels < 1 || avctx->channels > MAX_CHANNELS) {
+        av_log(avctx, AV_LOG_ERROR, "invalid number of channels: %d\n", avctx->channels);
+        return AVERROR_INVALIDDATA;
     }
+    avctx->channel_layout = avctx->channels == 1 ? AV_CH_LAYOUT_MONO :
+                                                   AV_CH_LAYOUT_STEREO;
 
-    s->version_b = avctx->extradata && avctx->extradata[3] == 'b';
+    s->version_b = avctx->extradata_size >= 4 && avctx->extradata[3] == 'b';
 
     if (avctx->codec->id == AV_CODEC_ID_BINKAUDIO_RDFT) {
         // audio is already interleaved for the RDFT format variant
@@ -138,9 +140,6 @@ static av_cold int decode_init(AVCodecContext *avctx)
         ff_dct_init(&s->trans.dct, frame_len_bits, DCT_III);
     else
         return -1;
-
-    avcodec_get_frame_defaults(&s->frame);
-    avctx->coded_frame = &s->frame;
 
     return 0;
 }
@@ -290,6 +289,7 @@ static int decode_frame(AVCodecContext *avctx, void *data,
                         int *got_frame_ptr, AVPacket *avpkt)
 {
     BinkAudioContext *s = avctx->priv_data;
+    AVFrame *frame      = data;
     GetBitContext *gb = &s->gb;
     int ret, consumed = 0;
 
@@ -317,22 +317,21 @@ static int decode_frame(AVCodecContext *avctx, void *data,
     }
 
     /* get output buffer */
-    s->frame.nb_samples = s->frame_len;
-    if ((ret = avctx->get_buffer(avctx, &s->frame)) < 0) {
+    frame->nb_samples = s->frame_len;
+    if ((ret = ff_get_buffer(avctx, frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
 
-    if (decode_block(s, (float **)s->frame.extended_data,
+    if (decode_block(s, (float **)frame->extended_data,
                      avctx->codec->id == AV_CODEC_ID_BINKAUDIO_DCT)) {
         av_log(avctx, AV_LOG_ERROR, "Incomplete packet\n");
         return AVERROR_INVALIDDATA;
     }
     get_bits_align32(gb);
 
-    s->frame.nb_samples = s->block_size / avctx->channels;
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = s->frame;
+    frame->nb_samples = s->block_size / avctx->channels;
+    *got_frame_ptr    = 1;
 
     return consumed;
 }

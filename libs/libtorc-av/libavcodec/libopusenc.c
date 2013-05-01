@@ -2,20 +2,20 @@
  * Opus encoder using libopus
  * Copyright (c) 2012 Nathan Caldwell
  *
- * This file is part of libav.
+ * This file is part of FFmpeg.
  *
- * libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -65,8 +65,8 @@ static const uint8_t opus_vorbis_channel_map[8][8] = {
     { 0, 6, 1, 2, 3, 4, 5, 7 },
 };
 
-/* libav to libopus channel order mapping, passed to libopus */
-static const uint8_t libav_libopus_channel_map[8][8] = {
+/* libavcodec to libopus channel order mapping, passed to libopus */
+static const uint8_t libavcodec_libopus_channel_map[8][8] = {
     { 0 },
     { 0, 1 },
     { 0, 1, 2 },
@@ -106,6 +106,13 @@ static int libopus_configure_encoder(AVCodecContext *avctx, OpusMSEncoder *enc,
                                      LibopusEncOpts *opts)
 {
     int ret;
+
+    if (avctx->global_quality) {
+        av_log(avctx, AV_LOG_ERROR,
+               "Quality-based encoding not supported, "
+               "please specify a bitrate and VBR setting.\n");
+        return AVERROR(EINVAL);
+    }
 
     ret = opus_multistream_encoder_ctl(enc, OPUS_SET_BITRATE(avctx->bit_rate));
     if (ret != OPUS_OK) {
@@ -159,7 +166,7 @@ static int av_cold libopus_encode_init(AVCodecContext *avctx)
 
     coupled_stream_count = opus_coupled_streams[avctx->channels - 1];
     opus->stream_count   = avctx->channels - coupled_stream_count;
-    channel_mapping      = libav_libopus_channel_map[avctx->channels - 1];
+    channel_mapping      = libavcodec_libopus_channel_map[avctx->channels - 1];
 
     /* FIXME: Opus can handle up to 255 channels. However, the mapping for
      * anything greater than 8 is undefined. */
@@ -324,10 +331,8 @@ static int libopus_encode(AVCodecContext *avctx, AVPacket *avpkt,
     /* Maximum packet size taken from opusenc in opus-tools. 60ms packets
      * consist of 3 frames in one packet. The maximum frame size is 1275
      * bytes along with the largest possible packet header of 7 bytes. */
-    if (ret = ff_alloc_packet(avpkt, (1275 * 3 + 7) * opus->stream_count)) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, (1275 * 3 + 7) * opus->stream_count)) < 0)
         return ret;
-    }
 
     if (avctx->sample_fmt == AV_SAMPLE_FMT_FLT)
         ret = opus_multistream_encode_float(opus->enc, (float *)audio,

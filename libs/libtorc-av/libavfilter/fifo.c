@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2007 Bobby Bingham
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -24,7 +24,7 @@
  */
 
 #include "libavutil/avassert.h"
-#include "libavutil/audioconvert.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/common.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/samplefmt.h"
@@ -77,7 +77,6 @@ static int add_to_queue(AVFilterLink *inlink, AVFilterBufferRef *buf)
 {
     FifoContext *fifo = inlink->dst->priv;
 
-    inlink->cur_buf = NULL;
     fifo->last->next = av_mallocz(sizeof(Buf));
     if (!fifo->last->next) {
         avfilter_unref_buffer(buf);
@@ -97,16 +96,6 @@ static void queue_pop(FifoContext *s)
         s->last = &s->root;
     av_freep(&s->root.next);
     s->root.next = tmp;
-}
-
-static int end_frame(AVFilterLink *inlink)
-{
-    return 0;
-}
-
-static int draw_slice(AVFilterLink *inlink, int y, int h, int slice_dir)
-{
-    return 0;
 }
 
 /**
@@ -228,7 +217,7 @@ static int return_audio_frame(AVFilterContext *ctx)
         buf_out = s->buf_out;
         s->buf_out = NULL;
     }
-    return ff_filter_samples(link, buf_out);
+    return ff_filter_frame(link, buf_out);
 }
 
 static int request_frame(AVFilterLink *outlink)
@@ -239,29 +228,14 @@ static int request_frame(AVFilterLink *outlink)
     if (!fifo->root.next) {
         if ((ret = ff_request_frame(outlink->src->inputs[0])) < 0)
             return ret;
+        av_assert0(fifo->root.next);
     }
 
-    /* by doing this, we give ownership of the reference to the next filter,
-     * so we don't have to worry about dereferencing it ourselves. */
-    switch (outlink->type) {
-    case AVMEDIA_TYPE_VIDEO:
-        if ((ret = ff_start_frame(outlink, fifo->root.next->buf)) < 0 ||
-            (ret = ff_draw_slice(outlink, 0, outlink->h, 1)) < 0 ||
-            (ret = ff_end_frame(outlink)) < 0)
-            return ret;
-
+    if (outlink->request_samples) {
+        return return_audio_frame(outlink->src);
+    } else {
+        ret = ff_filter_frame(outlink, fifo->root.next->buf);
         queue_pop(fifo);
-        break;
-    case AVMEDIA_TYPE_AUDIO:
-        if (outlink->request_samples) {
-            return return_audio_frame(outlink->src);
-        } else {
-            ret = ff_filter_samples(outlink, fifo->root.next->buf);
-            queue_pop(fifo);
-        }
-        break;
-    default:
-        return AVERROR(EINVAL);
     }
 
     return ret;
@@ -272,10 +246,8 @@ static const AVFilterPad avfilter_vf_fifo_inputs[] = {
         .name             = "default",
         .type             = AVMEDIA_TYPE_VIDEO,
         .get_video_buffer = ff_null_get_video_buffer,
-        .start_frame      = add_to_queue,
-        .draw_slice       = draw_slice,
-        .end_frame        = end_frame,
-        .rej_perms        = AV_PERM_REUSE2,
+        .filter_frame     = add_to_queue,
+        .min_perms        = AV_PERM_PRESERVE,
     },
     { NULL }
 };
@@ -307,8 +279,8 @@ static const AVFilterPad avfilter_af_afifo_inputs[] = {
         .name             = "default",
         .type             = AVMEDIA_TYPE_AUDIO,
         .get_audio_buffer = ff_null_get_audio_buffer,
-        .filter_samples   = add_to_queue,
-        .rej_perms        = AV_PERM_REUSE2,
+        .filter_frame     = add_to_queue,
+        .min_perms        = AV_PERM_PRESERVE,
     },
     { NULL }
 };

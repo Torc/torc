@@ -2,20 +2,20 @@
  * Wing Commander III Movie (.mve) File Demuxer
  * Copyright (c) 2003 The ffmpeg Project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -27,6 +27,7 @@
  *   http://www.pcisys.net/~melanson/codecs/
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/dict.h"
 #include "avformat.h"
@@ -157,7 +158,7 @@ static int wc3_read_header(AVFormatContext *s)
         fourcc_tag = avio_rl32(pb);
         /* chunk sizes are 16-bit aligned */
         size = (avio_rb32(pb) + 1) & (~1);
-        if (pb->eof_reached)
+        if (url_feof(pb))
             return AVERROR(EIO);
 
     } while (fourcc_tag != BRCH_TAG);
@@ -183,6 +184,7 @@ static int wc3_read_header(AVFormatContext *s)
     st->codec->codec_id = AV_CODEC_ID_PCM_S16LE;
     st->codec->codec_tag = 1;
     st->codec->channels = WC3_AUDIO_CHANNELS;
+    st->codec->channel_layout = AV_CH_LAYOUT_MONO;
     st->codec->bits_per_coded_sample = WC3_AUDIO_BITS;
     st->codec->sample_rate = WC3_SAMPLE_RATE;
     st->codec->bit_rate = st->codec->channels * st->codec->sample_rate *
@@ -208,7 +210,7 @@ static int wc3_read_packet(AVFormatContext *s,
         fourcc_tag = avio_rl32(pb);
         /* chunk sizes are 16-bit aligned */
         size = (avio_rb32(pb) + 1) & (~1);
-        if (pb->eof_reached)
+        if (url_feof(pb))
             return AVERROR(EIO);
 
         switch (fourcc_tag) {

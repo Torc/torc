@@ -3,20 +3,20 @@
  * Copyright (c) 2005-2006 Oded Shimon ( ods15 ods15 dyndns org )
  * Copyright (c) 2006-2007 Maxim Gavrilov ( maxim.gavrilov gmail com )
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -32,7 +32,6 @@
 
 #include "libavutil/float_dsp.h"
 #include "avcodec.h"
-#include "dsputil.h"
 #include "fft.h"
 #include "mpeg4audio.h"
 #include "sbr.h"
@@ -236,9 +235,10 @@ typedef struct SingleChannelElement {
     uint8_t zeroes[128];                            ///< band is not coded (used by encoder)
     DECLARE_ALIGNED(32, float,   coeffs)[1024];     ///< coefficients for IMDCT
     DECLARE_ALIGNED(32, float,   saved)[1024];      ///< overlap
-    DECLARE_ALIGNED(32, float,   ret)[2048];        ///< PCM output
+    DECLARE_ALIGNED(32, float,   ret_buf)[2048];    ///< PCM output buffer
     DECLARE_ALIGNED(16, float,   ltp_state)[3072];  ///< time signal for LTP
     PredictorState predictor_state[MAX_PREDICTORS];
+    float *ret;                                     ///< PCM output
 } SingleChannelElement;
 
 /**
@@ -259,9 +259,10 @@ typedef struct ChannelElement {
 /**
  * main AAC context
  */
-typedef struct AACContext {
+struct AACContext {
+    AVClass        *class;
     AVCodecContext *avctx;
-    AVFrame frame;
+    AVFrame *frame;
 
     int is_saved;                 ///< Set if elements have stored overlap from previous frame.
     DynamicRangeControl che_drc;
@@ -290,22 +291,43 @@ typedef struct AACContext {
     FFTContext mdct;
     FFTContext mdct_small;
     FFTContext mdct_ltp;
-    DSPContext dsp;
     FmtConvertContext fmt_conv;
     AVFloatDSPContext fdsp;
     int random_state;
     /** @} */
 
     /**
-     * @name Members used for output interleaving
+     * @name Members used for output
      * @{
      */
-    float *output_data[MAX_CHANNELS];                 ///< Points to each element's 'ret' buffer (PCM output).
+    SingleChannelElement *output_element[MAX_CHANNELS]; ///< Points to each SingleChannelElement
+    /** @} */
+
+
+    /**
+     * @name Japanese DTV specific extension
+     * @{
+     */
+    int force_dmono_mode;///< 0->not dmono, 1->use first channel, 2->use second channel
+    int dmono_mode;      ///< 0->not dmono, 1->use first channel, 2->use second channel
     /** @} */
 
     DECLARE_ALIGNED(32, float, temp)[128];
 
     OutputConfiguration oc[2];
-} AACContext;
+    int warned_num_aac_frames;
+
+    /* aacdec functions pointers */
+    void (*imdct_and_windowing)(AACContext *ac, SingleChannelElement *sce);
+    void (*apply_ltp)(AACContext *ac, SingleChannelElement *sce);
+    void (*apply_tns)(float coef[1024], TemporalNoiseShaping *tns,
+                      IndividualChannelStream *ics, int decode);
+    void (*windowing_and_mdct_ltp)(AACContext *ac, float *out,
+                                   float *in, IndividualChannelStream *ics);
+    void (*update_ltp)(AACContext *ac, SingleChannelElement *sce);
+
+};
+
+void ff_aacdec_init_mips(AACContext *c);
 
 #endif /* AVCODEC_AAC_H */

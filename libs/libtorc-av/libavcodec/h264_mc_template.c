@@ -2,20 +2,20 @@
  * H.26L/H.264/AVC/JVT/14496-10/... decoder
  * Copyright (c) 2003 Michael Niedermayer <michaelni@gmx.at>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -46,7 +46,7 @@ static void mc_part(H264Context *h, int n, int square,
                     int list0, int list1)
 {
     if ((h->use_weight == 2 && list0 && list1 &&
-         (h->implicit_weight[h->ref_cache[0][scan8[n]]][h->ref_cache[1][scan8[n]]][h->s.mb_y & 1] != 32)) ||
+         (h->implicit_weight[h->ref_cache[0][scan8[n]]][h->ref_cache[1][scan8[n]]][h->mb_y & 1] != 32)) ||
         h->use_weight == 1)
         mc_part_weighted(h, n, square, height, delta, dest_y, dest_cb, dest_cr,
                          x_offset, y_offset, qpix_put, chroma_put,
@@ -67,13 +67,12 @@ static void MCFUNC(hl_motion)(H264Context *h, uint8_t *dest_y,
                               h264_weight_func *weight_op,
                               h264_biweight_func *weight_avg)
 {
-    MpegEncContext *const s = &h->s;
     const int mb_xy   = h->mb_xy;
-    const int mb_type = s->current_picture.f.mb_type[mb_xy];
+    const int mb_type = h->cur_pic.f.mb_type[mb_xy];
 
-    assert(IS_INTER(mb_type));
+    av_assert2(IS_INTER(mb_type));
 
-    if (HAVE_THREADS && (s->avctx->active_thread_type & FF_THREAD_FRAME))
+    if (HAVE_THREADS && (h->avctx->active_thread_type & FF_THREAD_FRAME))
         await_references(h);
     prefetch_motion(h, 0, PIXEL_SHIFT, CHROMA_IDC);
 
@@ -103,7 +102,7 @@ static void MCFUNC(hl_motion)(H264Context *h, uint8_t *dest_y,
     } else {
         int i;
 
-        assert(IS_8X8(mb_type));
+        av_assert2(IS_8X8(mb_type));
 
         for (i = 0; i < 4; i++) {
             const int sub_mb_type = h->sub_mb_type[i];
@@ -141,7 +140,7 @@ static void MCFUNC(hl_motion)(H264Context *h, uint8_t *dest_y,
                         IS_DIR(sub_mb_type, 0, 0), IS_DIR(sub_mb_type, 0, 1));
             } else {
                 int j;
-                assert(IS_SUB_4X4(sub_mb_type));
+                av_assert2(IS_SUB_4X4(sub_mb_type));
                 for (j = 0; j < 4; j++) {
                     int sub_x_offset = x_offset + 2 * (j & 1);
                     int sub_y_offset = y_offset + (j & 2);

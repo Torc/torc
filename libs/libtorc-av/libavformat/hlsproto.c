@@ -2,20 +2,20 @@
  * Apple HTTP Live Streaming Protocol Handler
  * Copyright (c) 2010 Martin Storsjo
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -36,7 +36,7 @@
  * An apple http stream consists of a playlist with media segment files,
  * played sequentially. There may be several playlists with the same
  * video content, in different bandwidth variants, that are played in
- * parallel (preferrably only one bandwidth variant at a time). In this case,
+ * parallel (preferably only one bandwidth variant at a time). In this case,
  * the user supplied the url to a main playlist that only lists the variant
  * playlists.
  *
@@ -71,7 +71,7 @@ typedef struct HLSContext {
 static int read_chomp_line(AVIOContext *s, char *buf, int maxlen)
 {
     int len = ff_get_line(s, buf, maxlen);
-    while (len > 0 && isspace(buf[len - 1]))
+    while (len > 0 && av_isspace(buf[len - 1]))
         buf[--len] = '\0';
     return len;
 }
@@ -125,7 +125,7 @@ static int parse_playlist(URLContext *h, const char *url)
 
     free_segment_list(s);
     s->finished = 0;
-    while (!in->eof_reached) {
+    while (!url_feof(in)) {
         read_chomp_line(in, line, sizeof(line));
         if (av_strstart(line, "#EXT-X-STREAM-INF:", &ptr)) {
             struct variant_info info = {{0}};
@@ -293,7 +293,7 @@ retry:
             /* If we need to reload the playlist again below (if
              * there's still no more segments), switch to a reload
              * interval of half the target duration. */
-            reload_interval = s->target_duration * 500000;
+            reload_interval = s->target_duration * 500000LL;
         }
     }
     if (s->cur_seq_no < s->start_seq_no) {

@@ -2,20 +2,20 @@
  * AMR Audio encoder stub
  * Copyright (c) 2003 the ffmpeg project
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -79,7 +79,7 @@ static av_cold int amr_wb_encode_init(AVCodecContext *avctx)
 {
     AMRWBContext *s = avctx->priv_data;
 
-    if (avctx->sample_rate != 16000) {
+    if (avctx->sample_rate != 16000 && avctx->strict_std_compliance > FF_COMPLIANCE_UNOFFICIAL) {
         av_log(avctx, AV_LOG_ERROR, "Only 16000Hz sample rate supported\n");
         return AVERROR(ENOSYS);
     }
@@ -121,10 +121,8 @@ static int amr_wb_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
     const int16_t *samples = (const int16_t *)frame->data[0];
     int size, ret;
 
-    if ((ret = ff_alloc_packet(avpkt, MAX_PACKET_SIZE))) {
-        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+    if ((ret = ff_alloc_packet2(avctx, avpkt, MAX_PACKET_SIZE)) < 0)
         return ret;
-    }
 
     if (s->last_bitrate != avctx->bit_rate) {
         s->mode         = get_wb_bitrate_mode(avctx->bit_rate, avctx);

@@ -1,20 +1,20 @@
 /*
  * copyright (c) 2007 Luca Abeni
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -47,8 +47,8 @@ void ff_rtp_send_aac(AVFormatContext *s1, const uint8_t *buff, int size)
             memmove(p + 2, s->buf + 2, au_size);
         }
         /* Write the AU header size */
-        p[0] = ((au_size * 8) & 0xFF) >> 8;
-        p[1] = (au_size * 8) & 0xFF;
+        p[0] =  au_size >> 5;
+        p[1] = (au_size & 0x1F) << 3;
 
         ff_rtp_send_data(s1, p, s->buf_ptr - p, 1);
 

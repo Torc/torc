@@ -2,20 +2,20 @@
  * American Laser Games MM Format Demuxer
  * Copyright (c) 2006 Peter Ross
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -31,6 +31,7 @@
  *  http://wiki.multimedia.cx/index.php?title=American_Laser_Games_MM
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "internal.h"
@@ -124,6 +125,7 @@ static int read_header(AVFormatContext *s)
         st->codec->codec_tag = 0; /* no fourcc */
         st->codec->codec_id = AV_CODEC_ID_PCM_U8;
         st->codec->channels = 1;
+        st->codec->channel_layout = AV_CH_LAYOUT_MONO;
         st->codec->sample_rate = 8000;
         avpriv_set_pts_info(st, 64, 1, 8000); /* 8000 hz */
     }
@@ -174,7 +176,6 @@ static int read_packet(AVFormatContext *s,
         case MM_TYPE_AUDIO :
             if (av_get_packet(s->pb, pkt, length)<0)
                 return AVERROR(ENOMEM);
-            pkt->size = length;
             pkt->stream_index = 1;
             pkt->pts = mm->audio_pts++;
             return 0;

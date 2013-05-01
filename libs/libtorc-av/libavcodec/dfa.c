@@ -3,28 +3,30 @@
  * Copyright (c) 2011 Konstantin Shishkov
  * based on work by Vladimir "VAG" Gneushev
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/avassert.h"
 #include "avcodec.h"
 #include "bytestream.h"
+#include "internal.h"
 
 #include "libavutil/imgutils.h"
-#include "libavutil/lzo.h" // for av_memcpy_backptr
+#include "libavutil/mem.h"
 
 typedef struct DfaContext {
     AVFrame pic;
@@ -36,14 +38,15 @@ typedef struct DfaContext {
 static av_cold int dfa_decode_init(AVCodecContext *avctx)
 {
     DfaContext *s = avctx->priv_data;
-    int ret;
 
     avctx->pix_fmt = AV_PIX_FMT_PAL8;
 
-    if ((ret = av_image_check_size(avctx->width, avctx->height, 0, avctx)) < 0)
-        return ret;
+    if (!avctx->width || !avctx->height)
+        return AVERROR_INVALIDDATA;
 
-    s->frame_buf = av_mallocz(avctx->width * avctx->height + AV_LZO_OUTPUT_PADDING);
+    av_assert0(av_image_check_size(avctx->width, avctx->height, 0, avctx) >= 0);
+
+    s->frame_buf = av_mallocz(avctx->width * avctx->height);
     if (!s->frame_buf)
         return AVERROR(ENOMEM);
 
@@ -69,6 +72,8 @@ static int decode_tsw1(GetByteContext *gb, uint8_t *frame, int width, int height
 
     segments = bytestream2_get_le32(gb);
     offset   = bytestream2_get_le32(gb);
+    if (segments == 0 && offset == frame_end - frame)
+        return 0; // skip frame
     if (frame_end - frame <= offset)
         return AVERROR_INVALIDDATA;
     frame += offset;
@@ -122,9 +127,7 @@ static int decode_dsw1(GetByteContext *gb, uint8_t *frame, int width, int height
             count = ((v >> 13) + 2) << 1;
             if (frame - frame_start < offset || frame_end - frame < count)
                 return AVERROR_INVALIDDATA;
-            // can't use av_memcpy_backptr() since it can overwrite following pixels
-            for (v = 0; v < count; v++)
-                frame[v] = frame[v - offset];
+            av_memcpy_backptr(frame, offset, count);
             frame += count;
         } else if (bitbuf & (mask << 1)) {
             frame += bytestream2_get_le16(gb);
@@ -253,6 +256,8 @@ static int decode_wdlt(GetByteContext *gb, uint8_t *frame, int width, int height
             y        += skip_lines;
             segments = bytestream2_get_le16(gb);
         }
+        if (frame_end <= frame)
+            return -1;
         if (segments & 0x8000) {
             frame[width - 1] = segments & 0xFF;
             segments = bytestream2_get_le16(gb);
@@ -309,7 +314,7 @@ static const char* chunk_name[8] = {
 };
 
 static int dfa_decode_frame(AVCodecContext *avctx,
-                            void *data, int *data_size,
+                            void *data, int *got_frame,
                             AVPacket *avpkt)
 {
     DfaContext *s = avctx->priv_data;
@@ -323,7 +328,7 @@ static int dfa_decode_frame(AVCodecContext *avctx,
     if (s->pic.data[0])
         avctx->release_buffer(avctx, &s->pic);
 
-    if ((ret = avctx->get_buffer(avctx, &s->pic))) {
+    if ((ret = ff_get_buffer(avctx, &s->pic))) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
@@ -339,7 +344,7 @@ static int dfa_decode_frame(AVCodecContext *avctx,
             pal_elems = FFMIN(chunk_size / 3, 256);
             for (i = 0; i < pal_elems; i++) {
                 s->pal[i] = bytestream2_get_be24(&gb) << 2;
-                s->pal[i] |= (s->pal[i] >> 6) & 0x333;
+                s->pal[i] |= 0xFFU << 24 | (s->pal[i] >> 6) & 0x30303;
             }
             s->pic.palette_has_changed = 1;
         } else if (chunk_type <= 9) {
@@ -364,7 +369,7 @@ static int dfa_decode_frame(AVCodecContext *avctx,
     }
     memcpy(s->pic.data[1], s->pal, sizeof(s->pal));
 
-    *data_size = sizeof(AVFrame);
+    *got_frame = 1;
     *(AVFrame*)data = s->pic;
 
     return avpkt->size;

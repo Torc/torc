@@ -4,20 +4,20 @@
  * Copyright (c) 2006 Benjamin Larsson
  * Copyright (c) 2006 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -35,11 +35,15 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "libavutil/channel_layout.h"
+#include "libavutil/float_dsp.h"
+#include "libavutil/internal.h"
+#include "libavutil/libm.h"
 #include "avcodec.h"
 #include "get_bits.h"
 #include "dsputil.h"
 #include "fft.h"
-#include "libavutil/audioconvert.h"
+#include "internal.h"
 #include "sinewin.h"
 
 #include "imcdata.h"
@@ -77,8 +81,6 @@ typedef struct IMCChannel {
 } IMCChannel;
 
 typedef struct {
-    AVFrame frame;
-
     IMCChannel chctx[2];
 
     /** MDCT tables */
@@ -94,6 +96,7 @@ typedef struct {
     GetBitContext gb;
 
     DSPContext dsp;
+    AVFloatDSPContext fdsp;
     FFTContext fft;
     DECLARE_ALIGNED(32, FFTComplex, samples)[COEFFS / 2];
     float *out_samples;
@@ -175,8 +178,10 @@ static av_cold int imc_decode_init(AVCodecContext *avctx)
     IMCContext *q = avctx->priv_data;
     double r1, r2;
 
-    if ((avctx->codec_id == AV_CODEC_ID_IMC && avctx->channels != 1)
-        || (avctx->codec_id == AV_CODEC_ID_IAC && avctx->channels > 2)) {
+    if (avctx->codec_id == AV_CODEC_ID_IMC)
+        avctx->channels = 1;
+
+    if (avctx->channels > 2) {
         av_log_ask_for_sample(avctx, "Number of channels is not supported\n");
         return AVERROR_PATCHWELCOME;
     }
@@ -241,12 +246,10 @@ static av_cold int imc_decode_init(AVCodecContext *avctx)
         return ret;
     }
     ff_dsputil_init(&q->dsp, avctx);
+    avpriv_float_dsp_init(&q->fdsp, avctx->flags & CODEC_FLAG_BITEXACT);
     avctx->sample_fmt     = AV_SAMPLE_FMT_FLTP;
     avctx->channel_layout = avctx->channels == 1 ? AV_CH_LAYOUT_MONO
                                                  : AV_CH_LAYOUT_STEREO;
-
-    avcodec_get_frame_defaults(&q->frame);
-    avctx->coded_frame = &q->frame;
 
     return 0;
 }
@@ -341,7 +344,7 @@ static void imc_decode_level_coefficients(IMCContext *q, int *levlCoeffBuf,
     float tmp, tmp2;
     // maybe some frequency division thingy
 
-    flcoeffs1[0] = 20000.0 / pow (2, levlCoeffBuf[0] * 0.18945); // 0.18945 = log2(10) * 0.05703125
+    flcoeffs1[0] = 20000.0 / exp2 (levlCoeffBuf[0] * 0.18945); // 0.18945 = log2(10) * 0.05703125
     flcoeffs2[0] = log2f(flcoeffs1[0]);
     tmp  = flcoeffs1[0];
     tmp2 = flcoeffs2[0];
@@ -802,6 +805,13 @@ static int imc_decode_block(AVCodecContext *avctx, IMCContext *q, int ch)
         imc_decode_level_coefficients2(q, chctx->levlCoeffBuf, chctx->old_floor,
                                        chctx->flcoeffs1, chctx->flcoeffs2);
 
+    for(i=0; i<BANDS; i++) {
+        if(chctx->flcoeffs1[i] > INT_MAX) {
+            av_log(avctx, AV_LOG_ERROR, "scalefactor out of range\n");
+            return AVERROR_INVALIDDATA;
+        }
+    }
+
     memcpy(chctx->old_floor, chctx->flcoeffs1, 32 * sizeof(float));
 
     counter = 0;
@@ -922,6 +932,7 @@ static int imc_decode_block(AVCodecContext *avctx, IMCContext *q, int ch)
 static int imc_decode_frame(AVCodecContext *avctx, void *data,
                             int *got_frame_ptr, AVPacket *avpkt)
 {
+    AVFrame *frame     = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     int ret, i;
@@ -936,14 +947,14 @@ static int imc_decode_frame(AVCodecContext *avctx, void *data,
     }
 
     /* get output buffer */
-    q->frame.nb_samples = COEFFS;
-    if ((ret = avctx->get_buffer(avctx, &q->frame)) < 0) {
+    frame->nb_samples = COEFFS;
+    if ((ret = ff_get_buffer(avctx, frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
         return ret;
     }
 
     for (i = 0; i < avctx->channels; i++) {
-        q->out_samples = (float *)q->frame.extended_data[i];
+        q->out_samples = (float *)frame->extended_data[i];
 
         q->dsp.bswap16_buf(buf16, (const uint16_t*)buf, IMC_BLOCK_SIZE / 2);
 
@@ -956,12 +967,11 @@ static int imc_decode_frame(AVCodecContext *avctx, void *data,
     }
 
     if (avctx->channels == 2) {
-        q->dsp.butterflies_float((float *)q->frame.extended_data[0],
-                                 (float *)q->frame.extended_data[1], COEFFS);
+        q->fdsp.butterflies_float((float *)frame->extended_data[0],
+                                  (float *)frame->extended_data[1], COEFFS);
     }
 
-    *got_frame_ptr   = 1;
-    *(AVFrame *)data = q->frame;
+    *got_frame_ptr = 1;
 
     return IMC_BLOCK_SIZE * avctx->channels;
 }
@@ -976,7 +986,15 @@ static av_cold int imc_decode_close(AVCodecContext * avctx)
     return 0;
 }
 
+static av_cold void flush(AVCodecContext *avctx)
+{
+    IMCContext *q = avctx->priv_data;
 
+    q->chctx[0].decoder_reset =
+    q->chctx[1].decoder_reset = 1;
+}
+
+#if CONFIG_IMC_DECODER
 AVCodec ff_imc_decoder = {
     .name           = "imc",
     .type           = AVMEDIA_TYPE_AUDIO,
@@ -985,12 +1003,14 @@ AVCodec ff_imc_decoder = {
     .init           = imc_decode_init,
     .close          = imc_decode_close,
     .decode         = imc_decode_frame,
+    .flush          = flush,
     .capabilities   = CODEC_CAP_DR1,
     .long_name      = NULL_IF_CONFIG_SMALL("IMC (Intel Music Coder)"),
     .sample_fmts    = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_FLTP,
                                                       AV_SAMPLE_FMT_NONE },
 };
-
+#endif
+#if CONFIG_IAC_DECODER
 AVCodec ff_iac_decoder = {
     .name           = "iac",
     .type           = AVMEDIA_TYPE_AUDIO,
@@ -999,8 +1019,10 @@ AVCodec ff_iac_decoder = {
     .init           = imc_decode_init,
     .close          = imc_decode_close,
     .decode         = imc_decode_frame,
+    .flush          = flush,
     .capabilities   = CODEC_CAP_DR1,
     .long_name      = NULL_IF_CONFIG_SMALL("IAC (Indeo Audio Coder)"),
     .sample_fmts    = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_FLTP,
                                                       AV_SAMPLE_FMT_NONE },
 };
+#endif

@@ -1,23 +1,19 @@
-libtorc-av is a clone of libav version 9 beta 2:-
+libtorc-av is a clone of FFmpeg version 1.2
 
-git://git.libav.org/libav.git
-
-The exact version is:
-
-e788ec5d59c91eeadd5637023aefd065d6309322
-
-(http://git.libav.org/?p=libav.git;a=tag;h=e788ec5d59c91eeadd5637023aefd065d6309322)
+git://git.videolan.org/ffmpeg.git
 
 The following files have been modified for Torc:
 
 common.mak
 library.mak
 
-The latest diff against upstream libav can be foun in:
+The latest diff against upstream FFmpeg can be found in:
 
 torc.diff
 
-If any changes are made to libtorc-av, this file and torc.diff MUST be updated.
-This file and torc.diff MUST be updated after a resync with libav upstream.
-The Torc configure script MUST also be updated following any resync.
+If any changes are made to the FFmpeg version, this file and torc.diff MUST be updated.
+This file and torc.diff MUST be updated after a resync with upstream FFmpeg.
+
+The Torc configure script (in the root directory) is a modified version of the FFmpeg configure script and
+it must be updated following any resync. Changes are tracked in configure.diff in the root directory.
 

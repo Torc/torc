@@ -2,20 +2,20 @@
  * Creative Voice File muxer.
  * Copyright (c) 2006  Aurelien Jacobs <aurel@gnuage.org>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -30,12 +30,18 @@ typedef struct voc_enc_context {
 static int voc_write_header(AVFormatContext *s)
 {
     AVIOContext *pb = s->pb;
+    AVCodecContext *enc = s->streams[0]->codec;
     const int header_size = 26;
     const int version = 0x0114;
 
     if (s->nb_streams != 1
         || s->streams[0]->codec->codec_type != AVMEDIA_TYPE_AUDIO)
         return AVERROR_PATCHWELCOME;
+
+    if (!enc->codec_tag && enc->codec_id != AV_CODEC_ID_PCM_U8) {
+        av_log(s, AV_LOG_ERROR, "unsupported codec\n");
+        return AVERROR(EINVAL);
+    }
 
     avio_write(pb, ff_voc_magic, sizeof(ff_voc_magic) - 1);
     avio_wl16(pb, header_size);
@@ -52,7 +58,7 @@ static int voc_write_packet(AVFormatContext *s, AVPacket *pkt)
     AVIOContext *pb = s->pb;
 
     if (!voc->param_written) {
-        if (enc->codec_tag > 0xFF) {
+        if (enc->codec_tag > 3) {
             avio_w8(pb, VOC_TYPE_NEW_VOICE_DATA);
             avio_wl24(pb, pkt->size + 12);
             avio_wl32(pb, enc->sample_rate);
@@ -64,13 +70,13 @@ static int voc_write_packet(AVFormatContext *s, AVPacket *pkt)
             if (s->streams[0]->codec->channels > 1) {
                 avio_w8(pb, VOC_TYPE_EXTENDED);
                 avio_wl24(pb, 4);
-                avio_wl16(pb, 65536-256000000/(enc->sample_rate*enc->channels));
+                avio_wl16(pb, 65536-(256000000 + enc->sample_rate*enc->channels/2)/(enc->sample_rate*enc->channels));
                 avio_w8(pb, enc->codec_tag);
                 avio_w8(pb, enc->channels - 1);
             }
             avio_w8(pb, VOC_TYPE_VOICE_DATA);
             avio_wl24(pb, pkt->size + 2);
-            avio_w8(pb, 256 - 1000000 / enc->sample_rate);
+            avio_w8(pb, 256 - (1000000 + enc->sample_rate/2) / enc->sample_rate);
             avio_w8(pb, enc->codec_tag);
         }
         voc->param_written = 1;
@@ -95,7 +101,7 @@ AVOutputFormat ff_voc_muxer = {
     .mime_type         = "audio/x-voc",
     .extensions        = "voc",
     .priv_data_size    = sizeof(VocEncContext),
-    .audio_codec       = AV_CODEC_ID_PCM_U8,
+    .audio_codec       = AV_CODEC_ID_PCM_S16LE,
     .video_codec       = AV_CODEC_ID_NONE,
     .write_header      = voc_write_header,
     .write_packet      = voc_write_packet,

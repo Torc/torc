@@ -1,20 +1,20 @@
 /*
  * Copyright (c) 2008 Alexander Strange <astrange@ithinksw.com>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -43,7 +43,7 @@ void ff_thread_flush(AVCodecContext *avctx);
  * Returns the next available frame in picture. *got_picture_ptr
  * will be 0 if none is available.
  * The return value on success is the size of the consumed packet for
- * compatiblity with avcodec_decode_video2(). This means the decoder
+ * compatibility with avcodec_decode_video2(). This means the decoder
  * has to consume the full packet.
  *
  * Parameters are the same as avcodec_decode_video2().
@@ -89,7 +89,7 @@ void ff_thread_await_progress(AVFrame *f, int progress, int field);
 
 /**
  * Wrapper around get_buffer() for frame-multithreaded codecs.
- * Call this function instead of avctx->get_buffer(f).
+ * Call this function instead of ff_get_buffer(f).
  * Cannot be called after the codec has called ff_thread_finish_setup().
  *
  * @param avctx The current context.

@@ -2,25 +2,26 @@
  * SubRip subtitle decoder
  * Copyright (c) 2010  Aurelien Jacobs <aurel@gnuage.org>
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 #include "libavutil/avstring.h"
 #include "libavutil/common.h"
+#include "libavutil/intreadwrite.h"
 #include "libavutil/parseutils.h"
 #include "avcodec.h"
 #include "ass.h"
@@ -49,7 +50,7 @@ typedef struct {
 static const char *srt_to_ass(AVCodecContext *avctx, char *out, char *out_end,
                               const char *in, int x1, int y1, int x2, int y2)
 {
-    char c, *param, buffer[128], tmp[128];
+    char *param, buffer[128], tmp[128];
     int len, tag_close, sptr = 1, line_start = 1, an = 0, end = 0;
     SrtStack stack[16];
 
@@ -60,10 +61,11 @@ static const char *srt_to_ass(AVCodecContext *avctx, char *out, char *out_end,
 
     if (x1 >= 0 && y1 >= 0) {
         if (x2 >= 0 && y2 >= 0 && (x2 != x1 || y2 != y1))
-            out += snprintf(out, out_end-out,
+            snprintf(out, out_end-out,
                             "{\\an1}{\\move(%d,%d,%d,%d)}", x1, y1, x2, y2);
         else
-            out += snprintf(out, out_end-out, "{\\an1}{\\pos(%d,%d)}", x1, y1);
+            snprintf(out, out_end-out, "{\\an1}{\\pos(%d,%d)}", x1, y1);
+        out += strlen(out);
     }
 
     for (; out < out_end && !end && *in; in++) {
@@ -77,7 +79,8 @@ static const char *srt_to_ass(AVCodecContext *avctx, char *out, char *out_end,
             }
             while (out[-1] == ' ')
                 out--;
-            out += snprintf(out, out_end-out, "\\N");
+            snprintf(out, out_end-out, "\\N");
+            if(out<out_end) out += strlen(out);
             line_start = 1;
             break;
         case ' ':
@@ -86,16 +89,18 @@ static const char *srt_to_ass(AVCodecContext *avctx, char *out, char *out_end,
             break;
         case '{':    /* skip all {\xxx} substrings except for {\an%d}
                         and all microdvd like styles such as {Y:xxx} */
-            an += sscanf(in, "{\\an%*1u}%c", &c) == 1;
-            if ((an != 1 && sscanf(in, "{\\%*[^}]}%n%c", &len, &c) > 0) ||
-                sscanf(in, "{%*1[CcFfoPSsYy]:%*[^}]}%n%c", &len, &c) > 0) {
+            len = 0;
+            an += sscanf(in, "{\\an%*1u}%n", &len) >= 0 && len > 0;
+            if ((an != 1 && (len = 0, sscanf(in, "{\\%*[^}]}%n", &len) >= 0 && len > 0)) ||
+                (len = 0, sscanf(in, "{%*1[CcFfoPSsYy]:%*[^}]}%n", &len) >= 0 && len > 0)) {
                 in += len - 1;
             } else
                 *out++ = *in;
             break;
         case '<':
             tag_close = in[1] == '/';
-            if (sscanf(in+tag_close+1, "%127[^>]>%n%c", buffer, &len,&c) >= 2) {
+            len = 0;
+            if (sscanf(in+tag_close+1, "%127[^>]>%n", buffer, &len) >= 1 && len > 0) {
                 if ((param = strchr(buffer, ' ')))
                     *param++ = 0;
                 if ((!tag_close && sptr < FF_ARRAY_ELEMS(stack)) ||
@@ -110,8 +115,9 @@ static const char *srt_to_ass(AVCodecContext *avctx, char *out, char *out_end,
                                 if (stack[sptr-1].param[i][0])
                                     for (j=sptr-2; j>=0; j--)
                                         if (stack[j].param[i][0]) {
-                                            out += snprintf(out, out_end-out,
+                                            snprintf(out, out_end-out,
                                                             "%s", stack[j].param[i]);
+                                            if(out<out_end) out += strlen(out);
                                             break;
                                         }
                         } else {
@@ -145,13 +151,16 @@ static const char *srt_to_ass(AVCodecContext *avctx, char *out, char *out_end,
                                     param++;
                             }
                             for (i=0; i<PARAM_NUMBER; i++)
-                                if (stack[sptr].param[i][0])
-                                    out += snprintf(out, out_end-out,
+                                if (stack[sptr].param[i][0]) {
+                                    snprintf(out, out_end-out,
                                                     "%s", stack[sptr].param[i]);
+                                    if(out<out_end) out += strlen(out);
+                                }
                         }
                     } else if (!buffer[1] && strspn(buffer, "bisu") == 1) {
-                        out += snprintf(out, out_end-out,
+                        snprintf(out, out_end-out,
                                         "{\\%c%d}", buffer[0], !tag_close);
+                        if(out<out_end) out += strlen(out);
                     } else {
                         unknown = 1;
                         snprintf(tmp, sizeof(tmp), "</%s>", buffer);
@@ -180,7 +189,7 @@ static const char *srt_to_ass(AVCodecContext *avctx, char *out, char *out_end,
         out -= 2;
     while (out[-1] == ' ')
         out--;
-    out += snprintf(out, out_end-out, "\r\n");
+    snprintf(out, out_end-out, "\r\n");
     return in;
 }
 
@@ -213,30 +222,61 @@ static int srt_decode_frame(AVCodecContext *avctx,
     char buffer[2048];
     const char *ptr = avpkt->data;
     const char *end = avpkt->data + avpkt->size;
+    int size;
+    const uint8_t *p = av_packet_get_side_data(avpkt, AV_PKT_DATA_SUBTITLE_POSITION, &size);
+
+    if (p && size == 16) {
+        x1 = AV_RL32(p     );
+        y1 = AV_RL32(p +  4);
+        x2 = AV_RL32(p +  8);
+        y2 = AV_RL32(p + 12);
+    }
 
     if (avpkt->size <= 0)
         return avpkt->size;
 
-    ff_ass_init(sub);
-
     while (ptr < end && *ptr) {
-        ptr = read_ts(ptr, &ts_start, &ts_end, &x1, &y1, &x2, &y2);
-        if (!ptr)
-            break;
+        if (avctx->codec->id == AV_CODEC_ID_SRT) {
+            ptr = read_ts(ptr, &ts_start, &ts_end, &x1, &y1, &x2, &y2);
+            if (!ptr)
+                break;
+        } else {
+            // Do final divide-by-10 outside rescale to force rounding down.
+            ts_start = av_rescale_q(avpkt->pts,
+                                    avctx->time_base,
+                                    (AVRational){1,100});
+            ts_end   = av_rescale_q(avpkt->pts + avpkt->duration,
+                                    avctx->time_base,
+                                    (AVRational){1,100});
+        }
         ptr = srt_to_ass(avctx, buffer, buffer+sizeof(buffer), ptr,
                          x1, y1, x2, y2);
-        ff_ass_add_rect(sub, buffer, ts_start, ts_end, 0);
+        ff_ass_add_rect(sub, buffer, ts_start, ts_end-ts_start, 0);
     }
 
     *got_sub_ptr = sub->num_rects > 0;
     return avpkt->size;
 }
 
+#if CONFIG_SRT_DECODER
+/* deprecated decoder */
 AVCodec ff_srt_decoder = {
     .name         = "srt",
-    .long_name    = NULL_IF_CONFIG_SMALL("SubRip subtitle"),
+    .long_name    = NULL_IF_CONFIG_SMALL("SubRip subtitle with embedded timing"),
     .type         = AVMEDIA_TYPE_SUBTITLE,
     .id           = AV_CODEC_ID_SRT,
     .init         = ff_ass_subtitle_header_default,
     .decode       = srt_decode_frame,
 };
+#endif
+
+#if CONFIG_SUBRIP_DECODER
+AVCodec ff_subrip_decoder = {
+    .name         = "subrip",
+    .long_name    = NULL_IF_CONFIG_SMALL("SubRip subtitle"),
+    .type         = AVMEDIA_TYPE_SUBTITLE,
+    .id           = AV_CODEC_ID_SUBRIP,
+    .init         = ff_ass_subtitle_header_default,
+    .decode       = srt_decode_frame,
+};
+#endif

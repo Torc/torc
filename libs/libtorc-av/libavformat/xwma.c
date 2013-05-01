@@ -2,20 +2,20 @@
  * xWMA demuxer
  * Copyright (c) 2011 Max Horn
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -42,7 +42,7 @@ static int xwma_probe(AVProbeData *p)
 
 static int xwma_read_header(AVFormatContext *s)
 {
-    int64_t size, av_uninit(data_size);
+    int64_t size;
     int ret;
     uint32_t dpds_table_size = 0;
     uint32_t *dpds_table = 0;
@@ -200,6 +200,12 @@ static int xwma_read_header(AVFormatContext *s)
 
         /* Estimate the duration from the total number of output bytes. */
         const uint64_t total_decoded_bytes = dpds_table[dpds_table_size - 1];
+
+        if(!bytes_per_sample) {
+            av_log(s, AV_LOG_ERROR, "bytes_per_sample is 0\n");
+            return AVERROR_INVALIDDATA;
+        }
+
         st->duration = total_decoded_bytes / bytes_per_sample;
 
         /* Use the dpds data to build a seek table.  We can only do this after

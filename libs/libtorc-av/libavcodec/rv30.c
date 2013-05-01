@@ -2,20 +2,20 @@
  * RV30 decoder
  * Copyright (c) 2007 Konstantin Shishkov
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
@@ -25,7 +25,6 @@
  */
 
 #include "avcodec.h"
-#include "dsputil.h"
 #include "mpegvideo.h"
 #include "golomb.h"
 
@@ -51,6 +50,11 @@ static int rv30_parse_slice_header(RV34DecContext *r, GetBitContext *gb, SliceIn
     skip_bits1(gb);
     si->pts = get_bits(gb, 13);
     rpr = get_bits(gb, r->rpr);
+    if (r->s.avctx->extradata_size < 8 + rpr*2) {
+        av_log(r->s.avctx, AV_LOG_WARNING,
+               "Extradata does not contain selected resolution\n");
+        rpr = 0;
+    }
     if(rpr){
         w = r->s.avctx->extradata[6 + rpr*2] << 2;
         h = r->s.avctx->extradata[7 + rpr*2] << 2;
@@ -73,8 +77,8 @@ static int rv30_decode_intra_types(RV34DecContext *r, GetBitContext *gb, int8_t 
 
     for(i = 0; i < 4; i++, dst += r->intra_types_stride - 4){
         for(j = 0; j < 4; j+= 2){
-            int code = svq3_get_ue_golomb(gb) << 1;
-            if(code >= 81*2){
+            unsigned code = svq3_get_ue_golomb(gb) << 1;
+            if (code > 80U*2U) {
                 av_log(r->s.avctx, AV_LOG_ERROR, "Incorrect intra prediction code\n");
                 return -1;
             }
@@ -101,9 +105,9 @@ static int rv30_decode_mb_info(RV34DecContext *r)
     static const int rv30_b_types[6] = { RV34_MB_SKIP, RV34_MB_B_DIRECT, RV34_MB_B_FORWARD, RV34_MB_B_BACKWARD, RV34_MB_TYPE_INTRA, RV34_MB_TYPE_INTRA16x16 };
     MpegEncContext *s = &r->s;
     GetBitContext *gb = &s->gb;
-    int code = svq3_get_ue_golomb(gb);
+    unsigned code     = svq3_get_ue_golomb(gb);
 
-    if (code < 0 || code > 11) {
+    if (code > 11) {
         av_log(s->avctx, AV_LOG_ERROR, "Incorrect MB type code\n");
         return -1;
     }
@@ -182,7 +186,7 @@ static void rv30_loop_filter(RV34DecContext *r, int row)
                 for(i = !mb_x; i < 2; i++, C += 4){
                     int ij = i + (j >> 1);
                     loc_lim = 0;
-                    if(cur_cbp && (1 << ij))
+                    if (cur_cbp & (1 << ij))
                         loc_lim = cur_lim;
                     else if(!i && left_cbp & (1 << (ij + 1)))
                         loc_lim = left_lim;
@@ -224,7 +228,7 @@ static void rv30_loop_filter(RV34DecContext *r, int row)
                 for(i = 0; i < 2; i++, C += 4){
                     int ij = i + (j >> 1);
                     loc_lim = 0;
-                    if(r->cbp_chroma[mb_pos] && (1 << ij))
+                    if (r->cbp_chroma[mb_pos] & (1 << ij))
                         loc_lim = cur_lim;
                     else if(!j && top_cbp & (1 << (ij + 2)))
                         loc_lim = top_lim;
@@ -256,7 +260,6 @@ static av_cold int rv30_decode_init(AVCodecContext *avctx)
     if(avctx->extradata_size - 8 < (r->rpr - 1) * 2){
         av_log(avctx, AV_LOG_ERROR, "Insufficient extradata - need at least %d bytes, got %d\n",
                6 + r->rpr * 2, avctx->extradata_size);
-        return AVERROR(EINVAL);
     }
     r->parse_slice_header = rv30_parse_slice_header;
     r->decode_intra_types = rv30_decode_intra_types;

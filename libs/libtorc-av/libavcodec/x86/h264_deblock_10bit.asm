@@ -24,8 +24,7 @@
 ;* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 ;******************************************************************************
 
-%include "x86inc.asm"
-%include "x86util.asm"
+%include "libavutil/x86/x86util.asm"
 
 SECTION_RODATA
 
@@ -418,8 +417,10 @@ cglobal deblock_h_luma_10, 5,7,15
 
 INIT_XMM sse2
 DEBLOCK_LUMA_64
+%if HAVE_AVX_EXTERNAL
 INIT_XMM avx
 DEBLOCK_LUMA_64
+%endif
 %endif
 
 %macro SWAPMOVA 2
@@ -713,8 +714,10 @@ cglobal deblock_h_luma_intra_10, 4,7,16
 
 INIT_XMM sse2
 DEBLOCK_LUMA_INTRA_64
+%if HAVE_AVX_EXTERNAL
 INIT_XMM avx
 DEBLOCK_LUMA_INTRA_64
+%endif
 
 %endif
 
@@ -792,15 +795,17 @@ cglobal deblock_h_luma_intra_10, 4,7,8*(mmsize/16)
 %endmacro
 
 %if ARCH_X86_64 == 0
-INIT_MMX mmx2
+INIT_MMX mmxext
 DEBLOCK_LUMA
 DEBLOCK_LUMA_INTRA
 INIT_XMM sse2
 DEBLOCK_LUMA
 DEBLOCK_LUMA_INTRA
+%if HAVE_AVX_EXTERNAL
 INIT_XMM avx
 DEBLOCK_LUMA
 DEBLOCK_LUMA_INTRA
+%endif
 %endif
 
 ; in: %1=p0, %2=q0, %3=p1, %4=q1, %5=mask, %6=tmp, %7=tmp
@@ -907,10 +912,12 @@ cglobal deblock_v_chroma_intra_10, 4,6-(mmsize/16),8*(mmsize/16)
 %endmacro
 
 %if ARCH_X86_64 == 0
-INIT_MMX mmx2
+INIT_MMX mmxext
 DEBLOCK_CHROMA
 %endif
 INIT_XMM sse2
 DEBLOCK_CHROMA
+%if HAVE_AVX_EXTERNAL
 INIT_XMM avx
 DEBLOCK_CHROMA
+%endif

@@ -2,22 +2,24 @@
  * D-Cinema audio demuxer
  * Copyright (c) 2005 Reimar Döffinger
  *
- * This file is part of Libav.
+ * This file is part of FFmpeg.
  *
- * Libav is free software; you can redistribute it and/or
+ * FFmpeg is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
  *
- * Libav is distributed in the hope that it will be useful,
+ * FFmpeg is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
- * License along with Libav; if not, write to the Free Software
+ * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
+
+#include "libavutil/channel_layout.h"
 #include "avformat.h"
 
 static int daud_header(AVFormatContext *s) {
@@ -28,6 +30,7 @@ static int daud_header(AVFormatContext *s) {
     st->codec->codec_id = AV_CODEC_ID_PCM_S24DAUD;
     st->codec->codec_tag = MKTAG('d', 'a', 'u', 'd');
     st->codec->channels = 6;
+    st->codec->channel_layout = AV_CH_LAYOUT_5POINT1;
     st->codec->sample_rate = 96000;
     st->codec->bit_rate = 3 * 6 * 96000 * 8;
     st->codec->block_align = 3 * 6;
@@ -38,7 +41,7 @@ static int daud_header(AVFormatContext *s) {
 static int daud_packet(AVFormatContext *s, AVPacket *pkt) {
     AVIOContext *pb = s->pb;
     int ret, size;
-    if (pb->eof_reached)
+    if (url_feof(pb))
         return AVERROR(EIO);
     size = avio_rb16(pb);
     avio_rb16(pb); // unknown
@@ -75,7 +78,7 @@ AVInputFormat ff_daud_demuxer = {
     .long_name      = NULL_IF_CONFIG_SMALL("D-Cinema audio"),
     .read_header    = daud_header,
     .read_packet    = daud_packet,
-    .extensions     = "302",
+    .extensions     = "302,daud",
 };
 #endif
 
