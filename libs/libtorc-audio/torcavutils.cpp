@@ -395,6 +395,7 @@ bool IsHardwarePixelFormat(AVPixelFormat Format)
 {
     return Format == AV_PIX_FMT_XVMC_MPEG2_MC   ||
            Format == AV_PIX_FMT_XVMC_MPEG2_IDCT ||
+           Format == AV_PIX_FMT_VDPAU           ||
            Format == AV_PIX_FMT_VDPAU_H264      ||
            Format == AV_PIX_FMT_VDPAU_MPEG1     ||
            Format == AV_PIX_FMT_VDPAU_MPEG2     ||
