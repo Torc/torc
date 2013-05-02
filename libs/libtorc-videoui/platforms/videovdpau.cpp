@@ -410,23 +410,9 @@ bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, GLTe
         return false;
 
     if (!m_nvidiaInterop)
-    {
         m_nvidiaInterop = new NVInterop;
-        if (m_nvidiaInterop->IsValid())
-            LOG(VB_GENERAL, LOG_INFO, "GL_NV_vdpau_interop available");
-    }
 
-    bool interop = m_nvidiaInterop && m_nvidiaInterop->IsValid();
-
-    // initialise interop if present
-    if (interop)
-    {
-        if (!m_nvidiaInterop->m_initialised)
-        {
-            m_nvidiaInterop->m_initialised = true;
-            m_nvidiaInterop->m_init((void*)m_device, (void*)m_getProcAddress);
-        }
-    }
+    m_nvidiaInterop->Initialise((void*)m_device, (void*)m_getProcAddress);
 
     // create an output surface if needed
     if (Texture && (m_lastTexture != Texture))
@@ -435,11 +421,7 @@ bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, GLTe
         if (m_outputSurface && m_outputSurfaceDestroy)
         {
             // unregister from interop
-            if (interop && m_nvidiaInterop->m_registeredSurface)
-            {
-                m_nvidiaInterop->m_unregisterSurface(m_nvidiaInterop->m_registeredSurface);
-                m_nvidiaInterop->m_registeredSurface = 0;
-            }
+            m_nvidiaInterop->Unregister();
 
             VdpStatus status = m_outputSurfaceDestroy(m_outputSurface);
             if (status != VDP_STATUS_OK)
@@ -456,13 +438,9 @@ bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, GLTe
             {
                 VDPAU_ERROR(status, "Failed to create output surface");
             }
-            else if (interop)
+            else if (m_nvidiaInterop)
             {
-                // register interop surface
-                m_nvidiaInterop->m_registeredSurface = m_nvidiaInterop->m_registerOutputSurface((void*)m_outputSurface,
-                                                                                                m_lastTexture->m_type,
-                                                                                                1, &m_lastTexture->m_val);
-                m_nvidiaInterop->m_surfaceAccess(m_nvidiaInterop->m_registeredSurface, GL_READ_ONLY);
+                m_nvidiaInterop->Register((void*)m_outputSurface, m_lastTexture->m_type, &m_lastTexture->m_val);
             }
         }
     }
@@ -512,11 +490,8 @@ bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, GLTe
 bool VideoVDPAU::MapFrame(void* Surface)
 {
     GLTexture *texture = static_cast<GLTexture*>(Surface);
-    if (texture && (texture == m_lastTexture) && m_nvidiaInterop && m_nvidiaInterop->IsValid() &&
-        m_nvidiaInterop->m_initialised && m_nvidiaInterop->m_registeredSurface)
-    {
-        m_nvidiaInterop->m_mapSurface(1, &m_nvidiaInterop->m_registeredSurface);
-    }
+    if (texture && (texture == m_lastTexture) && m_nvidiaInterop)
+        m_nvidiaInterop->MapFrame();
 
     return true;
 }
@@ -524,11 +499,8 @@ bool VideoVDPAU::MapFrame(void* Surface)
 bool VideoVDPAU::UnmapFrame(void* Surface)
 {
     GLTexture *texture = static_cast<GLTexture*>(Surface);
-    if (texture && (texture == m_lastTexture) && m_nvidiaInterop && m_nvidiaInterop->IsValid() &&
-        m_nvidiaInterop->m_initialised && m_nvidiaInterop->m_registeredSurface)
-    {
-        m_nvidiaInterop->m_unmapSurface(1, &m_nvidiaInterop->m_registeredSurface);
-    }
+    if (texture && (texture == m_lastTexture) && m_nvidiaInterop)
+        m_nvidiaInterop->UnmapFrame();
 
     return true;
 }
@@ -968,13 +940,8 @@ bool VideoVDPAU::HandlePreemption(void)
     LOG(VB_GENERAL, LOG_INFO, "Starting preemption recovery");
     bool result = false;
 
-    // FIXME - this may break if there is more than one instance
-    if (m_nvidiaInterop && m_nvidiaInterop->IsValid())
-    {
-        if (m_nvidiaInterop->m_initialised)
-            m_nvidiaInterop->m_fini();
-        m_nvidiaInterop->m_initialised = false;
-    }
+    if (m_nvidiaInterop)
+        m_nvidiaInterop->Deinitialise();
 
     ResetProcs();
     m_device = 0;

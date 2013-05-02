@@ -21,8 +21,15 @@ class NVInterop
 {
   public:
     NVInterop();
-    bool               IsValid(void);
+    bool               IsValid      (void);
+    bool               MapFrame     (void);
+    bool               UnmapFrame   (void);
+    bool               Initialise   (void* Device, void* GetProcAddress);
+    void               Deinitialise (void);
+    void               Register     (void* Surface, GLuint Type, GLuint *Value);
+    void               Unregister   (void);
 
+  private:
     bool               m_valid;
     bool               m_initialised;
     InteropSurface     m_registeredSurface;

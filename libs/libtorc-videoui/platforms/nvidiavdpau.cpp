@@ -22,8 +22,10 @@
 
 // Qt
 #include <QtGlobal>
+#include <QAtomicInt>
 
 // Torc
+#include "torclogging.h"
 #include "nvidiavdpau.h"
 
 NVInterop::NVInterop()
@@ -55,11 +57,68 @@ NVInterop::NVInterop()
 
     m_valid = m_init && m_fini && m_registerOutputSurface && m_unregisterSurface &&
               m_isSurface && m_surfaceAccess && m_mapSurface && m_unmapSurface;
+
+    static bool notified = false;
+    if (m_valid && !notified)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "GL_NV_vdpau_interop available");
+        notified = true;
+    }
 }
 
 bool NVInterop::IsValid(void)
 {
     return m_valid;
+}
+
+bool NVInterop::MapFrame(void)
+{
+    if (m_valid && m_initialised && m_registeredSurface)
+        m_mapSurface(1, &m_registeredSurface);
+}
+
+bool NVInterop::UnmapFrame(void)
+{
+    if (m_valid && m_initialised && m_registeredSurface)
+        m_unmapSurface(1, &m_registeredSurface);
+}
+
+QAtomicInt gNVInteropInstances;
+
+bool NVInterop::Initialise(void *Device, void *GetProcAddress)
+{
+    if (m_valid && !m_initialised)
+    {
+        m_initialised = true;
+        m_init(Device, GetProcAddress);
+        gNVInteropInstances.ref();
+    }
+}
+
+void NVInterop::Deinitialise(void)
+{
+    if (m_valid && m_initialised && !gNVInteropInstances.deref())
+        m_fini();
+
+    m_initialised = false;
+}
+
+void NVInterop::Register(void* Surface, GLuint Type, GLuint *Value)
+{
+    if (m_valid && m_initialised && Surface)
+    {
+        m_registeredSurface = m_registerOutputSurface(Surface, Type, 1, Value);
+        m_surfaceAccess(m_registeredSurface, GL_READ_ONLY);
+    }
+}
+
+void NVInterop::Unregister(void)
+{
+    if (m_valid && m_initialised && m_registeredSurface)
+    {
+        m_unregisterSurface(m_registeredSurface);
+        m_registeredSurface = 0;
+    }
 }
 
 QString FeatureSetToString(NVVDPAUFeatureSet Set)
