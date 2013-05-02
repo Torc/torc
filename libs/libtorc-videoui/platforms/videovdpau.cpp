@@ -31,6 +31,7 @@
 #include "videoframe.h"
 #include "opengl/uiopenglwindow.h"
 #include "platforms/nvctrl/uinvcontrol.h"
+#include "videocolourspace.h"
 #include "videovdpau.h"
 
 #include <GL/glx.h>
@@ -531,17 +532,6 @@ bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, GLTe
     // create a video mixer if needed
     if (!m_videoMixer && m_videoMixerCreate)
     {
-        // check mixer support
-        m_supportedMixerAttributes.clear();
-
-        if (m_videoMixerQueryAttributeSupport)
-        {
-            VdpBool supported = false;
-            VdpStatus status = m_videoMixerQueryAttributeSupport(m_device, VDP_VIDEO_MIXER_ATTRIBUTE_CSC_MATRIX, &supported);
-            if (status == VDP_STATUS_OK && supported)
-                m_supportedMixerAttributes << VDP_VIDEO_MIXER_ATTRIBUTE_CSC_MATRIX;
-        }
-
         VdpVideoMixerParameter parameters[] = { VDP_VIDEO_MIXER_PARAMETER_VIDEO_SURFACE_WIDTH, VDP_VIDEO_MIXER_PARAMETER_VIDEO_SURFACE_HEIGHT };
 
         void const * values[] = { &m_avContext->width, &m_avContext->height };
@@ -554,6 +544,19 @@ bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, GLTe
     // and render
     if (m_outputSurface && m_videoMixer && m_videoMixerRender)
     {
+        // colourspace adjustments
+        if (m_supportedMixerAttributes.contains(VDP_VIDEO_MIXER_ATTRIBUTE_CSC_MATRIX) && ColourSpace->HasChanged())
+        {
+            void* matrix = ColourSpace->Data();
+            VdpVideoMixerAttribute attribute = { VDP_VIDEO_MIXER_ATTRIBUTE_CSC_MATRIX };
+            void const *value = { matrix };
+            VdpStatus status = m_videoMixerSetAttributeValues(m_videoMixer, 1, &attribute, &value);
+            if (status != VDP_STATUS_OK)
+                VDPAU_ERROR(status, "Failed to update video colourspace");
+
+            ColourSpace->SetChanged(false);
+        }
+
         // field selection
         VdpVideoMixerPictureStructure field = VDP_VIDEO_MIXER_PICTURE_STRUCTURE_FRAME;
         //if (Frame->m_field != VideoFrame::Frame)
@@ -590,6 +593,11 @@ bool VideoVDPAU::UnmapFrame(void* Surface)
     }
 
     return true;
+}
+
+QSet<TorcPlayer::PlayerProperty> VideoVDPAU::GetSupportedProperties(void)
+{
+    return m_supportedProperties;
 }
 
 bool VideoVDPAU::IsFormatSupported(AVCodecContext *Context)
@@ -730,6 +738,25 @@ bool VideoVDPAU::CreateVideoSurfaces(void)
     }
 
     LOG(VB_GENERAL, LOG_INFO, QString("(Re-)Created %1 VDPAU video surfaces").arg(required));
+
+    // check video mixer support
+    m_supportedMixerAttributes.clear();
+    m_supportedProperties.clear();
+
+    if (m_videoMixerQueryAttributeSupport)
+    {
+        VdpBool supported = false;
+        VdpStatus status = m_videoMixerQueryAttributeSupport(m_device, VDP_VIDEO_MIXER_ATTRIBUTE_CSC_MATRIX, &supported);
+        if (status == VDP_STATUS_OK && supported)
+        {
+            m_supportedMixerAttributes << VDP_VIDEO_MIXER_ATTRIBUTE_CSC_MATRIX;
+            m_supportedProperties << TorcPlayer::Brightness;
+            m_supportedProperties << TorcPlayer::Contrast;
+            m_supportedProperties << TorcPlayer::Saturation;
+            m_supportedProperties << TorcPlayer::Hue;
+        }
+    }
+
     return true;
 }
 
@@ -764,6 +791,7 @@ bool VideoVDPAU::GetProcs(void)
     GET_PROC(VDP_FUNC_ID_VIDEO_MIXER_CREATE,           m_videoMixerCreate);
     GET_PROC(VDP_FUNC_ID_VIDEO_MIXER_DESTROY,          m_videoMixerDestroy);
     GET_PROC(VDP_FUNC_ID_VIDEO_MIXER_QUERY_ATTRIBUTE_SUPPORT, m_videoMixerQueryAttributeSupport);
+    GET_PROC(VDP_FUNC_ID_VIDEO_MIXER_SET_ATTRIBUTE_VALUES, m_videoMixerSetAttributeValues);
     GET_PROC(VDP_FUNC_ID_VIDEO_MIXER_RENDER,           m_videoMixerRender);
 
     if (!valid)
@@ -970,6 +998,7 @@ void VideoVDPAU::ResetProcs(void)
     m_videoMixerCreate           = NULL;
     m_videoMixerDestroy          = NULL;
     m_videoMixerQueryAttributeSupport = NULL;
+    m_videoMixerSetAttributeValues    = NULL;
     m_videoMixerRender           = NULL;
 }
 
@@ -1261,6 +1290,16 @@ class VDPAUFactory : public AccelerationFactory
 
     bool SupportedProperties(VideoFrame *Frame, QSet<TorcPlayer::PlayerProperty> &Properties)
     {
+        if (Frame && Frame->m_pixelFormat == AV_PIX_FMT_VDPAU && Frame->m_acceleratedBuffer && VideoVDPAU::VDPAUAvailable())
+        {
+            VideoVDPAU *vdpau = (VideoVDPAU*)Frame->m_priv[0];
+            if (vdpau)
+            {
+                Properties.unite(vdpau->GetSupportedProperties());
+                return true;
+            }
+        }
+
         return false;
     }
 } VDPAUFactory;

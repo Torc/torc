@@ -78,6 +78,7 @@ class VideoVDPAU : protected TorcReferenceCounter
                                                               GLTexture *Texture, VideoColourSpace *ColourSpace);
     bool                              MapFrame               (void* Surface);
     bool                              UnmapFrame             (void* Surface);
+    QSet<TorcPlayer::PlayerProperty>  GetSupportedProperties (void);
 
   protected:
     VideoVDPAU                        (AVCodecContext *Context);
@@ -123,6 +124,7 @@ class VideoVDPAU : protected TorcReferenceCounter
     VdpOutputSurface                  m_outputSurface;
     VdpVideoMixer                     m_videoMixer;
     QList<VdpVideoMixerAttribute>     m_supportedMixerAttributes;
+    QSet<TorcPlayer::PlayerProperty>  m_supportedProperties;
 
     VdpGetProcAddress                *m_getProcAddress;
     VdpGetErrorString                *m_getErrorString;
@@ -144,6 +146,7 @@ class VideoVDPAU : protected TorcReferenceCounter
     VdpVideoMixerCreate              *m_videoMixerCreate;
     VdpVideoMixerDestroy             *m_videoMixerDestroy;
     VdpVideoMixerQueryAttributeSupport *m_videoMixerQueryAttributeSupport;
+    VdpVideoMixerSetAttributeValues  *m_videoMixerSetAttributeValues;
     VdpVideoMixerRender              *m_videoMixerRender;
 };
 
