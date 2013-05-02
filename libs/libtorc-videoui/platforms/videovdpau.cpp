@@ -737,7 +737,7 @@ bool VideoVDPAU::CreateVideoSurfaces(void)
             VDPAU_ERROR(status, "Error creating video surface");
     }
 
-    LOG(VB_GENERAL, LOG_INFO, QString("(Re-)Created %1 VDPAU video surfaces").arg(required));
+    LOG(VB_GENERAL, LOG_INFO, QString("%1 %2 VDPAU video surfaces").arg(m_preempted.fetchAndAddOrdered(0) > 0 ? "Recreated" : "Created").arg(required));
 
     // check video mixer support
     m_supportedMixerAttributes.clear();
