@@ -26,6 +26,42 @@
 // Torc
 #include "nvidiavdpau.h"
 
+NVInterop::NVInterop()
+  : m_valid(false),
+    m_initialised(false),
+    m_registeredSurface(0),
+    m_init(NULL),
+    m_fini(NULL),
+    m_registerOutputSurface(NULL),
+    m_isSurface(NULL),
+    m_unregisterSurface(NULL),
+    m_surfaceAccess(NULL),
+    m_mapSurface(NULL),
+    m_unmapSurface(NULL)
+{
+    QByteArray extensions((const char*)(glGetString(GL_EXTENSIONS)));
+
+    if (extensions.contains("GL_NV_vdpau_interop"))
+    {
+        m_init                  = (TORC_INITNV)     UIOpenGLWindow::GetProcAddress("glVDPAUInitNV");
+        m_fini                  = (TORC_FININV)     UIOpenGLWindow::GetProcAddress("glVDPAUFiniNV");
+        m_registerOutputSurface = (TORC_REGOUTSURF) UIOpenGLWindow::GetProcAddress("glVDPAURegisterOutputSurfaceNV");
+        m_isSurface             = (TORC_ISSURFACE)  UIOpenGLWindow::GetProcAddress("glVDPAUIsSurfaceNV");
+        m_unregisterSurface     = (TORC_UNREGSURF)  UIOpenGLWindow::GetProcAddress("glVDPAUUnregisterSurfaceNV");
+        m_surfaceAccess         = (TORC_SURFACCESS) UIOpenGLWindow::GetProcAddress("glVDPAUSurfaceAccessNV");
+        m_mapSurface            = (TORC_MAPSURF)    UIOpenGLWindow::GetProcAddress("glVDPAUMapSurfacesNV");
+        m_unmapSurface          = (TORC_UNMAPSURF)  UIOpenGLWindow::GetProcAddress("glVDPAUUnmapSurfacesNV");
+    }
+
+    m_valid = m_init && m_fini && m_registerOutputSurface && m_unregisterSurface &&
+              m_isSurface && m_surfaceAccess && m_mapSurface && m_unmapSurface;
+}
+
+bool NVInterop::IsValid(void)
+{
+    return m_valid;
+}
+
 QString FeatureSetToString(NVVDPAUFeatureSet Set)
 {
     switch (Set)

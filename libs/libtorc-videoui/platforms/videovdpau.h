@@ -8,16 +8,14 @@
 
 // Torc
 #include "torcreferencecounted.h"
-#include "nvidiavdpau.h"
 #include "opengl/videorendereropengl.h"
+#include "nvidiavdpau.h"
 
 extern "C" {
 #include "libavutil/pixfmt.h"
 #include "libavformat/avformat.h"
 #include "libavcodec/vdpau.h"
 }
-
-class NVInterop;
 
 class VDPAUDecoderCapability
 {

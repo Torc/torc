@@ -42,68 +42,6 @@ extern "C" {
 
 static QMutex* gVDPAULock = new QMutex(QMutex::Recursive);
 
-typedef GLintptr        InteropSurface;
-typedef void           (APIENTRY * TORC_INITNV)     (const void*, const void*);
-typedef void           (APIENTRY * TORC_FININV)     (void);
-typedef InteropSurface (APIENTRY * TORC_REGOUTSURF) (const void*, GLenum, GLsizei, const uint*);
-typedef GLboolean      (APIENTRY * TORC_ISSURFACE)  (InteropSurface);
-typedef void           (APIENTRY * TORC_UNREGSURF)  (InteropSurface);
-typedef void           (APIENTRY * TORC_SURFACCESS) (InteropSurface, GLenum);
-typedef void           (APIENTRY * TORC_MAPSURF)    (GLsizei, const InteropSurface *);
-typedef void           (APIENTRY * TORC_UNMAPSURF)  (GLsizei, const InteropSurface *);
-
-class NVInterop
-{
-  public:
-    NVInterop()
-      : m_valid(false),
-        m_initialised(false),
-        m_registeredSurface(0),
-        m_init(NULL),
-        m_fini(NULL),
-        m_registerOutputSurface(NULL),
-        m_isSurface(NULL),
-        m_unregisterSurface(NULL),
-        m_surfaceAccess(NULL),
-        m_mapSurface(NULL),
-        m_unmapSurface(NULL)
-    {
-        QByteArray extensions((const char*)(glGetString(GL_EXTENSIONS)));
-
-        if (extensions.contains("GL_NV_vdpau_interop"))
-        {
-            m_init                  = (TORC_INITNV)     UIOpenGLWindow::GetProcAddress("glVDPAUInitNV");
-            m_fini                  = (TORC_FININV)     UIOpenGLWindow::GetProcAddress("glVDPAUFiniNV");
-            m_registerOutputSurface = (TORC_REGOUTSURF) UIOpenGLWindow::GetProcAddress("glVDPAURegisterOutputSurfaceNV");
-            m_isSurface             = (TORC_ISSURFACE)  UIOpenGLWindow::GetProcAddress("glVDPAUIsSurfaceNV");
-            m_unregisterSurface     = (TORC_UNREGSURF)  UIOpenGLWindow::GetProcAddress("glVDPAUUnregisterSurfaceNV");
-            m_surfaceAccess         = (TORC_SURFACCESS) UIOpenGLWindow::GetProcAddress("glVDPAUSurfaceAccessNV");
-            m_mapSurface            = (TORC_MAPSURF)    UIOpenGLWindow::GetProcAddress("glVDPAUMapSurfacesNV");
-            m_unmapSurface          = (TORC_UNMAPSURF)  UIOpenGLWindow::GetProcAddress("glVDPAUUnmapSurfacesNV");
-        }
-
-        m_valid = m_init && m_fini && m_registerOutputSurface && m_unregisterSurface &&
-                  m_isSurface && m_surfaceAccess && m_mapSurface && m_unmapSurface;
-    }
-
-    bool IsValid(void)
-    {
-        return m_valid;
-    }
-
-    bool             m_valid;
-    bool             m_initialised;
-    InteropSurface   m_registeredSurface;
-    TORC_INITNV      m_init;
-    TORC_FININV      m_fini;
-    TORC_REGOUTSURF  m_registerOutputSurface;
-    TORC_ISSURFACE   m_isSurface;
-    TORC_UNREGSURF   m_unregisterSurface;
-    TORC_SURFACCESS  m_surfaceAccess;
-    TORC_MAPSURF     m_mapSurface;
-    TORC_UNMAPSURF   m_unmapSurface;
-};
-
 QString ProfileToString(VdpDecoderProfile Profile)
 {
     switch (Profile)
