@@ -114,6 +114,7 @@ bool VideoRenderer::DisplayReset(void)
 {
     m_colourSpace->SetChanged(true);
     m_validVideoFrame = false;
+    m_lastInputFormat = AV_PIX_FMT_NONE;
     return true;
 }
 
@@ -125,8 +126,9 @@ QSet<TorcPlayer::PlayerProperty> VideoRenderer::GetSupportedProperties(void)
 void VideoRenderer::ResetOutput(void)
 {
     m_colourSpace->SetChanged(true);
-    m_validVideoFrame = false;
+    m_validVideoFrame         = false;
     m_usingHighQualityScaling = false;
+    m_lastInputFormat         = AV_PIX_FMT_NONE;
 }
 
 void VideoRenderer::UpdateRefreshRate(VideoFrame* Frame)
