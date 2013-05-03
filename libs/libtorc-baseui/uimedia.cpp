@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ UIMedia::UIMedia(UIWidget *Root, UIWidget *Parent, const QString &Name, int Flag
 
     gLocalContext->AddObserver(this);
 
-    SetURI("/home/mark/Dropbox/Videos/bourne.mp4");
+    SetURI("/Users/mark/Dropbox/Videos/anamorphic.m4v");
 }
 
 UIMedia::~UIMedia()
