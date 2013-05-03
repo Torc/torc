@@ -28,7 +28,6 @@
 
 bool VideoVDA::InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
 {
-    // NB this is currently disabled by default as it is not stable
     if (Format == AV_PIX_FMT_VDA_VLD && Context->codec_id == AV_CODEC_ID_H264)
     {
         struct vda_context *context = new vda_context;
