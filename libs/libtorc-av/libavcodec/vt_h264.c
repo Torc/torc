@@ -65,7 +65,9 @@ static int decode_slice(AVCodecContext *avctx,
 
 static int end_frame(AVCodecContext *avctx)
 {
+    H264Context *h            = avctx->priv_data;
     struct vt_context *vt_ctx = avctx->hwaccel_context;
+    AVFrame *frame            = &h->cur_pic_ptr->f;
     int status;
 
     if (!vt_ctx->session || !vt_ctx->priv_bitstream)
@@ -78,7 +80,7 @@ static int end_frame(AVCodecContext *avctx)
         return status;
     }
 
-    ff_vt_end_frame(avctx->priv_data);
+    frame->data[3] = (void*)vt_ctx->cv_buffer;
 
     return status;
 }

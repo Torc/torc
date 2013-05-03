@@ -240,8 +240,7 @@ void ff_vt_end_frame(MpegEncContext *s)
 {
     struct vt_context * const vt_ctx = s->avctx->hwaccel_context;
     AVFrame *frame = &s->current_picture_ptr->f;
-    if (frame)
-        frame->data[3] = (void*)vt_ctx->cv_buffer;
+    frame->data[3] = (void*)vt_ctx->cv_buffer;
 }
 
 int ff_vt_session_create(struct vt_context *vt_ctx,
