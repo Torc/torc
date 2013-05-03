@@ -111,7 +111,7 @@ void VideoFrame::Initialise(AVPixelFormat Format, int Width, int Height)
         .arg(av_get_pix_fmt_name(Format)).arg(Width).arg(Height));
 
     AVPixelFormat cpuformat = Format;
-    if (Format == AV_PIX_FMT_VDA_VLD)
+    if (Format == AV_PIX_FMT_VDA_VLD || Format == AV_PIX_FMT_VT_VLD)
         m_secondaryPixelFormat = cpuformat = m_preferredDisplayFormat;
 
     m_rawWidth        = Width;

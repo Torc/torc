@@ -143,6 +143,7 @@ Hardware accelerators:
   --enable-dxva2           enable DXVA2 code
   --enable-vaapi           enable VAAPI code
   --enable-vda             enable VDA code
+  --enable-vt              enable VideoToolbox code
   --enable-vdpau           enable VDPAU code
 
 Individual component options:
@@ -1226,6 +1227,7 @@ HWACCEL_LIST="
     vaapi
     vda
     vdpau
+    vt
 "
 
 LIBRARY_LIST="
@@ -1865,11 +1867,15 @@ vaapi_deps="va_va_h"
 vda_deps="VideoDecodeAcceleration_VDADecoder_h pthreads"
 vda_extralibs="-framework CoreFoundation -framework VideoDecodeAcceleration -framework QuartzCore"
 vdpau_deps="vdpau_vdpau_h vdpau_vdpau_x11_h"
+vt_deps="VideoToolbox_VideoToolbox_h"
+
 
 h263_vaapi_hwaccel_deps="vaapi"
 h263_vaapi_hwaccel_select="h263_decoder"
 h263_vdpau_hwaccel_deps="vdpau"
 h263_vdpau_hwaccel_select="h263_decoder"
+h263_vt_hwaccel_deps="vt"
+h263_vt_hwaccel_select="h263_decoder"
 h264_crystalhd_decoder_select="crystalhd h264_mp4toannexb_bsf h264_parser"
 h264_dxva2_hwaccel_deps="dxva2"
 h264_dxva2_hwaccel_select="h264_decoder"
@@ -1883,6 +1889,8 @@ h264_vdpau_decoder_deps="vdpau"
 h264_vdpau_decoder_select="h264_decoder"
 h264_vdpau_hwaccel_deps="vdpau"
 h264_vdpau_hwaccel_select="h264_decoder"
+h264_vt_hwaccel_deps="vt"
+h264_vt_hwaccel_select="h264_decoder"
 mpeg_vdpau_decoder_deps="vdpau"
 mpeg_vdpau_decoder_select="mpegvideo_decoder"
 mpeg1_vdpau_decoder_deps="vdpau"
@@ -1896,6 +1904,8 @@ mpeg2_vaapi_hwaccel_deps="vaapi"
 mpeg2_vaapi_hwaccel_select="mpeg2video_decoder"
 mpeg2_vdpau_hwaccel_deps="vdpau"
 mpeg2_vdpau_hwaccel_select="mpeg2video_decoder"
+mpeg2_vt_hwaccel_deps="vt"
+mpeg2_vt_hwaccel_select="mpeg2video_decoder"
 mpeg4_crystalhd_decoder_select="crystalhd"
 mpeg4_vaapi_hwaccel_deps="vaapi"
 mpeg4_vaapi_hwaccel_select="mpeg4_decoder"
@@ -1903,6 +1913,8 @@ mpeg4_vdpau_decoder_deps="vdpau"
 mpeg4_vdpau_decoder_select="mpeg4_decoder"
 mpeg4_vdpau_hwaccel_deps="vdpau"
 mpeg4_vdpau_hwaccel_select="mpeg4_decoder"
+mpeg4_vt_hwaccel_deps="vt"
+mpeg4_vt_hwaccel_select="mpeg4_decoder"
 msmpeg4_crystalhd_decoder_select="crystalhd"
 vc1_crystalhd_decoder_select="crystalhd"
 vc1_dxva2_hwaccel_deps="dxva2"
@@ -3915,6 +3927,11 @@ check_header asm/types.h
 
 disabled  zlib || check_lib   zlib.h      zlibVersion -lz   || disable  zlib
 disabled bzlib || check_lib2 bzlib.h BZ2_bzlibVersion -lbz2 || disable bzlib
+
+# check for VideoToolbox header
+if ! disabled vda && check_header VideoToolbox/VideoToolbox.h; then
+    enable vt && add_extralibs -framework CoreFoundation -framework VideoToolbox -framework CoreMedia -framework QuartzCore
+fi
 
 if ! disabled w32threads && ! enabled pthreads; then
     check_func_headers "windows.h process.h" _beginthreadex && enable w32threads

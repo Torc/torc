@@ -1221,6 +1221,9 @@ static const enum AVPixelFormat mpeg2_hwaccel_pixfmt_list_420[] = {
 #if CONFIG_MPEG2_VAAPI_HWACCEL
     AV_PIX_FMT_VAAPI_VLD,
 #endif
+#if CONFIG_MPEG2_VT_HWACCEL
+    AV_PIX_FMT_VT_VLD,
+#endif
     AV_PIX_FMT_YUV420P,
     AV_PIX_FMT_NONE
 };

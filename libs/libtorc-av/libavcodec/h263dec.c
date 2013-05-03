@@ -769,6 +769,9 @@ const enum AVPixelFormat ff_h263_hwaccel_pixfmt_list_420[] = {
 #if CONFIG_VDPAU
     AV_PIX_FMT_VDPAU,
 #endif
+#if CONFIG_VT
+    AV_PIX_FMT_VT_VLD,
+#endif
     AV_PIX_FMT_YUV420P,
     AV_PIX_FMT_NONE
 };

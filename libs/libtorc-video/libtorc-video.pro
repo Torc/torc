@@ -43,6 +43,14 @@ contains(CONFIG_VDA, yes) {
     LIBS           += -framework CoreVideo -framework CoreFoundation
 }
 
+contains(CONFIG_VT, yes) {
+    HEADERS += platforms/videovt.h
+    SOURCES += platforms/videovt.cpp
+    QMAKE_CXXFLAGS += -F/System/Library/Frameworks/CoreVideo.framework/Frameworks
+    QMAKE_CXXFLAGS += -F/System/Library/Frameworks/CoreFoundation.framework/Frameworks
+    LIBS           += -framework CoreVideo -framework CoreFoundation
+}
+
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files += videoplayer.h    videodecoder.h
 inc.files += videoframe.h     videobuffers.h
