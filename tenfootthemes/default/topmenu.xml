@@ -46,107 +46,110 @@
                 SetProperty(TorcPlayer.Contrast,   this.GetProperty(TorcPlayer.Contrast));
                 SetProperty(TorcPlayer.Saturation, this.GetProperty(TorcPlayer.Saturation));
                 SetProperty(TorcPlayer.Hue,        this.GetProperty(TorcPlayer.Hue));
-                media_media_colourcontrols.Hide();
+                media_media_reveal_colourcontrols.Hide();
             </scriptfunction>
             <scriptfunction name="SetProperty" arguments="Property,Value">
                 var actioned = false;
                 if (Property == TorcPlayer.Brightness)
                 {
-                    media_media_colourcontrols_brightness.SetText(Value);
-                    media_media_colourcontrols_brightness_switch.SetRotation((Value - 50) * 1.8);
+                    media_media_reveal_colourcontrols_brightness.SetText(Value);
+                    media_media_reveal_colourcontrols_brightness_switch.SetRotation((Value - 50) * 1.8);
                     actioned = true;
                 }
                 else if (Property == TorcPlayer.Contrast)
                 {
-                    media_media_colourcontrols_contrast.SetText(Value);
-                    media_media_colourcontrols_contrast_switch.SetRotation((Value - 50) * 1.8);
+                    media_media_reveal_colourcontrols_contrast.SetText(Value);
+                    media_media_reveal_colourcontrols_contrast_switch.SetRotation((Value - 50) * 1.8);
                     actioned = true;
                 }
                 else if (Property == TorcPlayer.Saturation)
                 {
-                    media_media_colourcontrols_saturation.SetText(Value);
-                    media_media_colourcontrols_saturation_switch.SetRotation((Value - 50) * 1.8);
+                    media_media_reveal_colourcontrols_saturation.SetText(Value);
+                    media_media_reveal_colourcontrols_saturation_switch.SetRotation((Value - 50) * 1.8);
                     actioned = true;
                 }
                 else if (Property == TorcPlayer.Hue)
                 {
-                    media_media_colourcontrols_hue.SetText(Value);
-                    media_media_colourcontrols_hue_switch.SetRotation((Value - 50) * 1.8);
+                    media_media_reveal_colourcontrols_hue.SetText(Value);
+                    media_media_reveal_colourcontrols_hue_switch.SetRotation((Value - 50) * 1.8);
                     actioned = true;
                 }
                 if (actioned)
                 {
-                    media_media_colourcontrols_Deactivated.Stop();
-                    media_media_colourcontrols.Activate();
+                    media_media_reveal_colourcontrols_Deactivated.Stop();
+                    media_media_reveal_colourcontrols.Activate();
                 }
             </scriptfunction>
             <scriptfunction name="PropertyAvailable" arguments="Property">
                 if (Property == TorcPlayer.Brightness)
-                    media_media_colourcontrols_brightness.Show();
+                    media_media_reveal_colourcontrols_brightness.Show();
                 else if (Property == TorcPlayer.Contrast)
-                    media_media_colourcontrols_contrast.Show();
+                    media_media_reveal_colourcontrols_contrast.Show();
                 else if (Property == TorcPlayer.Saturation)
-                    media_media_colourcontrols_saturation.Show();
+                    media_media_reveal_colourcontrols_saturation.Show();
                 else if (Property == TorcPlayer.Hue)
-                    media_media_colourcontrols_hue.Show();
+                    media_media_reveal_colourcontrols_hue.Show();
             </scriptfunction>
             <scriptfunction name="PropertyUnavailable" arguments="Property">
                 if (Property == TorcPlayer.Brightness)
-                    media_media_colourcontrols_brightness.Hide();
+                    media_media_reveal_colourcontrols_brightness.Hide();
                 else if (Property == TorcPlayer.Contrast)
-                    media_media_colourcontrols_contrast.Hide();
+                    media_media_reveal_colourcontrols_contrast.Hide();
                 else if (Property == TorcPlayer.Saturation)
-                    media_media_colourcontrols_saturation.Hide();
+                    media_media_reveal_colourcontrols_saturation.Hide();
                 else if (Property == TorcPlayer.Hue)
-                    media_media_colourcontrols_hue.Hide();
+                    media_media_reveal_colourcontrols_hue.Hide();
             </scriptfunction>
             <connect signal="Finalised" slot="Finalise"/>
             <connect signal="PropertyChanged(int,QVariant)" slot="SetProperty"/>
             <connect signal="PropertyAvailable(int)"        slot="PropertyAvailable"/>
             <connect signal="PropertyUnavailable(int)"      slot="PropertyUnavailable"/>
-            <group name="colourcontrols" position="1020,780,800,200">
-                <effect alpha="0" verticalzoom="0.5" centre="bottom"/>
-                <animation name="Activated">
-                    <connect signal="Finished" receiver=".." slot="Deactivate"/>
-                    <group type="sequential">
-                        <group type="parallel">
-                            <element duration="200" property="alpha" endvalue="1"/>
-                            <element duration="200" property="verticalzoom" endvalue="1"/>
+            <widget name="reveal" position="1020,780,800,200">
+                <clip rect="0,0,800,185"/>
+                <group name="colourcontrols" position="0,200,800,200">
+                    <effect alpha="0" centre="bottom"/>
+                    <animation name="Activated">
+                        <connect signal="Finished" receiver=".." slot="Deactivate"/>
+                        <group type="sequential">
+                            <group type="parallel">
+                                <element duration="400" property="alpha" endvalue="1" easingcurve="outquad"/>
+                                <element duration="400" property="position" endvalue="0,0" easingcurve="outquad"/>
+                            </group>
+                            <pause duration="5000"/>
                         </group>
-                        <pause   duration="5000"/>
-                    </group>
-                </animation>
-                <animation name="Deactivated">
-                    <connect signal="Finished" receiver=".." slot="Hide"/>
-                    <element duration="400" property="alpha" endvalue="0"/>
-                    <element duration="400" property="verticalzoom" endvalue="0.5"/>
-                </animation>
-                <layout type="horizontal" alignment="left"/>
-                <text name="knob" position="0,0,200,200" inherits="/templates_button_text" template="1">
-                    <shape name="switch" position="0,0,200,200">
-                        <path>
-                            <pen color="DDDDDDFF" width="3"/>
-                            <addellipse rect="30,30,140,140"/>
-                            <moveto point="100,30"/>
-                            <lineto point="100,15"/>
-                        </path>
-                        <fixedblur radius="1"/>
-                    </shape>
-                    <shape name="surround" position="0,0,200,200">
-                        <path>
-                            <pen color="FF0000FF" width="3"/>
-                            <moveto point="15,100"/>
-                            <lineto point="26,100"/>
-                            <arcto  rect="26,26,148,148" startangle="180" sweeplength="180"/>
-                            <lineto point="185,100"/>
-                        </path>
-                    </shape>
-                </text>
-                <text name="brightness" inherits="../knob" />
-                <text name="contrast"   inherits="../knob" />
-                <text name="saturation" inherits="../knob" />
-                <text name="hue"        inherits="../knob" />
-            </group>
+                    </animation>
+                    <animation name="Deactivated">
+                        <connect signal="Finished" receiver=".." slot="Hide"/>
+                        <element duration="1000" property="alpha" endvalue="0"/>
+                        <element duration="1000" property="position" endvalue="0,200"/>
+                    </animation>
+                    <layout type="horizontal" alignment="left"/>
+                    <text name="knob" position="0,0,200,200" inherits="/templates_button_text" template="1">
+                        <shape name="switch" position="0,0,200,200">
+                            <path>
+                                <pen color="DDDDDDFF" width="3"/>
+                                <addellipse rect="30,30,140,140"/>
+                                <moveto point="100,30"/>
+                                <lineto point="100,15"/>
+                            </path>
+                            <fixedblur radius="1"/>
+                        </shape>
+                        <shape name="surround" position="0,0,200,200">
+                            <path>
+                                <pen color="FF0000FF" width="3"/>
+                                <moveto point="15,100"/>
+                                <lineto point="26,100"/>
+                                <arcto  rect="26,26,148,148" startangle="180" sweeplength="180"/>
+                                <lineto point="185,100"/>
+                            </path>
+                        </shape>
+                    </text>
+                    <text name="brightness" inherits="../knob" />
+                    <text name="contrast"   inherits="../knob" />
+                    <text name="saturation" inherits="../knob" />
+                    <text name="hue"        inherits="../knob" />
+                </group>
+            </widget>
         </media>
         <button name="top_1" inherits="/templates_button">
             <message>Close</message>
