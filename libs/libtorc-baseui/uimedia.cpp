@@ -158,6 +158,16 @@ UIWidget* UIMedia::CreateCopy(UIWidget *Parent, const QString &Newname)
     return media;
 }
 
+void UIMedia::Play(void)
+{
+    PlayMedia(false);
+}
+
+int UIMedia::GetState(void)
+{
+    return m_player->GetState();
+}
+
 QVariant UIMedia::GetProperty(int Property)
 {
     return m_player->GetProperty((TorcPlayer::PlayerProperty)Property);
@@ -176,6 +186,7 @@ bool UIMedia::IsPropertyAvailable(int Property)
 void UIMedia::PlayerStateChanged(TorcPlayer::PlayerState NewState)
 {
     LOG(VB_GENERAL, LOG_INFO, QString("Player state '%1'").arg(TorcPlayer::StateToString(NewState)));
+    emit StateChanged(NewState);
 }
 
 void UIMedia::PlayerPropertyChanged(TorcPlayer::PlayerProperty Property, const QVariant &Value)
