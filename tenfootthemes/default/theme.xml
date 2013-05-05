@@ -16,7 +16,7 @@
     <rootwindow>splash</rootwindow>
     <globals>
         <file>splashscreen.xml</file>
-        <file>background.xml</file>
+        <file>templates.xml</file>
         <file>topmenu.xml</file>
         <file>fonts.xml</file>
     </globals>
