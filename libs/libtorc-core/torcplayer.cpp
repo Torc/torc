@@ -300,7 +300,7 @@ bool TorcPlayer::PlayMedia(const QString &URI, bool StartPaused)
         return true;
     }
 
-    if (URI == m_uri)
+    if (URI == m_uri && !(m_state == Stopped || m_state == Errored))
         return false;
 
     if (URI.isEmpty())
