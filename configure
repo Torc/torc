@@ -351,6 +351,7 @@ Torc external library support:
   --disable-libdns_sd      disable Bonjour via libdns_sd [autodetect]
   --disable-libudev        disable udev via libudev [autodetect]
   --disable-qtdbus         disable DBus via QtDbus [autodetect]
+  --disable-qtsvg          disable SVG support via QtSvg [autodetect]
   --disable-x11base        disable default X11 support [autodetect]
   --disable-libcrypto      disable use of the OpenSSL cryptographic library
 
@@ -1286,6 +1287,7 @@ CONFIG_LIST="
     libdns_sd
     libudev
     qtdbus
+    qtsvg
     x11base
 "
 
@@ -2229,6 +2231,7 @@ enable libcrypto
 enable libdns_sd
 enable libudev
 enable qtdbus
+enable qtsvg
 qmake_default="qmake"
 
 # build settings
@@ -4475,6 +4478,19 @@ int main(void)
 EOF
 fi
 
+# QtSvg support
+if enabled qtsvg && ! $(pkg-config --exists QtSvg) ; then
+    check_cxx ${qt_inc} <<EOF || { disable qtsvg; }
+#include <QtSvg/QtSvg>
+#include <QtSvg/QSvgRenderer>
+int main(void)
+{
+    QSvgRenderer renderer();
+    return 0;
+}
+EOF
+fi
+
 # udev support for linux disk detection
 enabled libudev && check_lib2 libudev.h udev_new -ludev || disable libudev
 
@@ -4543,9 +4559,10 @@ echo "C++ compiler                 $(which $cxx)"
 echo "qmake                        $(which $qmake) [$($qmake -query QT_VERSION)]"
 echo "libcrypto enabled            ${libcrypto-no}"
 echo "libdns_sd (Bonjour) enabled  ${libdns_sd-no}"
+echo "QtSvg enabled                ${qtsvg-no}"
 if test $target_os = "linux"; then
-    echo "libudev enabled              ${libudev-no}"
     echo "QtDbus enabled               ${qtdbus-no}"
+    echo "libudev enabled              ${libudev-no}"
     echo "X11 enabled                  ${x11base-no}"
 fi
 echo
