@@ -88,9 +88,9 @@ void UIImageLoader::run(void)
 
     QImage *image = NULL;
 
-#if defined(CONFIG_QTSVG)
     if (filename.endsWith("svg", Qt::CaseInsensitive))
     {
+#if defined(CONFIG_QTSVG)
         image = new QImage(m_image->GetMaxSize(), QImage::Format_ARGB32_Premultiplied);
         QPainter painter(image);
         QSvgRenderer renderer(filename);
@@ -102,9 +102,12 @@ void UIImageLoader::run(void)
         {
             LOG(VB_GENERAL, LOG_ERR, QString("Failed to render '%1'").arg(filename));
         }
+#else
+        LOG(VB_GENERAL, LOG_WARNING, QString("No SVG support - unable to load '%1'").arg(filename));
+#endif
     }
     else
-#endif
+
     {
         image = new QImage(filename, "png");
     }
