@@ -8,7 +8,7 @@
         <state visible="false" />
         <scriptfunction name="Startup">
         <![CDATA[
-            if (gTheme.skipsplash == 'yes' && ThemeRoot.SetRootWidget('topmenu'))
+            if (gTheme.skipsplash == 'yes' && ThemeRoot.SetRootWidget('background'))
             {
                 Log('Disabling splash screen');
                 this.Disable();
@@ -22,7 +22,7 @@
         </scriptfunction>
         <connect signal="Shown" slot="Startup" />
         <connect signal="Disabled" slot="Close"/>
-        <connect sender="bg_zoom" signal="Finished" receiver="/topmenu" slot="Activate" />
+        <connect sender="bg_zoom" signal="Finished" receiver="/background" slot="Activate" />
         <connect sender="bg_zoom" signal="Finished" slot="Disable" />
         <shape name="line" position="0,795,1920,10">
             <path>
