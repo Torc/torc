@@ -24,10 +24,16 @@
 #include <QFile>
 
 // Torc
+#include "torcconfig.h"
 #include "torclogging.h"
 #include "uiimage.h"
 #include "uiimagetracker.h"
 #include "uiimageloader.h"
+
+#if defined(CONFIG_QTSVG)
+#include <QPainter>
+#include <QSvgRenderer>
+#endif
 
 /*! \class UIImageLoader
  *  \brief A simple asynchronous image loader.
@@ -80,7 +86,28 @@ void UIImageLoader::run(void)
         return;
     }
 
-    QImage *image = new QImage(filename, "png");
+    QImage *image = NULL;
+
+#if defined(CONFIG_QTSVG)
+    if (filename.endsWith("svg", Qt::CaseInsensitive))
+    {
+        image = new QImage(m_image->GetMaxSize(), QImage::Format_ARGB32_Premultiplied);
+        QPainter painter(image);
+        QSvgRenderer renderer(filename);
+        if (renderer.isValid())
+        {
+            renderer.render(&painter);
+        }
+        else
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Failed to render '%1'").arg(filename));
+        }
+    }
+    else
+#endif
+    {
+        image = new QImage(filename, "png");
+    }
 
     if (image->isNull())
         LOG(VB_GENERAL, LOG_WARNING, QString("Failed to load '%1'").arg(filename));

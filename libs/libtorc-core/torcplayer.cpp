@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -300,7 +300,7 @@ bool TorcPlayer::PlayMedia(const QString &URI, bool StartPaused)
         return true;
     }
 
-    if (URI == m_uri)
+    if (URI == m_uri && !(m_state == Stopped || m_state == Errored))
         return false;
 
     if (URI.isEmpty())

@@ -17,6 +17,7 @@ class TorcDecoder;
 class TORC_CORE_PUBLIC TorcPlayer : public QObject
 {
     Q_OBJECT
+    Q_ENUMS(PlayerState)
     Q_ENUMS(PlayerProperty)
 
   public:
@@ -28,7 +29,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
         UserFacing   = (1 << 2)
     };
 
-    typedef enum PlayerState
+    enum PlayerState
     {
         Errored = -1,
         None    = 0,
@@ -40,7 +41,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
         Pausing,
         Stopping,
         Stopped
-    } PlayerState;
+    };
 
     enum PlayerProperty
     {

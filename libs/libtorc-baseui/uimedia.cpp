@@ -2,7 +2,7 @@
 *
 * This file is part of the Torc project.
 *
-* Copyright (C) Mark Kendall 2012
+* Copyright (C) Mark Kendall 2012-13
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ UIMedia::UIMedia(UIWidget *Root, UIWidget *Parent, const QString &Name, int Flag
 
     gLocalContext->AddObserver(this);
 
-    SetURI("/home/mark/Dropbox/Videos/bourne.mp4");
+    SetURI("/Users/mark/Dropbox/Videos/anamorphic.m4v");
 }
 
 UIMedia::~UIMedia()
@@ -158,6 +158,16 @@ UIWidget* UIMedia::CreateCopy(UIWidget *Parent, const QString &Newname)
     return media;
 }
 
+void UIMedia::Play(void)
+{
+    PlayMedia(false);
+}
+
+int UIMedia::GetState(void)
+{
+    return m_player->GetState();
+}
+
 QVariant UIMedia::GetProperty(int Property)
 {
     return m_player->GetProperty((TorcPlayer::PlayerProperty)Property);
@@ -176,6 +186,7 @@ bool UIMedia::IsPropertyAvailable(int Property)
 void UIMedia::PlayerStateChanged(TorcPlayer::PlayerState NewState)
 {
     LOG(VB_GENERAL, LOG_INFO, QString("Player state '%1'").arg(TorcPlayer::StateToString(NewState)));
+    emit StateChanged(NewState);
 }
 
 void UIMedia::PlayerPropertyChanged(TorcPlayer::PlayerProperty Property, const QVariant &Value)

@@ -25,12 +25,15 @@ class UIMedia : public UIWidget, public TorcPlayerInterface
 
     // signals to update the theme
   signals:
+    void            StateChanged              (int State);
     void            PropertyChanged           (int Property, QVariant Value);
     void            PropertyAvailable         (int Property);
     void            PropertyUnavailable       (int Property);
 
     // slots to interrogate the widget from theme etc (external)
   public slots:
+    void            Play                      (void);
+    int             GetState                  (void);
     QVariant        GetProperty               (int Property);
     void            SetProperty               (int Property, const QVariant Value);
     bool            IsPropertyAvailable       (int Property);
