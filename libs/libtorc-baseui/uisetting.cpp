@@ -62,6 +62,9 @@ void UISetting::CreateSettings(void)
     // create items in main group
     foreach (TorcSetting *setting, settings)
     {
+        if (!setting->IsActive())
+            continue;
+
         TorcSettingGroup *group = dynamic_cast<TorcSettingGroup*>(setting);
         if (!group)
         {
