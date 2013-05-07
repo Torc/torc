@@ -43,14 +43,6 @@ bool TorcNetwork::IsAllowed(void)
     return gNetwork ? gNetwork->IsAllowedPriv() : false;
 }
 
-void TorcNetwork::Allow(bool Allow)
-{
-    QMutexLocker locker(gNetworkLock);
-
-    if (gNetwork)
-        gNetwork->SetAllowed(Allow);
-}
-
 QString TorcNetwork::GetMACAddress(void)
 {
     QMutexLocker locker(gNetworkLock);
@@ -98,10 +90,19 @@ QString ConfigurationTypeToString(QNetworkConfiguration::Type Type)
 TorcNetwork::TorcNetwork()
   : QNetworkAccessManager(),
     m_online(false),
-    m_allow(false),
     m_manager(new QNetworkConfigurationManager(this))
 {
     LOG(VB_GENERAL, LOG_INFO, "Opening network access manager");
+
+    m_networkGroup   = new TorcSettingGroup(gRootSetting, tr("Network"));
+    m_networkAllowed = new TorcSetting(m_networkGroup, QString(TORC_CORE + "AllowNetwork"),
+                                       tr("Allow network access"), TorcSetting::Checkbox,
+                                       true, QVariant((bool)true));
+    m_networkAllowed->SetActive(gLocalContext->FlagIsSet(Torc::Network));
+    // hide the network group if there is nothing to change
+    m_networkGroup->SetActive(gLocalContext->FlagIsSet(Torc::Network));
+
+    connect(m_networkAllowed, SIGNAL(ValueChanged(bool)), this, SLOT(SetAllowed(bool)));
 
     connect(m_manager, SIGNAL(configurationAdded(const QNetworkConfiguration&)),
             this,      SLOT(ConfigurationAdded(const QNetworkConfiguration&)));
@@ -115,21 +116,29 @@ TorcNetwork::TorcNetwork()
             this,      SLOT(UpdateCompleted()));
 
     setConfiguration(m_manager->defaultConfiguration());
-
-    // N.B. networkAccessible is true by default
-    bool allowed = gLocalContext->GetSetting(TORC_CORE + "NetworkEnabled", true) &&
-                   gLocalContext->FlagIsSet(Torc::Network);
-    SetAllowed(allowed);
-
+    SetAllowed(m_networkAllowed->IsActive() && m_networkAllowed->GetValue().toBool());
     UpdateConfiguration(true);
-
-    gLocalContext->AddObserver(this);
 }
 
 TorcNetwork::~TorcNetwork()
 {
-    gLocalContext->RemoveObserver(this);
+    // remove settings
+    if (m_networkAllowed)
+    {
+        m_networkAllowed->Remove();
+        m_networkAllowed->DownRef();
+    }
 
+    if (m_networkGroup)
+    {
+        m_networkGroup->Remove();
+        m_networkAllowed->DownRef();
+    }
+
+    m_networkAllowed = NULL;
+    m_networkGroup   = NULL;
+
+    // delete the configuration manager
     if (m_manager)
         m_manager->deleteLater();
     m_manager = NULL;
@@ -144,25 +153,20 @@ bool TorcNetwork::IsOnline(void)
 
 bool TorcNetwork::IsAllowedPriv(void)
 {
-    return m_allow;
+    if (m_networkAllowed)
+        return m_networkAllowed->IsActive() && m_networkAllowed->GetValue().toBool();
+
+    return false;
 }
 
 void TorcNetwork::SetAllowed(bool Allow)
 {
-    if (Allow && !gLocalContext->FlagIsSet(Torc::Network))
-        Allow = false;
-
-    if (m_allow == Allow)
-        return;
-
-    m_allow = Allow;
-
-    if (!m_allow)
+    if (!Allow)
         CloseConnections();
 
-    gLocalContext->NotifyEvent(m_allow ? Torc::NetworkEnabled : Torc::NetworkDisabled);
-    setNetworkAccessible(m_allow ? Accessible : NotAccessible);
-    LOG(VB_GENERAL, LOG_INFO, QString("Network access %1").arg(m_allow ? "allowed" : "not allowed"));
+    gLocalContext->NotifyEvent(Allow ? Torc::NetworkEnabled : Torc::NetworkDisabled);
+    setNetworkAccessible(Allow ? Accessible : NotAccessible);
+    LOG(VB_GENERAL, LOG_INFO, QString("Network access %1").arg(Allow ? "allowed" : "not allowed"));
 }
 
 void TorcNetwork::ConfigurationAdded(const QNetworkConfiguration &Config)
@@ -190,33 +194,6 @@ void TorcNetwork::UpdateCompleted(void)
     UpdateConfiguration();
 }
 
-bool TorcNetwork::event(QEvent *Event)
-{
-    if (Event->type() == TorcEvent::TorcEventType)
-    {
-        TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
-        if (torcevent)
-        {
-            int event = torcevent->Event();
-
-            if (event == Torc::DisableNetwork)
-            {
-                SetAllowed(false);
-                UpdateConfiguration(true);
-                return true;
-            }
-            else if (event == Torc::EnableNetwork)
-            {
-                SetAllowed(true);
-                UpdateConfiguration(true);
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
 void TorcNetwork::CloseConnections(void)
 {
 }
@@ -232,8 +209,7 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
 
         if (m_configuration.isValid())
         {
-            LOG(VB_GENERAL, LOG_INFO, QString("Network connection (Access %1) Name: %2 Bearer: %3 Type: %4")
-                .arg(m_allow ? "allowed" : "disallowed")
+            LOG(VB_GENERAL, LOG_INFO, QString("Network Name: %1 Bearer: %2 Type: %3")
                 .arg(configuration.name())
                 .arg(configuration.bearerTypeName())
                 .arg(ConfigurationTypeToString(configuration.type())));
@@ -274,6 +250,9 @@ QString TorcNetwork::MACAddress(void)
     return DEFAULT_MAC_ADDRESS;
 }
 
+/*! \class TorcNetworkObject
+ *  \brief A static class used to create the TorcNetwork singleton in the admin thread.
+*/
 class TorcNetworkObject : TorcAdminObject
 {
   public:

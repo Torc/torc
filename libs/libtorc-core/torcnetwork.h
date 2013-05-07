@@ -7,6 +7,7 @@
 
 // Torc
 #include "torccoreexport.h"
+#include "torcsetting.h"
 
 #define DEFAULT_MAC_ADDRESS QString("00:00:00:00:00:00")
 
@@ -20,7 +21,6 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static bool IsAvailable         (void);
     static bool IsAllowed           (void);
     static QString GetMACAddress    (void);
-    static void Allow               (bool Allow);
 
   protected:
     static void Setup               (bool Create);
@@ -35,19 +35,22 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     void    OnlineStateChanged      (bool  Online);
     void    UpdateCompleted         (void);
 
+  protected slots:
+    void    SetAllowed              (bool Allow);
+
   protected:
     TorcNetwork();
     bool    IsOnline                (void);
     bool    IsAllowedPriv           (void);
-    void    SetAllowed              (bool Allow);
-    bool    event                   (QEvent *Event);
+
     void    CloseConnections        (void);
     void    UpdateConfiguration     (bool Creating = false);
     QString MACAddress              (void);
 
   private:
     bool                             m_online;
-    bool                             m_allow;
+    TorcSettingGroup                *m_networkGroup;
+    TorcSetting                     *m_networkAllowed;
     QNetworkConfigurationManager    *m_manager;
     QNetworkConfiguration            m_configuration;
     QNetworkInterface                m_interface;
