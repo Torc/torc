@@ -1484,10 +1484,8 @@ void AudioOutput::SetAudiotime(int Frames, qint64 Timecode)
         processframes_stretched -= m_digitalEncoder->Buffered();
     }
 
-    m_audioBufferTimecode =
-        Timecode + (m_effectiveDSPRate ? ((Frames + processframes_unstretched * 100000) +
-                            (processframes_stretched * m_effectiveStretchFactor)
-                       ) / m_effectiveDSPRate : 0);
+    m_audioBufferTimecode = Timecode +
+        (m_effectiveDSPRate ? (((Frames + processframes_unstretched) * 100000) + (processframes_stretched * m_effectiveStretchFactor)) / m_effectiveDSPRate : 0);
 
     // check for timecode wrap and reset m_timecode if detected
     // timecode will always be monotonic asc if not seeked and reset
