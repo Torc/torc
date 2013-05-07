@@ -302,6 +302,12 @@ TorcPower::~TorcPower()
         m_powerEnabled->DownRef();
     }
 
+    if (m_powerGroupItem)
+    {
+        m_powerGroupItem->Remove();
+        m_powerEnabled->DownRef();
+    }
+
     if (m_priv)
         m_priv->deleteLater();
 
@@ -309,6 +315,8 @@ TorcPower::~TorcPower()
     m_allowRestart   = NULL;
     m_allowHibernate = NULL;
     m_allowSuspend   = NULL;
+    m_powerEnabled   = NULL;
+    m_powerGroupItem = NULL;
     m_priv           = NULL;
 }
 
