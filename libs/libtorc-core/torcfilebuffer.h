@@ -18,9 +18,9 @@ class TorcFileBuffer : public TorcBuffer
     int      Read            (quint8 *Buffer, qint32 BufferSize);
     int      Peek            (quint8 *Buffer, qint32 BufferSize);
     int      Write           (quint8 *Buffer, qint32 BufferSize);
-    int64_t  Seek            (int64_t  Offset, int Whence);
+    int64_t  Seek            (int64_t Offset, int Whence);
     QString  GetFilteredPath (void);
-    QByteArray ReadAll       (void);
+    QByteArray ReadAll       (int Timeout = 0);
     qint64   GetSize         (void);
     qint64   GetPosition     (void);
     bool     IsSequential    (void);

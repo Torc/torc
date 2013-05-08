@@ -38,7 +38,7 @@ class TORC_CORE_PUBLIC TorcBuffer
     static TorcBuffer* Create             (const QString &URI, bool Media = false);
     static int         Read               (void* Object, quint8* Buffer, qint32 BufferSize);
     static int         Write              (void* Object, quint8* Buffer, qint32 BufferSize);
-    static int64_t     Seek               (void* Object, int64_t  Offset, int Whence);
+    static int64_t     Seek               (void* Object, int64_t Offset, int Whence);
 
     virtual int        (*GetReadFunction  (void))(void*, quint8*, qint32);
     virtual int        (*GetWriteFunction (void))(void*, quint8*, qint32);
@@ -52,13 +52,13 @@ class TORC_CORE_PUBLIC TorcBuffer
     virtual int        Read               (quint8 *Buffer, qint32 BufferSize) = 0;
     virtual int        Peek               (quint8 *Buffer, qint32 BufferSize) = 0;
     virtual int        Write              (quint8 *Buffer, qint32 BufferSize) = 0;
-    virtual int64_t    Seek               (int64_t  Offset, int Whence) = 0;
+    virtual int64_t    Seek               (int64_t Offset, int Whence) = 0;
     virtual qint64     GetSize            (void) = 0;
     virtual qint64     GetPosition        (void) = 0;
     virtual bool       IsSequential       (void) = 0;
     virtual qint64     BytesAvailable     (void) = 0;
     virtual int        BestBufferSize     (void) = 0;
-    virtual QByteArray ReadAll            (void);
+    virtual QByteArray ReadAll            (int Timeout = 0);
     virtual bool       Pause              (void);
     virtual bool       Unpause            (void);
     virtual bool       TogglePause        (void);

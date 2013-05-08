@@ -136,8 +136,9 @@ bool TorcBuffer::HandleAction(int Action)
     return false;
 }
 
-QByteArray TorcBuffer::ReadAll(void)
+QByteArray TorcBuffer::ReadAll(int Timeout)
 {
+    (void)Timeout;
     return QByteArray();
 }
 

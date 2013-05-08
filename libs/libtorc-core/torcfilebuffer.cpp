@@ -185,8 +185,10 @@ QString TorcFileBuffer::GetFilteredPath(void)
     return m_path;
 }
 
-QByteArray TorcFileBuffer::ReadAll(void)
+QByteArray TorcFileBuffer::ReadAll(int Timeout)
 {
+    (void)Timeout;
+
     if (m_file)
         return m_file->readAll();
 
