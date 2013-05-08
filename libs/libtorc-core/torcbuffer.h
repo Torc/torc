@@ -63,7 +63,7 @@ class TORC_CORE_PUBLIC TorcBuffer
     virtual bool       Unpause            (void);
     virtual bool       TogglePause        (void);
     virtual QString    GetFilteredUri     (void);
-    virtual QString    GetFilteredPath    (void);
+    virtual QString    GetPath            (void);
     QString            GetURI             (void);
     bool               GetPaused          (void);
     void               SetBitrate         (int Bitrate, int Factor);

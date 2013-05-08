@@ -196,7 +196,7 @@ QString TorcBuffer::GetFilteredUri(void)
     return m_uri;
 }
 
-QString TorcBuffer::GetFilteredPath(void)
+QString TorcBuffer::GetPath(void)
 {
     return m_path;
 }

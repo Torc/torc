@@ -180,7 +180,7 @@ int64_t TorcFileBuffer::Seek(int64_t Offset, int Whence)
     return -1;
 }
 
-QString TorcFileBuffer::GetFilteredPath(void)
+QString TorcFileBuffer::GetPath(void)
 {
     return m_path;
 }
