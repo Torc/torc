@@ -29,7 +29,6 @@ class TorcFileBuffer : public TorcBuffer
 
   private:
     QFile   *m_file;
-    QString  m_path;
 };
 
 #endif // TORCFILEBUFFER_H

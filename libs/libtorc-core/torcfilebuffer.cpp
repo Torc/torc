@@ -239,13 +239,7 @@ static class TorcFileBufferFactory : public TorcBufferFactory
     TorcBuffer* Create(const QString &URI, const QUrl &URL, const int &Score, int *Abort, const bool &Media)
     {
         if ((URL.scheme().size() < 2) && URL.port() < 0 && Score <= 10)
-        {
-            TorcFileBuffer* result = new TorcFileBuffer(URI, Abort);
-            if (result->Open())
-                return result;
-
-            delete result;
-        }
+            return new TorcFileBuffer(URI, Abort);
 
         return NULL;
     }

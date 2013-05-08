@@ -73,6 +73,7 @@ class TORC_CORE_PUBLIC TorcBuffer
 
   protected:
     QString            m_uri;
+    QString            m_path;
     BufferState        m_state;
     bool               m_paused;
     int                m_bitrate;

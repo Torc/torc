@@ -349,13 +349,7 @@ class TorcRAOPBufferFactory : TorcBufferFactory
     TorcBuffer* Create(const QString &URI, const QUrl &URL, const int &Score, int *Abort, const bool &Media)
     {
         if (Media && URI.startsWith("raop:", Qt::CaseInsensitive) && Score <= 50)
-        {
-            TorcRAOPBuffer* result = new TorcRAOPBuffer(URI, URL, Abort);
-            if (result->Open())
-                return result;
-
-            delete result;
-        }
+            return new TorcRAOPBuffer(URI, URL, Abort);
 
         return NULL;
     }

@@ -30,6 +30,7 @@
 
 TorcBuffer::TorcBuffer(const QString &URI, int *Abort)
   : m_uri(URI),
+    m_path(URI),
     m_state(Status_Created),
     m_paused(true),
     m_bitrate(0),
@@ -57,7 +58,11 @@ TorcBuffer* TorcBuffer::Create(const QString &URI, int *Abort, bool Media)
     {
         buffer = factory->Create(URI, url, score, Abort, Media);
         if (buffer)
-            break;
+        {
+            if (buffer->Open())
+                break;
+            delete buffer;
+        }
     }
 
     if (!buffer)
@@ -193,7 +198,7 @@ QString TorcBuffer::GetFilteredUri(void)
 
 QString TorcBuffer::GetFilteredPath(void)
 {
-    return m_uri;
+    return m_path;
 }
 
 QString TorcBuffer::GetURI(void)
