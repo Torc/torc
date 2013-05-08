@@ -2,8 +2,8 @@
 #include "torclogging.h"
 #include "torccdbuffer.h"
 
-TorcCDBuffer::TorcCDBuffer(const QString &URI)
-  : TorcBuffer(URI),
+TorcCDBuffer::TorcCDBuffer(const QString &URI, int *Abort)
+  : TorcBuffer(URI, Abort),
     m_input(NULL)
 {
 }
@@ -97,16 +97,10 @@ static class TorcCDBufferFactory : public TorcBufferFactory
             Score = 20;
     }
 
-    TorcBuffer* Create(const QString &URI, const QUrl &URL, const int &Score, const bool &Media)
+    TorcBuffer* Create(const QString &URI, const QUrl &URL, const int &Score, int *Abort, const bool &Media)
     {
         if (Media && URI.startsWith("cd:", Qt::CaseInsensitive) && Score <= 20)
-        {
-            TorcCDBuffer* result = new TorcCDBuffer(URI);
-            if (result->Open())
-                return result;
-
-            delete result;
-        }
+            return new TorcCDBuffer(URI, Abort);
 
         return NULL;
     }
