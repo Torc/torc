@@ -103,7 +103,7 @@ int TorcFileBuffer::Read(quint8 *Buffer, qint32 BufferSize)
 
     if (m_file && m_state == Status_Opened)
     {
-        if ((result = m_file->read((char*)Buffer, BufferSize)) > -1)
+        if ((result = m_file->read((char*)Buffer, qMin((qint64)BufferSize, m_file->bytesAvailable()))) > -1)
             return result;
 
         LOG(VB_GENERAL, LOG_ERR, QString("Read error '%1'").arg(m_file->errorString()));
@@ -118,7 +118,7 @@ int TorcFileBuffer::Peek(quint8 *Buffer, qint32 BufferSize)
 
     if (m_file && m_state == Status_Opened)
     {
-        if ((result = m_file->peek((char*)Buffer, BufferSize)) > -1)
+        if ((result = m_file->peek((char*)Buffer, qMin((qint64)BufferSize, m_file->bytesAvailable()))) > -1)
             return result;
 
         LOG(VB_GENERAL, LOG_ERR, QString("Peek error '%1'").arg(m_file->errorString()));
