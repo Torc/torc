@@ -66,7 +66,7 @@ bool TorcFileBuffer::Open(void)
                 return TorcBuffer::Open();
             }
 
-            LOG(VB_GENERAL, LOG_ERR, QString("Faled to open '%1' (%2)")
+            LOG(VB_GENERAL, LOG_ERR, QString("Failed to open '%1' (%2)")
                 .arg(m_uri).arg(m_file->errorString()));
         }
 
