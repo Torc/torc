@@ -12,7 +12,7 @@ extern "C" {
 class TorcRAOPBuffer : public TorcBuffer
 {
   public:
-    explicit TorcRAOPBuffer(const QString &URI, const QUrl &URL);
+    explicit TorcRAOPBuffer(const QString &URI, const QUrl &URL, int *Abort);
     virtual ~TorcRAOPBuffer();
 
     bool       Open               (void);

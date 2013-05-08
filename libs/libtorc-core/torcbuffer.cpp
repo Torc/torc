@@ -28,12 +28,13 @@
  *  \brief The base class for opening media files and streams.
 */
 
-TorcBuffer::TorcBuffer(const QString &URI)
+TorcBuffer::TorcBuffer(const QString &URI, int *Abort)
   : m_uri(URI),
     m_state(Status_Created),
     m_paused(true),
     m_bitrate(0),
-    m_bitrateFactor(1)
+    m_bitrateFactor(1),
+    m_abort(Abort)
 {
 }
 
@@ -41,7 +42,7 @@ TorcBuffer::~TorcBuffer()
 {
 }
 
-TorcBuffer* TorcBuffer::Create(const QString &URI, bool Media)
+TorcBuffer* TorcBuffer::Create(const QString &URI, int *Abort, bool Media)
 {
     TorcBuffer* buffer = NULL;
     QUrl url(URI);
@@ -54,7 +55,7 @@ TorcBuffer* TorcBuffer::Create(const QString &URI, bool Media)
     factory = TorcBufferFactory::GetTorcBufferFactory();
     for ( ; factory; factory = factory->NextTorcBufferFactory())
     {
-        buffer = factory->Create(URI, url, score, Media);
+        buffer = factory->Create(URI, url, score, Abort, Media);
         if (buffer)
             break;
     }

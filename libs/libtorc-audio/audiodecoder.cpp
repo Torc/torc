@@ -1491,8 +1491,11 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
 
     *state = TorcDecoder::Opening;
 
+    // reset interrupt
+    m_interruptDecoder = 0;
+
     // Create Torc buffer
-    m_priv->m_buffer = TorcBuffer::Create(m_uri, true);
+    m_priv->m_buffer = TorcBuffer::Create(m_uri, &m_interruptDecoder, true);
     if (!m_priv->m_buffer)
     {
         CloseDemuxer(Thread);
@@ -1561,7 +1564,6 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
     }
 
     // abort callback
-    m_interruptDecoder = 0;
     m_priv->m_avFormatContext->interrupt_callback.opaque = (void*)&m_interruptDecoder;
     m_priv->m_avFormatContext->interrupt_callback.callback = AudioDecoder::DecoderInterrupt;
 

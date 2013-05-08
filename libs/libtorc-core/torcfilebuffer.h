@@ -10,7 +10,7 @@
 class TorcFileBuffer : public TorcBuffer
 {
   public:
-    explicit TorcFileBuffer(const QString &URI);
+    TorcFileBuffer(const QString &URI, int *Abort);
     ~TorcFileBuffer();
 
     bool     Open            (void);
