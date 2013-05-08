@@ -16,6 +16,25 @@
                 <addroundedrect rect="15,15,1890,1050" xradius="30" yradius="30"/>
             </path>
         </shape>
+        <widget name="opening" position="1720,900,100,100">
+            <state visible="false"/>
+            <connect signal="Shown"  slot="Start" receiver="clockwise_rotate"/>
+            <connect signal="Hidden" slot="Stop"  receiver="clockwise_rotate"/>
+            <shape name="clockwise" position="0,0,100,100">
+                <effect centre="middle"/>
+                <animation name="rotate">
+                    <group type="sequential" loopcount="-1">
+                        <element duration="1000" property="rotation" endvalue="360"/>
+                        <element duration="0" property="rotation" endvalue="0"/>
+                    </group>
+                </animation>
+                <path>
+                    <pen color="AAAAAAFF" width="8" penstyle="DashLine" pencapstyle="RoundCap"/>
+                    <moveto point="0,50"/>
+                    <arcto rect="5,5,90,90" startangle="180" sweeplength="180"/>
+                </path>
+            </shape>
+        </widget>
         <media name="player" position="0,0,1920,1080">
             <effect alpha="0"/>
             <animation name="Selected">
@@ -35,7 +54,8 @@
             </scriptfunction>
             <scriptfunction name="SetState" arguments="Value">
             <![CDATA[
-                if (Value == TorcPlayer.Errored || Value == TorcPlayer.None || Value == TorcPlayer.Stopped)
+                if (Value == TorcPlayer.Errored || Value == TorcPlayer.None ||
+                    Value == TorcPlayer.Stopped || Value == TorcPlayer.Opening)
                 {
                     background_player.Deactivate();
                     if (background_background.IsVisible())
@@ -51,6 +71,15 @@
                     background_background.Deactivate();
                     background_topmenu.Hide();
                     background_player.Select();
+                }
+
+                if (Value == TorcPlayer.Opening)
+                {
+                    background_opening.Show();
+                }
+                else
+                {
+                    background_opening.Hide();
                 }
             ]]>
             </scriptfunction>
