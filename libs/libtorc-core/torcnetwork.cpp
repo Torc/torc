@@ -25,6 +25,164 @@
 #include "torclogging.h"
 #include "torcadminthread.h"
 #include "torcnetwork.h"
+#include "torccoreutils.h"
+
+#include <errno.h>
+
+/*! \class TorcNetworkRequest
+ *
+ * \todo Set chunk size
+ * \todo Poke download thread when buffer space becomes available
+ * \todo Complete ReadAll
+ * \todo Check finished handling
+ * \todo Fix buffer corruption
+*/
+
+TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, int BufferSize, int *Abort)
+  : m_abort(Abort),
+    m_ready(false),
+    m_finished(false),
+    m_bufferSize(BufferSize),
+    m_buffer(NULL),
+    m_request(Request),
+    m_timer(new TorcTimer())
+{
+    if (m_bufferSize > 0)
+        m_buffer = new QByteArray(m_bufferSize, 0);
+}
+
+TorcNetworkRequest::~TorcNetworkRequest()
+{
+    delete m_buffer;
+    delete m_timer;
+}
+
+int TorcNetworkRequest::BytesAvailable(void)
+{
+    if (!m_buffer)
+        return -1;
+
+    int read  = m_readPosition.fetchAndAddOrdered(0);
+    int write = m_writePosition.fetchAndAddOrdered(0);
+
+    int available = write - read;
+    if (write < read)
+        available += m_bufferSize;
+
+    return available;
+}
+
+int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
+{
+    if (!m_buffer || !Buffer)
+        return -1;
+
+    m_timer->Restart();
+
+    while (BytesAvailable() < 32768 && !(*m_abort) && (m_timer->Elapsed() < Timeout) && !m_finished)
+        TorcUSleep(50000);
+
+    if (*m_abort)
+        return -ECONNABORTED;
+
+    int available = BytesAvailable();
+    if (available < 1)
+    {
+        if (m_finished && available == 0)
+            return 0;
+
+        LOG(VB_GENERAL, LOG_ERR, QString("Waited %1ms for data. Aborting").arg(Timeout));
+        return -ECONNABORTED;
+    }
+
+    available    = qMin(available, BufferSize);
+    int result   = available;
+    int read     = m_readPosition.fetchAndAddOrdered(0);
+    char* buffer = Buffer;
+
+    if (read + available >= m_bufferSize)
+    {
+        int rest = m_bufferSize - read;
+        memcpy((void*)buffer, m_buffer->data() + read, rest);
+        buffer += rest;
+        available -= rest;
+        read = 0;
+    }
+
+    if (available > 0)
+    {
+        memcpy((void*)buffer, m_buffer->data() + read, available);
+        read += available;
+    }
+
+    m_readPosition.fetchAndStoreOrdered(read);
+    return result;
+}
+
+void TorcNetworkRequest::Write(QNetworkReply *Reply)
+{
+    if (!Reply)
+        return;
+
+    int write = m_writePosition.fetchAndAddOrdered(0);
+    int read  = m_readPosition.fetchAndAddOrdered(0);
+
+    qint64 space = read - write;
+    if (read <= write)
+        space += m_bufferSize;
+
+    space = qMin(space, Reply->bytesAvailable());
+
+    int copied = 0;
+    if (write + space >= m_bufferSize)
+    {
+        int rest = m_bufferSize - write;
+        if ((copied = Reply->read(m_buffer->data() + write, rest)) != rest)
+        {
+            if (copied < 0)
+            {
+                LOG(VB_GENERAL, LOG_ERR, QString("Error reading '%1'").arg(Reply->errorString()));
+                return;
+            }
+
+            LOG(VB_GENERAL, LOG_ERR, QString("Expect %1 bytes, got %2").arg(rest).arg(copied));
+            m_writePosition.fetchAndAddOrdered(copied);
+            return;
+        }
+
+        space -= rest;
+        write = 0;
+    }
+
+    if (space > 0)
+    {
+        if ((copied = Reply->read(m_buffer->data() + write, space)) != space)
+        {
+            if (copied < 0)
+            {
+                LOG(VB_GENERAL, LOG_ERR, QString("Error reading '%1'").arg(Reply->errorString()));
+                return;
+            }
+
+            LOG(VB_GENERAL, LOG_ERR, QString("Expect %1 bytes, got %2").arg(space).arg(copied));
+        }
+
+        write += copied;
+    }
+
+    m_writePosition.fetchAndStoreOrdered(write);
+}
+
+QByteArray TorcNetworkRequest::ReadAll(int Timeout)
+{
+    if (m_buffer)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Trying to readAll from streamed buffer");
+        return QByteArray();
+    }
+
+    return QByteArray();
+}
 
 TorcNetwork* gNetwork = NULL;
 QMutex*      gNetworkLock = new QMutex(QMutex::Recursive);
@@ -48,6 +206,27 @@ QString TorcNetwork::GetMACAddress(void)
     QMutexLocker locker(gNetworkLock);
 
     return gNetwork ? gNetwork->MACAddress() : DEFAULT_MAC_ADDRESS;
+}
+
+bool TorcNetwork::Get(TorcNetworkRequest* Request)
+{
+    QMutexLocker locker(gNetworkLock);
+
+    if (IsAvailable())
+    {
+        QMetaObject::invokeMethod(gNetwork, "GetSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request));
+        return true;
+    }
+
+    return false;
+}
+
+void TorcNetwork::Cancel(TorcNetworkRequest *Request)
+{
+    QMutexLocker locker(gNetworkLock);
+
+    if (gNetwork)
+        QMetaObject::invokeMethod(gNetwork, "CancelSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request));
 }
 
 void TorcNetwork::Setup(bool Create)
@@ -122,6 +301,16 @@ TorcNetwork::TorcNetwork()
 
 TorcNetwork::~TorcNetwork()
 {
+    // release any outstanding requests
+    QMap<QNetworkReply*,TorcNetworkRequest*>::iterator it = m_requests.begin();
+    for ( ; it != m_requests.end(); ++it)
+    {
+        it.key()->abort();
+        it.key()->deleteLater();
+        it.value()->DownRef();
+    }
+    m_requests.clear();
+
     // remove settings
     if (m_networkAllowed)
     {
@@ -169,6 +358,42 @@ void TorcNetwork::SetAllowed(bool Allow)
     LOG(VB_GENERAL, LOG_INFO, QString("Network access %1").arg(Allow ? "allowed" : "not allowed"));
 }
 
+void TorcNetwork::GetSafe(TorcNetworkRequest* Request)
+{
+    if (Request)
+    {
+        Request->UpRef();
+        QNetworkReply* reply = get(Request->m_request);
+        if (Request->m_bufferSize)
+            reply->setReadBufferSize(Request->m_bufferSize);
+
+        connect(reply, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
+        connect(reply, SIGNAL(finished()),  this, SLOT(Finished()));
+        m_requests.insert(reply, Request);
+        Request->m_ready = true;
+    }
+}
+
+void TorcNetwork::CancelSafe(TorcNetworkRequest *Request)
+{
+    if (Request)
+    {
+        QMap<QNetworkReply*,TorcNetworkRequest*>::iterator it = m_requests.begin();
+        for ( ; it != m_requests.end(); ++it)
+        {
+            if (it.value() == Request)
+            {
+                QNetworkReply* reply = it.key();
+                reply->abort();
+                reply->deleteLater();
+                it.value()->DownRef();
+                m_requests.remove(reply);
+                return;
+            }
+        }
+    }
+}
+
 void TorcNetwork::ConfigurationAdded(const QNetworkConfiguration &Config)
 {
     UpdateConfiguration();
@@ -192,6 +417,22 @@ void TorcNetwork::OnlineStateChanged(bool Online)
 void TorcNetwork::UpdateCompleted(void)
 {
     UpdateConfiguration();
+}
+
+void TorcNetwork::ReadyRead(void)
+{
+    QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
+
+    if (reply && m_requests.contains(reply))
+        m_requests.value(reply)->Write(reply);
+}
+
+void TorcNetwork::Finished(void)
+{
+    QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
+
+    if (reply && m_requests.contains(reply))
+        m_requests.value(reply)->m_finished = true;
 }
 
 void TorcNetwork::CloseConnections(void)
@@ -259,6 +500,7 @@ class TorcNetworkObject : TorcAdminObject
     TorcNetworkObject()
       : TorcAdminObject(TORC_ADMIN_CRIT_PRIORITY)
     {
+        qRegisterMetaType<TorcNetworkRequest*>();
     }
 
     void Create(void)
