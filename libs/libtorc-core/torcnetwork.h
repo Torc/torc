@@ -38,7 +38,7 @@ class TorcNetworkRequest : public TorcReferenceCounter
     QAtomicInt      m_readPosition;
     QAtomicInt      m_writePosition;
     int             m_bufferSize;
-    QByteArray     *m_buffer;
+    QByteArray      m_buffer;
     QNetworkRequest m_request;
     TorcTimer      *m_timer;
 };

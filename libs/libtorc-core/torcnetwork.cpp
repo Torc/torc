@@ -30,12 +30,28 @@
 #include <errno.h>
 
 /*! \class TorcNetworkRequest
+ *  \brief A wrapper around QNetworkRequest
  *
- * \todo Set chunk size
+ * TorcNetworkRequest acts as the intermediary between TorcNetwork and any other
+ * class accessing the network.
+ *
+ * The requestor must create a valid QNetworkRequest, an abort signal and, if a streamed
+ * download is required, provide a buffer size.
+ *
+ * In the case of streamed downloads, a circular buffer of the given size is created which
+ * must be emptied (via Read) on a frequent basis. The readBufferSize for the associated QNetworkReply
+ * is set to the same size. Hence there is matched buffering between Qt and Torc.
+ *
+ * For non-streamed requests, the complete download is copied to the internal buffer and can be
+ * retrieved via ReadAll. Take care when downloading files of an unknown size.
+ *
+ * \todo Complete streamed support for seeking and peeking
+ * \todo Set chunk size for streamed downloads
  * \todo Poke download thread when buffer space becomes available
- * \todo Complete ReadAll
  * \todo Check finished handling
- * \todo Fix buffer corruption
+ * \todo Fix buffer corruption when streaming
+ * \todo Add user messaging for network errors
+ * \todo Improve timeout handling. Current implementation is for total download time - not time since last update
 */
 
 TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, int BufferSize, int *Abort)
@@ -43,24 +59,22 @@ TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, int Buffer
     m_ready(false),
     m_finished(false),
     m_bufferSize(BufferSize),
-    m_buffer(NULL),
+    m_buffer(QByteArray(BufferSize, 0)),
     m_request(Request),
     m_timer(new TorcTimer())
 {
-    if (m_bufferSize > 0)
-        m_buffer = new QByteArray(m_bufferSize, 0);
 }
 
 TorcNetworkRequest::~TorcNetworkRequest()
 {
-    delete m_buffer;
     delete m_timer;
+    m_timer = NULL;
 }
 
 int TorcNetworkRequest::BytesAvailable(void)
 {
-    if (!m_buffer)
-        return -1;
+    if (!m_bufferSize)
+        return m_buffer.size();
 
     int read  = m_readPosition.fetchAndAddOrdered(0);
     int write = m_writePosition.fetchAndAddOrdered(0);
@@ -74,7 +88,7 @@ int TorcNetworkRequest::BytesAvailable(void)
 
 int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
 {
-    if (!m_buffer || !Buffer)
+    if (!Buffer || !m_bufferSize)
         return -1;
 
     m_timer->Restart();
@@ -103,7 +117,7 @@ int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
     if (read + available >= m_bufferSize)
     {
         int rest = m_bufferSize - read;
-        memcpy((void*)buffer, m_buffer->data() + read, rest);
+        memcpy((void*)buffer, m_buffer.data() + read, rest);
         buffer += rest;
         available -= rest;
         read = 0;
@@ -111,7 +125,7 @@ int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
 
     if (available > 0)
     {
-        memcpy((void*)buffer, m_buffer->data() + read, available);
+        memcpy((void*)buffer, m_buffer.data() + read, available);
         read += available;
     }
 
@@ -123,6 +137,12 @@ void TorcNetworkRequest::Write(QNetworkReply *Reply)
 {
     if (!Reply)
         return;
+
+    if (!m_bufferSize)
+    {
+        m_buffer += Reply->readAll();
+        return;
+    }
 
     int write = m_writePosition.fetchAndAddOrdered(0);
     int read  = m_readPosition.fetchAndAddOrdered(0);
@@ -137,7 +157,7 @@ void TorcNetworkRequest::Write(QNetworkReply *Reply)
     if (write + space >= m_bufferSize)
     {
         int rest = m_bufferSize - write;
-        if ((copied = Reply->read(m_buffer->data() + write, rest)) != rest)
+        if ((copied = Reply->read(m_buffer.data() + write, rest)) != rest)
         {
             if (copied < 0)
             {
@@ -156,7 +176,7 @@ void TorcNetworkRequest::Write(QNetworkReply *Reply)
 
     if (space > 0)
     {
-        if ((copied = Reply->read(m_buffer->data() + write, space)) != space)
+        if ((copied = Reply->read(m_buffer.data() + write, space)) != space)
         {
             if (copied < 0)
             {
@@ -175,13 +195,21 @@ void TorcNetworkRequest::Write(QNetworkReply *Reply)
 
 QByteArray TorcNetworkRequest::ReadAll(int Timeout)
 {
-    if (m_buffer)
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Trying to readAll from streamed buffer");
-        return QByteArray();
-    }
+    if (m_bufferSize)
+        LOG(VB_GENERAL, LOG_WARNING, "ReadAll called for a streamed buffer");
 
-    return QByteArray();
+    m_timer->Restart();
+
+    while (!(*m_abort) && (m_timer->Elapsed() < Timeout) && !m_finished)
+        TorcUSleep(50000);
+
+    if (*m_abort)
+        return QByteArray();
+
+    if (!m_finished)
+        LOG(VB_GENERAL, LOG_ERR, "Download timed out - probably incomplete");
+
+    return m_buffer;
 }
 
 TorcNetwork* gNetwork = NULL;
