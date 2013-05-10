@@ -302,14 +302,7 @@ TorcNetwork::TorcNetwork()
 TorcNetwork::~TorcNetwork()
 {
     // release any outstanding requests
-    QMap<QNetworkReply*,TorcNetworkRequest*>::iterator it = m_requests.begin();
-    for ( ; it != m_requests.end(); ++it)
-    {
-        it.key()->abort();
-        it.key()->deleteLater();
-        it.value()->DownRef();
-    }
-    m_requests.clear();
+    CloseConnections();
 
     // remove settings
     if (m_networkAllowed)
@@ -446,6 +439,14 @@ void TorcNetwork::Error(QNetworkReply::NetworkError Code)
 
 void TorcNetwork::CloseConnections(void)
 {
+    QMap<QNetworkReply*,TorcNetworkRequest*>::iterator it = m_requests.begin();
+    for ( ; it != m_requests.end(); ++it)
+    {
+        it.key()->abort();
+        it.key()->deleteLater();
+        it.value()->DownRef();
+    }
+    m_requests.clear();
 }
 
 void TorcNetwork::UpdateConfiguration(bool Creating)
