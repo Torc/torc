@@ -9,8 +9,6 @@
 #include "torcbuffer.h"
 #include "torcnetwork.h"
 
-#define STREAMED_BUFFER_SIZE (1024 * 1024 * 10)
-
 class TORC_CORE_PUBLIC TorcNetworkBuffer : public TorcBuffer
 {
   public:

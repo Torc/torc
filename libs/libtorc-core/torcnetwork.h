@@ -15,6 +15,8 @@
 #include "torctimer.h"
 
 #define DEFAULT_MAC_ADDRESS QString("00:00:00:00:00:00")
+#define DEFAULT_STREAMED_BUFFER_SIZE (1024 * 1024 * 10)
+#define DEFAULT_STREAMED_READ_SIZE   (32768)
 
 class TorcNetworkRequest : public TorcReferenceCounter
 {
@@ -26,6 +28,7 @@ class TorcNetworkRequest : public TorcReferenceCounter
     int             Read            (char* Buffer, qint32 BufferSize, int Timeout);
     QByteArray      ReadAll         (int Timeout);
     int             BytesAvailable  (void);
+    void            SetReadSize     (int Size);
 
   protected:
     virtual ~TorcNetworkRequest();
@@ -39,6 +42,7 @@ class TorcNetworkRequest : public TorcReferenceCounter
     QAtomicInt      m_writePosition;
     int             m_bufferSize;
     QByteArray      m_buffer;
+    int             m_readSize;
     QNetworkRequest m_request;
     TorcTimer      *m_timer;
 };

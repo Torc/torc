@@ -62,9 +62,10 @@ bool TorcNetworkBuffer::Open(void)
     m_state = Status_Opening;
 
     QNetworkRequest request(url);
-    m_request = new TorcNetworkRequest(request, m_streamed ? STREAMED_BUFFER_SIZE : 0, m_abort);
+    m_request = new TorcNetworkRequest(request, m_streamed ? DEFAULT_STREAMED_BUFFER_SIZE : 0, m_abort);
     if (TorcNetwork::Get(m_request))
     {
+        m_request->SetReadSize(DEFAULT_STREAMED_READ_SIZE);
         m_state = Status_Opened;
         return TorcBuffer::Open();
     }
@@ -156,7 +157,7 @@ qint64 TorcNetworkBuffer::BytesAvailable(void)
 
 int TorcNetworkBuffer::BestBufferSize(void)
 {
-    return 32768;
+    return DEFAULT_STREAMED_READ_SIZE;
 }
 
 QString TorcNetworkBuffer::GetPath(void)

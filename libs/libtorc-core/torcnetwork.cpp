@@ -46,7 +46,6 @@
  * retrieved via ReadAll. Take care when downloading files of an unknown size.
  *
  * \todo Complete streamed support for seeking and peeking
- * \todo Set chunk size for streamed downloads
  * \todo Poke download thread when buffer space becomes available
  * \todo Check finished handling
  * \todo Fix buffer corruption when streaming
@@ -60,6 +59,7 @@ TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, int Buffer
     m_finished(false),
     m_bufferSize(BufferSize),
     m_buffer(QByteArray(BufferSize, 0)),
+    m_readSize(DEFAULT_STREAMED_READ_SIZE),
     m_request(Request),
     m_timer(new TorcTimer())
 {
@@ -93,7 +93,7 @@ int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
 
     m_timer->Restart();
 
-    while (BytesAvailable() < 32768 && !(*m_abort) && (m_timer->Elapsed() < Timeout) && !m_finished)
+    while ((BytesAvailable() < m_readSize) && !(*m_abort) && (m_timer->Elapsed() < Timeout) && !m_finished)
         TorcUSleep(50000);
 
     if (*m_abort)
@@ -191,6 +191,11 @@ void TorcNetworkRequest::Write(QNetworkReply *Reply)
     }
 
     m_writePosition.fetchAndStoreOrdered(write);
+}
+
+void TorcNetworkRequest::SetReadSize(int Size)
+{
+    m_readSize = Size;
 }
 
 QByteArray TorcNetworkRequest::ReadAll(int Timeout)
