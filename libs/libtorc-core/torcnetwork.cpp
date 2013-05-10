@@ -369,6 +369,7 @@ void TorcNetwork::GetSafe(TorcNetworkRequest* Request)
 
         connect(reply, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
         connect(reply, SIGNAL(finished()),  this, SLOT(Finished()));
+        connect(reply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(Error(QNetworkReply::NetworkError)));
         m_requests.insert(reply, Request);
         Request->m_ready = true;
     }
@@ -433,6 +434,14 @@ void TorcNetwork::Finished(void)
 
     if (reply && m_requests.contains(reply))
         m_requests.value(reply)->m_finished = true;
+}
+
+void TorcNetwork::Error(QNetworkReply::NetworkError Code)
+{
+    QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
+
+    if (reply && m_requests.contains(reply))
+        LOG(VB_GENERAL, LOG_ERR, QString("Network error '%1'").arg(reply->errorString()));
 }
 
 void TorcNetwork::CloseConnections(void)

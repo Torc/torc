@@ -70,8 +70,10 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     void    ConfigurationRemoved    (const QNetworkConfiguration &Config);
     void    OnlineStateChanged      (bool  Online);
     void    UpdateCompleted         (void);
+
     void    ReadyRead               (void);
     void    Finished                (void);
+    void    Error                   (QNetworkReply::NetworkError Code);
 
   protected slots:
     void    SetAllowed              (bool Allow);
