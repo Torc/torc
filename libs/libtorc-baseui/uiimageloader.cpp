@@ -79,8 +79,7 @@ void UIImageLoader::run(void)
     }
 
     // load it
-    int abort = 0;
-    QScopedPointer<TorcBuffer> file(TorcBuffer::Create(filename, &abort));
+    QScopedPointer<TorcBuffer> file(TorcBuffer::Create(filename, m_image->GetAbort()));
     if (!file.data())
     {
         LOG(VB_GENERAL, LOG_ERR, QString("Failed to open '%1'").arg(filename));

@@ -33,7 +33,8 @@ UIImage::UIImage(UIImageTracker *Parent, const QString &Name, const QSize &MaxSi
     m_name(Name),
     m_filename(FileName),
     m_sizeF(QSizeF()),
-    m_maxSize(MaxSize)
+    m_maxSize(MaxSize),
+    m_abort(0)
 {
 }
 
@@ -165,4 +166,14 @@ void UIImage::Blur(QImage* Image, int Radius)
             for (int i = 0; i <= 3; i++)
                 p[i] = (rgba[i] += ((p[i] << 4) - rgba[i]) * alpha / 16) >> 4;
     }
+}
+
+int* UIImage::GetAbort(void)
+{
+    return &m_abort;
+}
+
+void UIImage::SetAbort(bool Abort)
+{
+    m_abort = Abort ? 1 : 0;
 }

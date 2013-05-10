@@ -50,6 +50,9 @@ UIImageTracker::~UIImageTracker()
 {
     // wait for any outstanding render requests. The QRunnable will call this
     // object to notify completion.
+    foreach (UIImage* image, m_outstandingImages)
+        image->SetAbort(true);
+
     int count = 0;
     while (!m_outstandingImages.isEmpty() && count++ < 100)
         TorcUSleep(50000);

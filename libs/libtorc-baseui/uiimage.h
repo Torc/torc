@@ -37,6 +37,8 @@ class TORC_BASEUI_PUBLIC UIImage : public QImage, public TorcReferenceCounter
     QSize&          GetMaxSize  (void);
     void            FreeMem     (void);
     static void     Blur(QImage* Image, int Radius);
+    int*            GetAbort    (void);
+    void            SetAbort    (bool Abort);
 
   protected:
     void            Assign      (const QImage &Image);
@@ -49,6 +51,7 @@ class TORC_BASEUI_PUBLIC UIImage : public QImage, public TorcReferenceCounter
     QString         m_filename;
     QSizeF          m_sizeF;
     QSize           m_maxSize;
+    int             m_abort;
 };
 
 #endif // UIIMAGE_H
