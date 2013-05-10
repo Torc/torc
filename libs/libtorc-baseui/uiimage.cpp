@@ -34,7 +34,8 @@ UIImage::UIImage(UIImageTracker *Parent, const QString &Name, const QSize &MaxSi
     m_filename(FileName),
     m_sizeF(QSizeF()),
     m_maxSize(MaxSize),
-    m_abort(0)
+    m_abort(0),
+    m_rawSVGData(NULL)
 {
 }
 
@@ -176,4 +177,14 @@ int* UIImage::GetAbort(void)
 void UIImage::SetAbort(bool Abort)
 {
     m_abort = Abort ? 1 : 0;
+}
+
+void UIImage::SetRawSVGData(QByteArray *Data)
+{
+    m_rawSVGData = Data;
+}
+
+QByteArray* UIImage::GetRawSVGData(void)
+{
+    return m_rawSVGData;
 }

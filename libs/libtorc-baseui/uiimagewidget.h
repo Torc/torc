@@ -33,6 +33,7 @@ class UIImageWidget : public UIWidget
   protected:
     QString      m_fileName;
     UIImage     *m_image;
+    QByteArray  *m_rawSVGData;
 
   protected:
     QString      file;

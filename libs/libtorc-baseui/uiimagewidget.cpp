@@ -23,6 +23,8 @@
 // Qt
 #include <QtScript>
 #include <QDomNode>
+#include <QTextStream>
+#include <QCryptographicHash>
 
 // Torc
 #include "torclogging.h"
@@ -43,6 +45,7 @@ UIImageWidget::UIImageWidget(UIWidget *Root, UIWidget *Parent, const QString &Na
   : UIWidget(Root, Parent, Name, Flags),
     m_fileName(""),
     m_image(NULL),
+    m_rawSVGData(NULL),
     file("")
 {
     m_type = kUIImageWidgetType;
@@ -52,6 +55,8 @@ UIImageWidget::~UIImageWidget()
 {
     if (m_image)
         m_image->DownRef();
+
+    delete m_rawSVGData;
 }
 
 QString UIImageWidget::GetFile(void)
@@ -90,6 +95,20 @@ bool UIImageWidget::InitialisePriv(QDomElement *Element)
         UpdateFile();
         return true;
     }
+    else if (Element->tagName() == "svg")
+    {
+        delete m_rawSVGData;
+        m_rawSVGData = new QByteArray();
+        QTextStream stream(m_rawSVGData);
+        stream << *Element;
+        stream.flush();
+
+        // hash the contents to enable shared images in UIImageTracker
+        QCryptographicHash md5(QCryptographicHash::Md5);
+        md5.addData(m_rawSVGData->data(), m_rawSVGData->size());
+        m_fileName = QString(md5.result().toHex());
+        return true;
+    }
 
     return false;
 }
@@ -106,6 +125,8 @@ void UIImageWidget::CopyFrom(UIWidget *Other)
 
     // don't prepend the directory again
     m_fileName = image->GetFile();
+    if (image->m_rawSVGData)
+        m_rawSVGData = new QByteArray(image->m_rawSVGData->data(), image->m_rawSVGData->size());
 
     UIWidget::CopyFrom(Other);
 }
@@ -128,10 +149,13 @@ bool UIImageWidget::DrawSelf(UIWindow *Window, qreal XOffset, qreal YOffset)
     if (!m_image)
     {
         UIImageTracker* tracker = dynamic_cast<UIImageTracker*>(Window);
-        if (tracker && !m_fileName.isEmpty())
+        if (tracker && (!m_fileName.isEmpty() || m_rawSVGData))
         {
             QSize size(m_scaledRect.width(), m_scaledRect.height());
             m_image = tracker->AllocateImage(objectName(), size, m_fileName);
+
+            if (m_rawSVGData)
+                m_image->SetRawSVGData(m_rawSVGData);
         }
 
         if (!m_image)

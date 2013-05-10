@@ -39,6 +39,8 @@ class TORC_BASEUI_PUBLIC UIImage : public QImage, public TorcReferenceCounter
     static void     Blur(QImage* Image, int Radius);
     int*            GetAbort    (void);
     void            SetAbort    (bool Abort);
+    void            SetRawSVGData (QByteArray *Data);
+    QByteArray*     GetRawSVGData (void);
 
   protected:
     void            Assign      (const QImage &Image);
@@ -52,6 +54,7 @@ class TORC_BASEUI_PUBLIC UIImage : public QImage, public TorcReferenceCounter
     QSizeF          m_sizeF;
     QSize           m_maxSize;
     int             m_abort;
+    QByteArray     *m_rawSVGData;
 };
 
 #endif // UIIMAGE_H

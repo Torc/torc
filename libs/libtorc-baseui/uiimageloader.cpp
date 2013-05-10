@@ -70,46 +70,69 @@ void UIImageLoader::run(void)
     if (!m_image)
         return;
 
-    QString filename = m_image->GetFilename();
-
-    if (filename.isEmpty())
-    {
-        LOG(VB_GENERAL, LOG_ERR, "No file name.");
-        return;
-    }
-
-    // load it
-    QScopedPointer<TorcBuffer> file(TorcBuffer::Create(filename, m_image->GetAbort()));
-    if (!file.data())
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("Failed to open '%1'").arg(filename));
-        return;
-    }
-
-    QByteArray content(file.data()->ReadAll(20000/*20 seconds*/));
     QImage *image = NULL;
+    QString filename;
 
-    if (filename.endsWith("svg", Qt::CaseInsensitive))
+    if (m_image->GetRawSVGData())
     {
 #if defined(CONFIG_QTSVG)
         image = new QImage(m_image->GetMaxSize(), QImage::Format_ARGB32_Premultiplied);
         QPainter painter(image);
-        QSvgRenderer renderer(content);
+        QSvgRenderer renderer(*m_image->GetRawSVGData());
         if (renderer.isValid())
         {
             renderer.render(&painter);
         }
         else
         {
-            LOG(VB_GENERAL, LOG_ERR, QString("Failed to render '%1'").arg(filename));
+            LOG(VB_GENERAL, LOG_ERR, "Failed to render raw SVG");
         }
 #else
-        LOG(VB_GENERAL, LOG_WARNING, QString("No SVG support - unable to load '%1'").arg(filename));
+        LOG(VB_GENERAL, LOG_WARNING, "No SVG support - unable to render raw SVG");
 #endif
     }
     else
     {
-        image = new QImage(QImage::fromData(content, "png"));
+        filename = m_image->GetFilename();
+
+        if (filename.isEmpty())
+        {
+            LOG(VB_GENERAL, LOG_ERR, "No file name.");
+            return;
+        }
+
+        // load it
+        QScopedPointer<TorcBuffer> file(TorcBuffer::Create(filename, m_image->GetAbort()));
+        if (!file.data())
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Failed to open '%1'").arg(filename));
+            return;
+        }
+
+        QByteArray content(file.data()->ReadAll(20000/*20 seconds*/));
+
+        if (filename.endsWith("svg", Qt::CaseInsensitive))
+        {
+#if defined(CONFIG_QTSVG)
+            image = new QImage(m_image->GetMaxSize(), QImage::Format_ARGB32_Premultiplied);
+            QPainter painter(image);
+            QSvgRenderer renderer(content);
+            if (renderer.isValid())
+            {
+                renderer.render(&painter);
+            }
+            else
+            {
+                LOG(VB_GENERAL, LOG_ERR, QString("Failed to render '%1'").arg(filename));
+            }
+#else
+            LOG(VB_GENERAL, LOG_WARNING, QString("No SVG support - unable to load '%1'").arg(filename));
+#endif
+        }
+        else
+        {
+            image = new QImage(QImage::fromData(content, "png"));
+        }
     }
 
     if (image->isNull())
