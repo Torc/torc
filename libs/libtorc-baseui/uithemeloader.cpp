@@ -24,9 +24,11 @@
 #include <QUrl>
 #include <QFile>
 #include <QDomDocument>
+#include <QScopedPointer>
 
 // Torc
 #include "torclogging.h"
+#include "torcbuffer.h"
 #include "uitheme.h"
 #include "uithemeloader.h"
 
@@ -58,8 +60,9 @@ bool UIThemeLoader::LoadThemeInfo(void)
     }
 
     // open the info file
-    QFile file(m_filename);
-    if (!file.open(QIODevice::ReadOnly))
+    int abort = 0;
+    QScopedPointer<TorcBuffer> file(TorcBuffer::Create(m_filename, &abort));
+    if (!file.data())
     {
         LOG(VB_GENERAL, LOG_ERR, LOC + QString("Failed to open '%1'")
             .arg(m_filename));
@@ -68,22 +71,20 @@ bool UIThemeLoader::LoadThemeInfo(void)
     }
 
     // parse it
+    QByteArray   content(file.data()->ReadAll(20000/*20 seconds*/));
     QDomDocument document;
     QString      error;
     int          errorline = 0;
     int          errorcolumn = 0;
 
-    if (!document.setContent(&file, false, &error, &errorline, &errorcolumn))
+    if (!document.setContent(content, false, &error, &errorline, &errorcolumn))
     {
         LOG(VB_GENERAL, LOG_ERR, LOC +
             QString("Failed to parse '%1'. Error '%2', line %3, column %4")
             .arg(m_filename).arg(error).arg(errorline).arg(errorcolumn));
         m_theme->SetState(UITheme::ThemeError);
-        file.close();
         return false;
     }
-
-    file.close();
 
     // extract the theme info
     return UITheme::ParseThemeInfo(m_theme, &document);

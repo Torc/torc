@@ -21,14 +21,13 @@
 */
 
 // Qt
-#include <QDir>
-#include <QUrl>
-#include <QFile>
 #include <QThread>
 #include <QDomDocument>
+#include <QScopedPointer>
 
 // Torc
 #include "torclogging.h"
+#include "torcbuffer.h"
 #include "uitheme.h"
 #include "uiwindow.h"
 #include "tenfoottheme.h"
@@ -66,10 +65,16 @@ UITheme* TenfootThemeLoader::LoadTenfootTheme(void)
 
     m_theme->SetState(UITheme::ThemeLoadingFull);
 
-    QFileInfo info(m_filename);
-    m_theme->m_directory = info.dir().path();
+    int abort = 0;
 
-    QFile file;
+    QScopedPointer<TorcBuffer> file(TorcBuffer::Create(m_filename, &abort));
+    if (!file.data())
+    {
+        m_theme->DownRef();
+        return NULL;
+    }
+
+    m_theme->m_directory = file.data()->GetPath();
 
     // parse each global if requested
     foreach (QString global, m_theme->m_globals)
@@ -85,32 +90,28 @@ UITheme* TenfootThemeLoader::LoadTenfootTheme(void)
         }
 
         // open
-        file.setFileName(global);
-        if (!file.open(QIODevice::ReadOnly))
+        QScopedPointer<TorcBuffer> globalfile(TorcBuffer::Create(global, &abort));
+        if (!globalfile.data())
         {
-            LOG(VB_GENERAL, LOG_ERR, LOC + QString("Failed to open '%1'")
-                .arg(global));
             m_theme->DownRef();
             return NULL;
         }
 
         // parse it
+        QByteArray   content(globalfile.data()->ReadAll(20000/*20 seconds*/));
         QDomDocument document;
         QString      error;
         int          errorline = 0;
         int          errorcolumn = 0;
 
-        if (!document.setContent(&file, false, &error, &errorline, &errorcolumn))
+        if (!document.setContent(content, false, &error, &errorline, &errorcolumn))
         {
             LOG(VB_GENERAL, LOG_ERR, LOC +
                 QString("Failed to parse '%1'. Error '%2', line %3, column %4")
                 .arg(global).arg(error).arg(errorline).arg(errorcolumn));
             m_theme->DownRef();
-            file.close();
             return NULL;
         }
-
-        file.close();
 
         // extract window information
         if (!TenfootTheme::ParseThemeFile(m_theme, m_theme, &document))

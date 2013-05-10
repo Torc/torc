@@ -20,12 +20,10 @@
 * USA.
 */
 
-// Qt
-#include <QFile>
-
 // Torc
 #include "torcconfig.h"
 #include "torclogging.h"
+#include "torcbuffer.h"
 #include "uiimage.h"
 #include "uiimagetracker.h"
 #include "uiimageloader.h"
@@ -80,12 +78,16 @@ void UIImageLoader::run(void)
         return;
     }
 
-    if (!QFile::exists(filename))
+    // load it
+    int abort = 0;
+    QScopedPointer<TorcBuffer> file(TorcBuffer::Create(filename, &abort));
+    if (!file.data())
     {
-        LOG(VB_GENERAL, LOG_ERR, QString("Image '%1' does not exist.").arg(filename));
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to open '%1'").arg(filename));
         return;
     }
 
+    QByteArray content(file.data()->ReadAll(20000/*20 seconds*/));
     QImage *image = NULL;
 
     if (filename.endsWith("svg", Qt::CaseInsensitive))
@@ -93,7 +95,7 @@ void UIImageLoader::run(void)
 #if defined(CONFIG_QTSVG)
         image = new QImage(m_image->GetMaxSize(), QImage::Format_ARGB32_Premultiplied);
         QPainter painter(image);
-        QSvgRenderer renderer(filename);
+        QSvgRenderer renderer(content);
         if (renderer.isValid())
         {
             renderer.render(&painter);
@@ -107,9 +109,8 @@ void UIImageLoader::run(void)
 #endif
     }
     else
-
     {
-        image = new QImage(filename, "png");
+        image = new QImage(QImage::fromData(content, "png"));
     }
 
     if (image->isNull())
