@@ -25,14 +25,15 @@ class TorcNetworkRequest : public TorcReferenceCounter
   public:
     TorcNetworkRequest(const QNetworkRequest Request, int BufferSize, int *Abort);
 
-    int             Read            (char* Buffer, qint32 BufferSize, int Timeout);
-    QByteArray      ReadAll         (int Timeout);
-    int             BytesAvailable  (void);
-    void            SetReadSize     (int Size);
+    int             Read              (char* Buffer, qint32 BufferSize, int Timeout);
+    QByteArray      ReadAll           (int Timeout);
+    int             BytesAvailable    (void);
+    void            SetReadSize       (int Size);
+    void            DownloadProgress  (qint64 Received, qint64 Total);
 
   protected:
     virtual ~TorcNetworkRequest();
-    void            Write           (QNetworkReply *Reply);
+    void            Write             (QNetworkReply *Reply);
 
   protected:
     int            *m_abort;
@@ -45,6 +46,9 @@ class TorcNetworkRequest : public TorcReferenceCounter
     int             m_readSize;
     QNetworkRequest m_request;
     TorcTimer      *m_timer;
+
+    qint64          m_bytesReceived;
+    qint64          m_bytesTotal;
 };
 
 Q_DECLARE_METATYPE(TorcNetworkRequest*);
@@ -78,6 +82,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     void    ReadyRead               (void);
     void    Finished                (void);
     void    Error                   (QNetworkReply::NetworkError Code);
+    void    DownloadProgress        (qint64 Received, qint64 Total);
 
   protected slots:
     void    SetAllowed              (bool Allow);

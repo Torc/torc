@@ -61,7 +61,9 @@ TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, int Buffer
     m_buffer(QByteArray(BufferSize, 0)),
     m_readSize(DEFAULT_STREAMED_READ_SIZE),
     m_request(Request),
-    m_timer(new TorcTimer())
+    m_timer(new TorcTimer()),
+    m_bytesReceived(0),
+    m_bytesTotal(0)
 {
 }
 
@@ -196,6 +198,12 @@ void TorcNetworkRequest::Write(QNetworkReply *Reply)
 void TorcNetworkRequest::SetReadSize(int Size)
 {
     m_readSize = Size;
+}
+
+void TorcNetworkRequest::DownloadProgress(qint64 Received, qint64 Total)
+{
+    m_bytesReceived = Received;
+    m_bytesTotal    = Total;
 }
 
 QByteArray TorcNetworkRequest::ReadAll(int Timeout)
@@ -395,6 +403,7 @@ void TorcNetwork::GetSafe(TorcNetworkRequest* Request)
 
         connect(reply, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
         connect(reply, SIGNAL(finished()),  this, SLOT(Finished()));
+        connect(reply, SIGNAL(downloadProgress(qint64, qint64)), this, SLOT(DownloadProgress(qint64,qint64)));
         connect(reply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(Error(QNetworkReply::NetworkError)));
         m_requests.insert(reply, Request);
         Request->m_ready = true;
@@ -468,6 +477,14 @@ void TorcNetwork::Error(QNetworkReply::NetworkError Code)
 
     if (reply && m_requests.contains(reply))
         LOG(VB_GENERAL, LOG_ERR, QString("Network error '%1'").arg(reply->errorString()));
+}
+
+void TorcNetwork::DownloadProgress(qint64 Received, qint64 Total)
+{
+    QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
+
+    if (reply && m_requests.contains(reply))
+        m_requests.value(reply)->DownloadProgress(Received, Total);
 }
 
 void TorcNetwork::CloseConnections(void)
