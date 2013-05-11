@@ -294,35 +294,35 @@ bool VideoUIPlayer::HandleAction(int Action)
         }
         else if (Action == Torc::DecreaseBrightness)
         {
-            m_colourSpace->ChangeProperty(Brightness, false);
+            return m_colourSpace->ChangeProperty(Brightness, false);
         }
         else if (Action == Torc::IncreaseBrightness)
         {
-            m_colourSpace->ChangeProperty(Brightness, true);
+            return m_colourSpace->ChangeProperty(Brightness, true);
         }
         else if (Action == Torc::DecreaseContrast)
         {
-            m_colourSpace->ChangeProperty(Contrast, false);
+            return m_colourSpace->ChangeProperty(Contrast, false);
         }
         else if (Action == Torc::IncreaseContrast)
         {
-            m_colourSpace->ChangeProperty(Contrast, true);
+            return m_colourSpace->ChangeProperty(Contrast, true);
         }
         else if (Action == Torc::DecreaseSaturation)
         {
-            m_colourSpace->ChangeProperty(Saturation, false);
+            return m_colourSpace->ChangeProperty(Saturation, false);
         }
         else if (Action == Torc::IncreaseSaturation)
         {
-            m_colourSpace->ChangeProperty(Saturation, true);
+            return m_colourSpace->ChangeProperty(Saturation, true);
         }
         else if (Action == Torc::DecreaseHue)
         {
-            m_colourSpace->ChangeProperty(Hue, false);
+            return m_colourSpace->ChangeProperty(Hue, false);
         }
         else if (Action == Torc::IncreaseHue)
         {
-            m_colourSpace->ChangeProperty(Hue, true);
+            return m_colourSpace->ChangeProperty(Hue, true);
         }
     }
 

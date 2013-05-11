@@ -62,8 +62,8 @@ class VideoColourSpace : public QObject
     void           SetStudioLevels      (bool Value);
 
     QVariant       GetProperty          (TorcPlayer::PlayerProperty Property);
-    void           ChangeProperty       (TorcPlayer::PlayerProperty Property, bool Increase);
-    void           SetProperty          (TorcPlayer::PlayerProperty Property, int Value);
+    bool           ChangeProperty       (TorcPlayer::PlayerProperty Property, bool Increase);
+    bool           SetProperty          (TorcPlayer::PlayerProperty Property, int Value);
 
   private:
     void           SetBrightnessPriv    (int Value, bool UpdateMatrix, bool UpdateSettings);
