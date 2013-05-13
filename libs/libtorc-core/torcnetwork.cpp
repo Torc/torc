@@ -53,7 +53,7 @@
 
 TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, int BufferSize, int *Abort)
   : m_abort(Abort),
-    m_ready(false),
+    m_started(false),
     m_readPosition(0),
     m_writePosition(0),
     m_bufferSize(BufferSize),
@@ -64,6 +64,7 @@ TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, int Buffer
     m_writeTimer(new TorcTimer()),
     m_replyFinished(false),
     m_replyBytesAvailable(0),
+    m_redirectionCount(0),
     m_bytesReceived(0),
     m_bytesTotal(0)
 {
@@ -408,16 +409,20 @@ void TorcNetwork::GetSafe(TorcNetworkRequest* Request)
     if (Request)
     {
         Request->UpRef();
+
+        // some servers require a recognised user agent...
+        Request->m_request.setRawHeader("User-Agent", DEFAULT_USER_AGENT);
         QNetworkReply* reply = get(Request->m_request);
 
+        // join the dots
         connect(reply, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
         connect(reply, SIGNAL(finished()),  this, SLOT(Finished()));
         connect(reply, SIGNAL(downloadProgress(qint64, qint64)), this, SLOT(DownloadProgress(qint64,qint64)));
         connect(reply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(Error(QNetworkReply::NetworkError)));
+        connect(reply, SIGNAL(sslErrors(const QList<QSslError> & )), this, SLOT(SSLErrors(const QList<QSslError> & )));
+
         m_requests.insert(reply, Request);
         m_reverseRequests.insert(Request, reply);
-
-        Request->m_ready = true;
     }
 }
 
@@ -471,7 +476,48 @@ void TorcNetwork::ReadyRead(void)
     QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
 
     if (reply && m_requests.contains(reply))
-        m_requests.value(reply)->Write(reply);
+    {
+        TorcNetworkRequest* request = m_requests.value(reply);
+        if (!request->m_started)
+        {
+            // check for redirection
+            QUrl newurl = reply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
+            QUrl oldurl = request->m_request.url();
+
+            if (!newurl.isEmpty() && newurl != oldurl)
+            {
+                // redirected
+                if (newurl.isRelative())
+                    newurl = oldurl.resolved(newurl);
+
+                LOG(VB_GENERAL, LOG_INFO, QString("Redirected from '%1' to '%2'").arg(oldurl.toString()).arg(newurl.toString()));
+                if (request->m_redirectionCount++ < DEFAULT_MAX_REDIRECTIONS)
+                {
+                    // delete the reply and create a new one
+                    m_reverseRequests.remove(request);
+                    m_requests.remove(reply);
+                    reply->abort();
+                    reply->deleteLater();
+                    request->m_request.setUrl(newurl);
+                    GetSafe(request);
+                    request->DownRef();
+                    return;
+                }
+                else
+                {
+                    LOG(VB_GENERAL, LOG_WARNING, "Max redirections exceeded");
+                }
+            }
+
+            // we need to set the buffer size after the download has started as Qt will ignore
+            // the set value if it doesn't yet know the expected size. Not ideal...
+            request->m_started = true;
+            reply->setReadBufferSize(request->m_bufferSize);
+            LOG(VB_GENERAL, LOG_INFO, QString("Download started (buffer size: %1bytes)").arg(request->m_bufferSize));
+        }
+
+        request->Write(reply);
+    }
 }
 
 void TorcNetwork::Finished(void)
@@ -490,23 +536,26 @@ void TorcNetwork::Error(QNetworkReply::NetworkError Code)
         LOG(VB_GENERAL, LOG_ERR, QString("Network error '%1'").arg(reply->errorString()));
 }
 
+void TorcNetwork::SSLErrors(const QList<QSslError> &Errors)
+{
+    QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
+    if (reply)
+    {
+        // log the errors
+        foreach(QSslError error, Errors)
+            LOG(VB_GENERAL, LOG_WARNING, QString("SSL Error: %1").arg(error.errorString()));
+
+        // and ignore them for now!
+        reply->ignoreSslErrors();
+    }
+}
+
 void TorcNetwork::DownloadProgress(qint64 Received, qint64 Total)
 {
     QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
 
     if (reply && m_requests.contains(reply))
-    {
-        TorcNetworkRequest* request = m_requests.value(reply);
-        request->DownloadProgress(Received, Total);
-
-        // we need to set the buffer size after the download has started as Qt will ignore
-        // the set value if it doesn't yet know the expected size. Not ideal...
-        if (Total > 0 && request->m_bufferSize && !reply->readBufferSize())
-        {
-            reply->setReadBufferSize(request->m_bufferSize);
-            LOG(VB_GENERAL, LOG_INFO, QString("Set read buffer size to 0x%1 bytes").arg(request->m_bufferSize, 0, 16));
-        }
-    }
+        m_requests.value(reply)->DownloadProgress(Received, Total);
 }
 
 void TorcNetwork::CloseConnections(void)

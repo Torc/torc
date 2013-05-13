@@ -17,6 +17,8 @@
 #define DEFAULT_MAC_ADDRESS QString("00:00:00:00:00:00")
 #define DEFAULT_STREAMED_BUFFER_SIZE (1024 * 1024 * 10)
 #define DEFAULT_STREAMED_READ_SIZE   (32768)
+#define DEFAULT_MAX_REDIRECTIONS     3
+#define DEFAULT_USER_AGENT           QByteArray("Wget/1.12 (linux-gnu))")
 
 class TorcNetworkRequest : public TorcReferenceCounter
 {
@@ -40,7 +42,7 @@ class TorcNetworkRequest : public TorcReferenceCounter
 
   protected:
     int            *m_abort;
-    bool            m_ready;
+    bool            m_started;
     int             m_readPosition;
     int             m_writePosition;
     QAtomicInt      m_available;
@@ -53,6 +55,7 @@ class TorcNetworkRequest : public TorcReferenceCounter
 
     bool            m_replyFinished;
     int             m_replyBytesAvailable;
+    int             m_redirectionCount;
 
     qint64          m_bytesReceived;
     qint64          m_bytesTotal;
@@ -91,6 +94,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     void    ReadyRead               (void);
     void    Finished                (void);
     void    Error                   (QNetworkReply::NetworkError Code);
+    void    SSLErrors               (const QList<QSslError> &Errors);
     void    DownloadProgress        (qint64 Received, qint64 Total);
 
   protected slots:
