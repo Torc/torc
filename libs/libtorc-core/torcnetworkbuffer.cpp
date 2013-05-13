@@ -62,6 +62,8 @@ bool TorcNetworkBuffer::Open(void)
     m_state = Status_Opening;
 
     QNetworkRequest request(url);
+    if (m_streamed)
+        request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
     m_request = new TorcNetworkRequest(request, m_streamed ? DEFAULT_STREAMED_BUFFER_SIZE : 0, m_abort);
     if (TorcNetwork::Get(m_request))
     {
