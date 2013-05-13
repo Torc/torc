@@ -71,6 +71,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     Q_OBJECT
 
   public:
+    // Public API
     static bool IsAvailable         (void);
     static bool IsAllowed           (void);
     static QString GetMACAddress    (void);
@@ -78,30 +79,32 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static void Cancel              (TorcNetworkRequest* Request);
     static void Poke                (TorcNetworkRequest* Request);
 
-  protected:
-    static void Setup               (bool Create);
-
-  public:
-    virtual ~TorcNetwork();
-
-  public slots:
+  protected slots:
+    // QNetworkConfigurationManager
     void    ConfigurationAdded      (const QNetworkConfiguration &Config);
     void    ConfigurationChanged    (const QNetworkConfiguration &Config);
     void    ConfigurationRemoved    (const QNetworkConfiguration &Config);
     void    OnlineStateChanged      (bool  Online);
     void    UpdateCompleted         (void);
 
+    // QNetworkReply
     void    ReadyRead               (void);
     void    Finished                (void);
     void    Error                   (QNetworkReply::NetworkError Code);
     void    SSLErrors               (const QList<QSslError> &Errors);
     void    DownloadProgress        (qint64 Received, qint64 Total);
 
-  protected slots:
+    // Torc
     void    SetAllowed              (bool Allow);
     void    GetSafe                 (TorcNetworkRequest* Request);
     void    CancelSafe              (TorcNetworkRequest* Request);
     void    PokeSafe                (TorcNetworkRequest* Request);
+
+  public:
+    virtual ~TorcNetwork();
+
+  protected:
+    static void Setup               (bool Create);
 
   protected:
     TorcNetwork();
