@@ -35,23 +35,32 @@ class TorcNetworkRequest : public TorcReferenceCounter
     virtual ~TorcNetworkRequest();
     void            Write             (QNetworkReply *Reply);
 
+  private:
+    bool            WritePriv         (QNetworkReply *Reply, char* Buffer, int Size);
+
   protected:
     int            *m_abort;
     bool            m_ready;
-    bool            m_finished;
-    QAtomicInt      m_readPosition;
-    QAtomicInt      m_writePosition;
+    int             m_readPosition;
+    int             m_writePosition;
+    QAtomicInt      m_available;
     int             m_bufferSize;
     QByteArray      m_buffer;
     int             m_readSize;
     QNetworkRequest m_request;
-    TorcTimer      *m_timer;
+    QNetworkReply  *m_reply;
+    TorcTimer      *m_readTimer;
+    TorcTimer      *m_writeTimer;
+
+    bool            m_replyFinished;
+    int             m_replyBytesAvailable;
 
     qint64          m_bytesReceived;
     qint64          m_bytesTotal;
 };
 
 Q_DECLARE_METATYPE(TorcNetworkRequest*);
+Q_DECLARE_METATYPE(QNetworkReply*);
 
 class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
 {
@@ -65,6 +74,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static QString GetMACAddress    (void);
     static bool Get                 (TorcNetworkRequest* Request);
     static void Cancel              (TorcNetworkRequest* Request);
+    static void Poke                (QNetworkReply *Reply);
 
   protected:
     static void Setup               (bool Create);
@@ -88,6 +98,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     void    SetAllowed              (bool Allow);
     void    GetSafe                 (TorcNetworkRequest* Request);
     void    CancelSafe              (TorcNetworkRequest* Request);
+    void    PokeSafe                (QNetworkReply *Reply);
 
   protected:
     TorcNetwork();

@@ -40,28 +40,31 @@
  *
  * In the case of streamed downloads, a circular buffer of the given size is created which
  * must be emptied (via Read) on a frequent basis. The readBufferSize for the associated QNetworkReply
- * is set to the same size. Hence there is matched buffering between Qt and Torc.
+ * is set to the same size. Hence there is matched buffering between Qt and Torc. Streamed downloads
+ * are optimised for a single producer and a single consumer thread - any other usage is likely to lead
+ * to tears before bedtime.
  *
  * For non-streamed requests, the complete download is copied to the internal buffer and can be
  * retrieved via ReadAll. Take care when downloading files of an unknown size.
  *
  * \todo Complete streamed support for seeking and peeking
- * \todo Poke download thread when buffer space becomes available
- * \todo Check finished handling
- * \todo Fix buffer corruption when streaming
  * \todo Add user messaging for network errors
- * \todo Improve timeout handling. Current implementation is for total download time - not time since last update
 */
 
 TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, int BufferSize, int *Abort)
   : m_abort(Abort),
     m_ready(false),
-    m_finished(false),
+    m_readPosition(0),
+    m_writePosition(0),
     m_bufferSize(BufferSize),
     m_buffer(QByteArray(BufferSize, 0)),
     m_readSize(DEFAULT_STREAMED_READ_SIZE),
     m_request(Request),
-    m_timer(new TorcTimer()),
+    m_reply(NULL),
+    m_readTimer(new TorcTimer()),
+    m_writeTimer(new TorcTimer()),
+    m_replyFinished(false),
+    m_replyBytesAvailable(0),
     m_bytesReceived(0),
     m_bytesTotal(0)
 {
@@ -69,8 +72,10 @@ TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, int Buffer
 
 TorcNetworkRequest::~TorcNetworkRequest()
 {
-    delete m_timer;
-    m_timer = NULL;
+    delete m_readTimer;
+    delete m_writeTimer;
+    m_readTimer = NULL;
+    m_writeTimer = NULL;
 }
 
 int TorcNetworkRequest::BytesAvailable(void)
@@ -78,14 +83,7 @@ int TorcNetworkRequest::BytesAvailable(void)
     if (!m_bufferSize)
         return m_buffer.size();
 
-    int read  = m_readPosition.fetchAndAddOrdered(0);
-    int write = m_writePosition.fetchAndAddOrdered(0);
-
-    int available = write - read;
-    if (write < read)
-        available += m_bufferSize;
-
-    return available;
+    return m_available.fetchAndAddOrdered(0);
 }
 
 int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
@@ -93,10 +91,14 @@ int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
     if (!Buffer || !m_bufferSize)
         return -1;
 
-    m_timer->Restart();
+    m_readTimer->Restart();
 
-    while ((BytesAvailable() < m_readSize) && !(*m_abort) && (m_timer->Elapsed() < Timeout) && !m_finished)
+    while ((BytesAvailable() < m_readSize) && !(*m_abort) && (m_readTimer->Elapsed() < Timeout) && !(m_replyFinished && m_replyBytesAvailable == 0))
+    {
+        if (m_reply && m_replyBytesAvailable && m_writeTimer->Elapsed() > 100)
+            gNetwork->Poke(m_reply);
         TorcUSleep(50000);
+    }
 
     if (*m_abort)
         return -ECONNABORTED;
@@ -104,35 +106,67 @@ int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
     int available = BytesAvailable();
     if (available < 1)
     {
-        if (m_finished && available == 0)
+        if (m_replyFinished && m_replyBytesAvailable == 0 && available == 0)
+        {
+            LOG(VB_GENERAL, LOG_INFO, "Download complete");
             return 0;
+        }
 
         LOG(VB_GENERAL, LOG_ERR, QString("Waited %1ms for data. Aborting").arg(Timeout));
         return -ECONNABORTED;
     }
 
-    available    = qMin(available, BufferSize);
-    int result   = available;
-    int read     = m_readPosition.fetchAndAddOrdered(0);
-    char* buffer = Buffer;
+    available = qMin(available, BufferSize);
 
-    if (read + available >= m_bufferSize)
+    if (m_readPosition + available > m_bufferSize)
     {
-        int rest = m_bufferSize - read;
-        memcpy((void*)buffer, m_buffer.data() + read, rest);
-        buffer += rest;
-        available -= rest;
-        read = 0;
+        int rest = m_bufferSize - m_readPosition;
+        memcpy(Buffer, m_buffer.data() + m_readPosition, rest);
+        memcpy(Buffer + rest, m_buffer.data(), available - rest);
+        m_readPosition = available - rest;
+    }
+    else
+    {
+        memcpy(Buffer, m_buffer.data() + m_readPosition, available);
+        m_readPosition += available;
     }
 
-    if (available > 0)
+    if (m_readPosition >= m_bufferSize)
+        m_readPosition -= m_bufferSize;
+
+    static qint64 read = 0;
+    read += available;
+
+    m_available.fetchAndAddOrdered(-available);
+    return available;
+}
+
+bool TorcNetworkRequest::WritePriv(QNetworkReply *Reply, char *Buffer, int Size)
+{
+    if (Reply && Buffer && Size)
     {
-        memcpy((void*)buffer, m_buffer.data() + read, available);
-        read += available;
+        int read = Reply->read(Buffer, Size);
+
+        if (read < 0)
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Error reading '%1'").arg(Reply->errorString()));
+            return false;
+        }
+
+        m_writePosition += read;
+        if (m_writePosition >= m_bufferSize)
+            m_writePosition -= m_bufferSize;
+        m_available.fetchAndAddOrdered(read);
+
+        m_replyBytesAvailable = Reply->bytesAvailable();
+
+        if (read == Size)
+            return true;
+
+        LOG(VB_GENERAL, LOG_ERR, QString("Expected %1 bytes, got %2").arg(Size).arg(read));
     }
 
-    m_readPosition.fetchAndStoreOrdered(read);
-    return result;
+    return false;
 }
 
 void TorcNetworkRequest::Write(QNetworkReply *Reply)
@@ -140,59 +174,29 @@ void TorcNetworkRequest::Write(QNetworkReply *Reply)
     if (!Reply)
         return;
 
+    m_writeTimer->Restart();
+
     if (!m_bufferSize)
     {
         m_buffer += Reply->readAll();
         return;
     }
 
-    int write = m_writePosition.fetchAndAddOrdered(0);
-    int read  = m_readPosition.fetchAndAddOrdered(0);
+    qint64 available = qMin(m_bufferSize - (qint64)m_available.fetchAndAddOrdered(0), Reply->bytesAvailable());
 
-    qint64 space = read - write;
-    if (read <= write)
-        space += m_bufferSize;
-
-    space = qMin(space, Reply->bytesAvailable());
-
-    int copied = 0;
-    if (write + space >= m_bufferSize)
+    if (m_writePosition + available > m_bufferSize)
     {
-        int rest = m_bufferSize - write;
-        if ((copied = Reply->read(m_buffer.data() + write, rest)) != rest)
-        {
-            if (copied < 0)
-            {
-                LOG(VB_GENERAL, LOG_ERR, QString("Error reading '%1'").arg(Reply->errorString()));
-                return;
-            }
+        int rest = m_bufferSize - m_writePosition;
 
-            LOG(VB_GENERAL, LOG_ERR, QString("Expect %1 bytes, got %2").arg(rest).arg(copied));
-            m_writePosition.fetchAndAddOrdered(copied);
+        if (!WritePriv(Reply, m_buffer.data() + m_writePosition, rest))
             return;
-        }
-
-        space -= rest;
-        write = 0;
+        if (!WritePriv(Reply, m_buffer.data(), available - rest))
+            return;
     }
-
-    if (space > 0)
+    else
     {
-        if ((copied = Reply->read(m_buffer.data() + write, space)) != space)
-        {
-            if (copied < 0)
-            {
-                LOG(VB_GENERAL, LOG_ERR, QString("Error reading '%1'").arg(Reply->errorString()));
-                return;
-            }
-
-            LOG(VB_GENERAL, LOG_ERR, QString("Expect %1 bytes, got %2").arg(space).arg(copied));
-        }
-
-        write += copied;
+        WritePriv(Reply, m_buffer.data() + m_writePosition, available);
     }
-
-    m_writePosition.fetchAndStoreOrdered(write);
 }
 
 void TorcNetworkRequest::SetReadSize(int Size)
@@ -211,15 +215,15 @@ QByteArray TorcNetworkRequest::ReadAll(int Timeout)
     if (m_bufferSize)
         LOG(VB_GENERAL, LOG_WARNING, "ReadAll called for a streamed buffer");
 
-    m_timer->Restart();
+    m_readTimer->Restart();
 
-    while (!(*m_abort) && (m_timer->Elapsed() < Timeout) && !m_finished)
+    while (!(*m_abort) && (m_readTimer->Elapsed() < Timeout) && !m_replyFinished)
         TorcUSleep(50000);
 
     if (*m_abort)
         return QByteArray();
 
-    if (!m_finished)
+    if (!m_replyFinished)
         LOG(VB_GENERAL, LOG_ERR, "Download timed out - probably incomplete");
 
     return m_buffer;
@@ -268,6 +272,14 @@ void TorcNetwork::Cancel(TorcNetworkRequest *Request)
 
     if (gNetwork)
         QMetaObject::invokeMethod(gNetwork, "CancelSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request));
+}
+
+void TorcNetwork::Poke(QNetworkReply *Reply)
+{
+    QMutexLocker locker(gNetworkLock);
+
+    if (gNetwork)
+        QMetaObject::invokeMethod(gNetwork, "PokeSafe", Qt::AutoConnection, Q_ARG(QNetworkReply*, Reply));
 }
 
 void TorcNetwork::Setup(bool Create)
@@ -398,15 +410,15 @@ void TorcNetwork::GetSafe(TorcNetworkRequest* Request)
     {
         Request->UpRef();
         QNetworkReply* reply = get(Request->m_request);
-        if (Request->m_bufferSize)
-            reply->setReadBufferSize(Request->m_bufferSize);
 
         connect(reply, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
         connect(reply, SIGNAL(finished()),  this, SLOT(Finished()));
         connect(reply, SIGNAL(downloadProgress(qint64, qint64)), this, SLOT(DownloadProgress(qint64,qint64)));
         connect(reply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(Error(QNetworkReply::NetworkError)));
         m_requests.insert(reply, Request);
+
         Request->m_ready = true;
+        Request->m_reply = reply;
     }
 }
 
@@ -428,6 +440,12 @@ void TorcNetwork::CancelSafe(TorcNetworkRequest *Request)
             }
         }
     }
+}
+
+void TorcNetwork::PokeSafe(QNetworkReply *Reply)
+{
+    if (m_requests.contains(Reply))
+        m_requests.value(Reply)->Write(Reply);
 }
 
 void TorcNetwork::ConfigurationAdded(const QNetworkConfiguration &Config)
@@ -468,7 +486,7 @@ void TorcNetwork::Finished(void)
     QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
 
     if (reply && m_requests.contains(reply))
-        m_requests.value(reply)->m_finished = true;
+        m_requests.value(reply)->m_replyFinished = true;
 }
 
 void TorcNetwork::Error(QNetworkReply::NetworkError Code)
@@ -484,7 +502,18 @@ void TorcNetwork::DownloadProgress(qint64 Received, qint64 Total)
     QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
 
     if (reply && m_requests.contains(reply))
-        m_requests.value(reply)->DownloadProgress(Received, Total);
+    {
+        TorcNetworkRequest* request = m_requests.value(reply);
+        request->DownloadProgress(Received, Total);
+
+        // we need to set the buffer size after the download has started as Qt will ignore
+        // the set value if it doesn't yet know the expected size. Not ideal...
+        if (Total > 0 && request->m_bufferSize && !reply->readBufferSize())
+        {
+            reply->setReadBufferSize(request->m_bufferSize);
+            LOG(VB_GENERAL, LOG_INFO, QString("Set read buffer size to 0x%1 bytes").arg(request->m_bufferSize, 0, 16));
+        }
+    }
 }
 
 void TorcNetwork::CloseConnections(void)
@@ -561,6 +590,7 @@ class TorcNetworkObject : TorcAdminObject
       : TorcAdminObject(TORC_ADMIN_CRIT_PRIORITY)
     {
         qRegisterMetaType<TorcNetworkRequest*>();
+        qRegisterMetaType<QNetworkReply*>();
     }
 
     void Create(void)
