@@ -60,7 +60,6 @@ TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, int Buffer
     m_buffer(QByteArray(BufferSize, 0)),
     m_readSize(DEFAULT_STREAMED_READ_SIZE),
     m_request(Request),
-    m_reply(NULL),
     m_readTimer(new TorcTimer()),
     m_writeTimer(new TorcTimer()),
     m_replyFinished(false),
@@ -95,8 +94,8 @@ int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
 
     while ((BytesAvailable() < m_readSize) && !(*m_abort) && (m_readTimer->Elapsed() < Timeout) && !(m_replyFinished && m_replyBytesAvailable == 0))
     {
-        if (m_reply && m_replyBytesAvailable && m_writeTimer->Elapsed() > 100)
-            gNetwork->Poke(m_reply);
+        if (m_replyBytesAvailable && m_writeTimer->Elapsed() > 100)
+            gNetwork->Poke(this);
         TorcUSleep(50000);
     }
 
@@ -274,12 +273,12 @@ void TorcNetwork::Cancel(TorcNetworkRequest *Request)
         QMetaObject::invokeMethod(gNetwork, "CancelSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request));
 }
 
-void TorcNetwork::Poke(QNetworkReply *Reply)
+void TorcNetwork::Poke(TorcNetworkRequest *Request)
 {
     QMutexLocker locker(gNetworkLock);
 
     if (gNetwork)
-        QMetaObject::invokeMethod(gNetwork, "PokeSafe", Qt::AutoConnection, Q_ARG(QNetworkReply*, Reply));
+        QMetaObject::invokeMethod(gNetwork, "PokeSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request));
 }
 
 void TorcNetwork::Setup(bool Create)
@@ -416,36 +415,30 @@ void TorcNetwork::GetSafe(TorcNetworkRequest* Request)
         connect(reply, SIGNAL(downloadProgress(qint64, qint64)), this, SLOT(DownloadProgress(qint64,qint64)));
         connect(reply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(Error(QNetworkReply::NetworkError)));
         m_requests.insert(reply, Request);
+        m_reverseRequests.insert(Request, reply);
 
         Request->m_ready = true;
-        Request->m_reply = reply;
     }
 }
 
 void TorcNetwork::CancelSafe(TorcNetworkRequest *Request)
 {
-    if (Request)
+    if (m_reverseRequests.contains(Request))
     {
-        QMap<QNetworkReply*,TorcNetworkRequest*>::iterator it = m_requests.begin();
-        for ( ; it != m_requests.end(); ++it)
-        {
-            if (it.value() == Request)
-            {
-                QNetworkReply* reply = it.key();
-                reply->abort();
-                reply->deleteLater();
-                it.value()->DownRef();
-                m_requests.remove(reply);
-                return;
-            }
-        }
+        QNetworkReply* reply = m_reverseRequests.value(Request);
+        reply->abort();
+        reply->deleteLater();
+        Request->DownRef();
+        m_reverseRequests.remove(Request);
+        m_requests.remove(reply);
+        return;
     }
 }
 
-void TorcNetwork::PokeSafe(QNetworkReply *Reply)
+void TorcNetwork::PokeSafe(TorcNetworkRequest *Request)
 {
-    if (m_requests.contains(Reply))
-        m_requests.value(Reply)->Write(Reply);
+    if (m_reverseRequests.contains(Request))
+        Request->Write(m_reverseRequests.value(Request));
 }
 
 void TorcNetwork::ConfigurationAdded(const QNetworkConfiguration &Config)
@@ -525,7 +518,9 @@ void TorcNetwork::CloseConnections(void)
         it.key()->deleteLater();
         it.value()->DownRef();
     }
+
     m_requests.clear();
+    m_reverseRequests.clear();
 }
 
 void TorcNetwork::UpdateConfiguration(bool Creating)

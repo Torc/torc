@@ -48,7 +48,6 @@ class TorcNetworkRequest : public TorcReferenceCounter
     QByteArray      m_buffer;
     int             m_readSize;
     QNetworkRequest m_request;
-    QNetworkReply  *m_reply;
     TorcTimer      *m_readTimer;
     TorcTimer      *m_writeTimer;
 
@@ -74,7 +73,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static QString GetMACAddress    (void);
     static bool Get                 (TorcNetworkRequest* Request);
     static void Cancel              (TorcNetworkRequest* Request);
-    static void Poke                (QNetworkReply *Reply);
+    static void Poke                (TorcNetworkRequest* Request);
 
   protected:
     static void Setup               (bool Create);
@@ -98,7 +97,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     void    SetAllowed              (bool Allow);
     void    GetSafe                 (TorcNetworkRequest* Request);
     void    CancelSafe              (TorcNetworkRequest* Request);
-    void    PokeSafe                (QNetworkReply *Reply);
+    void    PokeSafe                (TorcNetworkRequest* Request);
 
   protected:
     TorcNetwork();
@@ -118,6 +117,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     QNetworkInterface                m_interface;
 
     QMap<QNetworkReply*,TorcNetworkRequest*> m_requests;
+    QMap<TorcNetworkRequest*,QNetworkReply*> m_reverseRequests;
 };
 
 extern TORC_CORE_PUBLIC TorcNetwork *gNetwork;
