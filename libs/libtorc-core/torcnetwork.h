@@ -25,7 +25,15 @@ class TorcNetworkRequest : public TorcReferenceCounter
     friend class TorcNetwork;
 
   public:
-    TorcNetworkRequest(const QNetworkRequest Request, int BufferSize, int *Abort);
+    enum RequestType
+    {
+        Get,
+        Head,
+        Put
+    };
+
+  public:
+    TorcNetworkRequest(const QNetworkRequest Request, RequestType Type, int BufferSize, int *Abort);
 
     int             Read              (char* Buffer, qint32 BufferSize, int Timeout);
     QByteArray      ReadAll           (int Timeout);
@@ -41,6 +49,7 @@ class TorcNetworkRequest : public TorcReferenceCounter
     bool            WritePriv         (QNetworkReply *Reply, char* Buffer, int Size);
 
   protected:
+    RequestType     m_type;
     int            *m_abort;
     bool            m_started;
     int             m_readPosition;
@@ -76,6 +85,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static bool IsAllowed           (void);
     static QString GetMACAddress    (void);
     static bool Get                 (TorcNetworkRequest* Request);
+    static bool Head                (TorcNetworkRequest* Request);
     static void Cancel              (TorcNetworkRequest* Request);
     static void Poke                (TorcNetworkRequest* Request);
 
@@ -110,6 +120,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     TorcNetwork();
     bool    IsOnline                (void);
     bool    IsAllowedPriv           (void);
+    bool    Redirected              (TorcNetworkRequest* Request, QNetworkReply *Reply);
 
     void    CloseConnections        (void);
     void    UpdateConfiguration     (bool Creating = false);

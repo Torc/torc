@@ -51,8 +51,9 @@
  * \todo Add user messaging for network errors
 */
 
-TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, int BufferSize, int *Abort)
-  : m_abort(Abort),
+TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, RequestType Type, int BufferSize, int *Abort)
+  : m_type(Type),
+    m_abort(Abort),
     m_started(false),
     m_readPosition(0),
     m_writePosition(0),
@@ -412,7 +413,20 @@ void TorcNetwork::GetSafe(TorcNetworkRequest* Request)
 
         // some servers require a recognised user agent...
         Request->m_request.setRawHeader("User-Agent", DEFAULT_USER_AGENT);
-        QNetworkReply* reply = get(Request->m_request);
+
+        QNetworkReply* reply = NULL;
+
+        if (Request->m_type == TorcNetworkRequest::Get)
+            reply = get(Request->m_request);
+        else if (Request->m_type == TorcNetworkRequest::Head)
+            reply = head(Request->m_request);
+
+        if (!reply)
+        {
+            Request->DownRef();
+            LOG(VB_GENERAL, LOG_ERR, "Unknown request type");
+            return;
+        }
 
         // join the dots
         connect(reply, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
@@ -471,6 +485,42 @@ void TorcNetwork::UpdateCompleted(void)
     UpdateConfiguration();
 }
 
+bool TorcNetwork::Redirected(TorcNetworkRequest *Request, QNetworkReply *Reply)
+{
+    if (!Request || !Reply)
+        return false;
+
+    QUrl newurl = Reply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
+    QUrl oldurl = Request->m_request.url();
+
+    if (!newurl.isEmpty() && newurl != oldurl)
+    {
+        // redirected
+        if (newurl.isRelative())
+            newurl = oldurl.resolved(newurl);
+
+        LOG(VB_GENERAL, LOG_INFO, QString("Redirected from '%1' to '%2'").arg(oldurl.toString()).arg(newurl.toString()));
+        if (Request->m_redirectionCount++ < DEFAULT_MAX_REDIRECTIONS)
+        {
+            // delete the reply and create a new one
+            m_reverseRequests.remove(Request);
+            m_requests.remove(Reply);
+            Reply->abort();
+            Reply->deleteLater();
+            Request->m_request.setUrl(newurl);
+            GetSafe(Request);
+            Request->DownRef();
+            return true;
+        }
+        else
+        {
+            LOG(VB_GENERAL, LOG_WARNING, "Max redirections exceeded");
+        }
+    }
+
+    return false;
+}
+
 void TorcNetwork::ReadyRead(void)
 {
     QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
@@ -481,39 +531,16 @@ void TorcNetwork::ReadyRead(void)
         if (!request->m_started)
         {
             // check for redirection
-            QUrl newurl = reply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
-            QUrl oldurl = request->m_request.url();
+            if (Redirected(request, reply))
+                return;
 
-            if (!newurl.isEmpty() && newurl != oldurl)
-            {
-                // redirected
-                if (newurl.isRelative())
-                    newurl = oldurl.resolved(newurl);
-
-                LOG(VB_GENERAL, LOG_INFO, QString("Redirected from '%1' to '%2'").arg(oldurl.toString()).arg(newurl.toString()));
-                if (request->m_redirectionCount++ < DEFAULT_MAX_REDIRECTIONS)
-                {
-                    // delete the reply and create a new one
-                    m_reverseRequests.remove(request);
-                    m_requests.remove(reply);
-                    reply->abort();
-                    reply->deleteLater();
-                    request->m_request.setUrl(newurl);
-                    GetSafe(request);
-                    request->DownRef();
-                    return;
-                }
-                else
-                {
-                    LOG(VB_GENERAL, LOG_WARNING, "Max redirections exceeded");
-                }
-            }
+            request->m_started = true;
 
             // we need to set the buffer size after the download has started as Qt will ignore
             // the set value if it doesn't yet know the expected size. Not ideal...
-            request->m_started = true;
-            reply->setReadBufferSize(request->m_bufferSize);
-            LOG(VB_GENERAL, LOG_INFO, QString("Download started (buffer size: %1bytes)").arg(request->m_bufferSize));
+            if (request->m_bufferSize)
+                reply->setReadBufferSize(request->m_bufferSize);
+            LOG(VB_GENERAL, LOG_INFO, "Download started");
         }
 
         request->Write(reply);
@@ -525,7 +552,31 @@ void TorcNetwork::Finished(void)
     QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
 
     if (reply && m_requests.contains(reply))
-        m_requests.value(reply)->m_replyFinished = true;
+    {
+        TorcNetworkRequest *request = m_requests.value(reply);
+
+        if (request->m_type == TorcNetworkRequest::Head)
+        {
+            // head requests never trigger a read request (no content), so check redirection on completion
+            if (Redirected(request, reply))
+                return;
+
+            // check header support
+            bool bytes      = reply->rawHeader("Accept-Ranges").toLower().contains("bytes");
+            QVariant length = reply->header(QNetworkRequest::ContentLengthHeader);
+            if (bytes && length.isValid())
+            {
+                int size = length.toInt();
+                if (size > 0)
+                {
+                    LOG(VB_GENERAL, LOG_INFO, QString("Byte serving available for '%1' (Size: %2)")
+                        .arg(reply->request().url().toString()).arg(size));
+                }
+            }
+        }
+
+        request->m_replyFinished = true;
+    }
 }
 
 void TorcNetwork::Error(QNetworkReply::NetworkError Code)
