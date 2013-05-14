@@ -32,6 +32,8 @@ class TorcNetworkRequest : public TorcReferenceCounter
     int             BytesAvailable    (void);
     void            SetReadSize       (int Size);
     void            DownloadProgress  (qint64 Received, qint64 Total);
+    bool            CanByteServe      (void);
+    QUrl            GetFinalURL       (void);
 
   protected:
     virtual ~TorcNetworkRequest();
@@ -58,6 +60,9 @@ class TorcNetworkRequest : public TorcReferenceCounter
     int             m_replyBytesAvailable;
     int             m_redirectionCount;
 
+    int             m_httpStatus;
+    qint64          m_contentLength;
+    bool            m_byteServingAvailable;
     qint64          m_bytesReceived;
     qint64          m_bytesTotal;
 };
@@ -112,6 +117,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     TorcNetwork();
     bool    IsOnline                (void);
     bool    IsAllowedPriv           (void);
+    bool    CheckHeaders            (TorcNetworkRequest* Request, QNetworkReply *Reply);
     bool    Redirected              (TorcNetworkRequest* Request, QNetworkReply *Reply);
 
     void    CloseConnections        (void);

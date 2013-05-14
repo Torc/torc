@@ -24,6 +24,7 @@
 #include "torclocalcontext.h"
 #include "torclogging.h"
 #include "torcadminthread.h"
+#include "http/torchttprequest.h"
 #include "torcnetwork.h"
 #include "torccoreutils.h"
 
@@ -66,6 +67,9 @@ TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, QNetworkAc
     m_replyFinished(false),
     m_replyBytesAvailable(0),
     m_redirectionCount(0),
+    m_httpStatus(HTTP_BadRequest),
+    m_contentLength(0),
+    m_byteServingAvailable(false),
     m_bytesReceived(0),
     m_bytesTotal(0)
 {
@@ -209,6 +213,16 @@ void TorcNetworkRequest::DownloadProgress(qint64 Received, qint64 Total)
 {
     m_bytesReceived = Received;
     m_bytesTotal    = Total;
+}
+
+bool TorcNetworkRequest::CanByteServe(void)
+{
+    return m_byteServingAvailable;
+}
+
+QUrl TorcNetworkRequest::GetFinalURL(void)
+{
+    return m_request.url();
 }
 
 QByteArray TorcNetworkRequest::ReadAll(int Timeout)
@@ -485,6 +499,59 @@ void TorcNetwork::UpdateCompleted(void)
     UpdateConfiguration();
 }
 
+bool TorcNetwork::CheckHeaders(TorcNetworkRequest *Request, QNetworkReply *Reply)
+{
+    if (!Request || !Reply)
+        return false;
+
+    QVariant status = Reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+    if (!status.isValid())
+        return true;
+
+    int httpstatus    = status.toInt();
+    int contentlength = 0;
+    bool byteserving  = false;
+
+    // content length
+    QVariant length = Reply->header(QNetworkRequest::ContentLengthHeader);
+    if (length.isValid())
+    {
+        int size = length.toInt();
+        if (size > 0)
+            contentlength = size;
+    }
+
+    if (Request->m_type == QNetworkAccessManager::HeadOperation)
+    {
+        // NB the following assumes the head request is checking for byte serving support
+
+        // some servers (yes - I'm talking to you Dropbox) don't allow HEAD requests for
+        // some files (secure redirections?). Furthermore they don't return a valid Allow list
+        // in the response, or in response to an OPTIONS request. We could go around in circles
+        // trying to check support in a number of ways, but just cut to the chase and issue
+        // a test range request (as they do actually support range requests)
+        if (httpstatus == HTTP_MethodNotAllowed)
+        {
+            // delete the reply and try again as a GET request with range
+            m_reverseRequests.remove(Request);
+            m_requests.remove(Reply);
+            Request->m_request.setUrl(Reply->request().url());
+            Request->m_type = QNetworkAccessManager::GetOperation;
+            Request->m_request.setRawHeader("Range", "bytes=0-10");
+            Reply->abort();
+            Reply->deleteLater();
+            GetSafe(Request);
+            Request->DownRef();
+            return false;
+        }
+    }
+
+    Request->m_httpStatus = httpstatus;
+    Request->m_contentLength = contentlength;
+    Request->m_byteServingAvailable = Reply->rawHeader("Accept-Ranges").toLower().contains("bytes") && contentlength > 0;
+    return true;
+}
+
 bool TorcNetwork::Redirected(TorcNetworkRequest *Request, QNetworkReply *Reply)
 {
     if (!Request || !Reply)
@@ -534,6 +601,9 @@ void TorcNetwork::ReadyRead(void)
             if (Redirected(request, reply))
                 return;
 
+            // no need to check return value for GET requests
+            (void)CheckHeaders(request, reply);
+
             request->m_started = true;
 
             // we need to set the buffer size after the download has started as Qt will ignore
@@ -561,18 +631,9 @@ void TorcNetwork::Finished(void)
             if (Redirected(request, reply))
                 return;
 
-            // check header support
-            bool bytes      = reply->rawHeader("Accept-Ranges").toLower().contains("bytes");
-            QVariant length = reply->header(QNetworkRequest::ContentLengthHeader);
-            if (bytes && length.isValid())
-            {
-                int size = length.toInt();
-                if (size > 0)
-                {
-                    LOG(VB_GENERAL, LOG_INFO, QString("Byte serving available for '%1' (Size: %2)")
-                        .arg(reply->request().url().toString()).arg(size));
-                }
-            }
+            // a false return value indicates the request has been resent (perhaps in another form)
+            if (!CheckHeaders(request, reply))
+                return;
         }
 
         request->m_replyFinished = true;
