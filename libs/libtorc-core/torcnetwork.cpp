@@ -51,7 +51,7 @@
  * \todo Add user messaging for network errors
 */
 
-TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, RequestType Type, int BufferSize, int *Abort)
+TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, QNetworkAccessManager::Operation Type, int BufferSize, int *Abort)
   : m_type(Type),
     m_abort(Abort),
     m_started(false),
@@ -416,9 +416,9 @@ void TorcNetwork::GetSafe(TorcNetworkRequest* Request)
 
         QNetworkReply* reply = NULL;
 
-        if (Request->m_type == TorcNetworkRequest::Get)
+        if (Request->m_type == QNetworkAccessManager::GetOperation)
             reply = get(Request->m_request);
-        else if (Request->m_type == TorcNetworkRequest::Head)
+        else if (Request->m_type == QNetworkAccessManager::HeadOperation)
             reply = head(Request->m_request);
 
         if (!reply)
@@ -555,7 +555,7 @@ void TorcNetwork::Finished(void)
     {
         TorcNetworkRequest *request = m_requests.value(reply);
 
-        if (request->m_type == TorcNetworkRequest::Head)
+        if (request->m_type == QNetworkAccessManager::HeadOperation)
         {
             // head requests never trigger a read request (no content), so check redirection on completion
             if (Redirected(request, reply))

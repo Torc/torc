@@ -25,15 +25,7 @@ class TorcNetworkRequest : public TorcReferenceCounter
     friend class TorcNetwork;
 
   public:
-    enum RequestType
-    {
-        Get,
-        Head,
-        Put
-    };
-
-  public:
-    TorcNetworkRequest(const QNetworkRequest Request, RequestType Type, int BufferSize, int *Abort);
+    TorcNetworkRequest(const QNetworkRequest Request, QNetworkAccessManager::Operation Type, int BufferSize, int *Abort);
 
     int             Read              (char* Buffer, qint32 BufferSize, int Timeout);
     QByteArray      ReadAll           (int Timeout);
@@ -49,7 +41,7 @@ class TorcNetworkRequest : public TorcReferenceCounter
     bool            WritePriv         (QNetworkReply *Reply, char* Buffer, int Size);
 
   protected:
-    RequestType     m_type;
+    QNetworkAccessManager::Operation m_type;
     int            *m_abort;
     bool            m_started;
     int             m_readPosition;
