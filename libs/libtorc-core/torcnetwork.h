@@ -34,6 +34,7 @@ class TorcNetworkRequest : public TorcReferenceCounter
     void            DownloadProgress  (qint64 Received, qint64 Total);
     bool            CanByteServe      (void);
     QUrl            GetFinalURL       (void);
+    QString         GetContentType    (void);
 
   protected:
     virtual ~TorcNetworkRequest();
@@ -62,6 +63,7 @@ class TorcNetworkRequest : public TorcReferenceCounter
 
     int             m_httpStatus;
     qint64          m_contentLength;
+    QString         m_contentType;
     bool            m_byteServingAvailable;
     qint64          m_bytesReceived;
     qint64          m_bytesTotal;

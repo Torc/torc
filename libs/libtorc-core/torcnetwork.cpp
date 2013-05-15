@@ -225,6 +225,11 @@ QUrl TorcNetworkRequest::GetFinalURL(void)
     return m_request.url();
 }
 
+QString TorcNetworkRequest::GetContentType(void)
+{
+    return m_contentType;
+}
+
 QByteArray TorcNetworkRequest::ReadAll(int Timeout)
 {
     if (m_bufferSize)
@@ -510,7 +515,6 @@ bool TorcNetwork::CheckHeaders(TorcNetworkRequest *Request, QNetworkReply *Reply
 
     int httpstatus    = status.toInt();
     int contentlength = 0;
-    bool byteserving  = false;
 
     // content length
     QVariant length = Reply->header(QNetworkRequest::ContentLengthHeader);
@@ -520,6 +524,9 @@ bool TorcNetwork::CheckHeaders(TorcNetworkRequest *Request, QNetworkReply *Reply
         if (size > 0)
             contentlength = size;
     }
+
+    // content type
+    QVariant contenttype = Reply->header(QNetworkRequest::ContentTypeHeader);
 
     if (Request->m_type == QNetworkAccessManager::HeadOperation)
     {
@@ -548,6 +555,7 @@ bool TorcNetwork::CheckHeaders(TorcNetworkRequest *Request, QNetworkReply *Reply
 
     Request->m_httpStatus = httpstatus;
     Request->m_contentLength = contentlength;
+    Request->m_contentType = contenttype.isValid() ? contenttype.toString().toLower() : QString();
     Request->m_byteServingAvailable = Reply->rawHeader("Accept-Ranges").toLower().contains("bytes") && contentlength > 0;
     return true;
 }
@@ -604,13 +612,13 @@ void TorcNetwork::ReadyRead(void)
             // no need to check return value for GET requests
             (void)CheckHeaders(request, reply);
 
-            request->m_started = true;
-
             // we need to set the buffer size after the download has started as Qt will ignore
             // the set value if it doesn't yet know the expected size. Not ideal...
             if (request->m_bufferSize)
                 reply->setReadBufferSize(request->m_bufferSize);
+
             LOG(VB_GENERAL, LOG_INFO, "Download started");
+            request->m_started = true;
         }
 
         request->Write(reply);
