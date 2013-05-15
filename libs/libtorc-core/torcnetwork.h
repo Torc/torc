@@ -32,7 +32,9 @@ class TorcNetworkRequest : public TorcReferenceCounter
     QByteArray      ReadAll           (int Timeout);
     int             BytesAvailable    (void);
     qint64          GetSize           (void);
+    qint64          GetPosition       (void);
     void            SetReadSize       (int Size);
+    void            SetRange          (int Start, int End = 0);
     void            DownloadProgress  (qint64 Received, qint64 Total);
     bool            CanByteServe      (void);
     QUrl            GetFinalURL       (void);
@@ -46,29 +48,35 @@ class TorcNetworkRequest : public TorcReferenceCounter
     bool            WritePriv         (QNetworkReply *Reply, char* Buffer, int Size);
 
   protected:
+    // internal state/type
     QNetworkAccessManager::Operation m_type;
     int            *m_abort;
     bool            m_started;
+    qint64          m_positionInFile;
     int             m_readPosition;
     int             m_writePosition;
     QAtomicInt      m_available;
     int             m_bufferSize;
     QByteArray      m_buffer;
     int             m_readSize;
-    QNetworkRequest m_request;
+    int             m_redirectionCount;
     TorcTimer      *m_readTimer;
     TorcTimer      *m_writeTimer;
 
+    // QNetworkReply state
     bool            m_replyFinished;
     int             m_replyBytesAvailable;
-    int             m_redirectionCount;
+    qint64          m_bytesReceived;
+    qint64          m_bytesTotal;
 
+    // request/reply details
+    QNetworkRequest m_request;
+    int             m_rangeStart;
+    int             m_rangeEnd;
     int             m_httpStatus;
     qint64          m_contentLength;
     QString         m_contentType;
     bool            m_byteServingAvailable;
-    qint64          m_bytesReceived;
-    qint64          m_bytesTotal;
 };
 
 Q_DECLARE_METATYPE(TorcNetworkRequest*);

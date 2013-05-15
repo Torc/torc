@@ -40,6 +40,7 @@ TorcNetworkBuffer::~TorcNetworkBuffer()
 
 bool TorcNetworkBuffer::Open(void)
 {
+    // sanity checks
     if (!TorcNetwork::IsAvailable())
         return false;
 
@@ -50,26 +51,39 @@ bool TorcNetworkBuffer::Open(void)
         return false;
     }
 
+    // close existing connections just in case
     if (m_request)
     {
         LOG(VB_GENERAL, LOG_INFO, "Connection already open - closing before re-opening");
         Close();
     }
 
+    // determine our path (for theme root etc)
     QFileInfo info(url.path());
     m_path = url.scheme() + "://" + url.authority() + info.path();
 
+    // and finally try and open
     m_state = Status_Opening;
 
     QNetworkRequest request(url);
     if (m_streamed)
         request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
+
     m_request = new TorcNetworkRequest(request, QNetworkAccessManager::GetOperation, m_streamed ? DEFAULT_STREAMED_BUFFER_SIZE : 0, m_abort);
+    m_request->SetReadSize(DEFAULT_STREAMED_READ_SIZE);
+
     if (TorcNetwork::Get(m_request))
     {
-        m_request->SetReadSize(DEFAULT_STREAMED_READ_SIZE);
-        m_state = Status_Opened;
-        return TorcBuffer::Open();
+        if (m_request->WaitForStart(20000))
+        {
+            m_state = Status_Opened;
+            return TorcBuffer::Open();
+        }
+
+        LOG(VB_GENERAL, LOG_ERR, "Waited too long for dowload to start");
+        TorcNetwork::Cancel(m_request);
+        m_request->DownRef();
+        m_request = NULL;
     }
 
     m_state = Status_Invalid;
@@ -137,11 +151,15 @@ int TorcNetworkBuffer::Write(quint8 *Buffer, qint32 BufferSize)
 
 qint64 TorcNetworkBuffer::GetSize(void)
 {
+    if (m_request)
+        m_request->GetSize();
     return -1;
 }
 
 qint64 TorcNetworkBuffer::GetPosition(void)
 {
+    if (m_request)
+        m_request->GetPosition();
     return -1;
 }
 

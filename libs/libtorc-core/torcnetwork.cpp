@@ -56,22 +56,25 @@ TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, QNetworkAc
   : m_type(Type),
     m_abort(Abort),
     m_started(false),
+    m_positionInFile(0),
     m_readPosition(0),
     m_writePosition(0),
     m_bufferSize(BufferSize),
     m_buffer(QByteArray(BufferSize, 0)),
     m_readSize(DEFAULT_STREAMED_READ_SIZE),
-    m_request(Request),
+    m_redirectionCount(0),
     m_readTimer(new TorcTimer()),
     m_writeTimer(new TorcTimer()),
     m_replyFinished(false),
     m_replyBytesAvailable(0),
-    m_redirectionCount(0),
+    m_bytesReceived(0),
+    m_bytesTotal(0),
+    m_request(Request),
+    m_rangeStart(0),
+    m_rangeEnd(0),
     m_httpStatus(HTTP_BadRequest),
     m_contentLength(0),
-    m_byteServingAvailable(false),
-    m_bytesReceived(0),
-    m_bytesTotal(0)
+    m_byteServingAvailable(false)
 {
 }
 
@@ -94,6 +97,14 @@ int TorcNetworkRequest::BytesAvailable(void)
 qint64 TorcNetworkRequest::GetSize(void)
 {
     return m_contentLength;
+}
+
+qint64 TorcNetworkRequest::GetPosition(void)
+{
+    if (!m_bufferSize)
+        return -1;
+
+    return m_positionInFile;
 }
 
 bool TorcNetworkRequest::WaitForStart(int Timeout)
@@ -154,8 +165,7 @@ int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
     if (m_readPosition >= m_bufferSize)
         m_readPosition -= m_bufferSize;
 
-    static qint64 read = 0;
-    read += available;
+    m_positionInFile += available;
 
     m_available.fetchAndAddOrdered(-available);
     return available;
@@ -222,6 +232,29 @@ void TorcNetworkRequest::Write(QNetworkReply *Reply)
 void TorcNetworkRequest::SetReadSize(int Size)
 {
     m_readSize = Size;
+}
+
+void TorcNetworkRequest::SetRange(int Start, int End)
+{
+    if (m_rangeStart != 0 || m_rangeEnd != 0)
+        LOG(VB_GENERAL, LOG_WARNING, "Resetting byte ranges - potentially disastrous");
+
+    if (Start < 0)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Invalid range start");
+        return;
+    }
+
+    m_rangeStart = Start;
+    m_rangeEnd   = End;
+    if (m_rangeEnd <= Start)
+        m_rangeEnd = -1;
+
+    // adjust known position in file
+    m_positionInFile += m_rangeStart;
+
+    // and update the request
+    m_request.setRawHeader("Range", QString("bytes=%1-%2").arg(m_rangeStart).arg(m_rangeEnd != -1 ? QString::number(m_rangeEnd) : "").toLatin1());
 }
 
 void TorcNetworkRequest::DownloadProgress(qint64 Received, qint64 Total)
@@ -559,7 +592,7 @@ bool TorcNetwork::CheckHeaders(TorcNetworkRequest *Request, QNetworkReply *Reply
             m_requests.remove(Reply);
             Request->m_request.setUrl(Reply->request().url());
             Request->m_type = QNetworkAccessManager::GetOperation;
-            Request->m_request.setRawHeader("Range", "bytes=0-10");
+            Request->SetRange(0, 10);
             Reply->abort();
             Reply->deleteLater();
             GetSafe(Request);
