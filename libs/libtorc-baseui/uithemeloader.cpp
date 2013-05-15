@@ -32,8 +32,6 @@
 #include "uitheme.h"
 #include "uithemeloader.h"
 
-#define LOC QString("UILoader: ")
-
 UIThemeLoader::UIThemeLoader(const QString &FileName, UITheme *Theme)
   : m_filename(FileName),
     m_theme(Theme)
@@ -54,7 +52,7 @@ bool UIThemeLoader::LoadThemeInfo(void)
     // sanity check
     if (!m_theme || m_filename.isEmpty())
     {
-        LOG(VB_GENERAL, LOG_ERR, LOC + "Invalid theme data.");
+        LOG(VB_GENERAL, LOG_ERR, "Invalid theme data.");
         m_theme->SetState(UITheme::ThemeError);
         return false;
     }
@@ -64,8 +62,7 @@ bool UIThemeLoader::LoadThemeInfo(void)
     QScopedPointer<TorcBuffer> file(TorcBuffer::Create(m_filename, &abort));
     if (!file.data())
     {
-        LOG(VB_GENERAL, LOG_ERR, LOC + QString("Failed to open '%1'")
-            .arg(m_filename));
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to open '%1'").arg(m_filename));
         m_theme->SetState(UITheme::ThemeError);
         return false;
     }
@@ -79,8 +76,7 @@ bool UIThemeLoader::LoadThemeInfo(void)
 
     if (!document.setContent(content, false, &error, &errorline, &errorcolumn))
     {
-        LOG(VB_GENERAL, LOG_ERR, LOC +
-            QString("Failed to parse '%1'. Error '%2', line %3, column %4")
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to parse '%1'. Error '%2', line %3, column %4")
             .arg(m_filename).arg(error).arg(errorline).arg(errorcolumn));
         m_theme->SetState(UITheme::ThemeError);
         return false;

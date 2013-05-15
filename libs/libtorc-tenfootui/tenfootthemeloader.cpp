@@ -33,8 +33,6 @@
 #include "tenfoottheme.h"
 #include "tenfootthemeloader.h"
 
-#define LOC QString("UILoader: ")
-
 TenfootThemeLoader::TenfootThemeLoader(const QString &FileName, UIWindow *Owner, QThread *OwnerThread)
   : UIThemeLoader(FileName, NULL),
     m_owner(Owner),
@@ -84,7 +82,7 @@ UITheme* TenfootThemeLoader::LoadTenfootTheme(void)
         // xml only for now
         if (!global.toLower().endsWith("xml"))
         {
-            LOG(VB_GENERAL, LOG_ERR, LOC + "XML files only for now.");
+            LOG(VB_GENERAL, LOG_ERR, "XML files only for now.");
             m_theme->DownRef();
             return NULL;
         }
@@ -106,8 +104,7 @@ UITheme* TenfootThemeLoader::LoadTenfootTheme(void)
 
         if (!document.setContent(content, false, &error, &errorline, &errorcolumn))
         {
-            LOG(VB_GENERAL, LOG_ERR, LOC +
-                QString("Failed to parse '%1'. Error '%2', line %3, column %4")
+            LOG(VB_GENERAL, LOG_ERR, QString("Failed to parse '%1'. Error '%2', line %3, column %4")
                 .arg(global).arg(error).arg(errorline).arg(errorcolumn));
             m_theme->DownRef();
             return NULL;
@@ -121,8 +118,7 @@ UITheme* TenfootThemeLoader::LoadTenfootTheme(void)
         }
     }
 
-    LOG(VB_GENERAL, LOG_INFO, LOC + QString("Finished loading theme '%1'")
-        .arg(m_theme->m_name));
+    LOG(VB_GENERAL, LOG_INFO, QString("Finished loading theme '%1'").arg(m_theme->m_name));
 
     m_theme->UpRef();
     m_theme->Debug();

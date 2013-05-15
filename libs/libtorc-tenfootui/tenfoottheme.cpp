@@ -30,8 +30,6 @@
 #include "tenfootthemeloader.h"
 #include "tenfoottheme.h"
 
-#define LOC QString("Tenfoot: ")
-
 int TenfootTheme::kTenfootThemeType = UIWidget::RegisterWidgetType();
 
 TenfootTheme::TenfootTheme(QSize WindowSize)
