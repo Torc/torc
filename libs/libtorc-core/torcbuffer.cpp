@@ -62,6 +62,7 @@ TorcBuffer* TorcBuffer::Create(const QString &URI, int *Abort, bool Media)
             if (buffer->Open())
                 break;
             delete buffer;
+            buffer = NULL;
         }
     }
 
