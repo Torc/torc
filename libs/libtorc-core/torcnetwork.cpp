@@ -91,6 +91,21 @@ int TorcNetworkRequest::BytesAvailable(void)
     return m_available.fetchAndAddOrdered(0);
 }
 
+qint64 TorcNetworkRequest::GetSize(void)
+{
+    return m_contentLength;
+}
+
+bool TorcNetworkRequest::WaitForStart(int Timeout)
+{
+    m_readTimer->Restart();
+
+    while (!m_started && !m_replyFinished && !(*m_abort))
+        TorcUSleep(50000);
+
+    return m_started || m_replyFinished;
+}
+
 int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
 {
     if (!Buffer || !m_bufferSize)
