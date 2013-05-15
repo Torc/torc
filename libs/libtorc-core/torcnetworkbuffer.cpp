@@ -26,9 +26,10 @@
 #include "torctimer.h"
 #include "torcnetworkbuffer.h"
 
-TorcNetworkBuffer::TorcNetworkBuffer(const QString &URI, bool Streamed, int *Abort)
+TorcNetworkBuffer::TorcNetworkBuffer(const QString &URI, bool Media, int *Abort)
   : TorcBuffer(URI, Abort),
-    m_streamed(Streamed),
+    m_media(Media),
+    m_type(Media ? Buffered : Unbuffered),
     m_request(NULL)
 {
 }
@@ -66,10 +67,8 @@ bool TorcNetworkBuffer::Open(void)
     m_state = Status_Opening;
 
     QNetworkRequest request(url);
-    if (m_streamed)
-        request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
-
-    m_request = new TorcNetworkRequest(request, QNetworkAccessManager::GetOperation, m_streamed ? DEFAULT_STREAMED_BUFFER_SIZE : 0, m_abort);
+    m_request = new TorcNetworkRequest(request, QNetworkAccessManager::GetOperation,
+                                       m_type == Unbuffered ? 0 : DEFAULT_STREAMED_BUFFER_SIZE, m_abort);
     m_request->SetReadSize(DEFAULT_STREAMED_READ_SIZE);
 
     if (TorcNetwork::Get(m_request))
@@ -110,11 +109,11 @@ int TorcNetworkBuffer::Read(quint8 *Buffer, qint32 BufferSize)
 {
     int result = -1;
 
-    if (m_state == Status_Opened && m_request && m_streamed)
+    if (m_state == Status_Opened && m_request && m_type != Unbuffered)
         if ((result = m_request->Read((char*)Buffer, BufferSize, 20000)) > -1)
             return result;
 
-    if (!m_streamed)
+    if (m_type == Unbuffered)
         LOG(VB_GENERAL, LOG_ERR, "Trying to read from a non-streamed download");
 
     return result;

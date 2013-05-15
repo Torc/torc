@@ -12,7 +12,15 @@
 class TORC_CORE_PUBLIC TorcNetworkBuffer : public TorcBuffer
 {
   public:
-    explicit TorcNetworkBuffer(const QString &URI, bool Streamed, int *Abort);
+    enum Type
+    {
+        Unbuffered, // straight download
+        Buffered,   // buffered but not seekable
+        Streamed    // buffered and seekable
+    };
+
+  public:
+    explicit TorcNetworkBuffer(const QString &URI, bool Media, int *Abort);
     ~TorcNetworkBuffer();
 
     bool     Open            (void);
@@ -30,7 +38,8 @@ class TORC_CORE_PUBLIC TorcNetworkBuffer : public TorcBuffer
     QString  GetPath         (void);
 
   private:
-    bool                     m_streamed;
+    bool                     m_media;
+    Type                     m_type;
     TorcNetworkRequest      *m_request;
 };
 
