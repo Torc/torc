@@ -167,7 +167,7 @@ int64_t TorcFileBuffer::Seek(int64_t Offset, int Whence)
 
         if (SEEK_END == whence)
         {
-            if (m_file->seek(m_file->size() - Offset))
+            if (m_file->seek(m_file->size() + Offset))
                 return m_file->pos();
 
             error = m_file->errorString();
