@@ -33,8 +33,8 @@
 */
 
 TorcFileBuffer::TorcFileBuffer(const QString &URI, int *Abort)
-  : TorcBuffer(URI, Abort),
-    m_file(NULL)
+  : QFile(URI),
+    TorcBuffer(URI, Abort)
 {
     QFileInfo info(m_uri);
     m_path = info.dir().path();
@@ -47,34 +47,21 @@ TorcFileBuffer::~TorcFileBuffer()
 
 bool TorcFileBuffer::Open(void)
 {
-    if (m_file)
-    {
-        LOG(VB_GENERAL, LOG_WARNING, "File already opened - closing first");
-        Close();
-    }
-
     m_state = Status_Opening;
-    m_file  = new QFile(m_uri);
 
-    if (m_file)
+    if (exists())
     {
-        if (m_file->exists())
+        if (open(QIODevice::ReadOnly))
         {
-            if (m_file->open(QIODevice::ReadOnly))
-            {
-                m_state = Status_Opened;
-                return TorcBuffer::Open();
-            }
-
-            LOG(VB_GENERAL, LOG_ERR, QString("Failed to open '%1' (%2)")
-                .arg(m_uri).arg(m_file->errorString()));
+            m_state = Status_Opened;
+            return TorcBuffer::Open();
         }
 
-        LOG(VB_GENERAL, LOG_ERR, QString("File '%1' does not exist").arg(m_uri));
-
-        delete m_file;
-        m_file = NULL;
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to open '%1' (%2)")
+            .arg(m_uri).arg(errorString()));
     }
+
+    LOG(VB_GENERAL, LOG_ERR, QString("File '%1' does not exist").arg(m_uri));
 
     m_state = Status_Invalid;
     return false;
@@ -86,13 +73,7 @@ void TorcFileBuffer::Close(void)
 
     m_state = Status_Closing;
 
-    if (m_file)
-    {
-        m_file->close();
-        m_file->deleteLater();
-    }
-
-    m_file = NULL;
+    close();
 
     m_state = Status_Closed;
 }
@@ -101,12 +82,12 @@ int TorcFileBuffer::Read(quint8 *Buffer, qint32 BufferSize)
 {
     int result = -1;
 
-    if (m_file && m_state == Status_Opened)
+    if (m_state == Status_Opened)
     {
-        if ((result = m_file->read((char*)Buffer, qMin((qint64)BufferSize, m_file->bytesAvailable()))) > -1)
+        if ((result = read((char*)Buffer, qMin((qint64)BufferSize, bytesAvailable()))) > -1)
             return result;
 
-        LOG(VB_GENERAL, LOG_ERR, QString("Read error '%1'").arg(m_file->errorString()));
+        LOG(VB_GENERAL, LOG_ERR, QString("Read error '%1'").arg(errorString()));
     }
 
     return result;
@@ -116,12 +97,12 @@ int TorcFileBuffer::Peek(quint8 *Buffer, qint32 BufferSize)
 {
     int result = -1;
 
-    if (m_file && m_state == Status_Opened)
+    if (m_state == Status_Opened)
     {
-        if ((result = m_file->peek((char*)Buffer, qMin((qint64)BufferSize, m_file->bytesAvailable()))) > -1)
+        if ((result = peek((char*)Buffer, qMin((qint64)BufferSize, bytesAvailable()))) > -1)
             return result;
 
-        LOG(VB_GENERAL, LOG_ERR, QString("Peek error '%1'").arg(m_file->errorString()));
+        LOG(VB_GENERAL, LOG_ERR, QString("Peek error '%1'").arg(errorString()));
     }
 
     return result;
@@ -138,43 +119,27 @@ int64_t TorcFileBuffer::Seek(int64_t Offset, int Whence)
 {
     int whence = Whence & ~AVSEEK_FORCE;
 
-    if (m_file && m_state == Status_Opened)
+    if (m_state == Status_Opened && !IsSequential())
     {
         if (AVSEEK_SIZE == whence)
         {
-            if (IsSequential())
-                return -1;
-            return m_file->size();
+            return size();
         }
-
-        QString error = "Uknown request";
-
-        if (SEEK_SET == whence)
+        else if (SEEK_SET == whence || SEEK_CUR == whence || SEEK_END == whence)
         {
-            if (m_file->seek(Offset))
-                return m_file->pos();
+            qint64 newoffset = Offset; // SEEK_SET
 
-            error = m_file->errorString();
+            if (SEEK_CUR == whence)
+                newoffset = pos() + Offset;
+            else if (SEEK_END == whence)
+                newoffset = size() + Offset;
+
+            if (seek(Offset))
+                return pos();
+
+            LOG(VB_GENERAL, LOG_ERR, QString("Seek error '%1' (offset: %2 whence %3 file '%4')")
+                .arg(errorString()).arg(Offset).arg(whence).arg(m_uri));
         }
-
-        if (SEEK_CUR == whence)
-        {
-            if (m_file->seek(m_file->pos() + Offset))
-                return m_file->pos();
-
-            error = m_file->errorString();
-        }
-
-        if (SEEK_END == whence)
-        {
-            if (m_file->seek(m_file->size() + Offset))
-                return m_file->pos();
-
-            error = m_file->errorString();
-        }
-
-        LOG(VB_GENERAL, LOG_ERR, QString("Seek error '%1' (offset: %2 whence %3 file '%4')")
-            .arg(error).arg(Offset).arg(whence).arg(m_uri));
     }
 
     return -1;
@@ -189,38 +154,27 @@ QByteArray TorcFileBuffer::ReadAll(int Timeout)
 {
     (void)Timeout;
 
-    if (m_file)
-        return m_file->readAll();
-
-    return TorcBuffer::ReadAll();
+    return readAll();
 }
 
 qint64 TorcFileBuffer::GetSize(void)
 {
-    if (m_file)
-        return m_file->size();
-    return -1;
+    return size();
 }
 
 qint64 TorcFileBuffer::GetPosition(void)
 {
-    if (m_file)
-        return m_file->pos();
-    return -1;
+    return pos();
 }
 
 bool TorcFileBuffer::IsSequential(void)
 {
-    if (m_file)
-        return m_file->isSequential();
-    return true;
+    return isSequential();
 }
 
 qint64 TorcFileBuffer::BytesAvailable(void)
 {
-    if (m_file)
-        return m_file->bytesAvailable();
-    return 0;
+    return bytesAvailable();
 }
 
 int TorcFileBuffer::BestBufferSize(void)

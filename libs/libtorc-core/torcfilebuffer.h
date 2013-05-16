@@ -7,7 +7,7 @@
 // Torc
 #include "torcbuffer.h"
 
-class TorcFileBuffer : public TorcBuffer
+class TorcFileBuffer : public QFile, public TorcBuffer
 {
   public:
     TorcFileBuffer(const QString &URI, int *Abort);
@@ -26,9 +26,6 @@ class TorcFileBuffer : public TorcBuffer
     bool     IsSequential    (void);
     qint64   BytesAvailable  (void);
     int      BestBufferSize  (void);
-
-  private:
-    QFile   *m_file;
 };
 
 #endif // TORCFILEBUFFER_H
