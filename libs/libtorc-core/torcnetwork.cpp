@@ -117,7 +117,12 @@ bool TorcNetworkRequest::WaitForStart(int Timeout)
     return m_started || m_replyFinished;
 }
 
-int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
+int TorcNetworkRequest::Peek(char *Buffer, qint32 BufferSize, int Timeout)
+{
+    return Read(Buffer, BufferSize, Timeout, true);
+}
+
+int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout, bool Peek)
 {
     if (!Buffer || !m_bufferSize)
         return -1;
@@ -154,20 +159,27 @@ int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout)
         int rest = m_bufferSize - m_readPosition;
         memcpy(Buffer, m_buffer.data() + m_readPosition, rest);
         memcpy(Buffer + rest, m_buffer.data(), available - rest);
-        m_readPosition = available - rest;
+
+        if (!Peek)
+            m_readPosition = available - rest;
     }
     else
     {
         memcpy(Buffer, m_buffer.data() + m_readPosition, available);
-        m_readPosition += available;
+        if (!Peek)
+            m_readPosition += available;
     }
 
-    if (m_readPosition >= m_bufferSize)
-        m_readPosition -= m_bufferSize;
+    if (!Peek)
+    {
+        if (m_readPosition >= m_bufferSize)
+            m_readPosition -= m_bufferSize;
 
-    m_positionInFile += available;
+        m_positionInFile += available;
 
-    m_available.fetchAndAddOrdered(-available);
+        m_available.fetchAndAddOrdered(-available);
+    }
+
     return available;
 }
 
@@ -701,7 +713,8 @@ void TorcNetwork::Error(QNetworkReply::NetworkError Code)
     QNetworkReply *reply = dynamic_cast<QNetworkReply*>(sender());
 
     if (reply && m_requests.contains(reply))
-        LOG(VB_GENERAL, LOG_ERR, QString("Network error '%1'").arg(reply->errorString()));
+        if (Code != QNetworkReply::OperationCanceledError)
+            LOG(VB_GENERAL, LOG_ERR, QString("Network error '%1'").arg(reply->errorString()));
 }
 
 void TorcNetwork::SSLErrors(const QList<QSslError> &Errors)

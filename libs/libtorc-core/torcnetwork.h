@@ -28,7 +28,8 @@ class TorcNetworkRequest : public TorcReferenceCounter
     TorcNetworkRequest(const QNetworkRequest Request, QNetworkAccessManager::Operation Type, int BufferSize, int *Abort);
 
     bool            WaitForStart      (int Timeout);
-    int             Read              (char* Buffer, qint32 BufferSize, int Timeout);
+    int             Peek              (char* Buffer, qint32 BufferSize, int Timeout);
+    int             Read              (char* Buffer, qint32 BufferSize, int Timeout, bool Peek = false);
     QByteArray      ReadAll           (int Timeout);
     int             BytesAvailable    (void);
     qint64          GetSize           (void);
