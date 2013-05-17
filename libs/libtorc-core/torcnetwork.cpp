@@ -122,6 +122,29 @@ int TorcNetworkRequest::Peek(char *Buffer, qint32 BufferSize, int Timeout)
     return Read(Buffer, BufferSize, Timeout, true);
 }
 
+/*! \fn Seek
+ * If this is a streamed download, attempt to seek within the range
+ * of what is currently buffered.
+*/
+qint64 TorcNetworkRequest::Seek(qint64 Offset)
+{
+    if (!m_bufferSize || Offset < m_positionInFile)
+        return -1;
+
+    if (Offset > (m_positionInFile + BytesAvailable()))
+        return -1;
+
+    int seek = Offset - m_positionInFile;
+    m_readPosition += seek;
+    if (m_readPosition >= m_bufferSize)
+        m_readPosition -= m_bufferSize;
+
+    m_positionInFile = Offset;
+    m_available.fetchAndAddOrdered(-seek);
+
+    return Offset;
+}
+
 int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout, bool Peek)
 {
     if (!Buffer || !m_bufferSize)
@@ -524,6 +547,7 @@ void TorcNetwork::CancelSafe(TorcNetworkRequest *Request)
     if (m_reverseRequests.contains(Request))
     {
         QNetworkReply* reply = m_reverseRequests.value(Request);
+        LOG(VB_NETWORK, LOG_INFO, QString("Canceling '%1'").arg(reply->request().url().toString()));
         reply->abort();
         reply->deleteLater();
         Request->DownRef();
