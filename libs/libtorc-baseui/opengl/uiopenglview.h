@@ -16,6 +16,7 @@ class UIEffect;
 
 class TORC_BASEUI_PUBLIC UIOpenGLView
 {
+  public:
     enum Projection
     {
         ViewPortOnly,
