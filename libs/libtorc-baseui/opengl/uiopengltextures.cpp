@@ -228,6 +228,9 @@ bool UIOpenGLTextures::ClearTexture(GLTexture *Texture)
     if (!Texture)
         return false;
 
+    if (Texture->m_type == GL_TEXTURE_CUBE_MAP)
+        return false;
+
     QSize size = Texture->m_size;
     uint buffsize = GetBufferSize(size, Texture->m_dataFmt,
                                   Texture->m_dataType);
@@ -389,6 +392,21 @@ GLTexture* UIOpenGLTextures::CreateTexture(QSize ActualSize, bool UsePBO,
     }
 
     return NULL;
+}
+
+GLTexture* UIOpenGLTextures::CreateCubeMap(int Size)
+{
+    return CreateTexture(QSize(Size, Size), false, GL_TEXTURE_CUBE_MAP);
+}
+
+void UIOpenGLTextures::UpdateCubeMap(GLTexture *Texture, uint Face, const void *Buffer)
+{
+    if (!Face || !Buffer || !Texture)
+        return;
+
+    glBindTexture(Texture->m_type, Texture->m_val);
+    glTexImage2D(Face, 0, Texture->m_internalFmt,Texture->m_actualSize.width(), Texture->m_actualSize.height(),
+                 0, Texture->m_dataFmt, Texture->m_dataType, Buffer);
 }
 
 void UIOpenGLTextures::SetTextureFilters(GLTexture *Texture, uint Filt, uint Wrap)

@@ -53,6 +53,8 @@ class TORC_BASEUI_PUBLIC UIOpenGLTextures : public UIOpenGLBufferObjects
                                  uint  InternalFmt = GL_RGBA8,
                                  uint  Filter = GL_LINEAR,
                                  uint  Wrap = GL_CLAMP_TO_EDGE);
+    GLTexture* CreateCubeMap    (int Size);
+    void  UpdateCubeMap         (GLTexture *Texture, uint Face, const void *Buffer);
     void  SetTextureFilters     (GLTexture *Texture, uint Filt, uint Wrap);
     void  DeleteTexture         (uint Texture);
     int   GetMaxTextureSize     (void);
