@@ -151,7 +151,7 @@ bool AudioOutputDigitalEncoder::Init(CodecID CodecId, int Bitrate, int Samplerat
     if (m_spdifEncoder)
         delete m_spdifEncoder;
 
-    m_spdifEncoder = new AudioSPDIFEncoder("spdif", CODEC_ID_AC3);
+    m_spdifEncoder = new AudioSPDIFEncoder("spdif", AV_CODEC_ID_AC3);
     if (!m_spdifEncoder->Succeeded())
     {
         Dispose();
@@ -229,7 +229,7 @@ size_t AudioOutputDigitalEncoder::Encode(void *Buffer, int Length, AudioFormat F
             continue;
 
         if (!m_spdifEncoder)
-            m_spdifEncoder = new AudioSPDIFEncoder("spdif", CODEC_ID_AC3);
+            m_spdifEncoder = new AudioSPDIFEncoder("spdif", AV_CODEC_ID_AC3);
 
         m_spdifEncoder->WriteFrame((uint8_t *)m_encodebuffer, outsize);
         // Check if output buffer is big enough

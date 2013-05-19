@@ -114,7 +114,7 @@ bool TorcRAOPBuffer::Open(void)
         return false;
     }
 
-    AVCodec *codec = avcodec_find_decoder(CODEC_ID_ALAC);
+    AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_ALAC);
 
     if (!codec)
     {

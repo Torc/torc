@@ -146,7 +146,7 @@ AudioOutput::AudioOutput(const AudioSettings &Settings, AudioWrapper *Parent)
     m_parent(Parent),
     m_configError(false),
     m_channels(-1),
-    m_codec(CODEC_ID_NONE),
+    m_codec(AV_CODEC_ID_NONE),
     m_bytesPerFrame(0),
     m_outputBytesPerFrame(0),
     m_format(FORMAT_NONE),
@@ -341,7 +341,7 @@ void AudioOutput::Reconfigure(const AudioSettings &Settings)
         /* Might we reencode a bitstream that's been decoded for timestretch?
            If the device doesn't support the number of channels - see below */
         if (m_outputSettingsDigital->CanFeature(FEATURE_AC3) &&
-            (settings.m_codec == CODEC_ID_AC3 || settings.m_codec == CODEC_ID_DTS))
+            (settings.m_codec == AV_CODEC_ID_AC3 || settings.m_codec == AV_CODEC_ID_DTS))
         {
             lreenc = true;
         }
@@ -519,7 +519,7 @@ void AudioOutput::Reconfigure(const AudioSettings &Settings)
                 .arg(m_samplerate).arg(m_configuredChannels));
 
         m_digitalEncoder = new AudioOutputDigitalEncoder();
-        if (!m_digitalEncoder->Init(CODEC_ID_AC3, 448000, m_samplerate,
+        if (!m_digitalEncoder->Init(AV_CODEC_ID_AC3, 448000, m_samplerate,
                            m_configuredChannels))
         {
             LOG(VB_GENERAL, LOG_ERR, "AC-3 encoder initialization failed");
@@ -733,10 +733,10 @@ bool AudioOutput::CanPassthrough(int Samplerate, int Channels, int Codec, int Pr
 
     switch (Codec)
     {
-        case CODEC_ID_AC3:
+        case AV_CODEC_ID_AC3:
             arg = FEATURE_AC3;
             break;
-        case CODEC_ID_DTS:
+        case AV_CODEC_ID_DTS:
             switch (Profile)
             {
                 case FF_PROFILE_DTS:
@@ -752,10 +752,10 @@ bool AudioOutput::CanPassthrough(int Samplerate, int Channels, int Codec, int Pr
                     break;
             }
             break;
-        case CODEC_ID_EAC3:
+        case AV_CODEC_ID_EAC3:
             arg = FEATURE_EAC3;
             break;
-        case CODEC_ID_TRUEHD:
+        case AV_CODEC_ID_TRUEHD:
             arg = FEATURE_TRUEHD;
             break;
     }
@@ -1321,7 +1321,7 @@ bool AudioOutput::IsErrored(void)
 
 bool AudioOutput::SetupPassthrough(int Codec, int CodecProfile, int &TempSamplerate, int &TempChannels)
 {
-    if (Codec == CODEC_ID_DTS && !m_outputSettingsDigital->CanFeature(FEATURE_DTSHD))
+    if (Codec == AV_CODEC_ID_DTS && !m_outputSettingsDigital->CanFeature(FEATURE_DTSHD))
     {
         // We do not support DTS-HD bitstream so force extraction of the
         // DTS core track instead
@@ -1338,7 +1338,7 @@ bool AudioOutput::SetupPassthrough(int Codec, int CodecProfile, int &TempSampler
         delete m_spdifEnc;
 
     m_spdifEnc = new AudioSPDIFEncoder("spdif", Codec);
-    if (m_spdifEnc->Succeeded() && Codec == CODEC_ID_DTS)
+    if (m_spdifEnc->Succeeded() && Codec == AV_CODEC_ID_DTS)
     {
         switch (CodecProfile)
         {

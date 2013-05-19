@@ -354,7 +354,7 @@ bool AudioWrapper::ShouldPassthrough(int Samplerate, int Channels, int Codec,
     if (m_passthroughDisabled)
         return false;
 
-    if (!UseProfile && Codec == CODEC_ID_DTS && !CanDTSHD())
+    if (!UseProfile && Codec == AV_CODEC_ID_DTS && !CanDTSHD())
         return CanPassthrough(Samplerate, Channels, Codec, FF_PROFILE_DTS);
 
     return CanPassthrough(Samplerate, Channels, Codec, Profile);
@@ -381,9 +381,9 @@ bool AudioWrapper::DecoderWillDownmix(int Codec)
     // use ffmpeg only for dolby codecs if we have to
     switch (Codec)
     {
-        case CODEC_ID_AC3:
-        case CODEC_ID_TRUEHD:
-        case CODEC_ID_EAC3:
+        case AV_CODEC_ID_AC3:
+        case AV_CODEC_ID_TRUEHD:
+        case AV_CODEC_ID_EAC3:
             return true;
         default:
             break;

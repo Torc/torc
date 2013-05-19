@@ -965,7 +965,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                         else // No passthru, the decoder will downmix
                         {
                             context->request_channels = m_audio->GetMaxChannels();
-                            if (context->codec_id == CODEC_ID_AC3)
+                            if (context->codec_id == AV_CODEC_ID_AC3)
                                 context->channels = m_audio->GetMaxChannels();
                         }
 
@@ -1018,7 +1018,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                             if (m_audio->DecoderWillDownmix(context->codec_id))
                             {
                                 context->request_channels = m_audio->GetMaxChannels();
-                                if (context->codec_id == CODEC_ID_AC3)
+                                if (context->codec_id == AV_CODEC_ID_AC3)
                                     context->channels = m_audio->GetMaxChannels();
                             }
 
@@ -1433,7 +1433,7 @@ void AudioDecoder::SetupAudio(TorcAudioThread *Thread)
     }
 
     int samplesize   = context->channels * AudioOutputSettings::SampleSize(format);
-    int codecprofile = context->codec_id == CODEC_ID_DTS ? context->profile : 0;
+    int codecprofile = context->codec_id == AV_CODEC_ID_DTS ? context->profile : 0;
     int originalchannels = stream->m_originalChannels;
 
     if (context->codec_id    == m_audioIn->m_codecId &&
@@ -1724,8 +1724,8 @@ bool AudioDecoder::OpenDecoders(const QList<TorcStreamData*> &Streams)
         }
 
         if (context->codec_type == AVMEDIA_TYPE_SUBTITLE &&
-           (context->codec_id   == CODEC_ID_DVB_TELETEXT ||
-            context->codec_id   == CODEC_ID_TEXT))
+           (context->codec_id   == AV_CODEC_ID_DVB_TELETEXT ||
+            context->codec_id   == AV_CODEC_ID_TEXT))
         {
             continue;
         }
