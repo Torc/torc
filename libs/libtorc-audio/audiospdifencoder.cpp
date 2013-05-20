@@ -16,7 +16,6 @@
 #include "torclogging.h"
 #include "torccompat.h"
 #include "torcavutils.h"
-#include "audiodecoder.h"
 #include "audiospdifencoder.h"
 
 extern "C" {

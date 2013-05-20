@@ -844,7 +844,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
     qint64 lastpts = AV_NOPTS_VALUE;
 
     SetupAudio(Thread);
-    uint8_t* audiosamples = (uint8_t *)av_mallocz(AVCODEC_MAX_AUDIO_FRAME_SIZE * sizeof(int32_t));
+    uint8_t* audiosamples = (uint8_t *)av_mallocz(MAX_AUDIO_FRAME_SIZE * sizeof(int32_t));
     *state = TorcDecoder::Running;
 
     // loop at least once in case SetupAudio above takes a while and we've already
@@ -1121,8 +1121,6 @@ int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
 {
     AVFrame frame;
     int gotframe = 0;
-    memset(&frame, 0, sizeof(AVFrame));
-    avcodec_get_frame_defaults(&frame);
 
     int result = avcodec_decode_audio4(Context, &frame, &gotframe, Packet);
 
@@ -1370,22 +1368,18 @@ void AudioDecoder::SetupAudio(TorcAudioThread *Thread)
 
     AudioFormat format = FORMAT_NONE;
 
-    switch (context->sample_fmt)
+    switch (av_get_packed_sample_fmt(context->sample_fmt))
     {
         case AV_SAMPLE_FMT_U8:
-        case AV_SAMPLE_FMT_U8P:
             format = FORMAT_U8;
             break;
         case AV_SAMPLE_FMT_S16:
-        case AV_SAMPLE_FMT_S16P:
             format = FORMAT_S16;
             break;
         case AV_SAMPLE_FMT_FLT:
-        case AV_SAMPLE_FMT_FLTP:
             format = FORMAT_FLT;
             break;
         case AV_SAMPLE_FMT_DBL:
-        case AV_SAMPLE_FMT_DBLP:
             format = FORMAT_NONE;
             break;
         case AV_SAMPLE_FMT_S32:
@@ -1397,16 +1391,6 @@ void AudioDecoder::SetupAudio(TorcAudioThread *Thread)
                 default: format = FORMAT_NONE;
             }
             break;
-        case AV_SAMPLE_FMT_S32P:
-            switch (context->bits_per_raw_sample)
-            {
-                case  0: format = FORMAT_S32; break;
-                case 24: format = FORMAT_S24; break;
-                case 32: format = FORMAT_S32; break;
-                default: format = FORMAT_NONE;
-            }
-            break;
-
         default:
             break;
     }

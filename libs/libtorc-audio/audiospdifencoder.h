@@ -6,6 +6,7 @@
 
 // Torc
 #include "torcaudioexport.h"
+#include "audiodecoder.h"
 #include "audiooutputlisteners.h"
 
 extern "C" {
@@ -36,7 +37,7 @@ class TORC_AUDIO_PUBLIC AudioSPDIFEncoder
     bool             m_complete;
     AVFormatContext *m_formatContext;
     AVStream        *m_stream;
-    unsigned char    m_buffer[AVCODEC_MAX_AUDIO_FRAME_SIZE];
+    unsigned char    m_buffer[MAX_AUDIO_FRAME_SIZE];
     long             m_size;
 };
 

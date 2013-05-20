@@ -27,6 +27,8 @@ extern "C" {
 #include "libavformat/avformat.h"
 }
 
+#define MAX_AUDIO_FRAME_SIZE 192000
+
 class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
 {
     friend class AudioDecoderFactory;
