@@ -377,78 +377,80 @@ void TorcRAOPConnection::ProcessText(void)
     *m_priv->m_textStream << "RTSP/1.0 200 OK\r\n";
 
     QString option = m_priv->m_textHeaders.value("option");
-    if (option == "OPTIONS")
+
+    if (m_priv->m_textHeaders.contains("Apple-Challenge"))
     {
-        if (m_priv->m_textHeaders.contains("Apple-Challenge"))
+        LOG(VB_GENERAL, LOG_INFO, IDENT + "Challenge");
+        m_priv->m_state |= Challenged;
+
+        int tosize = RSA_size(LoadKey());
+        uint8_t *to = new uint8_t[tosize];
+
+        QByteArray challenge = QByteArray::fromBase64(m_priv->m_textHeaders.value("Apple-Challenge").toLatin1());
+        int challengesize = challenge.size();
+        if (challengesize != 16)
         {
-            LOG(VB_GENERAL, LOG_INFO, IDENT + "Challenge");
-            m_priv->m_state |= Challenged;
+            LOG(VB_GENERAL, LOG_WARNING, IDENT + QString("Decoded challenge size %1, expected 16").arg(challengesize));
+            if (challengesize > 16)
+                challengesize = 16;
+        }
 
-            int tosize = RSA_size(LoadKey());
-            uint8_t *to = new uint8_t[tosize];
-
-            QByteArray challenge = QByteArray::fromBase64(m_priv->m_textHeaders.value("Apple-Challenge").toLatin1());
-            int challengesize = challenge.size();
-            if (challengesize != 16)
+        unsigned char from[38];
+        memcpy(from, challenge.constData(), challengesize);
+        int i = challengesize;
+        if (m_priv->m_socket->localAddress().protocol() == QAbstractSocket::IPv4Protocol)
+        {
+            uint32_t ip = m_priv->m_socket->localAddress().toIPv4Address();
+            ip = qToBigEndian(ip);
+            memcpy(from + i, &ip, 4);
+            i += 4;
+        }
+        else if (m_priv->m_socket->localAddress().protocol() == QAbstractSocket::IPv6Protocol)
+        {
+            Q_IPV6ADDR ip = m_priv->m_socket->localAddress().toIPv6Address();
+            if(memcmp(&ip, "\x00\x00\x00\x00" "\x00\x00\x00\x00" "\x00\x00\xff\xff", 12) == 0)
             {
-                LOG(VB_GENERAL, LOG_WARNING, IDENT + QString("Decoded challenge size %1, expected 16").arg(challengesize));
-                if (challengesize > 16)
-                    challengesize = 16;
-            }
-
-            unsigned char from[38];
-            memcpy(from, challenge.constData(), challengesize);
-            int i = challengesize;
-            if (m_priv->m_socket->localAddress().protocol() == QAbstractSocket::IPv4Protocol)
-            {
-                uint32_t ip = m_priv->m_socket->localAddress().toIPv4Address();
-                ip = qToBigEndian(ip);
-                memcpy(from + i, &ip, 4);
+                memcpy(from + i, &ip[12], 4);
                 i += 4;
             }
-            else if (m_priv->m_socket->localAddress().protocol() == QAbstractSocket::IPv6Protocol)
+            else
             {
-                Q_IPV6ADDR ip = m_priv->m_socket->localAddress().toIPv6Address();
-                if(memcmp(&ip, "\x00\x00\x00\x00" "\x00\x00\x00\x00" "\x00\x00\xff\xff", 12) == 0)
-                {
-                    memcpy(from + i, &ip[12], 4);
-                    i += 4;
-                }
-                else
-                {
-                    memcpy(from + i, &ip, 16);
-                    i += 16;
-                }
+                memcpy(from + i, &ip, 16);
+                i += 16;
             }
-
-            memcpy(from + i, m_priv->m_macAddress.constData(), 6);
-            i += 6;
-
-            int pad = 32 - i;
-            if (pad > 0)
-            {
-                memset(from + i, 0, pad);
-                i += pad;
-            }
-
-            LOG(VB_GENERAL, LOG_DEBUG, IDENT + QString("Full base64 response: '%1' size %2")
-                .arg(QByteArray((const char *)from, i).toBase64().constData()).arg(i));
-
-            RSA_private_encrypt(i, from, to, LoadKey(), RSA_PKCS1_PADDING);
-
-            QByteArray base64 = QByteArray((const char *)to, tosize).toBase64();
-            delete[] to;
-
-            for (int pos = base64.size() - 1; pos > 0; pos--)
-            {
-                if (base64[pos] == '=')
-                    base64[pos] = ' ';
-                else
-                    break;
-            }
-            *m_priv->m_textStream << "Apple-Response: " << base64.trimmed() << "\r\n";
-
         }
+
+        memcpy(from + i, m_priv->m_macAddress.constData(), 6);
+        i += 6;
+
+        int pad = 32 - i;
+        if (pad > 0)
+        {
+            memset(from + i, 0, pad);
+            i += pad;
+        }
+
+        LOG(VB_GENERAL, LOG_DEBUG, IDENT + QString("Full base64 response: '%1' size %2")
+            .arg(QByteArray((const char *)from, i).toBase64().constData()).arg(i));
+
+        RSA_private_encrypt(i, from, to, LoadKey(), RSA_PKCS1_PADDING);
+
+        QByteArray base64 = QByteArray((const char *)to, tosize).toBase64();
+        delete[] to;
+
+        for (int pos = base64.size() - 1; pos > 0; pos--)
+        {
+            if (base64[pos] == '=')
+                base64[pos] = ' ';
+            else
+                break;
+        }
+        *m_priv->m_textStream << "Apple-Response: " << base64.trimmed() << "\r\n";
+        m_priv->m_state |= Responded;
+    }
+
+    if (option == "OPTIONS")
+    {
         m_priv->m_state |= Responded;
         *m_priv->m_textStream << "Public: ANNOUNCE, SETUP, RECORD, PAUSE, FLUSH, TEARDOWN, OPTIONS, GET_PARAMETER, SET_PARAMETER, POST, GET\r\n";
     }
@@ -706,7 +708,7 @@ void TorcRAOPConnection::timerEvent(QTimerEvent *Event)
             m_priv->m_socket->disconnectFromHost();
             m_priv->m_state = None;
         }
-        else if (m_priv->m_playerReadTimeoutCount & 4)
+        else if (m_priv->m_playerReadTimeoutCount % 4 == 0)
         {
             LOG(VB_GENERAL, LOG_WARNING, IDENT + "Waited 1 second for player to read data");
         }
@@ -714,13 +716,13 @@ void TorcRAOPConnection::timerEvent(QTimerEvent *Event)
     else if (Event->timerId() == m_priv->m_clientSendTimeout)
     {
         m_priv->m_clientSendTimoutCount++;
-        if (m_priv->m_playerReadTimeoutCount == 20)
+        if (m_priv->m_clientSendTimoutCount == 20)
         {
             LOG(VB_GENERAL, LOG_ERR, IDENT + "No audio data from client in 5 seconds - stopping");
             m_priv->m_socket->disconnectFromHost();
             m_priv->m_state = None;
         }
-        else if (m_priv->m_clientSendTimoutCount & 4)
+        else if (m_priv->m_clientSendTimoutCount % 4 == 0)
         {
             LOG(VB_GENERAL, LOG_WARNING, IDENT + "No audio data from client in 1 second");
         }
