@@ -221,7 +221,7 @@ void TorcRAOPDevice::NewConnection(void)
 
         if (client)
         {
-            LOG(VB_GENERAL, LOG_INFO, QString("New RAOP connection from %1:%2")
+            LOG(VB_GENERAL, LOG_INFO, QString("New RAOP connection from %1 on port %2")
                 .arg(client->peerAddress().toString()).arg(client->peerPort()));
 
             static int reference = 0;
@@ -258,7 +258,7 @@ void TorcRAOPDevice::DeleteConnection(void)
         QTcpSocket* socket = it.value()->MasterSocket();
         if (socket->state() == QTcpSocket::UnconnectedState)
         {
-            LOG(VB_GENERAL, LOG_INFO, QString("Removing client connected from %1:%2")
+            LOG(VB_GENERAL, LOG_INFO, QString("Removing client connected from %1 on port %2")
                 .arg(socket->peerAddress().toString()).arg(socket->peerPort()));
             it.value()->deleteLater();
             m_connections.remove(it.key());
