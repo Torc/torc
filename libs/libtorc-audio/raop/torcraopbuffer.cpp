@@ -263,13 +263,9 @@ int TorcRAOPBuffer::Read(quint8 *Buffer, qint32 BufferSize)
     QByteArray *data = NULL;
     int tries = 0;
 
-    // need to give TorcRAOPConnection to recover from missed packets
-    while (data == NULL && tries++ < 40 && !m_avFormatContext->interrupt_callback.callback(m_avFormatContext->interrupt_callback.opaque))
-    {
-        if ((data = TorcRAOPDevice::Read(m_streamId)))
-            continue;
+    // need to give TorcRAOPConnection time to recover from missed packets and other temporary interruptions
+    while (!(data = TorcRAOPDevice::Read(m_streamId)) && (tries++ < 100) && !m_avFormatContext->interrupt_callback.callback(m_avFormatContext->interrupt_callback.opaque))
         TorcUSleep(50000);
-    }
 
     if (!data)
         return result;
