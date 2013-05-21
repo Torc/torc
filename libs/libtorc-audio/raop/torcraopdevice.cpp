@@ -47,36 +47,6 @@
 QMutex* TorcRAOPDevice::gTorcRAOPLock = new QMutex();
 TorcRAOPDevice* TorcRAOPDevice::gTorcRAOPDevice = NULL;
 
-void TorcRAOPDevice::Enable(bool Enable)
-{
-    bool allow = gLocalContext->FlagIsSet(Torc::Server) &&
-                 gLocalContext->GetSetting(TORC_AUDIO + "RAOPEnabled", false) &&
-                 TorcRAOPConnection::LoadKey();
-
-    {
-        QMutexLocker locker(gTorcRAOPLock);
-
-        if (gTorcRAOPDevice)
-        {
-            if (Enable && allow)
-                return;
-
-            delete gTorcRAOPDevice;
-            gTorcRAOPDevice = NULL;
-            return;
-        }
-
-        if (Enable && allow)
-        {
-            gTorcRAOPDevice = new TorcRAOPDevice();
-            return;
-        }
-
-        delete gTorcRAOPDevice;
-        gTorcRAOPDevice = NULL;
-    }
-}
-
 QByteArray* TorcRAOPDevice::Read(int Reference)
 {
     if (Reference < 1)
@@ -91,27 +61,67 @@ QByteArray* TorcRAOPDevice::Read(int Reference)
 
 TorcRAOPDevice::TorcRAOPDevice()
   : QTcpServer(NULL),
-    m_port(0),
+    m_enabled(NULL),
+    m_port(NULL),
     m_macAddress(DEFAULT_MAC_ADDRESS),
     m_bonjourReference(0),
     m_lock(new QMutex(QMutex::Recursive))
 {
-    connect(this, SIGNAL(newConnection()), this, SLOT(NewConnection()));
-    gLocalContext->AddObserver(this);
+    // main setting
+    TorcSetting *parent = gRootSetting->FindChild(QString(TORC_CORE + "AllowInboundNetwork"), true);
 
-    int lastport = gLocalContext->GetSetting(TORC_AUDIO + "RAOPServerPort", 4850);
-    m_port = lastport > 1023 ? lastport : 4850;
+    if (parent)
+    {
+        m_enabled = new TorcSetting(parent, QString(TORC_AUDIO + "RAOPEnabled"), tr("Enable AirTunes playback"),
+                                    TorcSetting::Checkbox, true, QVariant((bool)true));
+        m_enabled->SetActiveThreshold(2);
+        if (parent->IsActive())
+            m_enabled->SetActive(true);
+        if (parent->GetValue().toBool())
+            m_enabled->SetActive(true);
+        connect(parent,    SIGNAL(ValueChanged(bool)),      m_enabled, SLOT(SetActive(bool)));
+        connect(parent,    SIGNAL(ActivationChanged(bool)), m_enabled, SLOT(SetActive(bool)));
+        connect(m_enabled, SIGNAL(ValueChanged(bool)),      this,      SLOT(Enable(bool)));
+        connect(m_enabled, SIGNAL(ActivationChanged(bool)), this,      SLOT(Enable(bool)));
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to find inbound network setting");
+    }
+
+    // port setting (not visible to end user)
+    m_port = new TorcSetting(NULL, QString(TORC_AUDIO + "RAOPServerPort"), QString(), TorcSetting::Integer, true, QVariant((int)4850));
+
+    // listen for connections
+    connect(this, SIGNAL(newConnection()), this, SLOT(NewConnection()));
+
+    // listen for events
+    gLocalContext->AddObserver(this);
 
     // no network = no mac address (and no clients)
     if (TorcNetwork::IsAvailable())
-        Open();
+        Enable(m_enabled->GetValue().toBool() && m_enabled->IsActive());
     else
-        LOG(VB_GENERAL, LOG_INFO, "Deferring RAOP server startup until network available");
+        LOG(VB_GENERAL, LOG_INFO, "Deferring RAOP server startup");
 }
 
 TorcRAOPDevice::~TorcRAOPDevice()
 {
     Close();
+
+    if (m_port)
+    {
+        m_port->Remove();
+        m_port->DownRef();
+        m_port = NULL;
+    }
+
+    if (m_enabled)
+    {
+        m_enabled->Remove();
+        m_enabled->DownRef();
+        m_enabled = NULL;
+    }
 
     gLocalContext->RemoveObserver(this);
 
@@ -123,17 +133,24 @@ bool TorcRAOPDevice::Open(void)
 {
     QMutexLocker locker(m_lock);
 
-    if (!isListening())
+    if (!TorcRAOPConnection::LoadKey())
+        return false;
+
+    int port = m_port->GetValue().toInt();
+
+    bool waslistening = isListening();
+
+    if (!waslistening)
     {
         // QHostAddress::Any will listen to all IPv4 and IPv6 addresses on Qt 5.x but to IPv4
         // addresses only on Qt 4.8. So try IPv6 first on Qt 4.8 and fall back to any.
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-        if (!listen(QHostAddress::AnyIPv6, m_port))
+        if (!listen(QHostAddress::AnyIPv6, port))
             if (serverError() == QAbstractSocket::UnsupportedSocketOperationError)
                 LOG(VB_GENERAL, LOG_INFO, "IPv6 not available");
 #endif
-        if (!isListening() && !listen(QHostAddress::Any, m_port))
-            if (m_port > 0)
+        if (!isListening() && !listen(QHostAddress::Any, port))
+            if (port > 0)
                 listen();
     }
 
@@ -146,11 +163,10 @@ bool TorcRAOPDevice::Open(void)
 
     // try and use the same port across power events
     int newport = serverPort();
-
-    if (newport != m_port)
+    if (newport != port)
     {
-        m_port = serverPort();
-        gLocalContext->SetSetting(TORC_AUDIO + "RAOPServerPort", m_port);
+        m_port->SetValue(QVariant((int)newport));
+        port = newport;
     }
 
     // advertise
@@ -180,7 +196,7 @@ bool TorcRAOPDevice::Open(void)
         txt.append(9); txt.append("vs=130.14");
         txt.append(7); txt.append("da=true");
 
-        m_bonjourReference = TorcBonjour::Instance()->Register(m_port, type, name, txt);
+        m_bonjourReference = TorcBonjour::Instance()->Register(port, type, name, txt);
         if (!m_bonjourReference)
         {
             LOG(VB_GENERAL, LOG_ERR, "Failed to advertise RAOP device");
@@ -189,7 +205,8 @@ bool TorcRAOPDevice::Open(void)
         }
     }
 
-    LOG(VB_GENERAL, LOG_INFO, QString("RAOP server listening on port %1").arg(m_port));
+    if (!waslistening)
+        LOG(VB_GENERAL, LOG_INFO, QString("RAOP server listening on port %1").arg(port));
     return true;
 }
 
@@ -280,23 +297,8 @@ bool TorcRAOPDevice::event(QEvent *Event)
         TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
         if (torcevent)
         {
-            int event = torcevent->Event();
-
-            if (event == Torc::NetworkAvailable && !isListening())
-            {
-                if (TorcNetwork::IsAllowed())
-                    Open();
-            }
-            else if (event == Torc::NetworkEnabled && !isListening())
-            {
-                // need network for Mac Address - unless it's already been started once
-                if (TorcNetwork::IsAvailable() || m_macAddress != DEFAULT_MAC_ADDRESS)
-                    Open();
-            }
-            else if (event == Torc::NetworkDisabled && isListening())
-            {
-                Close(true);
-            }
+            if (torcevent->Event() == Torc::NetworkAvailable)
+                Enable(true);
         }
     }
 
@@ -314,6 +316,14 @@ QByteArray* TorcRAOPDevice::ReadPacket(int Reference)
     return NULL;
 }
 
+void TorcRAOPDevice::Enable(bool Enable)
+{
+    if (TorcNetwork::IsAvailable() && Enable && m_enabled->IsActive() && m_enabled->GetValue().toBool())
+        Open();
+    else
+        Close();
+}
+
 class TorcRAOPObject : public TorcAdminObject
 {
   public:
@@ -324,12 +334,23 @@ class TorcRAOPObject : public TorcAdminObject
 
     void Create(void)
     {
-        TorcRAOPDevice::Enable(true);
+        Destroy();
+
+        {
+            QMutexLocker locker(TorcRAOPDevice::gTorcRAOPLock);
+            if (gLocalContext->FlagIsSet(Torc::Server))
+                TorcRAOPDevice::gTorcRAOPDevice = new TorcRAOPDevice();
+        }
     }
 
     void Destroy(void)
     {
-        TorcRAOPDevice::Enable(false);
+        QMutexLocker locker(TorcRAOPDevice::gTorcRAOPLock);
+        if (TorcRAOPDevice::gTorcRAOPDevice)
+        {
+            delete TorcRAOPDevice::gTorcRAOPDevice;
+            TorcRAOPDevice::gTorcRAOPDevice = NULL;
+        }
     }
 
 } TorcRAOPObject;

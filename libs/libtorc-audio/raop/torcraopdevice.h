@@ -4,6 +4,9 @@
 // Qt
 #include <QTcpServer>
 
+// Torc
+#include "torcsetting.h"
+
 class QMutex;
 class TorcRAOPConnection;
 
@@ -11,11 +14,12 @@ class TorcRAOPDevice : public QTcpServer
 {
     Q_OBJECT
 
+    friend class TorcRAOPObject;
+
   public:
     static     QMutex*            gTorcRAOPLock;
     static     TorcRAOPDevice*    gTorcRAOPDevice;
 
-    static     void Enable        (bool Enable);
     static     QByteArray* Read   (int  Reference);
 
   public:
@@ -34,8 +38,12 @@ class TorcRAOPDevice : public QTcpServer
     bool        event             (QEvent *Event);
     QByteArray* ReadPacket        (int Reference);
 
+  private slots:
+    void        Enable            (bool Enable);
+
   private:
-    int                            m_port;
+    TorcSetting                   *m_enabled;
+    TorcSetting                   *m_port;
     QString                        m_macAddress;
     quint32                        m_bonjourReference;
     QMutex                        *m_lock;
