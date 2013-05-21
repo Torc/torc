@@ -19,7 +19,7 @@ class AudioOutputDigitalEncoder
     AudioOutputDigitalEncoder();
    ~AudioOutputDigitalEncoder();
 
-    bool   Init       (CodecID CodecId, int Bitrate, int Samplerate, int Channels);
+    bool   Init       (AVCodecID CodecId, int Bitrate, int Samplerate, int Channels);
     void   Dispose    (void);
     size_t Encode     (void *Buffer, int Length, AudioFormat Format);
     size_t GetFrames  (void *Pointer, int MaxLength);

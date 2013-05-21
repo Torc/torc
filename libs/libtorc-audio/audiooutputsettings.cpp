@@ -602,7 +602,7 @@ AudioDescription::AudioDescription(int  Codec,       AudioFormat Format,
 QString AudioDescription::ToString(void)
 {
     return QString("'%1' %2Hz %3ch %4bps %5(profile %6)")
-        .arg(AVCodecToString((CodecID)m_codecId))
+        .arg(AVCodecToString((AVCodecID)m_codecId))
         .arg(m_sampleRate)
         .arg(m_channels)
         .arg(AudioOutputSettings::FormatToBits(m_format))

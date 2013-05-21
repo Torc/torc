@@ -96,7 +96,7 @@ void *AudioOutputDigitalEncoder::Reallocate(void *Pointer, size_t OldSize, size_
     return newpointer;
 }
 
-bool AudioOutputDigitalEncoder::Init(CodecID CodecId, int Bitrate, int Samplerate, int Channels)
+bool AudioOutputDigitalEncoder::Init(AVCodecID CodecId, int Bitrate, int Samplerate, int Channels)
 {
     AudioDecoder::InitialiseLibav();
 

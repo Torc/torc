@@ -78,7 +78,7 @@ AudioSPDIFEncoder::AudioSPDIFEncoder(QString Muxer, int CodecId)
 
     m_stream->id          = 1;
     AVCodecContext *codec = m_stream->codec;
-    codec->codec_id       = (CodecID)CodecId;
+    codec->codec_id       = (AVCodecID)CodecId;
     avformat_write_header(m_formatContext, NULL);
 
     LOG(VB_AUDIO, LOG_INFO, QString("Creating '%1' encoder (for %2)").arg(Muxer).arg(AVCodecToString(CodecId)));
