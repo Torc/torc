@@ -125,15 +125,21 @@ bool TorcRAOPDevice::Open(void)
 
     if (!isListening())
     {
-        // start listening for connections
-        if (!listen(QHostAddress::Any, m_port))
+        // QHostAddress::Any will listen to all IPv4 and IPv6 addresses on Qt 5.x but to IPv4
+        // addresses only on Qt 4.8. So try IPv6 first on Qt 4.8 and fall back to any.
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+        if (!listen(QHostAddress::AnyIPv6, m_port))
+            if (serverError() == QAbstractSocket::UnsupportedSocketOperationError)
+                LOG(VB_GENERAL, LOG_INFO, "IPv6 not available");
+#endif
+        if (!isListening() && !listen(QHostAddress::Any, m_port))
             if (m_port > 0)
                 listen();
     }
 
     if (!isListening())
     {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to open RAOP port");
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to open RAOP port (%1)").arg(errorString()));
         Close();
         return false;
     }
