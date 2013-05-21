@@ -70,7 +70,7 @@ bool TorcNetwork::Get(TorcNetworkRequest* Request)
 {
     QMutexLocker locker(gNetworkLock);
 
-    if (IsAllowedOutbound())
+    if (gNetwork->IsOnline() && IsAllowedOutbound())
     {
         QMetaObject::invokeMethod(gNetwork, "GetSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request));
         return true;
@@ -273,7 +273,7 @@ void TorcNetwork::SetAllowed(bool Allow)
 
 void TorcNetwork::GetSafe(TorcNetworkRequest* Request)
 {
-    if (Request)
+    if (Request && m_online)
     {
         Request->UpRef();
 
