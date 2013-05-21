@@ -239,21 +239,29 @@ TorcPower::TorcPower()
                                        tr("Allow Torc to restart the system."),
                                        TorcSetting::Checkbox, true, QVariant((bool)true));
 
+    m_powerEnabled->SetActive(gLocalContext->FlagIsSet(Torc::Power));
     // 'allow' depends on both underlying platform capabilities and top level setting
     m_allowShutdown->SetActiveThreshold(2);
     m_allowSuspend->SetActiveThreshold(2);
     m_allowHibernate->SetActiveThreshold(2);
     m_allowRestart->SetActiveThreshold(2);
 
-    m_allowShutdown->SetActive(m_priv->m_canShutdown->GetValue().toBool());
-    m_allowSuspend->SetActive(m_priv->m_canSuspend->GetValue().toBool());
-    m_allowHibernate->SetActive(m_priv->m_canHibernate->GetValue().toBool());
-    m_allowRestart->SetActive(m_priv->m_canRestart->GetValue().toBool());
+    if (m_priv->m_canShutdown->GetValue().toBool())
+        m_allowShutdown->SetActive(true);
+    if (m_priv->m_canSuspend->GetValue().toBool())
+        m_allowSuspend->SetActive(true);
+    if (m_priv->m_canHibernate->GetValue().toBool())
+        m_allowHibernate->SetActive(true);
+    if (m_priv->m_canRestart->GetValue().toBool())
+        m_allowRestart->SetActive(true);
 
-    m_allowShutdown->SetActive(m_powerEnabled->GetValue().toBool());
-    m_allowSuspend->SetActive(m_powerEnabled->GetValue().toBool());
-    m_allowHibernate->SetActive(m_powerEnabled->GetValue().toBool());
-    m_allowRestart->SetActive(m_powerEnabled->GetValue().toBool());
+    if (m_powerEnabled->GetValue().toBool())
+    {
+        m_allowShutdown->SetActive(true);
+        m_allowSuspend->SetActive(true);
+        m_allowHibernate->SetActive(true);
+        m_allowRestart->SetActive(true);
+    }
 
     // listen for changes
     connect(m_priv->m_canShutdown,  SIGNAL(ValueChanged(bool)), m_allowShutdown,  SLOT(SetActive(bool)));
