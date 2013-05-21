@@ -30,9 +30,10 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     // Public API
     static bool IsAvailable         (void);
     static bool IsAllowed           (void);
+    static bool IsAllowedInbound    (void);
+    static bool IsAllowedOutbound   (void);
     static QString GetMACAddress    (void);
     static bool Get                 (TorcNetworkRequest* Request);
-    static bool Head                (TorcNetworkRequest* Request);
     static void Cancel              (TorcNetworkRequest* Request);
     static void Poke                (TorcNetworkRequest* Request);
 
@@ -51,6 +52,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     void    SSLErrors               (const QList<QSslError> &Errors);
     void    DownloadProgress        (qint64 Received, qint64 Total);
 
+  private slots:
     // Torc
     void    SetAllowed              (bool Allow);
     void    GetSafe                 (TorcNetworkRequest* Request);
@@ -67,6 +69,8 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     TorcNetwork();
     bool    IsOnline                (void);
     bool    IsAllowedPriv           (void);
+    bool    IsAllowedInboundPriv    (void);
+    bool    IsAllowedOutboundPriv   (void);
     bool    CheckHeaders            (TorcNetworkRequest* Request, QNetworkReply *Reply);
     bool    Redirected              (TorcNetworkRequest* Request, QNetworkReply *Reply);
 
@@ -78,6 +82,8 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     bool                             m_online;
     TorcSettingGroup                *m_networkGroup;
     TorcSetting                     *m_networkAllowed;
+    TorcSetting                     *m_networkAllowedInbound;
+    TorcSetting                     *m_networkAllowedOutbound;
     QNetworkConfigurationManager    *m_manager;
     QNetworkConfiguration            m_configuration;
     QNetworkInterface                m_interface;
