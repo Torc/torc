@@ -68,7 +68,7 @@ TorcRAOPDevice::TorcRAOPDevice()
     m_lock(new QMutex(QMutex::Recursive))
 {
     // main setting
-    TorcSetting *parent = gRootSetting->FindChild(QString(TORC_CORE + "AllowInboundNetwork"), true);
+    TorcSetting *parent = gRootSetting->FindChild(SETTING_NETWORKALLOWEDINBOUND, true);
 
     if (parent)
     {

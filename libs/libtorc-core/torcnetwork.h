@@ -20,6 +20,10 @@
 
 class TorcNetworkRequest;
 
+#define SETTING_NETWORKALLOWED         QString(TORC_CORE + "AllowNetwork")
+#define SETTING_NETWORKALLOWEDINBOUND  QString(TORC_CORE + "AllowInboundNetwork")
+#define SETTING_NETWORKALLOWEDOUTBOUND QString(TORC_CORE + "AllowOutboundNetwork")
+
 class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
 {
     friend class TorcNetworkObject;

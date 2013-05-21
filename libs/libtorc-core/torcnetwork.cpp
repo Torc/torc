@@ -141,13 +141,13 @@ TorcNetwork::TorcNetwork()
 
     // create settings and establish correct behaviour
     m_networkGroup   = new TorcSettingGroup(gRootSetting, tr("Network"));
-    m_networkAllowed = new TorcSetting(m_networkGroup, QString(TORC_CORE + "AllowNetwork"),
+    m_networkAllowed = new TorcSetting(m_networkGroup, SETTING_NETWORKALLOWED,
                                        tr("Allow network access"), TorcSetting::Checkbox,
                                        true, QVariant((bool)true));
-    m_networkAllowedInbound = new TorcSetting(m_networkAllowed, QString(TORC_CORE + "AllowInboundNetwork"),
+    m_networkAllowedInbound = new TorcSetting(m_networkAllowed, SETTING_NETWORKALLOWEDINBOUND,
                                        tr("Allow other computers to connect to Torc"), TorcSetting::Checkbox,
                                        true, QVariant((bool)true));
-    m_networkAllowedOutbound = new TorcSetting(m_networkAllowed, QString(TORC_CORE + "AllowOutboundNetwork"),
+    m_networkAllowedOutbound = new TorcSetting(m_networkAllowed, SETTING_NETWORKALLOWEDOUTBOUND,
                                        tr("Allow Torc to connect to other computers"), TorcSetting::Checkbox,
                                        true, QVariant((bool)true));
 
