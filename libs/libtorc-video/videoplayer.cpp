@@ -71,6 +71,7 @@ class TorcVideoPlayerSettings : public TorcAdminObject
                                                              QObject::tr("Allow GPU video acceleration"),
                                                              TorcSetting::Checkbox, true, QVariant((bool)true));
 
+        VideoPlayer::gEnableAcceleration->SetActive(true);
         // default to no GPU based acceleration for non-UI applications.
         // VideoUIPlayer (or other) will call SetActive(true)
         VideoPlayer::gAllowGPUAcceleration->SetActiveThreshold(2);
@@ -78,8 +79,12 @@ class TorcVideoPlayerSettings : public TorcAdminObject
         VideoPlayer::gAllowOtherAcceleration->SetActiveThreshold(1);
 
         // setup dependencies
-        VideoPlayer::gAllowOtherAcceleration->SetActive(VideoPlayer::gEnableAcceleration->GetValue().toBool());
-        VideoPlayer::gAllowGPUAcceleration->SetActive(VideoPlayer::gEnableAcceleration->GetValue().toBool());
+        if (VideoPlayer::gEnableAcceleration->GetValue().toBool())
+        {
+            VideoPlayer::gAllowOtherAcceleration->SetActive(true);
+            VideoPlayer::gAllowGPUAcceleration->SetActive(true);
+        }
+
         QObject::connect(VideoPlayer::gEnableAcceleration, SIGNAL(ValueChanged(bool)), VideoPlayer::gAllowOtherAcceleration, SLOT(SetActive(bool)));
         QObject::connect(VideoPlayer::gEnableAcceleration, SIGNAL(ValueChanged(bool)), VideoPlayer::gAllowGPUAcceleration, SLOT(SetActive(bool)));
 
