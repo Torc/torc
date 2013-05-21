@@ -199,13 +199,13 @@ TorcNetwork::~TorcNetwork()
     // remove settings
     if (m_networkAllowedInbound)
     {
-        m_networkAllowedInbound->Removed();
+        m_networkAllowedInbound->Remove();
         m_networkAllowedInbound->DownRef();
     }
 
     if (m_networkAllowedOutbound)
     {
-        m_networkAllowedOutbound->Removed();
+        m_networkAllowedOutbound->Remove();
         m_networkAllowedOutbound->DownRef();
     }
 
