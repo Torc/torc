@@ -33,7 +33,7 @@ class TORC_CORE_PUBLIC TorcSetting : public QObject, public TorcReferenceCounter
     void                 AddChild             (TorcSetting *Child);
     void                 RemoveChild          (TorcSetting *Child);
     void                 Remove               (void);
-    TorcSetting*         FindChild            (const QString &Child);
+    TorcSetting*         FindChild            (const QString &Child, bool Recursive = false);
     QSet<TorcSetting*>   GetChildren          (void);
 
   public slots:
@@ -64,8 +64,7 @@ class TORC_CORE_PUBLIC TorcSetting : public QObject, public TorcReferenceCounter
     void                 ValueChanged         (bool Value);
     void                 ValueChanged         (QString Value);
     void                 ValueChanged         (QStringList Value);
-    void                 SettingActivated     (void);
-    void                 SettingDeactivated   (void);
+    void                 ActivationChanged    (bool);
     void                 Removed              (void);
 
   protected:

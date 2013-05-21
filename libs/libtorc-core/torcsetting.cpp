@@ -59,7 +59,7 @@ TorcSetting::TorcSetting(TorcSetting *Parent, const QString &DBName, const QStri
     m_end(1),
     m_step(1),
     m_active(0),
-    m_activeThreshold(0),
+    m_activeThreshold(1),
     m_childrenLock(new QMutex(QMutex::Recursive))
 {
     setObjectName(DBName);
@@ -150,13 +150,23 @@ void TorcSetting::Remove(void)
     emit Removed();
 }
 
-TorcSetting* TorcSetting::FindChild(const QString &Child)
+TorcSetting* TorcSetting::FindChild(const QString &Child, bool Recursive /*=false*/)
 {
     QMutexLocker locker(m_childrenLock);
 
     foreach (TorcSetting* setting, m_children)
         if (setting->objectName() == Child)
             return setting;
+
+    if (Recursive)
+    {
+        foreach (TorcSetting* setting, m_children)
+        {
+            TorcSetting *result = setting->FindChild(Child, true);
+            if (result)
+                return result;
+        }
+    }
 
     return NULL;
 }
@@ -217,26 +227,16 @@ void TorcSetting::SetActive(bool Value)
     m_active += Value ? 1 : -1;
 
     if (wasactive != IsActive())
-    {
-        if (IsActive())
-            emit SettingActivated();
-        else
-            emit SettingDeactivated();
-    }
+        emit ActivationChanged(IsActive());
 }
 
 void TorcSetting::SetActiveThreshold(int Threshold)
 {
     bool wasactive = IsActive();
-    m_activeThreshold = Threshold - 1;
+    m_activeThreshold = Threshold;
 
     if (wasactive != IsActive())
-    {
-        if (IsActive())
-            emit SettingActivated();
-        else
-            emit SettingDeactivated();
-    }
+        emit ActivationChanged(IsActive());
 }
 
 void TorcSetting::SetTrue(void)
@@ -253,7 +253,7 @@ void TorcSetting::SetFalse(void)
 
 void TorcSetting::SetValue(const QVariant &Value)
 {
-    if (m_value == Value || !IsActive())
+    if (m_value == Value)
         return;
 
     m_value = Value;
@@ -335,4 +335,5 @@ QVariant TorcSetting::GetValue(void)
 TorcSettingGroup::TorcSettingGroup(TorcSetting *Parent, const QString &UIName)
   : TorcSetting(Parent, UIName, UIName, Checkbox, false, QVariant())
 {
+    SetActiveThreshold(0);
 }
