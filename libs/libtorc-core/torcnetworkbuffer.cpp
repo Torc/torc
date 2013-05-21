@@ -42,7 +42,7 @@ TorcNetworkBuffer::~TorcNetworkBuffer()
 bool TorcNetworkBuffer::Open(void)
 {
     // sanity checks
-    if (!TorcNetwork::IsAvailable())
+    if (!TorcNetwork::IsAllowedOutbound())
         return false;
 
     QUrl url(m_uri);
@@ -193,10 +193,10 @@ class TorcNetworkBufferFactory : public TorcBufferFactory
              QString::compare(URL.scheme(), "ftp",   Qt::CaseInsensitive) == 0) &&
             Score <= 50)
         {
-            if (TorcNetwork::IsAvailable())
+            if (TorcNetwork::IsAllowedOutbound())
                 Score = 50;
             else
-                LOG(VB_GENERAL, LOG_WARNING, "Network access not available");
+                LOG(VB_GENERAL, LOG_WARNING, "Outbound network access not available");
         }
     }
 
@@ -205,7 +205,7 @@ class TorcNetworkBufferFactory : public TorcBufferFactory
         if ((QString::compare(URL.scheme(), "http",  Qt::CaseInsensitive) == 0 ||
              QString::compare(URL.scheme(), "https", Qt::CaseInsensitive) == 0 ||
              QString::compare(URL.scheme(), "ftp",   Qt::CaseInsensitive) == 0) &&
-            Score <= 50 && TorcNetwork::IsAvailable())
+            Score <= 50 && TorcNetwork::IsAllowedOutbound())
         {
             return new TorcNetworkBuffer(URI, Media, Abort);
         }
