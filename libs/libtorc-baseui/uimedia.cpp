@@ -55,6 +55,13 @@ UIMedia::~UIMedia()
     if (m_parent && !m_template)
         m_parent->DecreaseFocusableChildCount();
 
+    // suppress script errors when shutting down
+    if (m_player)
+    {
+        disconnect(m_player, SIGNAL(StateChanged(TorcPlayer::PlayerState)),
+                   this, SLOT(PlayerStateChanged(TorcPlayer::PlayerState)));
+    }
+
     delete m_player;
     m_player = NULL;
 }
