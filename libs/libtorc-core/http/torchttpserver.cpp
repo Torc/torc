@@ -31,6 +31,7 @@
 #include "torclogging.h"
 #include "torcadminthread.h"
 #include "torcnetwork.h"
+#include "torcbonjour.h"
 #include "torchttpconnection.h"
 #include "torchttprequest.h"
 #include "torchtmlhandler.h"
@@ -59,7 +60,6 @@
  *
  * \todo Entirely single threaded
  * \todo Move UserServicesHelp elsewhere
- * \todo Move Bonjour HTTP registration into this class (currently in TorcAnnounceObject)
 */
 
 TorcHTTPServer* TorcHTTPServer::gWebServer = NULL;
@@ -124,7 +124,9 @@ TorcHTTPServer::TorcHTTPServer()
     m_defaultHandler(NULL),
     m_servicesDirectory(SERVICES_DIRECTORY),
     m_newHandlersLock(new QMutex(QMutex::Recursive)),
-    m_oldHandlersLock(new QMutex(QMutex::Recursive))
+    m_oldHandlersLock(new QMutex(QMutex::Recursive)),
+    m_httpBonjourReference(0),
+    m_torcBonjourReference(0)
 {
     // ensure service directory is valid
     if (!m_servicesDirectory.endsWith("/"))
@@ -173,7 +175,7 @@ TorcHTTPServer::TorcHTTPServer()
 
     // and start
     // NB this will currently start and stop purely on the basis of the setting, irrespective
-    // of network availability. Bonjour announcement is handled elsewhere (see TODO).
+    // of network availability.
     Enable(true);
 }
 
@@ -235,10 +237,43 @@ bool TorcHTTPServer::Open(void)
         return false;
     }
 
+    bool portchanged = false;
     if (port != serverPort())
     {
+        portchanged = true;
         port = serverPort();
         m_port->SetValue(QVariant((int)port));
+    }
+
+    // re-advertise if the port has changed
+    if (portchanged)
+    {
+        if (m_httpBonjourReference)
+        {
+            TorcBonjour::Instance()->Deregister(m_httpBonjourReference);
+            m_httpBonjourReference = 0;
+        }
+
+        if (m_torcBonjourReference)
+        {
+            TorcBonjour::Instance()->Deregister(m_torcBonjourReference);
+            m_torcBonjourReference = 0;
+        }
+    }
+
+    // advertise service if not already doing so
+    if (!m_httpBonjourReference || !m_torcBonjourReference)
+    {
+        QByteArray dummy;
+        QByteArray name(QCoreApplication::applicationName().toLatin1());
+        name.append(" on ");
+        name.append(QHostInfo::localHostName());
+
+        if (!m_httpBonjourReference)
+            m_httpBonjourReference = TorcBonjour::Instance()->Register(port, "_http._tcp.", name, dummy);
+
+        if (!m_torcBonjourReference)
+            m_torcBonjourReference = TorcBonjour::Instance()->Register(port, "_torc._tcp", name, dummy);
     }
 
     if (!waslistening)
@@ -248,8 +283,23 @@ bool TorcHTTPServer::Open(void)
 
 void TorcHTTPServer::Close(void)
 {
+    // stop advertising
+    if (m_httpBonjourReference)
+    {
+        TorcBonjour::Instance()->Deregister(m_httpBonjourReference);
+        m_httpBonjourReference = 0;
+    }
+
+    if (m_torcBonjourReference)
+    {
+        TorcBonjour::Instance()->Deregister(m_torcBonjourReference);
+        m_torcBonjourReference = 0;
+    }
+
+    // actually close
     close();
 
+    // remove any currect connections
     while (!m_connections.isEmpty())
     {
         QMap<QTcpSocket*,TorcHTTPConnection*>::iterator it = m_connections.begin();

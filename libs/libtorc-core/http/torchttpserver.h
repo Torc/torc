@@ -68,6 +68,9 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     QMutex*                           m_newHandlersLock;
     QList<TorcHTTPHandler*>           m_oldHandlers;
     QMutex*                           m_oldHandlersLock;
+
+    quint32                           m_httpBonjourReference;
+    quint32                           m_torcBonjourReference;
 };
 
 #endif // TORCHTTPSERVER_H
