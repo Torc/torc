@@ -96,7 +96,7 @@ TorcSetting::TorcSetting(TorcSetting *Parent, const QString &DBName, const QStri
     else
     {
         if (type != QVariant::Invalid)
-            LOG(VB_GENERAL, LOG_ERR, QString("Unsupported setting data type: %1").arg(type));
+            LOG(VB_GENERAL, LOG_ERR, QString("Unsupported setting data type for %1 (%2)").arg(m_dbName).arg(type));
         m_value = QVariant();
     }
 }
