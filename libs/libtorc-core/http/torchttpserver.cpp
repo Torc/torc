@@ -237,17 +237,13 @@ bool TorcHTTPServer::Open(void)
         return false;
     }
 
-    bool portchanged = false;
+    // try to use the same port
     if (port != serverPort())
     {
-        portchanged = true;
         port = serverPort();
         m_port->SetValue(QVariant((int)port));
-    }
 
-    // re-advertise if the port has changed
-    if (portchanged)
-    {
+        // re-advertise if the port has changed
         if (m_httpBonjourReference)
         {
             TorcBonjour::Instance()->Deregister(m_httpBonjourReference);

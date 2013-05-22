@@ -167,6 +167,13 @@ bool TorcRAOPDevice::Open(void)
     {
         m_port->SetValue(QVariant((int)newport));
         port = newport;
+
+        // re-advertise if port changed
+        if (m_bonjourReference)
+        {
+            TorcBonjour::Instance()->Deregister(m_bonjourReference);
+            m_bonjourReference = 0;
+        }
     }
 
     // advertise
