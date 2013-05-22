@@ -30,6 +30,7 @@
 #include "torclocalcontext.h"
 #include "torclogging.h"
 #include "torcadminthread.h"
+#include "torcnetwork.h"
 #include "torchttpconnection.h"
 #include "torchttprequest.h"
 #include "torchtmlhandler.h"
@@ -58,6 +59,7 @@
  *
  * \todo Entirely single threaded
  * \todo Move UserServicesHelp elsewhere
+ * \todo Move Bonjour HTTP registration into this class (currently in TorcAnnounceObject)
 */
 
 TorcHTTPServer* TorcHTTPServer::gWebServer = NULL;
@@ -115,46 +117,40 @@ QString TorcHTTPServer::PlatformName(void)
     return gPlatform;
 }
 
-void TorcHTTPServer::Create(void)
-{
-    QMutexLocker locker(gWebServerLock);
-
-    if (gWebServer)
-        return;
-
-    gWebServer = new TorcHTTPServer();
-    if (gWebServer->Open())
-        return;
-
-    delete gWebServer;
-    gWebServer = NULL;
-}
-
-void TorcHTTPServer::Destroy(void)
-{
-    QMutexLocker locker(gWebServerLock);
-
-    if (gWebServer)
-    {
-        gWebServer->Close();
-        gWebServer->deleteLater();
-    }
-
-    gWebServer = NULL;
-}
-
 TorcHTTPServer::TorcHTTPServer()
   : QTcpServer(),
+    m_enabled(NULL),
+    m_port(NULL),
     m_defaultHandler(NULL),
     m_servicesDirectory(SERVICES_DIRECTORY),
-    m_port(0),
     m_newHandlersLock(new QMutex(QMutex::Recursive)),
     m_oldHandlersLock(new QMutex(QMutex::Recursive))
 {
+    // ensure service directory is valid
     if (!m_servicesDirectory.endsWith("/"))
         m_servicesDirectory += "/";
 
-    m_port = gLocalContext->GetSetting(TORC_CORE + "WebServerPort", 4840);
+    // create main setting
+    TorcSetting *parent = gRootSetting->FindChild(SETTING_NETWORKALLOWEDINBOUND, true);
+    if (parent)
+    {
+        m_enabled = new TorcSetting(parent, SETTING_WEBSERVERENABLED, tr("Enable internal web server"),
+                                    TorcSetting::Checkbox, true, QVariant((bool)true));
+        m_enabled->SetActiveThreshold(2);
+        if (parent->IsActive())
+            m_enabled->SetActive(true);
+        if (parent->GetValue().toBool())
+            m_enabled->SetActive(true);
+        connect(parent,    SIGNAL(ValueChanged(bool)),      m_enabled, SLOT(SetActive(bool)));
+        connect(parent,    SIGNAL(ActivationChanged(bool)), m_enabled, SLOT(SetActive(bool)));
+        connect(m_enabled, SIGNAL(ValueChanged(bool)),      this,      SLOT(Enable(bool)));
+        connect(m_enabled, SIGNAL(ActivationChanged(bool)), this,      SLOT(Enable(bool)));
+    }
+
+    // port setting - this could become a user editable setting
+    m_port = new TorcSetting(NULL, TORC_CORE + "WebServerPort", QString(), TorcSetting::Integer, true, QVariant((int)4840));
+
+    // listen for new connections
     connect(this, SIGNAL(newConnection()), this, SLOT(ClientConnected()));
     connect(this, SIGNAL(HandlersChanged()), this, SLOT(UpdateHandlers()));
 
@@ -174,6 +170,11 @@ TorcHTTPServer::TorcHTTPServer()
     // add the default top level handler
     m_defaultHandler = new TorcHTMLHandler("", QCoreApplication::applicationName());
     AddHandler(m_defaultHandler);
+
+    // and start
+    // NB this will currently start and stop purely on the basis of the setting, irrespective
+    // of network availability. Bonjour announcement is handled elsewhere (see TODO).
+    Enable(true);
 }
 
 TorcHTTPServer::~TorcHTTPServer()
@@ -182,23 +183,48 @@ TorcHTTPServer::~TorcHTTPServer()
 
     Close();
 
+    if (m_port)
+    {
+        m_port->Remove();
+        m_port->DownRef();
+        m_port = NULL;
+    }
+
+    if (m_enabled)
+    {
+        m_enabled->Remove();
+        m_enabled->DownRef();
+        m_enabled = NULL;
+    }
+
     delete m_newHandlersLock;
     delete m_oldHandlersLock;
 }
 
+void TorcHTTPServer::Enable(bool Enable)
+{
+    if (Enable && m_enabled && m_enabled->IsActive() && m_enabled->GetValue().toBool())// && TorcNetwork::IsAvailable())
+        Open();
+    else
+        Close();
+}
+
 bool TorcHTTPServer::Open(void)
 {
-    if (!isListening())
+    int port = m_port->GetValue().toInt();
+    bool waslistening = isListening();
+
+    if (!waslistening)
     {
         // QHostAddress::Any will listen to all IPv4 and IPv6 addresses on Qt 5.x but to IPv4
         // addresses only on Qt 4.8. So try IPv6 first on Qt 4.8 and fall back to any.
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-        if (!listen(QHostAddress::AnyIPv6, m_port))
+        if (!listen(QHostAddress::AnyIPv6, port))
             if (serverError() == QAbstractSocket::UnsupportedSocketOperationError)
                 LOG(VB_GENERAL, LOG_INFO, "IPv6 not available");
 #endif
-        if (!isListening() && !listen(QHostAddress::Any, m_port))
-            if (m_port > 0)
+        if (!isListening() && !listen(QHostAddress::Any, port))
+            if (port > 0)
                 listen();
     }
 
@@ -209,13 +235,14 @@ bool TorcHTTPServer::Open(void)
         return false;
     }
 
-    if (m_port != serverPort())
+    if (port != serverPort())
     {
-        m_port = serverPort();
-        gLocalContext->SetSetting(TORC_CORE + "WebServerPort", m_port);
+        port = serverPort();
+        m_port->SetValue(QVariant((int)port));
     }
 
-    LOG(VB_GENERAL, LOG_INFO, QString("Web server listening on port %1").arg(m_port));
+    if (!waslistening)
+        LOG(VB_GENERAL, LOG_INFO, QString("Web server listening on port %1").arg(port));
     return true;
 }
 
@@ -269,6 +296,16 @@ void TorcHTTPServer::NewRequest(void)
 
 bool TorcHTTPServer::event(QEvent *Event)
 {
+    if (Event->type() == TorcEvent::TorcEventType)
+    {
+        TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
+        if (torcevent)
+        {
+            if (torcevent->Event() == Torc::NetworkAvailable)
+                Enable(true);
+        }
+    }
+
     return QTcpServer::event(Event);
 }
 
@@ -415,12 +452,23 @@ class TorcHTTPServerObject : public TorcAdminObject
 
     void Create(void)
     {
-        TorcHTTPServer::Create();
+        Destroy();
+
+        QMutexLocker locker(TorcHTTPServer::gWebServerLock);
+        if (gLocalContext->FlagIsSet(Torc::Server))
+            TorcHTTPServer::gWebServer = new TorcHTTPServer();
     }
 
     void Destroy(void)
     {
-        TorcHTTPServer::Destroy();
+        QMutexLocker locker(TorcHTTPServer::gWebServerLock);
+
+        // this may need to use deleteLater but this causes issues with setting deletion
+        // as the object is actually destroyed after the parent (network) setting
+        if (TorcHTTPServer::gWebServer)
+            delete TorcHTTPServer::gWebServer;
+
+        TorcHTTPServer::gWebServer = NULL;
     }
 } TorcHTTPServerObject;
 

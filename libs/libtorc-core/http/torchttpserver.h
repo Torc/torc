@@ -7,10 +7,13 @@
 
 // Torc
 #include "torccoreexport.h"
+#include "torcsetting.h"
 #include "torchtmlhandler.h"
 
 class TorcHTTPConnection;
 class TorcHTTPHandler;
+
+#define SETTING_WEBSERVERENABLED QString(TORC_CORE + "WebServerEnabled")
 
 class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
 {
@@ -31,18 +34,14 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
   signals:
     void           HandlersChanged    (void);
 
-  public slots:
+  protected slots:
     void           ClientConnected    (void);
     void           ClientDisconnected (void);
     void           UpdateHandlers     (void);
     void           NewRequest         (void);
 
   protected:
-    static void    Create             (void);
-    static void    Destroy            (void);
-
-  protected:
-    explicit       TorcHTTPServer     ();
+    TorcHTTPServer ();
     bool           event              (QEvent *Event);
     bool           Open               (void);
     void           Close              (void);
@@ -55,10 +54,14 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     static QMutex*                    gWebServerLock;
     static QString                    gPlatform;
 
+  private slots:
+    void           Enable             (bool Enable);
+
   private:
+    TorcSetting                      *m_enabled;
+    TorcSetting                      *m_port;
     TorcHTMLHandler                  *m_defaultHandler;
     QString                           m_servicesDirectory;
-    int                               m_port;
     QMap<QTcpSocket*,TorcHTTPConnection*> m_connections;
     QMap<QString,TorcHTTPHandler*>    m_handlers;
     QList<TorcHTTPHandler*>           m_newHandlers;
