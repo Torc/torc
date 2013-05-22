@@ -221,8 +221,10 @@ TorcNetwork::~TorcNetwork()
         m_networkGroup->DownRef();
     }
 
-    m_networkAllowed = NULL;
-    m_networkGroup   = NULL;
+    m_networkAllowedInbound  = NULL;
+    m_networkAllowedOutbound = NULL;
+    m_networkAllowed         = NULL;
+    m_networkGroup           = NULL;
 
     // delete the configuration manager
     if (m_manager)
