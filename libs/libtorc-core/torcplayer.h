@@ -71,7 +71,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 
     virtual ~TorcPlayer();
 
-    virtual bool    Refresh                (quint64 TimeNow, const QSizeF &Size);
+    virtual bool    Refresh                (quint64 TimeNow, const QSizeF &Size, bool Visible);
     virtual void    Render                 (quint64 TimeNow);
     virtual QVariant GetProperty           (PlayerProperty Property);
     virtual void    SetProperty            (PlayerProperty Property, QVariant Value);
@@ -98,7 +98,8 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
     bool            TogglePause            (void);
     void            SetPropertyAvailable   (TorcPlayer::PlayerProperty Property);
     void            SetPropertyUnavailable (TorcPlayer::PlayerProperty Property);
-
+    void            StartRefreshTimer      (int MSecInterval);
+    void            StopRefreshTimer       (void);
 
   signals:
     void            StateChanged           (TorcPlayer::PlayerState NewState);

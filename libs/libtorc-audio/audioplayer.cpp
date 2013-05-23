@@ -67,8 +67,7 @@ bool AudioPlayer::PlayMedia(const QString &URI, bool Paused)
 
     bool result = TorcPlayer::PlayMedia(URI, Paused);
 
-    if (!m_refreshTimer)
-        StartTimer(m_refreshTimer, 1000 / 50);
+    StartRefreshTimer(1000 / 50);
 
     return result;
 }

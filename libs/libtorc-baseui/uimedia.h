@@ -50,6 +50,10 @@ class UIMedia : public UIWidget, public TorcPlayerInterface
     bool            event                     (QEvent      *Event);
     bool            InitialisePriv            (QDomElement *Element);
 
+  private slots:
+    void            OnShown                   (void);
+    void            OnHidden                  (void);
+
   private:
     Q_DISABLE_COPY(UIMedia);
 };

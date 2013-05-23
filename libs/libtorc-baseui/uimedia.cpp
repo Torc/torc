@@ -45,6 +45,9 @@ UIMedia::UIMedia(UIWidget *Root, UIWidget *Parent, const QString &Name, int Flag
 
     gLocalContext->AddObserver(this);
 
+    connect(this, SIGNAL(Shown()), this,  SLOT(OnShown()));
+    connect(this, SIGNAL(Hidden()), this, SLOT(OnHidden()));
+
     SetURI("/Users/mark/Dropbox/Videos/anamorphic.m4v");
 }
 
@@ -103,7 +106,7 @@ void UIMedia::CopyFrom(UIWidget *Other)
 
 bool UIMedia::Refresh(quint64 TimeNow)
 {
-    bool refresh = m_player ? m_player->Refresh(TimeNow, m_scaledRect.size()) : false;
+    bool refresh = m_player ? m_player->Refresh(TimeNow, m_scaledRect.size(), m_visible) : false;
     return refresh |= UIWidget::Refresh(TimeNow);
 }
 
@@ -125,6 +128,10 @@ bool UIMedia::Finalise(void)
         return true;
 
     InitialisePlayer();
+
+    if (!m_visible)
+        OnHidden();
+
     return UIWidget::Finalise();
 }
 
@@ -209,6 +216,18 @@ void UIMedia::PlayerPropertyAvailable(TorcPlayer::PlayerProperty Property)
 void UIMedia::PlayerPropertyUnavailable(TorcPlayer::PlayerProperty Property)
 {
     emit PropertyUnavailable(Property);
+}
+
+void UIMedia::OnShown(void)
+{
+    if (m_player)
+        m_player->StopRefreshTimer();
+}
+
+void UIMedia::OnHidden(void)
+{
+    if (m_player)
+        m_player->StartRefreshTimer(1000 / 50);
 }
 
 static class UIMediaFactory : public WidgetFactory

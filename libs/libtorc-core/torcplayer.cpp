@@ -243,7 +243,7 @@ bool TorcPlayer::HandleEvent(QEvent *Event)
             if (id == m_refreshTimer)
             {
                 static QSizeF dummy;
-                Refresh(GetMicrosecondCount(), dummy);
+                Refresh(GetMicrosecondCount(), dummy, false);
                 return true;
             }
             else if (id == m_nextDecoderStartTimer)
@@ -458,6 +458,17 @@ void TorcPlayer::SetPropertyUnavailable(TorcPlayer::PlayerProperty Property)
     }
 }
 
+void TorcPlayer::StartRefreshTimer(int MSecInterval)
+{
+    KillTimer(m_refreshTimer);
+    StartTimer(m_refreshTimer, MSecInterval);
+}
+
+void TorcPlayer::StopRefreshTimer(void)
+{
+    KillTimer(m_refreshTimer);
+}
+
 void TorcPlayer::SetState(PlayerState NewState)
 {
     m_state = NewState;
@@ -488,10 +499,11 @@ void TorcPlayer::KillTimer(int &Timer)
     Timer= 0;
 }
 
-bool TorcPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
+bool TorcPlayer::Refresh(quint64 TimeNow, const QSizeF &Size, bool Visible)
 {
     (void)TimeNow;
     (void)Size;
+    (void)Visible;
 
     // destroy last decoder once it has stopped
     if (m_oldDecoder && m_oldDecoder->GetState() == TorcDecoder::Stopped)

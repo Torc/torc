@@ -24,7 +24,7 @@ class VideoPlayer : public TorcPlayer
     VideoPlayer(QObject* Parent, int PlaybackFlags, int DecodeFlags);
     virtual ~VideoPlayer();
 
-    virtual bool    Refresh            (quint64 TimeNow, const QSizeF &Size);
+    virtual bool    Refresh            (quint64 TimeNow, const QSizeF &Size, bool Visible);
     virtual void    Render             (quint64 TimeNow);
     virtual void    Reset              (void);
     virtual QVariant GetProperty       (PlayerProperty Property);

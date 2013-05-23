@@ -124,7 +124,7 @@ void VideoUIPlayer::Teardown(void)
     VideoPlayer::Teardown();
 }
 
-bool VideoUIPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
+bool VideoUIPlayer::Refresh(quint64 TimeNow, const QSizeF &Size, bool Visible)
 {
     if (m_reset)
         Reset();
@@ -212,7 +212,7 @@ bool VideoUIPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
             }
         }
 
-        if (m_render)
+        if (Visible && m_render)
         {
             if (m_state == Paused  || m_state == Starting ||
                 m_state == Playing || m_state == Searching ||
@@ -223,7 +223,7 @@ bool VideoUIPlayer::Refresh(quint64 TimeNow, const QSizeF &Size)
         }
     }
 
-    return TorcPlayer::Refresh(TimeNow, Size) && (m_currentFrame != NULL);
+    return TorcPlayer::Refresh(TimeNow, Size, Visible) && (m_currentFrame != NULL);
 }
 
 void VideoUIPlayer::Render(quint64 TimeNow)
