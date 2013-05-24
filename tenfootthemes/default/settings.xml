@@ -29,14 +29,14 @@
                     </animation>
                     <button name="CHECKBOX" inherits="/templates_button" template="1">
                         <checkbox/>
-                        <effect alpha="0.5" centre="left"/>
+                        <effect zoom="1.0" centre="top"/>
                         <connect signal="Pushed"   slot="Show" receiver="toggle"/>
                         <connect signal="Released" slot="Hide" receiver="toggle"/>
                         <animation name="Activated">
-                            <element property="alpha" endvalue="1.0" duration="100"/>
+                            <element property="zoom" endvalue="1.0" duration="100"/>
                         </animation>
                         <animation name="Deactivated">
-                            <element property="alpha" endvalue="0.5" duration="100"/>
+                            <element property="zoom" endvalue="0.0" duration="100"/>
                         </animation>
                         <shape name="toggle" position="0,0,20,100">
                             <state visible="false"/>
