@@ -502,7 +502,6 @@ bool UIWidget::ParseWidget(UIWidget *Root, UIWidget *Parent, QDomElement *Elemen
     QString from = Element->attribute("inherits");
     QString temp = Element->attribute("template");
     QString rect = Element->attribute("position");
-    QString deco = Element->attribute("decoration");
 
     // NB widget flags are not inherited
     bool istemplate = !temp.isEmpty() && GetBool(temp);
