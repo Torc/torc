@@ -191,7 +191,7 @@ UITheme* UITheme::Load(const QString &Filename)
     UITheme* theme = new UITheme();
     theme->SetState(UITheme::ThemeLoadingInfo);
     UIThemeLoader* loader = new UIThemeLoader(Filename, theme);
-    QThreadPool::globalInstance()->start(loader, QThread::NormalPriority);
+    QThreadPool::globalInstance()->start(loader, 0);
     return theme;
 }
 

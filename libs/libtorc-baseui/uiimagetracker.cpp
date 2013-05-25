@@ -201,7 +201,7 @@ UIImage* UIImageTracker::GetSimpleTextImage(const QString &Text,
     }
     else
     {
-        QThreadPool::globalInstance()->start(render, QThread::NormalPriority);
+        QThreadPool::globalInstance()->start(render, 0);
     }
 
     return image;
@@ -260,7 +260,7 @@ UIImage* UIImageTracker::GetShapeImage(UIShapePath *Path, const QRectF *Rect)
     }
     else
     {
-        QThreadPool::globalInstance()->start(render, QThread::NormalPriority);
+        QThreadPool::globalInstance()->start(render, 0);
     }
 
     return image;
@@ -297,7 +297,7 @@ void UIImageTracker::LoadImageFromFile(UIImage *Image)
     }
     else
     {
-        QThreadPool::globalInstance()->start(loader, QThread::NormalPriority);
+        QThreadPool::globalInstance()->start(loader, 0);
     }
 }
 

@@ -53,7 +53,7 @@ UITheme* TenfootTheme::Load(bool Immediate, UIWindow* Owner, const QString &File
     if (Immediate)
         return loader->LoadTenfootTheme();
 
-    QThreadPool::globalInstance()->start(loader, QThread::NormalPriority);
+    QThreadPool::globalInstance()->start(loader, 0);
     return NULL;
 }
 
