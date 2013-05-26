@@ -64,7 +64,7 @@ void VideoUIPlayer::Initialise(void)
 #endif
 }
 
-#define BLACKLIST QString("SetPropertyAvailable,SetPropertyUnavailable")
+#define BLACKLIST QString("SetPropertyAvailable,SetPropertyUnavailable,StartRefreshTimer,StopRefreshTimer")
 
 VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : VideoPlayer(Parent, PlaybackFlags, DecodeFlags),
