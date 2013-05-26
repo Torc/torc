@@ -77,6 +77,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     void                   SetResponseType          (HTTPResponseType Type);
     void                   SetResponseContent       (QByteArray *Content);
     HTTPType               GetHTTPType              (void);
+    HTTPRequestType        GetHTTPRequestType       (void);
     QString                GetPath                  (void);
     QString                GetMethod                (void);
     QMap<QString,QString>  Queries                  (void);

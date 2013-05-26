@@ -160,6 +160,11 @@ HTTPType TorcHTTPRequest::GetHTTPType(void)
     return m_type;
 }
 
+HTTPRequestType TorcHTTPRequest::GetHTTPRequestType(void)
+{
+    return m_requestType;
+}
+
 QString TorcHTTPRequest::GetPath(void)
 {
     return m_path;
