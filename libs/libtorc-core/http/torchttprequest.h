@@ -22,7 +22,10 @@ typedef enum
     HTTPUnknownType = 0,
     HTTPHead,
     HTTPGet,
-    HTTPPost
+    HTTPPost,
+    HTTPPut,
+    HTTPDelete,
+    HTTPOptions
 } HTTPRequestType;
 
 typedef enum
