@@ -59,7 +59,6 @@
  * \sa TorcHTTPConnection
  *
  * \todo Entirely single threaded
- * \todo Move UserServicesHelp elsewhere
 */
 
 TorcHTTPServer* TorcHTTPServer::gWebServer = NULL;
@@ -122,6 +121,7 @@ TorcHTTPServer::TorcHTTPServer()
     m_enabled(NULL),
     m_port(NULL),
     m_defaultHandler(NULL),
+    m_servicesHelpHandler(NULL),
     m_servicesDirectory(SERVICES_DIRECTORY),
     m_newHandlersLock(new QMutex(QMutex::Recursive)),
     m_oldHandlersLock(new QMutex(QMutex::Recursive)),
@@ -173,6 +173,10 @@ TorcHTTPServer::TorcHTTPServer()
     m_defaultHandler = new TorcHTMLHandler("", QCoreApplication::applicationName());
     AddHandler(m_defaultHandler);
 
+    // services help
+    m_servicesHelpHandler = new TorcHTMLServicesHelp(SERVICES_DIRECTORY, tr("Services"));
+    AddHandler(m_servicesHelpHandler);
+
     // and start
     // NB this will currently start and stop purely on the basis of the setting, irrespective
     // of network availability.
@@ -182,6 +186,7 @@ TorcHTTPServer::TorcHTTPServer()
 TorcHTTPServer::~TorcHTTPServer()
 {
     delete m_defaultHandler;
+    delete m_servicesHelpHandler;
 
     Close();
 
@@ -201,6 +206,18 @@ TorcHTTPServer::~TorcHTTPServer()
 
     delete m_newHandlersLock;
     delete m_oldHandlersLock;
+}
+
+QMap<QString,QString> TorcHTTPServer::GetServiceHandlers(void)
+{
+    QMap<QString,QString> result;
+
+    QMap<QString,TorcHTTPHandler*>::const_iterator it = m_handlers.begin();
+    for ( ; it != m_handlers.end(); ++it)
+        if (it.key().startsWith(m_servicesDirectory))
+            result.insert(it.key(), it.value()->Name());
+
+    return result;
 }
 
 void TorcHTTPServer::Enable(bool Enable)
@@ -323,17 +340,10 @@ void TorcHTTPServer::NewRequest(void)
             }
             else
             {
-                if (request->GetPath() == m_servicesDirectory)
-                {
-                    // top level services help...
-                    UserServicesHelp(request, connection);
-                }
-                else
-                {
-                    QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.find(request->GetPath());
-                    if (it != m_handlers.end())
-                        (*it)->ProcessHTTPRequest(this, request, connection);
-                }
+                QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.find(request->GetPath());
+                if (it != m_handlers.end())
+                    (*it)->ProcessHTTPRequest(this, request, connection);
+
                 connection->Complete(request);
             }
         }
@@ -445,47 +455,6 @@ void TorcHTTPServer::UpdateHandlers(void)
             }
         }
     }
-}
-
-void TorcHTTPServer::UserServicesHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
-{
-    QByteArray *result = new QByteArray(1024, 0);
-    QTextStream stream(result);
-
-    QMap<QString,QString> services;
-    QList<QString> names;
-    QMap<QString,TorcHTTPHandler*>::const_iterator it = m_handlers.begin();
-    for ( ; it != m_handlers.end(); ++it)
-    {
-        if (it.key().startsWith(m_servicesDirectory))
-        {
-            services.insert(it.key(), it.key() + "help");
-            names.append(it.value()->Name());
-        }
-    }
-
-    stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
-    stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName();
-    stream << "<a> " << tr("Services") << "</a></h1>";
-
-    if (services.isEmpty())
-    {
-        stream << "<h3>" << tr("No services are registered") << "</h3>";
-    }
-    else
-    {
-        stream << "<h3>" << tr("Available services") << "</h3>";
-        QMap<QString,QString>::iterator it = services.begin();
-        QList<QString>::iterator name = names.begin();
-        for ( ; it != services.end(); ++it, ++name)
-            stream << (*name) << " <a href='" << it.value() << "'>" << it.key() << "</a><br>";
-    }
-
-    stream << "</body></html>";
-    stream.flush();
-    Request->SetStatus(HTTP_OK);
-    Request->SetResponseType(HTTPResponseHTML);
-    Request->SetResponseContent(result);
 }
 
 class TorcHTTPServerObject : public TorcAdminObject

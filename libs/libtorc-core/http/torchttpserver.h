@@ -9,6 +9,7 @@
 #include "torccoreexport.h"
 #include "torcsetting.h"
 #include "torchtmlhandler.h"
+#include "torchtmlserviceshelp.h"
 
 class TorcHTTPConnection;
 class TorcHTTPHandler;
@@ -30,6 +31,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
 
   public:
     virtual       ~TorcHTTPServer      ();
+    QMap<QString,QString> GetServiceHandlers (void);
 
   signals:
     void           HandlersChanged    (void);
@@ -47,7 +49,6 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     void           Close              (void);
     void           AddHandler         (TorcHTTPHandler *Handler);
     void           RemoveHandler      (TorcHTTPHandler *Handler);
-    void           UserServicesHelp   (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
 
   protected:
     static TorcHTTPServer*            gWebServer;
@@ -61,6 +62,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     TorcSetting                      *m_enabled;
     TorcSetting                      *m_port;
     TorcHTMLHandler                  *m_defaultHandler;
+    TorcHTMLServicesHelp             *m_servicesHelpHandler;
     QString                           m_servicesDirectory;
     QMap<QTcpSocket*,TorcHTTPConnection*> m_connections;
     QMap<QString,TorcHTTPHandler*>    m_handlers;
