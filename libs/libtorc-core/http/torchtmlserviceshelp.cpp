@@ -40,6 +40,16 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPServer* Server, TorcHTTPRe
     if (!Request || !Server)
         return;
 
+    // handle options request
+    if (Request->GetHTTPRequestType() == HTTPOptions)
+    {
+        Request->SetAllowed(HTTPHead | HTTPGet | HTTPOptions);
+        Request->SetStatus(HTTP_OK);
+        Request->SetResponseType(HTTPResponseDefault);
+        Request->SetResponseContent(NULL);
+        return;
+    }
+
     QByteArray *result = new QByteArray();
     QTextStream stream(result);
 
