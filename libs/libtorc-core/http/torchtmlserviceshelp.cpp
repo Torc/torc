@@ -40,7 +40,7 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPServer* Server, TorcHTTPRe
     if (!Request || !Server)
         return;
 
-    QByteArray *result = new QByteArray(1024, 0);
+    QByteArray *result = new QByteArray();
     QTextStream stream(result);
 
     QMap<QString,QString> services = Server->GetServiceHandlers();
