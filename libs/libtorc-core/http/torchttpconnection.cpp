@@ -45,7 +45,9 @@
 TorcHTTPConnection::TorcHTTPConnection(TorcHTTPServer *Parent, QTcpSocket *Socket)
   : QObject(),
     m_server(Parent),
-    m_socket(Socket)
+    m_socket(Socket),
+    m_headers(NULL),
+    m_content(NULL)
 {
     m_buffer.open(QIODevice::ReadWrite);
 
@@ -60,12 +62,12 @@ TorcHTTPConnection::TorcHTTPConnection(TorcHTTPServer *Parent, QTcpSocket *Socke
 
 TorcHTTPConnection::~TorcHTTPConnection()
 {
+    m_socket->disconnect();
+
     m_buffer.close();
 
     delete m_headers;
     delete m_content;
-
-    Reset();
 
     foreach (TorcHTTPRequest* request, m_requests)
         delete request;
