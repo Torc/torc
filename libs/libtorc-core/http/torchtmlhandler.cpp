@@ -45,12 +45,28 @@ TorcHTMLHandler::TorcHTMLHandler(const QString &Path, const QString &Name)
 {
 }
 
-void TorcHTMLHandler::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
+void TorcHTMLHandler::ProcessHTTPRequest(TorcHTTPServer*, TorcHTTPRequest *Request, TorcHTTPConnection*)
 {
-    if (!Request || !Connection)
+    if (!Request)
         return;
 
-    QByteArray *result = new QByteArray(1024, 0);
+    // handle options request
+    if (Request->GetHTTPRequestType() == HTTPOptions)
+    {
+        // this is the 'global' options - return everything possible
+        if (Request->GetUrl() == "/*")
+            Request->SetAllowed(HTTPHead | HTTPGet | HTTPPost | HTTPPut | HTTPDelete | HTTPOptions);
+        else
+            Request->SetAllowed(HTTPHead | HTTPGet | HTTPOptions);
+
+        Request->SetStatus(HTTP_OK);
+        Request->SetResponseType(HTTPResponseDefault);
+        Request->SetResponseContent(NULL);
+
+        return;
+    }
+
+    QByteArray *result = new QByteArray();
     QTextStream stream(result);
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
