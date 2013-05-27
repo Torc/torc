@@ -19,13 +19,13 @@ typedef enum
 
 typedef enum
 {
-    HTTPUnknownType = 0,
-    HTTPHead,
-    HTTPGet,
-    HTTPPost,
-    HTTPPut,
-    HTTPDelete,
-    HTTPOptions
+    HTTPUnknownType = (0 << 0),
+    HTTPHead        = (1 << 0),
+    HTTPGet         = (1 << 1),
+    HTTPPost        = (1 << 2),
+    HTTPPut         = (1 << 3),
+    HTTPDelete      = (1 << 4),
+    HTTPOptions     = (1 << 5)
 } HTTPRequestType;
 
 typedef enum
@@ -79,8 +79,10 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     void                   SetStatus                (HTTPStatus Status);
     void                   SetResponseType          (HTTPResponseType Type);
     void                   SetResponseContent       (QByteArray *Content);
+    void                   SetAllowed               (int Allowed);
     HTTPType               GetHTTPType              (void);
     HTTPRequestType        GetHTTPRequestType       (void);
+    QString                GetUrl                   (void);
     QString                GetPath                  (void);
     QString                GetMethod                (void);
     QMap<QString,QString>  Queries                  (void);
@@ -100,6 +102,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     QMap<QString,QString>  m_queries;
     QByteArray            *m_content;
 
+    int                    m_allowed;
     HTTPResponseType       m_responseType;
     HTTPStatus             m_responseStatus;
     QByteArray            *m_responseContent;

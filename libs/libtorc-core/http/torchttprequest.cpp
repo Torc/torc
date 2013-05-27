@@ -51,6 +51,20 @@
 
 QRegExp gRegExp = QRegExp("[ \r\n][ \r\n]*");
 
+QString AllowedToString(int Allowed)
+{
+    QStringList result;
+
+    if (Allowed & HTTPHead)    result << "HEAD";
+    if (Allowed & HTTPGet)     result << "GET";
+    if (Allowed & HTTPPost)    result << "POST";
+    if (Allowed & HTTPPut)     result << "PUT";
+    if (Allowed & HTTPDelete)  result << "DELETE";
+    if (Allowed & HTTPOptions) result << "OPTONS";
+
+    return result.join(", ");
+}
+
 TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *Headers, QByteArray *Content)
   : m_type(HTTPRequest),
     m_requestType(HTTPUnknownType),
@@ -58,6 +72,7 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
     m_keepAlive(false),
     m_headers(Headers),
     m_content(Content),
+    m_allowed(0),
     m_responseType(HTTPResponseUnknown),
     m_responseStatus(HTTP_NotFound),
     m_responseContent(NULL)
@@ -155,6 +170,11 @@ void TorcHTTPRequest::SetResponseContent(QByteArray *Content)
     m_responseContent = Content;
 }
 
+void TorcHTTPRequest::SetAllowed(int Allowed)
+{
+    m_allowed = Allowed;
+}
+
 HTTPType TorcHTTPRequest::GetHTTPType(void)
 {
     return m_type;
@@ -163,6 +183,11 @@ HTTPType TorcHTTPRequest::GetHTTPType(void)
 HTTPRequestType TorcHTTPRequest::GetHTTPRequestType(void)
 {
     return m_requestType;
+}
+
+QString TorcHTTPRequest::GetUrl(void)
+{
+    return m_fullUrl;
 }
 
 QString TorcHTTPRequest::GetPath(void)
@@ -201,8 +226,13 @@ QPair<QByteArray*,QByteArray*> TorcHTTPRequest::Respond(void)
     response << "Connection: " << (m_keepAlive ? QString("keep-alive") : QString("close")) << "\r\n";
     response << "Accept-Ranges: bytes\r\n";
     response << "Content-Length: " << (m_responseContent ? QString::number(m_responseContent->size()) : "0") << "\r\n";
+
     if (!contenttype.isEmpty())
         response << "Content-Type: " << contenttype << "\r\n";
+
+    if (m_allowed)
+        response << "Allow: " << AllowedToString(m_allowed) << "\r\n";
+
     response << "\r\n";
 
     return QPair<QByteArray*,QByteArray*>(buffer, m_responseContent);
@@ -210,9 +240,12 @@ QPair<QByteArray*,QByteArray*> TorcHTTPRequest::Respond(void)
 
 HTTPRequestType TorcHTTPRequest::RequestTypeFromString(const QString &Type)
 {
-    if (Type == "GET")  return HTTPGet;
-    if (Type == "HEAD") return HTTPHead;
-    if (Type == "POST") return HTTPPost;
+    if (Type == "GET")     return HTTPGet;
+    if (Type == "HEAD")    return HTTPHead;
+    if (Type == "POST")    return HTTPPost;
+    if (Type == "PUT")     return HTTPPut;
+    if (Type == "OPTIONS") return HTTPOptions;
+    if (Type == "DELETE")  return HTTPDelete;
 
     return HTTPUnknownType;
 }
