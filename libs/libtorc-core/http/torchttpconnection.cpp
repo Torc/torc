@@ -202,15 +202,15 @@ void TorcHTTPConnection::Complete(TorcHTTPRequest *Request)
             qint64 size = headers->size();
             qint64 sent = m_socket->write(headers->data(), size);
             if (size != sent)
-                LOG(VB_GENERAL, LOG_WARNING, QString("Bufer size %1 - but sent %2").arg(size).arg(sent));
+                LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(size).arg(sent));
         }
 
-        if (content)
+        if (content && Request->GetHTTPRequestType() != HTTPHead)
         {
             qint64 size = content->size();
             qint64 sent = m_socket->write(content->data(), size);
             if (size != sent)
-                LOG(VB_GENERAL, LOG_WARNING, QString("Bufer size %1 - but sent %2").arg(size).arg(sent));
+                LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(size).arg(sent));
         }
 
         m_socket->flush();
