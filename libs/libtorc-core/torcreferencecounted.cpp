@@ -26,6 +26,12 @@
 // Torc
 #include "torcreferencecounted.h"
 
+/*! \class TorcReferenceCounter
+ *  \brief A reference counting implementation.
+ *
+ * \todo Review use of EventLoopEnding which may not be a good idea outside of the main thread.
+*/
+
 bool TorcReferenceCounter::m_eventLoopEnding = false;
 
 void TorcReferenceCounter::EventLoopEnding(bool Ending)
@@ -69,6 +75,10 @@ bool TorcReferenceCounter::IsShared(void)
 {
     return m_refCount.fetchAndAddOrdered(0) > 1;
 }
+
+/*! \class TorcReferenceLocker
+ *  \brief A convenience class to maintain a reference to an object within a given scope.
+*/
 
 TorcReferenceLocker::TorcReferenceLocker(TorcReferenceCounter *Counter)
   : m_refCountedObject(Counter)
