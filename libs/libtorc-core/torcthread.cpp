@@ -118,9 +118,6 @@ TorcThread::TorcThread(const QString &ObjectName)
     m_prologExecuted(true),
     m_epilogExecuted(true)
 {
-    if (!gMainThread)
-        LOG(VB_GENERAL, LOG_ERR, "TorcThread::Initialise has not been called");
-
     m_thread->setObjectName(ObjectName);
     QMutexLocker locker(&gTorcThreadsLock);
     gTorcThreads.insert(this);
