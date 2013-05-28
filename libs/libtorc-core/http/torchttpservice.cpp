@@ -219,9 +219,25 @@ TorcHTTPService::~TorcHTTPService()
 void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
 {
     QString method = Request->GetMethod();
+    HTTPRequestType type = Request->GetHTTPRequestType();
 
     if (method.compare("help", Qt::CaseInsensitive) == 0)
     {
+        if (type == HTTPOptions)
+        {
+            Request->SetStatus(HTTP_OK);
+            Request->SetResponseType(HTTPResponseDefault);
+            Request->SetAllowed(HTTPHead | HTTPGet | HTTPOptions);
+            return;
+        }
+
+        if (type != HTTPGet && type != HTTPHead)
+        {
+            Request->SetStatus(HTTP_BadRequest);
+            Request->SetResponseType(HTTPResponseDefault);
+            return;
+        }
+
         UserHelp(Server, Request, Connection);
         return;
     }
@@ -230,7 +246,7 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
     if (it != m_methods.end())
     {
         // filter out invalid request types
-        if (!(Request->GetHTTPRequestType() & (*it)->m_allowedRequestTypes))
+        if (!(type & (*it)->m_allowedRequestTypes))
         {
             Request->SetStatus(HTTP_BadRequest);
             Request->SetResponseType(HTTPResponseDefault);
@@ -238,7 +254,7 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
         }
 
         // handle OPTIONS
-        if (Request->GetHTTPRequestType() == HTTPOptions)
+        if (type == HTTPOptions)
         {
             Request->SetStatus(HTTP_OK);
             Request->SetResponseType(HTTPResponseDefault);
@@ -265,7 +281,7 @@ void TorcHTTPService::UserHelp(TorcHTTPServer *Server, TorcHTTPRequest *Request,
     if (!Request || !Server)
         return;
 
-    QByteArray *result = new QByteArray(1024, 0);
+    QByteArray *result = new QByteArray();
     QTextStream stream(result);
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
