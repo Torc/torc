@@ -65,6 +65,11 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
 {
     Q_OBJECT
 
+    Q_CLASSINFO("Shutdown",  "PUT")
+    Q_CLASSINFO("Suspend",   "PUT")
+    Q_CLASSINFO("Hibernate", "PUT")
+    Q_CLASSINFO("Restart",   "PUT")
+
   public:
     static QMutex *gPowerLock;
     static void    Create(void);
