@@ -185,9 +185,6 @@ bool TorcLocalContextPriv::Init(void)
     // Bump the UI thread priority
     QThread::currentThread()->setPriority(QThread::TimeCriticalPriority);
 
-    // Initialise TorcThread
-    TorcThread::Initialise();
-
     // Qt version?
     LOG(VB_GENERAL, LOG_INFO, QString("Qt runtime version '%1' (compiled with '%2')")
         .arg(qVersion()).arg(QT_VERSION_STR));
@@ -357,6 +354,9 @@ TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine, Torc::App
   : QObject(),
     m_priv(new TorcLocalContextPriv(ApplicationFlags))
 {
+    // Initialise TorcThread FIRST
+    TorcThread::Initialise();
+
     setObjectName("LocalContext");
 
     // Handle signals gracefully
