@@ -179,12 +179,14 @@ bool TorcLocalContextPriv::Init(void)
     // Increase the thread count
     int ideal = QThreadPool::globalInstance()->maxThreadCount();
     int want  = ideal * 8;
-    LOG(VB_GENERAL, LOG_INFO, QString("Setting thread pool size to %1 (was %2)")
-        .arg(want).arg(ideal));
+    LOG(VB_GENERAL, LOG_INFO, QString("Setting thread pool size to %1 (was %2)").arg(want).arg(ideal));
     QThreadPool::globalInstance()->setMaxThreadCount(want);
 
     // Bump the UI thread priority
     QThread::currentThread()->setPriority(QThread::TimeCriticalPriority);
+
+    // Initialise TorcThread
+    TorcThread::Initialise();
 
     // Qt version?
     LOG(VB_GENERAL, LOG_INFO, QString("Qt runtime version '%1' (compiled with '%2')")

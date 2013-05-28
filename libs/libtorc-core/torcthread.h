@@ -21,6 +21,7 @@ class TORC_CORE_PUBLIC TorcThread
     virtual ~TorcThread();
 
     // TorcThread
+    static void  Initialise(void);
     QThread*     GetQThread(void);
     static QThread* GetQThread(const QString &Thread);
     static bool  IsMainThread(void);

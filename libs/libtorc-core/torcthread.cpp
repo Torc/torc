@@ -64,7 +64,10 @@ class DBPurgeHandler : public QObject
 class TorcThreadInternal : public QThread
 {
   public:
-    TorcThreadInternal(TorcThread &parent) : m_parent(parent) { }
+    TorcThreadInternal(TorcThread &parent)
+      : m_parent(parent)
+    {
+    }
 
     virtual void run(void)
     {
@@ -106,14 +109,18 @@ class TorcThreadInternal : public QThread
     TorcThread &m_parent;
 };
 
+static QThread          *gMainThread = NULL;
 static QSet<TorcThread*> gTorcThreads;
 static QMutex            gTorcThreadsLock;
 
-TorcThread::TorcThread(const QString &ObjectName) :
-    m_thread(new TorcThreadInternal(*this)),
+TorcThread::TorcThread(const QString &ObjectName)
+  : m_thread(new TorcThreadInternal(*this)),
     m_prologExecuted(true),
     m_epilogExecuted(true)
 {
+    if (!gMainThread)
+        LOG(VB_GENERAL, LOG_ERR, "TorcThread::Initialise has not been called");
+
     m_thread->setObjectName(ObjectName);
     QMutexLocker locker(&gTorcThreadsLock);
     gTorcThreads.insert(this);
@@ -143,9 +150,14 @@ TorcThread::~TorcThread()
     m_thread = NULL;
 }
 
+void TorcThread::Initialise(void)
+{
+    gMainThread = QThread::currentThread();
+}
+
 bool TorcThread::IsMainThread(void)
 {
-    return QThread::currentThread()->objectName() == TORC_MAIN_THREAD;
+    return QThread::currentThread() == gMainThread;
 }
 
 bool TorcThread::IsCurrentThread(TorcThread *thread)
@@ -238,8 +250,7 @@ void TorcThread::RunEpilog(void)
 {
     if (QThread::currentThread() != m_thread)
     {
-        LOG(VB_GENERAL, LOG_CRIT,
-            "RunEpilog can only be executed in the run() method of a thread.");
+        LOG(VB_GENERAL, LOG_CRIT, "RunEpilog can only be executed in the run() method of a thread.");
         return;
     }
     ThreadCleanup();
