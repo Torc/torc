@@ -71,7 +71,7 @@ void TorcHTMLHandler::ProcessHTTPRequest(TorcHTTPServer*, TorcHTTPRequest *Reque
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
     stream << "<body><h1>" << QCoreApplication::applicationName() << "</h1>";
-    stream << "<p><a href='" << SERVICES_DIRECTORY << "/'>Services</a>";
+    stream << "<p><a href='" << SERVICES_DIRECTORY << "/'>" << QObject::tr("Services") << "</a>";
     stream << "</body></html>";
 
     Request->SetResponseContent(result);
