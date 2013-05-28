@@ -851,7 +851,7 @@ static class TorcBrowserObject : public TorcAdminObject
 {
   public:
     TorcBrowserObject()
-      : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY /* start early and delete last to close TorcBonjour */),
+      : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY + 1 /* start after network but before http server */),
         m_browserReference(0)
     {
     }
