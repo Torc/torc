@@ -367,22 +367,22 @@ bool TorcPower::Restart(void)
     return (m_allowRestart->GetValue().toBool() && m_allowRestart->IsActive()) ? m_priv->Restart() : false;
 }
 
-bool TorcPower::CanShutdown(void)
+bool TorcPower::GetCanShutdown(void)
 {
     return m_allowShutdown->GetValue().toBool() && m_allowShutdown->IsActive();
 }
 
-bool TorcPower::CanSuspend(void)
+bool TorcPower::GetCanSuspend(void)
 {
     return m_allowSuspend->GetValue().toBool() && m_allowSuspend->IsActive();
 }
 
-bool TorcPower::CanHibernate(void)
+bool TorcPower::GetCanHibernate(void)
 {
     return m_allowHibernate->GetValue().toBool() && m_allowHibernate->IsActive();
 }
 
-bool TorcPower::CanRestart(void)
+bool TorcPower::GetCanRestart(void)
 {
     return m_allowRestart->GetValue().toBool() && m_allowRestart->IsActive();
 }

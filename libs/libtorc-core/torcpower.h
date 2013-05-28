@@ -75,10 +75,10 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
     void BatteryUpdated  (int Level);
 
   public slots:
-    bool CanShutdown     (void);
-    bool CanSuspend      (void);
-    bool CanHibernate    (void);
-    bool CanRestart      (void);
+    bool GetCanShutdown  (void);
+    bool GetCanSuspend   (void);
+    bool GetCanHibernate (void);
+    bool GetCanRestart   (void);
     int  GetBatteryLevel (void);
 
     bool Shutdown        (void);
