@@ -33,15 +33,15 @@
 #include "torclogging.h"
 #include "torchttpconnection.h"
 #include "torchttpserver.h"
-#include "torchttprequest.h"
 #include "torcserialiser.h"
 #include "torchttpservice.h"
 
 class MethodParameters
 {
   public:
-    MethodParameters(int Index, const QMetaMethod &Method)
-      : m_index(Index)
+    MethodParameters(int Index, const QMetaMethod &Method, int AllowedRequestTypes)
+      : m_index(Index),
+        m_allowedRequestTypes(AllowedRequestTypes)
     {
         // the return type/value is first
         int returntype = QMetaType::type(Method.typeName());
@@ -144,6 +144,7 @@ class MethodParameters
     QVector<QByteArray> m_names;
     QVector<void*>      m_parameters;
     QVector<int>        m_types;
+    int                 m_allowedRequestTypes;
 };
 
 TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, const QString &Name,
@@ -154,6 +155,7 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
 {
     QStringList blacklist = Blacklist.split(",");
 
+    // analyse available methods
     for (int i = 0; i < m_metaObject.methodCount(); ++i)
     {
         QMetaMethod method = m_metaObject.method(i);
@@ -168,10 +170,37 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
 #endif
             name = name.section('(', 0, 0);
 
+            // discard unwanted slots
             if (name == "deleteLater" || blacklist.contains(name))
                 continue;
 
-            m_methods.insert(name, new MethodParameters(i, method));
+            // determine allowed request types
+            int allowed = HTTPOptions;
+            if (name.startsWith("Get", Qt::CaseInsensitive))
+            {
+                allowed += HTTPGet | HTTPHead;
+            }
+            else if (name.startsWith("Set", Qt::CaseInsensitive))
+            {
+                // TODO Put or Post?? How to handle head requests for setters...
+                allowed += HTTPPut;
+            }
+            else
+            {
+                int index = m_metaObject.indexOfClassInfo(name.toLatin1());
+                if (index > -1)
+                {
+                    QString alloweds(m_metaObject.classInfo(index).value());
+                    allowed |= TorcHTTPRequest::StringToAllowed(alloweds);
+                }
+                else
+                {
+                    LOG(VB_GENERAL, LOG_ERR, QString("Unable to determine request types of method '%1' - ignoring").arg(name));
+                    continue;
+                }
+            }
+
+            m_methods.insert(name, new MethodParameters(i, method, allowed));
         }
     }
 
@@ -200,6 +229,23 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
     QMap<QString,MethodParameters*>::iterator it = m_methods.find(method);
     if (it != m_methods.end())
     {
+        // filter out invalid request types
+        if (!(Request->GetHTTPRequestType() & (*it)->m_allowedRequestTypes))
+        {
+            Request->SetStatus(HTTP_BadRequest);
+            Request->SetResponseType(HTTPResponseDefault);
+            return;
+        }
+
+        // handle OPTIONS
+        if (Request->GetHTTPRequestType() == HTTPOptions)
+        {
+            Request->SetStatus(HTTP_OK);
+            Request->SetResponseType(HTTPResponseDefault);
+            Request->SetAllowed((*it)->m_allowedRequestTypes);
+            return;
+        }
+
         QVariant result = (*it)->Invoke(m_parent, Request);
         Request->SetStatus(HTTP_OK);
         TorcSerialiser *serialiser = Request->GetSerialiser();
@@ -259,11 +305,11 @@ void TorcHTTPService::UserHelp(TorcHTTPServer *Server, TorcHTTPRequest *Request,
                 first = false;
             }
 
-            stream << method << ")<br>";
+            stream << method << ") (" << TorcHTTPRequest::AllowedToString(params->m_allowedRequestTypes) << ")<br>";
         }
 
-        QString url = QString("http://%1:%2").arg(Connection->Socket()->localAddress().toString()).arg(Connection->Socket()->localPort());
-        QString usage = QString("%1%2%3").arg(url).arg(m_signature).arg(example.key());
+        QString url = QString("http://") + Connection->Socket()->localAddress().toString() + ":" + QString::number(Connection->Socket()->localPort());
+        QString usage = url + m_signature + example.key();
 
         if (example.value()->m_types.size() > 1)
         {

@@ -8,9 +8,9 @@
 // Torc
 #include "torccoreexport.h"
 #include "torchttphandler.h"
+#include "torchttprequest.h"
 
 class TorcHTTPServer;
-class TorcHTTPRequest;
 class TorcHTTPConnection;
 class MethodParameters;
 
