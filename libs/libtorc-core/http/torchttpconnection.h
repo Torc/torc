@@ -8,17 +8,17 @@
 
 // Torc
 #include "torccoreexport.h"
+#include "torcreferencecounted.h"
 
 class TorcHTTPServer;
 class TorcHTTPRequest;
 
-class TORC_CORE_PUBLIC TorcHTTPConnection : public QObject
+class TORC_CORE_PUBLIC TorcHTTPConnection : public QObject, public TorcReferenceCounter
 {
     Q_OBJECT
 
   public:
     TorcHTTPConnection(TorcHTTPServer *Parent, QTcpSocket *Socket);
-    ~TorcHTTPConnection();
 
   signals:
     void                     NewRequest     (void);
@@ -36,6 +36,7 @@ class TORC_CORE_PUBLIC TorcHTTPConnection : public QObject
     void                     ReadInternal   (void);
 
   protected:
+    virtual ~TorcHTTPConnection();
     void                     ProcessHeader  (const QByteArray &Line, bool Started);
     void                     Reset          (void);
 

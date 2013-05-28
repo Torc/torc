@@ -318,7 +318,7 @@ void TorcHTTPServer::Close(void)
         QMap<QTcpSocket*,TorcHTTPConnection*>::iterator it = m_connections.begin();
         TorcHTTPConnection* connection = it.value();
         m_connections.erase(it);
-        connection->deleteLater();
+        connection->DownRef();
     }
 
     LOG(VB_GENERAL, LOG_INFO, "Webserver closed");
@@ -382,7 +382,7 @@ void TorcHTTPServer::ClientDisconnected(void)
     if (m_connections.contains(socket))
     {
         TorcHTTPConnection* connection = m_connections.take(socket);
-        connection->deleteLater();
+        connection->DownRef();
     }
 }
 

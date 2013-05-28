@@ -44,6 +44,7 @@
 
 TorcHTTPConnection::TorcHTTPConnection(TorcHTTPServer *Parent, QTcpSocket *Socket)
   : QObject(),
+    TorcReferenceCounter(),
     m_server(Parent),
     m_socket(Socket),
     m_headers(NULL),
