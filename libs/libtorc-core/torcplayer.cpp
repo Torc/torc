@@ -783,7 +783,10 @@ bool TorcPlayerInterface::HandleEvent(QEvent *Event)
     {
         case Torc::Exit:
             if (m_standalone)
+            {
+                TorcReferenceCounter::EventLoopEnding(true);
                 QCoreApplication::quit();
+            }
             break;
         case Torc::Suspending:
         case Torc::Hibernating:
