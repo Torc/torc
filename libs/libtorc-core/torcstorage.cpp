@@ -164,7 +164,7 @@ void TorcStorage::AddDisk(TorcStorageDevice &Disk)
             LOG(VB_GENERAL, LOG_DEBUG, Disk.GetDescription());
 
             int p = Disk.GetProperties();
-            LOG(VB_GENERAL, LOG_DEBUG, QString("Writeble %1 Removable %2 Ejectable %3 Mounted %4")
+            LOG(VB_GENERAL, LOG_DEBUG, QString("Writeable %1 Removable %2 Ejectable %3 Mounted %4")
                 .arg((bool)(p & TorcStorageDevice::Writeable))
                 .arg((bool)(p & TorcStorageDevice::Removable))
                 .arg((bool)(p & TorcStorageDevice::Ejectable))
