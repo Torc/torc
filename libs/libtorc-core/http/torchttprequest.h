@@ -70,6 +70,8 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     static QString         ProtocolToString         (HTTPProtocol Protocol);
     static QString         StatusToString           (HTTPStatus   Status);
     static QString         ResponseTypeToString     (HTTPResponseType Response);
+    static QString         AllowedToString          (int Allowed);
+    static int             StringToAllowed          (const QString &Allowed);
 
   public:
     TorcHTTPRequest(const QString &Method, QMap<QString,QString> *Headers, QByteArray *Content);

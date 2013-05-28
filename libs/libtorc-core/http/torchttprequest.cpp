@@ -51,20 +51,6 @@
 
 QRegExp gRegExp = QRegExp("[ \r\n][ \r\n]*");
 
-QString AllowedToString(int Allowed)
-{
-    QStringList result;
-
-    if (Allowed & HTTPHead)    result << "HEAD";
-    if (Allowed & HTTPGet)     result << "GET";
-    if (Allowed & HTTPPost)    result << "POST";
-    if (Allowed & HTTPPut)     result << "PUT";
-    if (Allowed & HTTPDelete)  result << "DELETE";
-    if (Allowed & HTTPOptions) result << "OPTONS";
-
-    return result.join(", ");
-}
-
 TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *Headers, QByteArray *Content)
   : m_type(HTTPRequest),
     m_requestType(HTTPUnknownType),
@@ -307,6 +293,34 @@ QString TorcHTTPRequest::ResponseTypeToString(HTTPResponseType Response)
     }
 
     return QString("text/plain");
+}
+
+QString TorcHTTPRequest::AllowedToString(int Allowed)
+{
+    QStringList result;
+
+    if (Allowed & HTTPHead)    result << "HEAD";
+    if (Allowed & HTTPGet)     result << "GET";
+    if (Allowed & HTTPPost)    result << "POST";
+    if (Allowed & HTTPPut)     result << "PUT";
+    if (Allowed & HTTPDelete)  result << "DELETE";
+    if (Allowed & HTTPOptions) result << "OPTONS";
+
+    return result.join(", ");
+}
+
+int TorcHTTPRequest::StringToAllowed(const QString &Allowed)
+{
+    int allowed = 0;
+
+    if (Allowed.contains("HEAD",    Qt::CaseInsensitive)) allowed += HTTPHead;
+    if (Allowed.contains("GET",     Qt::CaseInsensitive)) allowed += HTTPGet;
+    if (Allowed.contains("POST",    Qt::CaseInsensitive)) allowed += HTTPPost;
+    if (Allowed.contains("PUT",     Qt::CaseInsensitive)) allowed += HTTPPut;
+    if (Allowed.contains("DELETE",  Qt::CaseInsensitive)) allowed += HTTPDelete;
+    if (Allowed.contains("OPTIONS", Qt::CaseInsensitive)) allowed += HTTPOptions;
+
+    return allowed;
 }
 
 TorcSerialiser* TorcHTTPRequest::GetSerialiser(void)
