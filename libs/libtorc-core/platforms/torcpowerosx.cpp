@@ -45,7 +45,7 @@ static OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend);
 TorcPowerOSX::TorcPowerOSX(TorcPower *Parent)
   : TorcPowerPriv(Parent),
     m_powerRef(NULL),
-    m_rootPowerDomain(NULL),
+    m_rootPowerDomain(0),
     m_powerNotifier(MACH_PORT_NULL),
     m_powerNotifyPort(NULL)
 {

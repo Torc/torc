@@ -35,7 +35,7 @@ TorcUSBPrivOSX::TorcUSBPrivOSX(TorcUSB *Parent)
   : QObject(Parent),
     m_usbRef(NULL),
     m_usbNotifyPort(NULL),
-    m_iterator(NULL),
+    m_iterator(0),
     m_notificationsLock(new QMutex())
 {
     if (!gAdminRunLoop)
@@ -78,7 +78,7 @@ TorcUSBPrivOSX::~TorcUSBPrivOSX()
     // release iterator
     if (m_iterator)
         IOObjectRelease(m_iterator);
-    m_iterator = NULL;
+    m_iterator = 0;
 
     // release source
     if (m_usbRef && gAdminRunLoop)
