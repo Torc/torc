@@ -157,7 +157,9 @@ void TorcThread::Initialise(void)
 
 bool TorcThread::IsMainThread(void)
 {
-    return QThread::currentThread() == gMainThread;
+    if (gMainThread)
+        return QThread::currentThread() == gMainThread;
+    return QThread::currentThread()->objectName() == TORC_MAIN_THREAD;
 }
 
 bool TorcThread::IsCurrentThread(TorcThread *thread)
