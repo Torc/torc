@@ -47,6 +47,8 @@
  * \sa TorcHTTPServer
  * \sa TorcHTTPHandler
  * \sa TorcHTTPConnection
+ *
+ * \todo Rationalise overlapping multi-byte range requests
 */
 
 QRegExp gRegExp = QRegExp("[ \r\n][ \r\n]*");
@@ -260,6 +262,8 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket)
 
     if (m_responseStatus == HTTP_PartialContent && !multipart)
         response << "Content-Range: bytes " << RangeToString(m_ranges[0], totalsize) << "\r\n";
+    else if (m_responseStatus == HTTP_RequestedRangeNotSatisfiable)
+        response << "Content-Range: bytes */" << QString::number(totalsize) << "\r\n";
 
     response << "\r\n";
     response.flush();
@@ -419,6 +423,8 @@ QList<QPair<quint64,quint64> > TorcHTTPRequest::StringToRanges(const QString &Ra
 {
     qint64 tosend = 0;
     QList<QPair<quint64,quint64> > results;
+    if (Size < 1)
+        return results;
 
     if (Ranges.contains("bytes", Qt::CaseInsensitive))
     {
@@ -432,10 +438,7 @@ QList<QPair<quint64,quint64> > TorcHTTPRequest::StringToRanges(const QString &Ra
                 QStringList parts = range.split("-");
 
                 if (parts.size() != 2)
-                {
-                    results.clear();
-                    break;
-                }
+                    continue;
 
                 quint64 start = 0;
                 quint64 end = 0;
@@ -447,11 +450,26 @@ QList<QPair<quint64,quint64> > TorcHTTPRequest::StringToRanges(const QString &Ra
                 {
                     start = parts[0].toULongLong(&ok);
                     if (ok)
+                    {
+                        // invalid per spec
+                        if (start >= Size)
+                            continue;
+
                         end = parts[1].toULongLong(&ok);
+
+                        // invalid per spec
+                        if (end < start)
+                            continue;
+                    }
                 }
                 else if (havefirst && !havesecond)
                 {
                     start = parts[0].toULongLong(&ok);
+
+                    // invalid per spec
+                    if (ok && start >= Size)
+                        continue;
+
                     end = Size - 1;
                 }
                 else if (!havefirst && havesecond)
@@ -459,24 +477,20 @@ QList<QPair<quint64,quint64> > TorcHTTPRequest::StringToRanges(const QString &Ra
                     end = Size -1;
                     start = parts[1].toULongLong(&ok);
                     if (ok)
+                    {
                         start = Size - start;
+
+                        // invalid per spec
+                        if (start < 0 || start >= Size)
+                            continue;
+                    }
                 }
 
                 if (ok)
                 {
-                    if (start >= Size)
-                        start = Size - 1;
-                    if (end <= start)
-                        end = start;
-                    if (end >= Size)
-                        end = Size - 1;
                     results << QPair<quint64,quint64>(start, end);
                     tosend += end - start + 1;
-                    continue;
                 }
-
-                results.clear();
-                break;
             }
         }
     }
