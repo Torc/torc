@@ -5,6 +5,7 @@
 #include <QMap>
 #include <QPair>
 #include <QString>
+#include <QTcpSocket>
 
 // Torc
 #include "torccoreexport.h"
@@ -54,11 +55,13 @@ typedef enum
 typedef enum
 {
     HTTP_OK                  = 200,
+    HTTP_PartialContent      = 206,
     HTTP_BadRequest          = 400,
     HTTP_Unauthorized        = 401,
     HTTP_Forbidden           = 402,
     HTTP_NotFound            = 404,
     HTTP_MethodNotAllowed    = 405,
+    HTTP_RequestedRangeNotSatisfiable = 416,
     HTTP_InternalServerError = 500
 } HTTPStatus;
 
@@ -72,6 +75,8 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     static QString         ResponseTypeToString     (HTTPResponseType Response);
     static QString         AllowedToString          (int Allowed);
     static int             StringToAllowed          (const QString &Allowed);
+    static QList<QPair<quint64,quint64> > StringToRanges (const QString &Ranges, qint64 Size, qint64& SizeToSend);
+    static QString         RangeToString            (const QPair<quint64,quint64> &Range, qint64 Size);
 
   public:
     TorcHTTPRequest(const QString &Method, QMap<QString,QString> *Headers, QByteArray *Content);
@@ -88,7 +93,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     QString                GetPath                  (void);
     QString                GetMethod                (void);
     QMap<QString,QString>  Queries                  (void);
-    QPair<QByteArray*,QByteArray*> Respond          (void);
+    void                   Respond                  (QTcpSocket *Socket);
     TorcSerialiser*        GetSerialiser            (void);
 
   protected:
@@ -100,6 +105,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     HTTPRequestType        m_requestType;
     HTTPProtocol           m_protocol;
     bool                   m_keepAlive;
+    QList<QPair<quint64,quint64> > m_ranges;
     QMap<QString,QString> *m_headers;
     QMap<QString,QString>  m_queries;
     QByteArray            *m_content;

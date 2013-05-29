@@ -176,6 +176,8 @@ void TorcHTTPConnection::ProcessHeader(const QByteArray &Line, bool Started)
     if (key == "Content-Length")
         m_contentLength = value.toULongLong();
 
+    LOG(VB_NETWORK, LOG_DEBUG, QString("%1: %2").arg(key.data()).arg(value.data()));
+
     m_headers->insert(key, value);
 }
 
@@ -195,32 +197,7 @@ TorcHTTPRequest* TorcHTTPConnection::GetRequest(void)
 void TorcHTTPConnection::Complete(TorcHTTPRequest *Request)
 {
     if (Request && m_socket)
-    {
-        QPair<QByteArray*,QByteArray*> response = Request->Respond();
-        QByteArray* headers = response.first;
-        QByteArray* content = response.second;
-
-        if (headers)
-        {
-            qint64 size = headers->size();
-            qint64 sent = m_socket->write(headers->data(), size);
-            if (size != sent)
-                LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(size).arg(sent));
-        }
-
-        if (content && Request->GetHTTPRequestType() != HTTPHead)
-        {
-            qint64 size = content->size();
-            qint64 sent = m_socket->write(content->data(), size);
-            if (size != sent)
-                LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(size).arg(sent));
-        }
-
-        m_socket->flush();
-
-        if (!Request->KeepAlive())
-            m_socket->disconnectFromHost();
-    }
+        Request->Respond(m_socket);
 
     delete Request;
 }

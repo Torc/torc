@@ -118,7 +118,7 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
 
     m_keepAlive = m_protocol > HTTPOneDotZero;
 
-    QString connection = m_headers->value("connection").toLower();
+    QString connection = m_headers->value("Connection").toLower();
 
     if (connection == "keep-alive")
         m_keepAlive = true;
@@ -191,8 +191,11 @@ QMap<QString,QString> TorcHTTPRequest::Queries(void)
     return m_queries;
 }
 
-QPair<QByteArray*,QByteArray*> TorcHTTPRequest::Respond(void)
+void TorcHTTPRequest::Respond(QTcpSocket *Socket)
 {
+    if (!Socket)
+        return;
+
     if (m_responseType == HTTPResponseUnknown)
     {
         LOG(VB_GENERAL, LOG_ERR, "Unknown HTTP response");
@@ -201,27 +204,114 @@ QPair<QByteArray*,QByteArray*> TorcHTTPRequest::Respond(void)
         m_keepAlive      = false;
     }
 
-    QByteArray *buffer = new QByteArray();
-    QTextStream response(buffer);
+    // process byte range requests
+    qint64 totalsize  = m_responseContent ? m_responseContent->size() : 0;
+    qint64 sendsize   = totalsize;
+    bool multipart    = false;
+    static QByteArray seperator("\r\n--STaRT\r\n");
+    QList<QByteArray> partheaders;
+    QByteArray contentheader = QString("Content-Type: %1\r\n").arg(ResponseTypeToString(m_responseType)).toLatin1();
 
-    QString contenttype = ResponseTypeToString(m_responseType);
+    if (m_headers->contains("Range") && m_responseStatus == HTTP_OK)
+    {
+        m_ranges = StringToRanges(m_headers->value("Range"), totalsize, sendsize);
+
+        if (m_ranges.isEmpty())
+        {
+            SetResponseContent(new QByteArray());
+            m_responseStatus = HTTP_RequestedRangeNotSatisfiable;
+        }
+        else
+        {
+            m_responseStatus = HTTP_PartialContent;
+            multipart = m_ranges.size() > 1;
+
+            if (multipart)
+            {
+                QList<QPair<quint64,quint64> >::const_iterator it = m_ranges.begin();
+                for ( ; it != m_ranges.end(); ++it)
+                {
+                    QByteArray header = seperator + contentheader + QString("Content-Range: bytes %1\r\n\r\n").arg(RangeToString((*it), totalsize)).toLatin1();
+                    partheaders << header;
+                    sendsize += header.size();
+                }
+            }
+        }
+    }
+
+    // format response headers
+    QByteArray *headers = new QByteArray();
+    QTextStream response(headers);
 
     response << TorcHTTPRequest::ProtocolToString(m_protocol) << " " << TorcHTTPRequest::StatusToString(m_responseStatus) << "\r\n";
     response << "Date: " << QDateTime::currentDateTimeUtc().toString("d MMM yyyy hh:mm:ss 'GMT'") << "\r\n";
     response << "Server: " << TorcHTTPServer::PlatformName() << ", Torc " << TORC_SOURCE_VERSION << "\r\n";
     response << "Connection: " << (m_keepAlive ? QString("keep-alive") : QString("close")) << "\r\n";
     response << "Accept-Ranges: bytes\r\n";
-    response << "Content-Length: " << (m_responseContent ? QString::number(m_responseContent->size()) : "0") << "\r\n";
 
-    if (!contenttype.isEmpty())
-        response << "Content-Type: " << contenttype << "\r\n";
+    if (multipart)
+        response << "Content-Type: multipart/byteranges; boundary=STaRT\r\n";
+    else
+        response << contentheader;
 
     if (m_allowed)
         response << "Allow: " << AllowedToString(m_allowed) << "\r\n";
+    response << "Content-Length: " << QString::number(sendsize) << "\r\n";
+
+    if (m_responseStatus == HTTP_PartialContent && !multipart)
+        response << "Content-Range: bytes " << RangeToString(m_ranges[0], totalsize) << "\r\n";
 
     response << "\r\n";
+    response.flush();
 
-    return QPair<QByteArray*,QByteArray*>(buffer, m_responseContent);
+    // send headers
+    qint64 headersize = headers->size();
+    qint64 sent = Socket->write(headers->data(), headersize);
+    if (headersize != sent)
+        LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(headersize).arg(sent));
+    else
+        LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 header bytes").arg(sent));
+
+    // send content
+    if (m_responseContent && !m_responseContent->isEmpty() && m_requestType != HTTPHead)
+    {
+        if (multipart)
+        {
+            QList<QPair<quint64,quint64> >::const_iterator it = m_ranges.begin();
+            QList<QByteArray>::const_iterator bit = partheaders.begin();
+            for ( ; it != m_ranges.end(); ++it, ++bit)
+            {
+                qint64 sent = Socket->write((*bit).data(), (*bit).size());
+                if ((*bit).size() != sent)
+                    LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg((*bit).size()).arg(sent));
+                else
+                    LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 multipart header bytes").arg(sent));
+
+                quint64 start      = (*it).first;
+                quint64 chunksize  = (*it).second - start + 1;
+                sent  = Socket->write(m_responseContent->data() + start, chunksize);
+                if (chunksize != sent)
+                    LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(chunksize).arg(sent));
+                else
+                    LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 content bytes").arg(sent));
+            }
+        }
+        else
+        {
+            qint64 size = sendsize;
+            qint64 offset = m_ranges.isEmpty() ? 0 : m_ranges[0].first;
+            qint64 sent = Socket->write(m_responseContent->data() + offset, size);
+            if (size != sent)
+                LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(size).arg(sent));
+            else
+                LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 content bytes").arg(sent));
+        }
+    }
+
+    Socket->flush();
+
+    if (!m_keepAlive)
+        Socket->disconnectFromHost();
 }
 
 HTTPRequestType TorcHTTPRequest::RequestTypeFromString(const QString &Type)
@@ -266,11 +356,13 @@ QString TorcHTTPRequest::StatusToString(HTTPStatus Status)
     switch (Status)
     {
         case HTTP_OK:                  return QString("200 OK");
+        case HTTP_PartialContent:      return QString("206 Partial Content");
         case HTTP_BadRequest:          return QString("400 Bad Request");
         case HTTP_Unauthorized:        return QString("401 Unauthorized");
         case HTTP_Forbidden:           return QString("403 Forbidden");
         case HTTP_NotFound:            return QString("404 Not Found");
         case HTTP_MethodNotAllowed:    return QString("405 Method Not Allowed");
+        case HTTP_RequestedRangeNotSatisfiable: return QString("416 Requested Range Not Satisfiable");
         case HTTP_InternalServerError: return QString("500 Internal Server Error");
     }
 
@@ -321,6 +413,90 @@ int TorcHTTPRequest::StringToAllowed(const QString &Allowed)
     if (Allowed.contains("OPTIONS", Qt::CaseInsensitive)) allowed += HTTPOptions;
 
     return allowed;
+}
+
+QList<QPair<quint64,quint64> > TorcHTTPRequest::StringToRanges(const QString &Ranges, qint64 Size, qint64 &SizeToSend)
+{
+    qint64 tosend = 0;
+    QList<QPair<quint64,quint64> > results;
+
+    if (Ranges.contains("bytes", Qt::CaseInsensitive))
+    {
+        QStringList newranges = Ranges.split("=");
+        if (newranges.size() == 2)
+        {
+            QStringList rangelist = newranges[1].split(",", QString::SkipEmptyParts);
+
+            foreach (QString range, rangelist)
+            {
+                QStringList parts = range.split("-");
+
+                if (parts.size() != 2)
+                {
+                    results.clear();
+                    break;
+                }
+
+                quint64 start = 0;
+                quint64 end = 0;
+                bool ok = false;
+                bool havefirst  = !parts[0].trimmed().isEmpty();
+                bool havesecond = !parts[1].trimmed().isEmpty();
+
+                if (havefirst && havesecond)
+                {
+                    start = parts[0].toULongLong(&ok);
+                    if (ok)
+                        end = parts[1].toULongLong(&ok);
+                }
+                else if (havefirst && !havesecond)
+                {
+                    start = parts[0].toULongLong(&ok);
+                    end = Size - 1;
+                }
+                else if (!havefirst && havesecond)
+                {
+                    end = Size -1;
+                    start = parts[1].toULongLong(&ok);
+                    if (ok)
+                        start = Size - start;
+                }
+
+                if (ok)
+                {
+                    if (start >= Size)
+                        start = Size - 1;
+                    if (end <= start)
+                        end = start;
+                    if (end >= Size)
+                        end = Size - 1;
+                    results << QPair<quint64,quint64>(start, end);
+                    tosend += end - start + 1;
+                    continue;
+                }
+
+                results.clear();
+                break;
+            }
+        }
+    }
+
+    if (results.isEmpty())
+    {
+        SizeToSend = 0;
+        LOG(VB_GENERAL, LOG_ERR, QString("Error parsing byte ranges ('%1')").arg(Ranges));
+    }
+    else
+    {
+        SizeToSend = tosend;
+    }
+
+    return results;
+}
+
+QString TorcHTTPRequest::RangeToString(const QPair<quint64, quint64> &Range, qint64 Size)
+{
+    return QString("%1-%2/%3").arg(Range.first).arg(Range.second).arg(Size);
 }
 
 TorcSerialiser* TorcHTTPRequest::GetSerialiser(void)
