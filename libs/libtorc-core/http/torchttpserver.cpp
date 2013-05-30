@@ -207,18 +207,6 @@ TorcHTTPServer::~TorcHTTPServer()
     delete m_oldHandlersLock;
 }
 
-QMap<QString,QString> TorcHTTPServer::GetServiceHandlers(void)
-{
-    QMap<QString,QString> result;
-
-    QMap<QString,TorcHTTPHandler*>::const_iterator it = m_handlers.begin();
-    for ( ; it != m_handlers.end(); ++it)
-        if (it.key().startsWith(m_servicesDirectory))
-            result.insert(it.key(), it.value()->Name());
-
-    return result;
-}
-
 void TorcHTTPServer::Enable(bool Enable)
 {
     if (Enable && m_enabled && m_enabled->IsActive() && m_enabled->GetValue().toBool())// && TorcNetwork::IsAvailable())
@@ -386,6 +374,18 @@ void TorcHTTPServer::ClientDisconnected(void)
         TorcHTTPConnection* connection = m_connections.take(socket);
         connection->DownRef();
     }
+}
+
+QMap<QString,QString> TorcHTTPServer::GetServiceHandlers(void)
+{
+    QMap<QString,QString> result;
+
+    QMap<QString,TorcHTTPHandler*>::const_iterator it = m_handlers.begin();
+    for ( ; it != m_handlers.end(); ++it)
+        if (it.key().startsWith(m_servicesDirectory))
+            result.insert(it.key(), it.value()->Name());
+
+    return result;
 }
 
 void TorcHTTPServer::AddHandler(TorcHTTPHandler *Handler)
