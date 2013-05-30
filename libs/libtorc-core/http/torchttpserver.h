@@ -30,8 +30,9 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     static QString PlatformName       (void);
 
   public:
-    virtual       ~TorcHTTPServer      ();
+    virtual       ~TorcHTTPServer     ();
     QMap<QString,QString> GetServiceHandlers (void);
+    void           HandleRequest      (TorcHTTPConnection *Connection, TorcHTTPRequest *Request);
 
   signals:
     void           HandlersChanged    (void);
@@ -39,7 +40,6 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
   protected slots:
     void           ClientDisconnected (void);
     void           UpdateHandlers     (void);
-    void           NewRequest         (void);
 
   protected:
     TorcHTTPServer ();
@@ -66,6 +66,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     QString                           m_servicesDirectory;
     QMap<QTcpSocket*,TorcHTTPConnection*> m_connections;
     QMap<QString,TorcHTTPHandler*>    m_handlers;
+    QMutex*                           m_handlersLock;
     QList<TorcHTTPHandler*>           m_newHandlers;
     QMutex*                           m_newHandlersLock;
     QList<TorcHTTPHandler*>           m_oldHandlers;

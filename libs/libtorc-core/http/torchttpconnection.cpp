@@ -57,7 +57,6 @@ TorcHTTPConnection::TorcHTTPConnection(TorcHTTPServer *Parent, QTcpSocket *Socke
     connect(m_socket,  SIGNAL(readyRead()),     this,     SLOT(ReadFromClient()));
     connect(&m_buffer, SIGNAL(readyRead()),     this,     SLOT(ReadInternal()));
     connect(m_socket,  SIGNAL(disconnected()),  m_server, SLOT(ClientDisconnected()));
-    connect(this,      SIGNAL(NewRequest()),    m_server, SLOT(NewRequest()));
     m_socket->setSocketOption(QAbstractSocket::KeepAliveOption, 1);
 
     m_peerAddress = m_socket->peerAddress().toString() + ":" + QString::number(m_socket->peerPort());
@@ -75,9 +74,6 @@ TorcHTTPConnection::~TorcHTTPConnection()
 
     delete m_headers;
     delete m_content;
-
-    foreach (TorcHTTPRequest* request, m_requests)
-        delete request;
 
     if (m_socket)
     {
@@ -150,9 +146,21 @@ void TorcHTTPConnection::ReadInternal(void)
 
         if (m_headersComplete && (m_contentReceived == m_contentLength))
         {
-            m_requests.append(new TorcHTTPRequest(m_method, m_headers, m_content));
+            TorcHTTPRequest *request = new TorcHTTPRequest(m_method, m_headers, m_content);
             Reset();
-            emit NewRequest();
+
+            if (request->GetHTTPType() == HTTPResponse)
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Received HTTP response...");
+            }
+            else
+            {
+                m_server->HandleRequest(this, request);
+                if (m_socket)
+                    request->Respond(m_socket);
+            }
+
+            delete request;
         }
 
         if ((!m_headersComplete && !m_buffer.canReadLine()) ||
@@ -186,25 +194,4 @@ void TorcHTTPConnection::ProcessHeader(const QByteArray &Line, bool Started)
     LOG(VB_NETWORK, LOG_DEBUG, QString("%1: %2").arg(key.data()).arg(value.data()));
 
     m_headers->insert(key, value);
-}
-
-bool TorcHTTPConnection::HasRequests(void)
-{
-    return !m_requests.isEmpty();
-}
-
-TorcHTTPRequest* TorcHTTPConnection::GetRequest(void)
-{
-    if (m_requests.isEmpty())
-        return NULL;
-
-    return m_requests.takeFirst();
-}
-
-void TorcHTTPConnection::Complete(TorcHTTPRequest *Request)
-{
-    if (Request && m_socket)
-        Request->Respond(m_socket);
-
-    delete Request;
 }

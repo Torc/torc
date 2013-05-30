@@ -20,16 +20,10 @@ class TORC_CORE_PUBLIC TorcHTTPConnection : public QObject, public TorcReference
   public:
     TorcHTTPConnection(TorcHTTPServer *Parent, QTcpSocket *Socket);
 
-  signals:
-    void                     NewRequest     (void);
-
   public slots:
     void                     ReadFromClient (void);
 
   public:
-    bool                     HasRequests    (void);
-    TorcHTTPRequest*         GetRequest     (void);
-    void                     Complete       (TorcHTTPRequest* Request);
     QTcpSocket*              Socket         (void);
 
   protected slots:
@@ -51,7 +45,6 @@ class TORC_CORE_PUBLIC TorcHTTPConnection : public QObject, public TorcReference
     QMap<QString,QString>   *m_headers;
     QByteArray              *m_content;
     QBuffer                  m_buffer;
-    QList<TorcHTTPRequest*>  m_requests;
     QString                  m_peerAddress;
 };
 

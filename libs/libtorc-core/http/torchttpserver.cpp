@@ -123,6 +123,7 @@ TorcHTTPServer::TorcHTTPServer()
     m_defaultHandler(NULL),
     m_servicesHelpHandler(NULL),
     m_servicesDirectory(SERVICES_DIRECTORY),
+    m_handlersLock(new QMutex(QMutex::Recursive)),
     m_newHandlersLock(new QMutex(QMutex::Recursive)),
     m_oldHandlersLock(new QMutex(QMutex::Recursive)),
     m_httpBonjourReference(0),
@@ -203,6 +204,7 @@ TorcHTTPServer::~TorcHTTPServer()
         m_enabled = NULL;
     }
 
+    delete m_handlersLock;
     delete m_newHandlersLock;
     delete m_oldHandlersLock;
 }
@@ -311,29 +313,15 @@ void TorcHTTPServer::Close(void)
     LOG(VB_GENERAL, LOG_INFO, "Webserver closed");
 }
 
-void TorcHTTPServer::NewRequest(void)
+void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPRequest *Request)
 {
-    TorcHTTPConnection* connection = static_cast<TorcHTTPConnection*>(sender());
-
-    while (connection && connection->HasRequests())
+    if (Request && Connection)
     {
-        TorcHTTPRequest* request = connection->GetRequest();
-        if (request)
-        {
-            if (request->GetHTTPType() == HTTPResponse)
-            {
-                LOG(VB_GENERAL, LOG_INFO, "Received HTTP response...");
-                delete request;
-            }
-            else
-            {
-                QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.find(request->GetPath());
-                if (it != m_handlers.end())
-                    (*it)->ProcessHTTPRequest(this, request, connection);
-
-                connection->Complete(request);
-            }
-        }
+        m_handlersLock->lock();
+        QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.find(Request->GetPath());
+        if (it != m_handlers.end())
+            (*it)->ProcessHTTPRequest(this, Request, Connection);
+        m_handlersLock->unlock();
     }
 }
 
@@ -380,10 +368,12 @@ QMap<QString,QString> TorcHTTPServer::GetServiceHandlers(void)
 {
     QMap<QString,QString> result;
 
+    m_handlersLock->lock();
     QMap<QString,TorcHTTPHandler*>::const_iterator it = m_handlers.begin();
     for ( ; it != m_handlers.end(); ++it)
         if (it.key().startsWith(m_servicesDirectory))
             result.insert(it.key(), it.value()->Name());
+    m_handlersLock->unlock();
 
     return result;
 }
@@ -431,29 +421,33 @@ void TorcHTTPServer::UpdateHandlers(void)
         m_oldHandlers.clear();
     }
 
-    foreach (TorcHTTPHandler *handler, newhandlers)
     {
-        QString signature = handler->Signature();
-        if (m_handlers.contains(signature))
-        {
-            LOG(VB_GENERAL, LOG_WARNING, QString("Handler '%1' already registered - ignoring").arg(signature));
-        }
-        else if (!signature.isEmpty())
-        {
-            LOG(VB_GENERAL, LOG_DEBUG, QString("Added handler '%1' for %2").arg(handler->Name()).arg(signature));
-            m_handlers.insert(signature, handler);
-        }
-    }
+        QMutexLocker locker(m_handlersLock);
 
-    foreach (TorcHTTPHandler *handler, oldhandlers)
-    {
-        QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.begin();
-        for ( ; it != m_handlers.end(); ++it)
+        foreach (TorcHTTPHandler *handler, newhandlers)
         {
-            if (it.value() == handler)
+            QString signature = handler->Signature();
+            if (m_handlers.contains(signature))
             {
-                m_handlers.erase(it);
-                break;
+                LOG(VB_GENERAL, LOG_WARNING, QString("Handler '%1' already registered - ignoring").arg(signature));
+            }
+            else if (!signature.isEmpty())
+            {
+                LOG(VB_GENERAL, LOG_DEBUG, QString("Added handler '%1' for %2").arg(handler->Name()).arg(signature));
+                m_handlers.insert(signature, handler);
+            }
+        }
+
+        foreach (TorcHTTPHandler *handler, oldhandlers)
+        {
+            QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.begin();
+            for ( ; it != m_handlers.end(); ++it)
+            {
+                if (it.value() == handler)
+                {
+                    m_handlers.erase(it);
+                    break;
+                }
             }
         }
     }
