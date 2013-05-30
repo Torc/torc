@@ -52,6 +52,7 @@ class TORC_CORE_PUBLIC TorcHTTPConnection : public QObject, public TorcReference
     QByteArray              *m_content;
     QBuffer                  m_buffer;
     QList<TorcHTTPRequest*>  m_requests;
+    QString                  m_peerAddress;
 };
 
 #endif // TORCHTTPCONNECTION_H

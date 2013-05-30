@@ -59,10 +59,16 @@ TorcHTTPConnection::TorcHTTPConnection(TorcHTTPServer *Parent, QTcpSocket *Socke
     connect(m_socket,  SIGNAL(disconnected()),  m_server, SLOT(ClientDisconnected()));
     connect(this,      SIGNAL(NewRequest()),    m_server, SLOT(NewRequest()));
     m_socket->setSocketOption(QAbstractSocket::KeepAliveOption, 1);
+
+    m_peerAddress = m_socket->peerAddress().toString() + ":" + QString::number(m_socket->peerPort());
+    QString local = m_socket->localAddress().toString() + ":" + QString::number(m_socket->localPort());
+    LOG(VB_GENERAL, LOG_DEBUG, "New connection from " + m_peerAddress + " to " + local);
 }
 
 TorcHTTPConnection::~TorcHTTPConnection()
 {
+    LOG(VB_GENERAL, LOG_DEBUG, "Closing connection from " + m_peerAddress);
+
     m_socket->disconnect();
 
     m_buffer.close();
@@ -161,6 +167,7 @@ void TorcHTTPConnection::ProcessHeader(const QByteArray &Line, bool Started)
 {
     if (!Started)
     {
+        LOG(VB_NETWORK, LOG_DEBUG, Line);
         m_method = Line;
         return;
     }
