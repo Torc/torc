@@ -152,8 +152,7 @@ TorcHTTPServer::TorcHTTPServer()
     // port setting - this could become a user editable setting
     m_port = new TorcSetting(NULL, TORC_CORE + "WebServerPort", QString(), TorcSetting::Integer, true, QVariant((int)4840));
 
-    // listen for new connections
-    connect(this, SIGNAL(newConnection()), this, SLOT(ClientConnected()));
+    // listen for new handlers
     connect(this, SIGNAL(HandlersChanged()), this, SLOT(UpdateHandlers()));
 
     static bool initialised = false;
@@ -178,8 +177,8 @@ TorcHTTPServer::TorcHTTPServer()
     AddHandler(m_servicesHelpHandler);
 
     // and start
-    // NB this will currently start and stop purely on the basis of the setting, irrespective
-    // of network availability.
+    // NB this will start and stop purely on the basis of the setting, irrespective
+    // of network availability and hence is still available via 'localhost'
     Enable(true);
 }
 
@@ -365,14 +364,17 @@ bool TorcHTTPServer::event(QEvent *Event)
     return QTcpServer::event(Event);
 }
 
-void TorcHTTPServer::ClientConnected(void)
+void TorcHTTPServer::incomingConnection(qintptr SocketDescriptor)
 {
-    while (hasPendingConnections())
+    QTcpSocket *socket = new QTcpSocket();
+    if (!socket->setSocketDescriptor(SocketDescriptor))
     {
-        QTcpSocket *socket = nextPendingConnection();
-        TorcHTTPConnection *connection = new TorcHTTPConnection(this, socket);
-        m_connections.insert(socket, connection);
+        LOG(VB_GENERAL, LOG_ERR, "Failed to set socket descriptor for new socket connection");
+        return;
     }
+
+    TorcHTTPConnection *connection = new TorcHTTPConnection(this, socket);
+    m_connections.insert(socket, connection);
 }
 
 void TorcHTTPServer::ClientDisconnected(void)

@@ -37,13 +37,13 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     void           HandlersChanged    (void);
 
   protected slots:
-    void           ClientConnected    (void);
     void           ClientDisconnected (void);
     void           UpdateHandlers     (void);
     void           NewRequest         (void);
 
   protected:
     TorcHTTPServer ();
+    void           incomingConnection (qintptr SocketDescriptor);
     bool           event              (QEvent *Event);
     bool           Open               (void);
     void           Close              (void);
