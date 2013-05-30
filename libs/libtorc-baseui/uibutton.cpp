@@ -140,12 +140,12 @@ void UIButton::CopyFrom(UIWidget *Other)
         return;
     }
 
-    SetPushed(button->IsPushed());
-    SetAsCheckbox(button->m_checkbox);
-    text = button->GetText();
-
     // NB IsFocusable returns false for a template
     m_focusable = button->m_focusable;
+
+    SetAsCheckbox(button->m_checkbox);
+    SetPushed(button->IsPushed());
+    text = button->GetText();
 
     UIWidget::CopyFrom(Other);
 }
@@ -229,9 +229,15 @@ QString UIButton::GetText(void)
 void UIButton::SetPushed(bool Pushed)
 {
     if (Pushed)
+    {
         Push();
+        if (m_checkbox)
+            m_toggled--; // there won't be an associated release
+    }
     else
+    {
         Release();
+    }
 }
 
 void UIButton::SetText(QString Text)
