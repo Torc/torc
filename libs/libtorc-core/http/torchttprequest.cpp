@@ -47,8 +47,6 @@
  * \sa TorcHTTPServer
  * \sa TorcHTTPHandler
  * \sa TorcHTTPConnection
- *
- * \todo Rationalise overlapping multi-byte range requests
 */
 
 QRegExp gRegExp = QRegExp("[ \r\n][ \r\n]*");
@@ -502,6 +500,39 @@ QList<QPair<quint64,quint64> > TorcHTTPRequest::StringToRanges(const QString &Ra
     }
     else
     {
+        // rationalise overlapping range requests
+        bool check = true;
+
+        while (results.size() > 1 && check)
+        {
+            check = false;
+            quint64 laststart = results[0].first;
+            quint64 lastend   = results[0].second;
+
+            for (int i = 1; i < results.size(); ++i)
+            {
+                quint64 thisstart = results[i].first;
+                quint64 thisend   = results[i].second;
+
+                if (thisstart > lastend)
+                {
+                    laststart = thisstart;
+                    lastend   = thisend;
+                    continue;
+                }
+
+                tosend -= (lastend - laststart + 1);
+                tosend -= (thisend - thisstart + 1);
+                results[i - 1].first  = qMin(laststart, thisstart);
+                results[i - 1].second = qMax(lastend,   thisend);
+                tosend += results[i - 1].second - results[i - 1].first + 1;
+                results.removeAt(i);
+                check = true;
+                break;
+            }
+        }
+
+        // set content size
         SizeToSend = tosend;
     }
 
