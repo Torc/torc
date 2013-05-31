@@ -31,7 +31,7 @@ typedef enum
 
 typedef enum
 {
-    HTTPResponseUnknown = 0,
+    HTTPResponseNone = 0,
     HTTPResponseDefault,
     HTTPResponseHTML,
     HTTPResponseXML,
@@ -56,6 +56,7 @@ typedef enum
 {
     HTTP_OK                  = 200,
     HTTP_PartialContent      = 206,
+    HTTP_MovedPermanently    = 301,
     HTTP_BadRequest          = 400,
     HTTP_Unauthorized        = 401,
     HTTP_Forbidden           = 402,

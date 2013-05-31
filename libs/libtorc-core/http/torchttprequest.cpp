@@ -60,7 +60,7 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
     m_headers(Headers),
     m_content(Content),
     m_allowed(0),
-    m_responseType(HTTPResponseUnknown),
+    m_responseType(HTTPResponseNone),
     m_responseStatus(HTTP_NotFound),
     m_responseContent(NULL)
 {
@@ -197,12 +197,13 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket)
     if (!Socket)
         return;
 
-    if (m_responseType == HTTPResponseUnknown)
+    QByteArray contentheader = QString("Content-Type: %1\r\n").arg(ResponseTypeToString(m_responseType)).toLatin1();
+
+    if (m_responseType == HTTPResponseNone)
     {
-        LOG(VB_GENERAL, LOG_ERR, "Unknown HTTP response");
-        m_responseStatus = HTTP_InternalServerError;
-        m_responseType   = HTTPResponseDefault;
-        m_keepAlive      = false;
+        LOG(VB_GENERAL, LOG_ERR, QString("'%1' not found").arg(m_fullUrl));
+        m_responseStatus = HTTP_NotFound;
+        contentheader    = "";
     }
 
     // process byte range requests
@@ -211,7 +212,6 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket)
     bool multipart    = false;
     static QByteArray seperator("\r\n--STaRT\r\n");
     QList<QByteArray> partheaders;
-    QByteArray contentheader = QString("Content-Type: %1\r\n").arg(ResponseTypeToString(m_responseType)).toLatin1();
 
     if (m_headers->contains("Range") && m_responseStatus == HTTP_OK)
     {
@@ -360,6 +360,7 @@ QString TorcHTTPRequest::StatusToString(HTTPStatus Status)
     {
         case HTTP_OK:                  return QString("200 OK");
         case HTTP_PartialContent:      return QString("206 Partial Content");
+        case HTTP_MovedPermanently:    return QString("301 Moved Permanently");
         case HTTP_BadRequest:          return QString("400 Bad Request");
         case HTTP_Unauthorized:        return QString("401 Unauthorized");
         case HTTP_Forbidden:           return QString("403 Forbidden");
