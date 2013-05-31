@@ -26,9 +26,6 @@
 #include "torchttpserver.h"
 #include "torchttpconnection.h"
 
-// is this too large?
-#define BUFFER_ERROR_SIZE (128 * 1024)
-
 /*! \class TorcHTTPConnection
  *  \brief A handler for an HTTP client connection.
  *
@@ -40,158 +37,185 @@
  * \sa TorcHTTPServer
  * \sa TorcHTTPHandler
  * \sa TorcHTTPRequest
+ *
+ * \todo Handle abort in TorcHTTRequest::Respond
+ * \todo Check content length early and deal with large or unexpected content payloads
+ * \todo Return media and static content (i.e. handle files)
 */
 
-TorcHTTPConnection::TorcHTTPConnection(TorcHTTPServer *Parent, QTcpSocket *Socket)
-  : QObject(),
-    TorcReferenceCounter(),
+TorcHTTPConnection::TorcHTTPConnection(TorcHTTPServer *Parent, qintptr SocketDescriptor, int *Abort)
+  : QRunnable(),
+    m_abort(Abort),
     m_server(Parent),
-    m_socket(Socket),
-    m_headers(NULL),
-    m_content(NULL)
+    m_socketDescriptor(SocketDescriptor),
+    m_socket(NULL)
 {
-    m_buffer.open(QIODevice::ReadWrite);
-
-    Reset();
-
-    connect(m_socket,  SIGNAL(readyRead()),     this,     SLOT(ReadFromClient()));
-    connect(&m_buffer, SIGNAL(readyRead()),     this,     SLOT(ReadInternal()));
-    connect(m_socket,  SIGNAL(disconnected()),  m_server, SLOT(ClientDisconnected()));
-    m_socket->setSocketOption(QAbstractSocket::KeepAliveOption, 1);
-
-    m_peerAddress = m_socket->peerAddress().toString() + ":" + QString::number(m_socket->peerPort());
-    QString local = m_socket->localAddress().toString() + ":" + QString::number(m_socket->localPort());
-    LOG(VB_GENERAL, LOG_DEBUG, "New connection from " + m_peerAddress + " to " + local);
 }
 
 TorcHTTPConnection::~TorcHTTPConnection()
 {
-    LOG(VB_GENERAL, LOG_DEBUG, "Closing connection from " + m_peerAddress);
-
-    m_socket->disconnect();
-
-    m_buffer.close();
-
-    delete m_headers;
-    delete m_content;
-
-    if (m_socket)
-    {
-        m_socket->disconnectFromHost();
-        m_socket->deleteLater();
-    }
-
-    m_socket = NULL;
 }
 
-void TorcHTTPConnection::Reset(void)
-{
-    m_requestStarted = false;
-    m_headersComplete = false;
-    m_contentLength = 0;
-    m_contentReceived = 0;
-    m_headers = new QMap<QString,QString>();
-    m_content = new QByteArray();
-}
-
-QTcpSocket* TorcHTTPConnection::Socket(void)
+QTcpSocket* TorcHTTPConnection::GetSocket(void)
 {
     return m_socket;
 }
 
-void TorcHTTPConnection::ReadFromClient(void)
+void TorcHTTPConnection::run(void)
 {
-    qint64 position = m_buffer.pos();
-    while (m_socket && m_socket->bytesAvailable())
-        m_buffer.write(m_socket->readAll());
-    m_buffer.seek(position);
+    if (!m_socketDescriptor)
+        return;
 
-    // if the buffer is getting large, we've messed up parsing, so reset and try to recover
-    if (m_buffer.bytesAvailable() > BUFFER_ERROR_SIZE)
+    // create socket
+    m_socket = new QTcpSocket();
+    if (!m_socket->setSocketDescriptor(m_socketDescriptor))
     {
-        LOG(VB_GENERAL, LOG_ERR, "HTTP buffer size exceeded - resetting connection");
-        m_buffer.readAll();
-        delete m_content;
-        delete m_headers;
-        Reset();
+        LOG(VB_GENERAL, LOG_INFO, "Failed to set socket descriptor");
+        return;
     }
-}
 
-void TorcHTTPConnection::ReadInternal(void)
-{
-    while (m_buffer.bytesAvailable())
+    // debug
+    QString peeraddress  = m_socket->peerAddress().toString() + ":" + QString::number(m_socket->peerPort());
+    QString localaddress = m_socket->localAddress().toString() + ":" + QString::number(m_socket->localPort());
+
+    LOG(VB_NETWORK, LOG_INFO, "New connection from" + peeraddress + " on " + localaddress);
+
+    // iniitialise state
+    bool requeststarted     = false;
+    bool headerscomplete    = false;
+    int  headersread        = 0;
+    quint64 contentlength   = 0;
+    quint64 contentreceived = 0;
+    QString method          = QString();
+    QByteArray *content     = new QByteArray();
+    QMap<QString,QString> *headers = new QMap<QString,QString>();
+
+    while (!(*m_abort) && m_socket->state() == QAbstractSocket::ConnectedState)
     {
-        if (!m_headersComplete)
+        // wait for data
+        int count = 0;
+        while (m_socket->state() == QAbstractSocket::ConnectedState && !(*m_abort) &&
+               count++ < 300 && m_socket->bytesAvailable() < 1 && !m_socket->waitForReadyRead(100))
         {
-            while (m_buffer.canReadLine())
+        }
+
+        // timed out
+        if (count >= 300)
+        {
+            LOG(VB_NETWORK, LOG_INFO, "No socket activity for 30 seconds");
+            break;
+        }
+
+        if (*m_abort || m_socket->state() != QAbstractSocket::ConnectedState)
+            break;
+
+        // sanity check
+        if (headersread >= 200)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Read 200 lines of headers - aborting");
+            break;
+        }
+
+        // read headers
+        if (!headerscomplete)
+        {
+            while (!(*m_abort) && m_socket->canReadLine() && headersread < 200)
             {
-                QByteArray line = m_buffer.readLine().trimmed();
+                QByteArray line = m_socket->readLine().trimmed();
 
                 if (line.isEmpty())
                 {
-                    m_headersComplete = true;
+                    headersread = 0;
+                    headerscomplete = true;
                     break;
                 }
 
-                ProcessHeader(line, m_requestStarted);
-                m_requestStarted = true;
+                if (!requeststarted)
+                {
+                    LOG(VB_NETWORK, LOG_DEBUG, line);
+                    method = line;
+                }
+                else
+                {
+                    int index = line.indexOf(":");
+
+                    if (index > 0)
+                    {
+                        QByteArray key   = line.left(index).trimmed();
+                        QByteArray value = line.mid(index + 1).trimmed();
+
+                        if (key == "Content-Length")
+                            contentlength = value.toULongLong();
+
+                        LOG(VB_NETWORK, LOG_DEBUG, QString("%1: %2").arg(key.data()).arg(value.data()));
+
+                        headers->insert(key, value);
+                    }
+                }
+
+                requeststarted = true;
             }
         }
 
-        if (m_headersComplete && (m_contentReceived < m_contentLength) && m_buffer.bytesAvailable())
+        if (*m_abort || m_socket->state() != QAbstractSocket::ConnectedState || !headerscomplete)
+            continue;
+
+        // read content
+        while (!(*m_abort) && (contentreceived < contentlength) && m_socket->bytesAvailable() &&
+               m_socket->state() == QAbstractSocket::ConnectedState)
         {
-            m_content->append(m_buffer.read(m_contentLength - m_contentReceived));
-            m_contentReceived = m_content->size();
+            static quint64 MAX_CHUNK = 32 * 1024;
+            content->append(m_socket->read(qMax(contentlength - contentreceived, qMax(MAX_CHUNK, (quint64)m_socket->bytesAvailable()))));
+            contentreceived = content->size();
         }
 
-        if (m_headersComplete && (m_contentReceived == m_contentLength))
+        if (*m_abort || m_socket->state() != QAbstractSocket::ConnectedState || contentreceived < contentlength)
+            continue;
+
+        // sanity check
+        if (m_socket->bytesAvailable() > 0)
+            LOG(VB_GENERAL, LOG_WARNING, QString("%1 unread bytes from %2").arg(m_socket->bytesAvailable()).arg(peeraddress));
+
+        // have headers and content - process request
+        TorcHTTPRequest *request = new TorcHTTPRequest(method, headers, content);
+
+        if (request->GetHTTPType() == HTTPResponse)
         {
-            TorcHTTPRequest *request = new TorcHTTPRequest(m_method, m_headers, m_content);
-            Reset();
-
-            if (request->GetHTTPType() == HTTPResponse)
-            {
-                LOG(VB_GENERAL, LOG_ERR, "Received HTTP response...");
-            }
-            else
-            {
-                m_server->HandleRequest(this, request);
-                if (m_socket)
-                    request->Respond(m_socket);
-            }
-
-            delete request;
+            LOG(VB_GENERAL, LOG_ERR, "Received unexpected HTTP response");
+        }
+        else
+        {
+            m_server->HandleRequest(this, request);
+            if (m_socket)
+                request->Respond(m_socket);
         }
 
-        if ((!m_headersComplete && !m_buffer.canReadLine()) ||
-            (m_headersComplete && !m_buffer.bytesAvailable()))
-        {
-            break;
-        }
+        // this will delete content and headers
+        delete request;
+
+        // reset
+        requeststarted  = false;
+        headerscomplete = false;
+        contentlength   = 0;
+        contentreceived = 0;
+        method          = QString();
+        content         = new QByteArray();
+        headers         = new QMap<QString,QString>();
     }
-}
 
-void TorcHTTPConnection::ProcessHeader(const QByteArray &Line, bool Started)
-{
-    if (!Started)
-    {
-        LOG(VB_NETWORK, LOG_DEBUG, Line);
-        m_method = Line;
-        return;
-    }
+    // cleanup
+    delete headers;
+    delete content;
 
-    int index = Line.indexOf(":");
+    if (*m_abort)
+        LOG(VB_NETWORK, LOG_INFO, "Socket closed at server's request");
 
-    if (index < 1)
-        return;
+    if (m_socket->state() != QAbstractSocket::ConnectedState)
+        LOG(VB_NETWORK, LOG_INFO, "Socket was disconnected by remote host");
 
-    QByteArray key   = Line.left(index).trimmed();
-    QByteArray value = Line.mid(index + 1).trimmed();
+    m_socket->disconnectFromHost();
+    delete m_socket;
+    m_socket = NULL;
 
-    if (key == "Content-Length")
-        m_contentLength = value.toULongLong();
-
-    LOG(VB_NETWORK, LOG_DEBUG, QString("%1: %2").arg(key.data()).arg(value.data()));
-
-    m_headers->insert(key, value);
+    LOG(VB_NETWORK, LOG_INFO, QString("Connection from %1 closed").arg(peeraddress));
 }

@@ -123,6 +123,7 @@ TorcHTTPServer::TorcHTTPServer()
     m_defaultHandler(NULL),
     m_servicesHelpHandler(NULL),
     m_servicesDirectory(SERVICES_DIRECTORY),
+    m_abort(0),
     m_handlersLock(new QMutex(QMutex::Recursive)),
     m_newHandlersLock(new QMutex(QMutex::Recursive)),
     m_oldHandlersLock(new QMutex(QMutex::Recursive)),
@@ -177,6 +178,9 @@ TorcHTTPServer::TorcHTTPServer()
     m_servicesHelpHandler = new TorcHTMLServicesHelp(SERVICES_DIRECTORY, tr("Services"));
     AddHandler(m_servicesHelpHandler);
 
+    // set thread pool max size
+    m_connectionPool.setMaxThreadCount(50);
+
     // and start
     // NB this will start and stop purely on the basis of the setting, irrespective
     // of network availability and hence is still available via 'localhost'
@@ -219,6 +223,7 @@ void TorcHTTPServer::Enable(bool Enable)
 
 bool TorcHTTPServer::Open(void)
 {
+    m_abort = 0;
     int port = m_port->GetValue().toInt();
     bool waslistening = isListening();
 
@@ -298,17 +303,13 @@ void TorcHTTPServer::Close(void)
         m_torcBonjourReference = 0;
     }
 
+    // close all pool threads
+    m_abort = 1;
+    if (!m_connectionPool.waitForDone(30000))
+        LOG(VB_GENERAL, LOG_WARNING, "HTTP connection threads are still running");
+
     // actually close
     close();
-
-    // remove any currect connections
-    while (!m_connections.isEmpty())
-    {
-        QMap<QTcpSocket*,TorcHTTPConnection*>::iterator it = m_connections.begin();
-        TorcHTTPConnection* connection = it.value();
-        m_connections.erase(it);
-        connection->DownRef();
-    }
 
     LOG(VB_GENERAL, LOG_INFO, "Webserver closed");
 }
@@ -342,26 +343,7 @@ bool TorcHTTPServer::event(QEvent *Event)
 
 void TorcHTTPServer::incomingConnection(qintptr SocketDescriptor)
 {
-    QTcpSocket *socket = new QTcpSocket();
-    if (!socket->setSocketDescriptor(SocketDescriptor))
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to set socket descriptor for new socket connection");
-        return;
-    }
-
-    TorcHTTPConnection *connection = new TorcHTTPConnection(this, socket);
-    m_connections.insert(socket, connection);
-}
-
-void TorcHTTPServer::ClientDisconnected(void)
-{
-    QTcpSocket *socket = (QTcpSocket*)sender();
-
-    if (m_connections.contains(socket))
-    {
-        TorcHTTPConnection* connection = m_connections.take(socket);
-        connection->DownRef();
-    }
+    m_connectionPool.start(new TorcHTTPConnection(this, SocketDescriptor, &m_abort), 0);
 }
 
 QMap<QString,QString> TorcHTTPServer::GetServiceHandlers(void)

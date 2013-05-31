@@ -324,7 +324,8 @@ void TorcHTTPService::UserHelp(TorcHTTPServer *Server, TorcHTTPRequest *Request,
             stream << method << ") (" << TorcHTTPRequest::AllowedToString(params->m_allowedRequestTypes) << ")<br>";
         }
 
-        QString url = QString("http://") + Connection->Socket()->localAddress().toString() + ":" + QString::number(Connection->Socket()->localPort());
+        QString url = Connection->GetSocket() ? QString("http://") + Connection->GetSocket()->localAddress().toString()
+                                                + ":" + QString::number(Connection->GetSocket()->localPort()) : QObject::tr("Error");
         QString usage = url + m_signature + example.key();
 
         if (example.value()->m_types.size() > 1)

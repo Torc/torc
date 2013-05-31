@@ -2,6 +2,7 @@
 #define TORCHTTPSERVER_H
 
 // Qt
+#include <QThreadPool>
 #include <QTcpServer>
 #include <QMutex>
 
@@ -38,7 +39,6 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     void           HandlersChanged    (void);
 
   protected slots:
-    void           ClientDisconnected (void);
     void           UpdateHandlers     (void);
 
   protected:
@@ -64,7 +64,10 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     TorcHTMLHandler                  *m_defaultHandler;
     TorcHTMLServicesHelp             *m_servicesHelpHandler;
     QString                           m_servicesDirectory;
-    QMap<QTcpSocket*,TorcHTTPConnection*> m_connections;
+
+    QThreadPool                       m_connectionPool;
+    int                               m_abort;
+
     QMap<QString,TorcHTTPHandler*>    m_handlers;
     QMutex*                           m_handlersLock;
     QList<TorcHTTPHandler*>           m_newHandlers;
