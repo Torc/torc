@@ -480,7 +480,7 @@ QList<QPair<quint64,quint64> > TorcHTTPRequest::StringToRanges(const QString &Ra
                         start = Size - start;
 
                         // invalid per spec
-                        if (start <  0 || start >= Size)
+                        if (start >= Size)
                             continue;
                     }
                 }
