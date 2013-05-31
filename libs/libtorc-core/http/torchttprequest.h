@@ -5,12 +5,12 @@
 #include <QMap>
 #include <QPair>
 #include <QString>
-#include <QTcpSocket>
 
 // Torc
 #include "torccoreexport.h"
 
 class TorcSerialiser;
+class QTcpSocket;
 
 typedef enum
 {
