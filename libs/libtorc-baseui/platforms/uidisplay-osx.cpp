@@ -165,7 +165,7 @@ QSize UIDisplay::GetPhysicalSizePriv(void)
 CGDirectDisplayID GetOSXDisplay(WId win)
 {
     if (!win)
-        return NULL;
+        return 0;
 
 #if defined(QT_MAC_USE_COCOA) || (QT_VERSION >= 0x050000)
     return GetOSXCocoaDisplay((void*)win);
