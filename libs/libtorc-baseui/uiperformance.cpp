@@ -137,7 +137,7 @@ void UIPerformance::RecordEndTime(quint64 Time)
             extra = QString("Load: ") + m_lastCPUStats;
 
         LOG(VB_GUI, LOG_INFO,
-                QString("FPS: %1±%3 Draw: %4% ")
+                QString("FPS: %1+-%3 Draw: %4% ")
                 .arg(m_lastFPS, 4, 'f', 3)
                 .arg(m_lastTotalSD, 2, 'f', 2)
                 .arg((rendermean / totalmean) * 100.0, 2, 'f', 0)
