@@ -175,7 +175,7 @@ TorcHTTPServer::TorcHTTPServer()
     AddHandler(m_defaultHandler);
 
     // services help
-    m_servicesHelpHandler = new TorcHTMLServicesHelp(SERVICES_DIRECTORY, tr("Services"));
+    m_servicesHelpHandler = new TorcHTMLServicesHelp(this);
     AddHandler(m_servicesHelpHandler);
 
     // set thread pool max size

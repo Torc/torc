@@ -30,15 +30,23 @@
 #include "torchttpservice.h"
 #include "torchtmlserviceshelp.h"
 
-TorcHTMLServicesHelp::TorcHTMLServicesHelp(const QString &Path, const QString &Name)
-  : TorcHTTPHandler(Path, Name)
+TorcHTMLServicesHelp::TorcHTMLServicesHelp(TorcHTTPServer *Server)
+  : TorcHTTPService(this, "", tr("Services"), TorcHTMLServicesHelp::staticMetaObject),
+    m_server(Server)
 {
 }
 
-void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPServer* Server, TorcHTTPRequest *Request, TorcHTTPConnection*)
+void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPServer* Server, TorcHTTPRequest *Request, TorcHTTPConnection* Connection)
 {
     if (!Request || !Server)
         return;
+
+    // handle own service
+    if (!Request->GetMethod().isEmpty())
+    {
+        TorcHTTPService::ProcessHTTPRequest(Server, Request, Connection);
+        return;
+    }
 
     // handle options request
     if (Request->GetHTTPRequestType() == HTTPOptions)
@@ -54,7 +62,6 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPServer* Server, TorcHTTPRe
     QTextStream stream(result);
 
     QMap<QString,QString> services = Server->GetServiceHandlers();
-    services.remove(SERVICES_DIRECTORY + "/");
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
     stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName();
@@ -77,4 +84,16 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPServer* Server, TorcHTTPRe
     Request->SetStatus(HTTP_OK);
     Request->SetResponseType(HTTPResponseHTML);
     Request->SetResponseContent(result);
+}
+
+QVariantMap TorcHTMLServicesHelp::GetServiceList(void)
+{
+    QVariantMap results;
+
+    QMap<QString,QString> services =  m_server->GetServiceHandlers();
+    QMap<QString,QString>::const_iterator it = services.begin();
+    for ( ; it != services.end(); ++it)
+        results.insert(it.key(), QVariant(it.value()));
+
+    return results;
 }

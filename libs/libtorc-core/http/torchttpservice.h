@@ -23,10 +23,10 @@ class TORC_CORE_PUBLIC TorcHTTPService : public TorcHTTPHandler
                     const QMetaObject &MetaObject, const QString &Blacklist = QString(""));
     virtual ~TorcHTTPService();
 
-    void     ProcessHTTPRequest    (TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
+    virtual void ProcessHTTPRequest    (TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
 
   protected:
-    void     UserHelp              (TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
+    void         UserHelp              (TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
 
   private:
     QObject                        *m_parent;
