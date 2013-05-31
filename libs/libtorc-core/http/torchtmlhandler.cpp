@@ -60,9 +60,8 @@ void TorcHTMLHandler::ProcessHTTPRequest(TorcHTTPServer*, TorcHTTPRequest *Reque
             Request->SetAllowed(HTTPHead | HTTPGet | HTTPOptions);
 
         Request->SetStatus(HTTP_OK);
-        Request->SetResponseType(HTTPResponseDefault);
+        Request->SetResponseType(HTTPResponseNone);
         Request->SetResponseContent(NULL);
-
         return;
     }
 

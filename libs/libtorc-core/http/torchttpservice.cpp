@@ -269,11 +269,6 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
         Request->SetResponseContent(serialiser->Serialise(result));
         delete serialiser;
     }
-    else
-    {
-        Request->SetStatus(HTTP_NotFound);
-        Request->SetResponseType(HTTPResponseDefault);
-    }
 }
 
 void TorcHTTPService::UserHelp(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection)

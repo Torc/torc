@@ -60,7 +60,7 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
     m_headers(Headers),
     m_content(Content),
     m_allowed(0),
-    m_responseType(HTTPResponseNone),
+    m_responseType(HTTPResponseUnknown),
     m_responseStatus(HTTP_NotFound),
     m_responseContent(NULL)
 {
@@ -199,7 +199,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket)
 
     QByteArray contentheader = QString("Content-Type: %1\r\n").arg(ResponseTypeToString(m_responseType)).toLatin1();
 
-    if (m_responseType == HTTPResponseNone)
+    if (m_responseType == HTTPResponseUnknown)
     {
         LOG(VB_GENERAL, LOG_ERR, QString("'%1' not found").arg(m_fullUrl));
         m_responseStatus = HTTP_NotFound;
@@ -252,7 +252,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket)
 
     if (multipart)
         response << "Content-Type: multipart/byteranges; boundary=STaRT\r\n";
-    else
+    else if (m_responseType != HTTPResponseNone)
         response << contentheader;
 
     if (m_allowed)
@@ -263,6 +263,9 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket)
         response << "Content-Range: bytes " << RangeToString(m_ranges[0], totalsize) << "\r\n";
     else if (m_responseStatus == HTTP_RequestedRangeNotSatisfiable)
         response << "Content-Range: bytes */" << QString::number(totalsize) << "\r\n";
+
+    if (m_responseStatus == HTTP_MovedPermanently)
+        response << "Location: " << m_redirectedTo.toLatin1() << "\r\n";
 
     response << "\r\n";
     response.flush();
@@ -315,6 +318,13 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket)
 
     if (!m_keepAlive)
         Socket->disconnectFromHost();
+}
+
+void TorcHTTPRequest::Redirected(const QString &Redirected)
+{
+    m_redirectedTo = Redirected;
+    m_responseStatus = HTTP_MovedPermanently;
+    m_responseType   = HTTPResponseNone;
 }
 
 HTTPRequestType TorcHTTPRequest::RequestTypeFromString(const QString &Type)
@@ -377,6 +387,7 @@ QString TorcHTTPRequest::ResponseTypeToString(HTTPResponseType Response)
 {
     switch (Response)
     {
+        case HTTPResponseNone:             return QString("");
         case HTTPResponseXML:              return QString("text/xml; charset=\"UTF-8\"");
         case HTTPResponseHTML:             return QString("text/html; charset=\"UTF-8\"");
         case HTTPResponseJSON:             return QString("application/json");

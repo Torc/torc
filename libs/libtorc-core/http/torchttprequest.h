@@ -31,7 +31,8 @@ typedef enum
 
 typedef enum
 {
-    HTTPResponseNone = 0,
+    HTTPResponseUnknown = 0,
+    HTTPResponseNone,
     HTTPResponseDefault,
     HTTPResponseHTML,
     HTTPResponseXML,
@@ -95,6 +96,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     QString                GetMethod                (void);
     QMap<QString,QString>  Queries                  (void);
     void                   Respond                  (QTcpSocket *Socket);
+    void                   Redirected               (const QString &Redirected);
     TorcSerialiser*        GetSerialiser            (void);
 
   protected:
@@ -102,6 +104,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     QString                m_path;
     QString                m_method;
     QString                m_query;
+    QString                m_redirectedTo;
     HTTPType               m_type;
     HTTPRequestType        m_requestType;
     HTTPProtocol           m_protocol;
