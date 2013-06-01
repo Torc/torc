@@ -353,7 +353,7 @@ Torc external library support:
   --disable-qtdbus         disable DBus via QtDbus [autodetect]
   --disable-qtsvg          disable SVG support via QtSvg [autodetect]
   --disable-x11base        disable default X11 support [autodetect]
-  --disable-libcrypto      disable use of the OpenSSL cryptographic library
+  --disable-libcrypto      disable use of the OpenSSL cryptographic library [autodetect]
 
 EOF
   exit 0
@@ -762,10 +762,6 @@ check_cxx(){
     cat > $TMPCPP
     log_file $TMPCPP
     check_cmd $cxx $CPPFLAGS $CFLAGS $CXXFLAGS "$@" $CXX_C -o $TMPO $TMPCPP
-}
-
-add_cxxflags(){
-    append ECXXFLAGS "$@"
 }
 
 add_cxxppflags(){
