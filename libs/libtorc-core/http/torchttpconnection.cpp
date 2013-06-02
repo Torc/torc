@@ -23,7 +23,6 @@
 // Torc
 #include "torclogging.h"
 #include "torchttprequest.h"
-#include "torchttpserver.h"
 #include "torchttpconnection.h"
 
 /*! \class TorcHTTPConnection

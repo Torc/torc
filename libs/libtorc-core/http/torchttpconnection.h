@@ -9,8 +9,8 @@
 
 // Torc
 #include "torccoreexport.h"
+#include "torchttpserver.h"
 
-class TorcHTTPServer;
 class TorcHTTPRequest;
 
 class TORC_CORE_PUBLIC TorcHTTPConnection : public QRunnable
