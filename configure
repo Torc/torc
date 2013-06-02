@@ -704,7 +704,7 @@ add_cflags(){
 }
 
 add_cxxflags(){
-    append CXXFLAGS $($cflags_filter "$@")
+    append ECXXFLAGS "$@"
 }
 
 add_asflags(){
