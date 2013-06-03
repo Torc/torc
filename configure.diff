@@ -1,5 +1,5 @@
---- libs/libtorc-av/configure	2013-05-01 10:16:11.000000000 +0100
-+++ configure	2013-06-01 18:55:16.000000000 +0100
+--- libs/libtorc-av/configure	2013-05-01 20:34:52.277266987 +0100
++++ configure	2013-06-03 08:25:21.689105960 +0100
 @@ -1,6 +1,6 @@
  #!/bin/sh
  #
@@ -29,6 +29,15 @@
  EOF
    exit 0
  }
+@@ -690,7 +704,7 @@
+ }
+ 
+ add_cxxflags(){
+-    append CXXFLAGS $($cflags_filter "$@")
++    append ECXXFLAGS "$@"
+ }
+ 
+ add_asflags(){
 @@ -750,6 +764,18 @@
      check_cmd $cxx $CPPFLAGS $CFLAGS $CXXFLAGS "$@" $CXX_C -o $TMPO $TMPCPP
  }
@@ -355,8 +364,8 @@
 +
 +# Qt
 +if ! expr $($qmake -query QT_VERSION) : "5\.[0-9]\.[0-9]" >/dev/null; then
-+  if ! expr $($qmake -query QT_VERSION) : "4\.[7-9]\.[0-9]" >/dev/null; then
-+      die "qmake for Qt4.7 or newer not found.\nPlease specify the correct qmake with --qmake="
++  if ! expr $($qmake -query QT_VERSION) : "4\.[8-9]\.[0-9]" >/dev/null; then
++      die "qmake for Qt4.8 or newer not found.\nPlease specify the correct qmake with --qmake="
 +  fi
 +fi
 +
