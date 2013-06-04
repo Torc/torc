@@ -206,7 +206,7 @@ static void PreemptionCallback(VdpDevice Device, void* Object)
 {
     (void)Device;
 
-    VideoVDPAU *object = (VideoVDPAU*)Object;
+    VideoVDPAU *object = static_cast<VideoVDPAU*>(Object);
     if (object)
         object->Preempted();
 }
@@ -241,7 +241,8 @@ VideoVDPAU::VideoVDPAU(AVCodecContext *Context)
     m_lastTexture(NULL),
     m_outputSurface(0),
     m_videoMixer(0),
-    m_getErrorString(&GetErrorString)
+    m_getErrorString(&GetErrorString),
+    m_getProcAddress(NULL)
 {
     m_vdpauContext = new AVVDPAUContext();
     memset((void*)m_vdpauContext, 0, sizeof(AVVDPAUContext));
@@ -1117,7 +1118,7 @@ class VDPAUFactory : public AccelerationFactory
         {
             struct vdpau_render_state *render = (struct vdpau_render_state *)Frame->m_acceleratedBuffer;
             GLTexture                *texture = static_cast<GLTexture*>(Surface);
-            VideoVDPAU                 *vdpau = (VideoVDPAU*)Frame->m_priv[0];
+            VideoVDPAU                 *vdpau = reinterpret_cast<VideoVDPAU*>(Frame->m_priv[0]);
 
             if (render && vdpau && texture)
             {
@@ -1145,7 +1146,7 @@ class VDPAUFactory : public AccelerationFactory
         if (!Frame->m_pixelFormat == AV_PIX_FMT_VDPAU)
             return false;
 
-        VideoVDPAU *vdpau = (VideoVDPAU*)Frame->m_priv[0];
+        VideoVDPAU *vdpau = reinterpret_cast<VideoVDPAU*>(Frame->m_priv[0]);
         if (vdpau)
         {
             Frame->m_priv[0] = NULL;
@@ -1165,7 +1166,7 @@ class VDPAUFactory : public AccelerationFactory
         if (!Frame->m_pixelFormat == AV_PIX_FMT_VDPAU)
             return false;
 
-        VideoVDPAU *vdpau = (VideoVDPAU*)Frame->m_priv[0];
+        VideoVDPAU *vdpau = reinterpret_cast<VideoVDPAU*>(Frame->m_priv[0]);
         if (vdpau)
             vdpau->MapFrame(Surface);
 
@@ -1180,7 +1181,7 @@ class VDPAUFactory : public AccelerationFactory
         if (!Frame->m_pixelFormat == AV_PIX_FMT_VDPAU)
             return false;
 
-        VideoVDPAU *vdpau = (VideoVDPAU*)Frame->m_priv[0];
+        VideoVDPAU *vdpau = reinterpret_cast<VideoVDPAU*>(Frame->m_priv[0]);
         if (vdpau)
             vdpau->UnmapFrame(Surface);
 
@@ -1197,7 +1198,7 @@ class VDPAUFactory : public AccelerationFactory
     {
         if (Frame && Frame->m_pixelFormat == AV_PIX_FMT_VDPAU && Frame->m_acceleratedBuffer && VideoVDPAU::VDPAUAvailable())
         {
-            VideoVDPAU *vdpau = (VideoVDPAU*)Frame->m_priv[0];
+            VideoVDPAU *vdpau = reinterpret_cast<VideoVDPAU*>(Frame->m_priv[0]);
             if (vdpau)
             {
                 Properties.unite(vdpau->GetSupportedProperties());
