@@ -59,6 +59,13 @@ bool TorcNetwork::IsAllowedOutbound(void)
     return gNetwork ? gNetwork->IsAllowedOutboundPriv() : false;
 }
 
+bool TorcNetwork::IsOwnAddress(const QHostAddress &Address)
+{
+    QMutexLocker locker(gNetworkLock);
+
+    return gNetwork ? gNetwork->IsOwnAddressPriv(Address) : false;
+}
+
 QString TorcNetwork::GetMACAddress(void)
 {
     QMutexLocker locker(gNetworkLock);
@@ -261,6 +268,11 @@ bool TorcNetwork::IsAllowedOutboundPriv(void)
         return m_networkAllowedOutbound->IsActive() && m_networkAllowedOutbound->GetValue().toBool();
 
     return false;
+}
+
+bool TorcNetwork::IsOwnAddressPriv(const QHostAddress &Address)
+{
+    return m_interface.allAddresses().contains(Address);
 }
 
 void TorcNetwork::SetAllowed(bool Allow)
@@ -576,6 +588,10 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
         gLocalContext->NotifyEvent(Torc::NetworkAvailable);
         gLocalContext->SendMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout,
                                    tr("Network"), tr("Network available"));
+
+        QList<QHostAddress> addresses = m_interface.allAddresses();
+        foreach (QHostAddress address, addresses)
+            LOG(VB_NETWORK, LOG_INFO, "Address: " + address.toString());
     }
     else if (wasonline && !m_online)
     {

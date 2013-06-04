@@ -36,6 +36,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static bool IsAllowed           (void);
     static bool IsAllowedInbound    (void);
     static bool IsAllowedOutbound   (void);
+    static bool IsOwnAddress        (const QHostAddress &Address);
     static QString GetMACAddress    (void);
     static bool Get                 (TorcNetworkRequest* Request);
     static void Cancel              (TorcNetworkRequest* Request);
@@ -75,6 +76,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     bool    IsAllowedPriv           (void);
     bool    IsAllowedInboundPriv    (void);
     bool    IsAllowedOutboundPriv   (void);
+    bool    IsOwnAddressPriv        (const QHostAddress &Address);
     bool    CheckHeaders            (TorcNetworkRequest* Request, QNetworkReply *Reply);
     bool    Redirected              (TorcNetworkRequest* Request, QNetworkReply *Reply);
 
