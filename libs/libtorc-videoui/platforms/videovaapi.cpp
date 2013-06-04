@@ -991,7 +991,7 @@ class VAAPIFactory : public AccelerationFactory
             return false;
 
         vaapi_context *vaapicontext = (vaapi_context*)Context->hwaccel_context;
-        VAAPISurface  *vaapisurface = (VAAPISurface*)Frame->m_acceleratedBuffer;
+        VAAPISurface  *vaapisurface = static_cast<VAAPISurface*>(Frame->m_acceleratedBuffer);
 
         if (!vaapicontext)
         {
@@ -1052,7 +1052,7 @@ class VAAPIFactory : public AccelerationFactory
     {
         if (Frame && Surface && ColourSpace && Frame->m_pixelFormat == AV_PIX_FMT_VAAPI_VLD && Frame->m_acceleratedBuffer)
         {
-            VAAPISurface *vaapisurface = (VAAPISurface*)Frame->m_acceleratedBuffer;
+            VAAPISurface *vaapisurface = static_cast<VAAPISurface*>(Frame->m_acceleratedBuffer);
             GLTexture     *texture     = static_cast<GLTexture*>(Surface);
 
             if (vaapisurface)
@@ -1082,7 +1082,7 @@ class VAAPIFactory : public AccelerationFactory
     {
         if (Frame && Frame->m_pixelFormat == AV_PIX_FMT_VAAPI_VLD && Frame->m_acceleratedBuffer)
         {
-            VAAPISurface *vaapisurface = (VAAPISurface*)Frame->m_acceleratedBuffer;
+            VAAPISurface *vaapisurface = static_cast<VAAPISurface*>(Frame->m_acceleratedBuffer);
             if (vaapisurface)
             {
                 VideoVAAPI *videovaapi = vaapisurface->m_owner;
@@ -1116,7 +1116,7 @@ class VAAPIFactory : public AccelerationFactory
         if (Frame && Format && Frame->m_pixelFormat == AV_PIX_FMT_VAAPI_VLD &&
             Frame->m_acceleratedBuffer && VideoVAAPI::VAAPIAvailable(true))
         {
-            VAAPISurface *vaapi = (VAAPISurface*)Frame->m_acceleratedBuffer;
+            VAAPISurface *vaapi = static_cast<VAAPISurface*>(Frame->m_acceleratedBuffer);
             if (vaapi && vaapi->m_owner)
             {
                 VideoVAAPI::Vendor vendor = vaapi->m_owner->GetVendor();
@@ -1140,7 +1140,7 @@ class VAAPIFactory : public AccelerationFactory
         if (Frame && Frame->m_pixelFormat == AV_PIX_FMT_VAAPI_VLD &&
             Frame->m_acceleratedBuffer && VideoVAAPI::VAAPIAvailable(true))
         {
-            VAAPISurface *vaapi = (VAAPISurface*)Frame->m_acceleratedBuffer;
+            VAAPISurface *vaapi = static_cast<VAAPISurface*>(Frame->m_acceleratedBuffer);
             if (vaapi && vaapi->m_owner)
             {
                 Properties.unite(vaapi->m_owner->GetSupportedProperties());
