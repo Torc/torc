@@ -154,6 +154,7 @@ VideoRendererOpenGL::VideoRendererOpenGL(VideoColourSpace *ColourSpace, UIOpenGL
     m_openglWindow(Window),
     m_rawVideoTexture(NULL),
     m_rgbVideoTexture(NULL),
+    m_rgbVideoTextureFormat(GL_TEXTURE_2D),
     m_rgbVideoBuffer(0),
     m_yuvShader(0),
     m_rgbShader(0),
