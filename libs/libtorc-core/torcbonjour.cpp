@@ -151,7 +151,10 @@ class TorcBonjourService
             m_socketNotifier->setEnabled(false);
 
         if (m_lookupID != -1)
-            LOG(VB_NETWORK, LOG_WARNING, "Host lookup is not finished");
+        {
+            LOG(VB_NETWORK, LOG_WARNING, QString("Host lookup for '%1' is not finished - cancelling").arg(m_host.data()));
+            QHostInfo::abortHostLookup(m_lookupID);
+        }
 
         if (m_dnssRef)
         {
@@ -612,16 +615,15 @@ class TorcBonjourPriv
                     (*it).m_host = HostTarget;
                     (*it).m_port = port;
                     LOG(VB_NETWORK, LOG_INFO, QString("%1 (%2) resolved to %3:%4")
-                        .arg((*it).m_name.data())
-                        .arg((*it).m_type.data())
-                        .arg(HostTarget).arg(port));
-                    (*it).m_lookupID = QHostInfo::lookupHost(HostTarget, m_parent, SLOT(hostLookup(QHostInfo)));
+                        .arg((*it).m_name.data()).arg((*it).m_type.data()).arg(HostTarget).arg(port));
+                    QString name(HostTarget);
+                    (*it).m_lookupID = QHostInfo::lookupHost(name, m_parent, SLOT(HostLookup(QHostInfo)));
                 }
             }
         }
     }
 
-    void HostLookup(QHostInfo HostInfo)
+    void HostLookup(const QHostInfo &HostInfo)
     {
         // igore if errored
         if (HostInfo.error() != QHostInfo::NoError)
@@ -805,7 +807,7 @@ void TorcBonjour::socketReadyRead(int Socket)
         m_priv->SocketReadyRead(Socket);
 }
 
-void TorcBonjour::hostLookup(QHostInfo HostInfo)
+void TorcBonjour::HostLookup(const QHostInfo &HostInfo)
 {
     if (m_priv)
         m_priv->HostLookup(HostInfo);
@@ -833,7 +835,7 @@ bool TorcBonjour::event(QEvent *Event)
         }
     }
 
-    return false;
+    return QObject::event(Event);
 }
 
 void TorcBonjour::SuspendPriv(bool Suspend)

@@ -24,14 +24,13 @@ class TORC_CORE_PUBLIC TorcBonjour : public QObject
     quint32 Browse          (const QByteArray &Type);
     void    Deregister      (quint32 Reference);
 
-  protected slots:
+  protected:
     bool    event           (QEvent *Event);
-    void    SuspendPriv     (bool Suspend);
 
   private slots:
+    void    SuspendPriv     (bool Suspend);
     void    socketReadyRead (int Socket);
-    void    hostLookup      (QHostInfo);
-
+    void    HostLookup      (const QHostInfo &HostInfo);
 
   protected:
     TorcBonjour();
