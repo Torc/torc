@@ -183,6 +183,9 @@ class TORC_CORE_PUBLIC Torc
         // users
         ChangeUser = 9000,
         UserChanged,
+        // service discovery
+        ServiceDiscovered = 10000,
+        ServiceWentAway,
         // end of predefined
         MaxTorc = 60000,
         // plugins etc
