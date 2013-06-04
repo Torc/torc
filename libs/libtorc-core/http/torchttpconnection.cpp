@@ -186,7 +186,7 @@ void TorcHTTPConnection::run(void)
         {
             m_server->HandleRequest(this, request);
             if (m_socket)
-                request->Respond(m_socket);
+                request->Respond(m_socket, m_abort);
         }
 
         // this will delete content and headers

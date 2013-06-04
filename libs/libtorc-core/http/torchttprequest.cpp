@@ -48,6 +48,9 @@
  * \sa TorcHTTPServer
  * \sa TorcHTTPHandler
  * \sa TorcHTTPConnection
+ *
+ * \todo Break out writes into 'small' chunks to facilitate abort handling
+ * \todo Handle file transfers
 */
 
 QRegExp gRegExp = QRegExp("[ \r\n][ \r\n]*");
@@ -192,7 +195,7 @@ QMap<QString,QString> TorcHTTPRequest::Queries(void)
     return m_queries;
 }
 
-void TorcHTTPRequest::Respond(QTcpSocket *Socket)
+void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
 {
     if (!Socket)
         return;
@@ -270,6 +273,9 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket)
     response << "\r\n";
     response.flush();
 
+    if (*Abort)
+        return;
+
     // send headers
     qint64 headersize = headers.data()->size();
     qint64 sent = Socket->write(headers.data()->data(), headersize);
@@ -279,19 +285,22 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket)
         LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 header bytes").arg(sent));
 
     // send content
-    if (m_responseContent && !m_responseContent->isEmpty() && m_requestType != HTTPHead)
+    if (!(*Abort) && m_responseContent && !m_responseContent->isEmpty() && m_requestType != HTTPHead)
     {
         if (multipart)
         {
             QList<QPair<quint64,quint64> >::const_iterator it = m_ranges.begin();
             QList<QByteArray>::const_iterator bit = partheaders.begin();
-            for ( ; it != m_ranges.end(); ++it, ++bit)
+            for ( ; (it != m_ranges.end() && !(*Abort)); ++it, ++bit)
             {
                 qint64 sent = Socket->write((*bit).data(), (*bit).size());
                 if ((*bit).size() != sent)
                     LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg((*bit).size()).arg(sent));
                 else
                     LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 multipart header bytes").arg(sent));
+
+                if (*Abort)
+                    break;
 
                 quint64 start      = (*it).first;
                 quint64 chunksize  = (*it).second - start + 1;
