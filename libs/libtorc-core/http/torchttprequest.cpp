@@ -241,8 +241,8 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket)
     }
 
     // format response headers
-    QByteArray *headers = new QByteArray();
-    QTextStream response(headers);
+    QByteArray headers;
+    QTextStream response(&headers);
 
     response << TorcHTTPRequest::ProtocolToString(m_protocol) << " " << TorcHTTPRequest::StatusToString(m_responseStatus) << "\r\n";
     response << "Date: " << QDateTime::currentDateTimeUtc().toString("d MMM yyyy hh:mm:ss 'GMT'") << "\r\n";
@@ -271,8 +271,8 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket)
     response.flush();
 
     // send headers
-    qint64 headersize = headers->size();
-    qint64 sent = Socket->write(headers->data(), headersize);
+    qint64 headersize = headers.size();
+    qint64 sent = Socket->write(headers.data(), headersize);
     if (headersize != sent)
         LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(headersize).arg(sent));
     else
