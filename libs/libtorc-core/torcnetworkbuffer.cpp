@@ -65,15 +65,48 @@ bool TorcNetworkBuffer::Open(void)
 
     // and finally try and open
     m_state = Status_Opening;
+    int buffersize = DEFAULT_STREAMED_BUFFER_SIZE;
+
+    // can we use byte serving/streamed download for media files
+    if (m_media && m_type == Buffered)
+    {
+        QNetworkRequest request(url);
+        TorcNetworkRequest *test = new TorcNetworkRequest(request, QNetworkAccessManager::HeadOperation,
+                                                          0, m_abort);
+        if (TorcNetwork::Get(test))
+        {
+            test->ReadAll(NETWORK_TIMEOUT);
+            if (test->CanByteServe())
+            {
+                LOG(VB_GENERAL, LOG_INFO, QString("Streaming available for '%1'").arg(url.toString()));
+
+                m_type = Streamed;
+
+                if (test->GetFinalURL() != url)
+                {
+                    url = test->GetFinalURL();
+                    LOG(VB_GENERAL, LOG_INFO, QString("Updating url to '%1").arg(url.toString()));
+                }
+
+                // restrict the buffer size for small files
+                if (test->GetSize() > 0)
+                    buffersize = qMax(qint64(1024 * 1024), qMin((qint64)buffersize, test->GetSize()));
+            }
+
+            TorcNetwork::Cancel(test);
+        }
+
+        test->DownRef();
+    }
 
     QNetworkRequest request(url);
     m_request = new TorcNetworkRequest(request, QNetworkAccessManager::GetOperation,
-                                       m_type == Unbuffered ? 0 : DEFAULT_STREAMED_BUFFER_SIZE, m_abort);
+                                       m_type == Unbuffered ? 0 : buffersize, m_abort);
     m_request->SetReadSize(DEFAULT_STREAMED_READ_SIZE);
 
     if (TorcNetwork::Get(m_request))
     {
-        if (m_request->WaitForStart(20000))
+        if (m_request->WaitForStart(NETWORK_TIMEOUT))
         {
             m_state = Status_Opened;
             return TorcBuffer::Open();
@@ -110,7 +143,7 @@ int TorcNetworkBuffer::Read(quint8 *Buffer, qint32 BufferSize)
     int result = -1;
 
     if (m_state == Status_Opened && m_request && m_type != Unbuffered)
-        if ((result = m_request->Read((char*)Buffer, BufferSize, 20000)) > -1)
+        if ((result = m_request->Read((char*)Buffer, BufferSize, NETWORK_TIMEOUT)) > -1)
             return result;
 
     if (m_type == Unbuffered)
@@ -121,15 +154,60 @@ int TorcNetworkBuffer::Read(quint8 *Buffer, qint32 BufferSize)
 
 int TorcNetworkBuffer::Peek(quint8 *Buffer, qint32 BufferSize)
 {
-    (void)Buffer;
-    (void)BufferSize;
+    if (m_state == Status_Opened && m_request && m_type != Unbuffered)
+        return m_request->Peek((char*)Buffer, BufferSize, NETWORK_TIMEOUT);
+
     return -1;
 }
 
 int64_t TorcNetworkBuffer::Seek(int64_t Offset, int Whence)
 {
-    (void)Offset;
-    (void)Whence;
+    if (m_type != Streamed)
+        return -1;
+
+    int whence = Whence & ~AVSEEK_FORCE;
+
+    if (m_request && m_state == Status_Opened )
+    {
+        if (AVSEEK_SIZE == whence)
+        {
+            return m_request->GetSize();
+        }
+        else if (SEEK_SET == whence || SEEK_CUR == whence || SEEK_END == whence)
+        {
+            qint64 newoffset = Offset; // SEEK_SET
+
+            if (SEEK_CUR == whence)
+                newoffset = m_request->GetPosition() + Offset;
+            else if (SEEK_END == whence)
+                newoffset = m_request->GetSize() + Offset;
+
+            if (m_request->Seek(newoffset) > -1)
+                return m_request->GetPosition();
+
+            QNetworkRequest request(m_request->GetFinalURL());
+            int buffersize = qMax(qint64(1024 * 1024), qMin((qint64)DEFAULT_STREAMED_BUFFER_SIZE, m_request->GetSize() - newoffset));
+            TorcNetworkRequest *seek = new TorcNetworkRequest(request, QNetworkAccessManager::GetOperation, buffersize, m_abort);
+            seek->SetRange(newoffset);
+
+            if (TorcNetwork::Get(seek))
+            {
+                if (seek->WaitForStart(NETWORK_TIMEOUT))
+                {
+                    TorcNetwork::Cancel(m_request);
+                    m_request->DownRef();
+                    m_request = seek;
+                    return m_request->GetPosition();
+                }
+
+                TorcNetwork::Cancel(seek);
+            }
+
+            LOG(VB_GENERAL, LOG_INFO, "Seek failed");
+            seek->DownRef();
+        }
+    }
+
     return -1;
 }
 
@@ -164,7 +242,7 @@ qint64 TorcNetworkBuffer::GetPosition(void)
 
 bool TorcNetworkBuffer::IsSequential(void)
 {
-    return true;
+    return m_type != Streamed;
 }
 
 qint64 TorcNetworkBuffer::BytesAvailable(void)

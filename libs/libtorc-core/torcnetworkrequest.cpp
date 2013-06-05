@@ -56,9 +56,12 @@ TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, QNetworkAc
     m_abort(Abort),
     m_started(false),
     m_positionInFile(0),
+    m_rewindPositionInFile(0),
     m_readPosition(0),
     m_writePosition(0),
     m_bufferSize(BufferSize),
+    m_reserveBufferSize(BufferSize >> 3),
+    m_writeBufferSize(BufferSize - m_reserveBufferSize),
     m_buffer(QByteArray(BufferSize, 0)),
     m_readSize(DEFAULT_STREAMED_READ_SIZE),
     m_redirectionCount(0),
@@ -75,6 +78,9 @@ TorcNetworkRequest::TorcNetworkRequest(const QNetworkRequest Request, QNetworkAc
     m_contentLength(0),
     m_byteServingAvailable(false)
 {
+    // reserve some space for seeking backwards in the stream
+    if (m_bufferSize)
+        LOG(VB_GENERAL, LOG_INFO, QString("Request buffer size %1bytes (%2 reserved)").arg(m_bufferSize).arg(m_bufferSize - m_writeBufferSize));
 }
 
 TorcNetworkRequest::~TorcNetworkRequest()
@@ -90,7 +96,7 @@ int TorcNetworkRequest::BytesAvailable(void)
     if (!m_bufferSize)
         return m_buffer.size();
 
-    return m_available.fetchAndAddOrdered(0);
+    return m_availableToRead.fetchAndAddOrdered(0);
 }
 
 qint64 TorcNetworkRequest::GetSize(void)
@@ -127,19 +133,30 @@ int TorcNetworkRequest::Peek(char *Buffer, qint32 BufferSize, int Timeout)
 */
 qint64 TorcNetworkRequest::Seek(qint64 Offset)
 {
-    if (!m_bufferSize || Offset < m_positionInFile)
+    // unbuffered
+    if (!m_bufferSize)
         return -1;
 
+    // beyond currently downloaded
+    // TODO wait if within a 'reasonable' distance
     if (Offset > (m_positionInFile + BytesAvailable()))
         return -1;
 
+    // seek backwards
+    if (Offset < m_positionInFile)
+        if (Offset < m_rewindPositionInFile)
+            return -1;
+
+    // seek within the currently available buffer
     int seek = Offset - m_positionInFile;
     m_readPosition += seek;
     if (m_readPosition >= m_bufferSize)
         m_readPosition -= m_bufferSize;
+    else if (m_readPosition < 0)
+        m_readPosition += m_bufferSize;
 
     m_positionInFile = Offset;
-    m_available.fetchAndAddOrdered(-seek);
+    m_availableToRead.fetchAndAddOrdered(-seek);
 
     return Offset;
 }
@@ -199,7 +216,9 @@ int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout, bool 
 
         m_positionInFile += available;
 
-        m_available.fetchAndAddOrdered(-available);
+        m_rewindPositionInFile = qMax(m_rewindPositionInFile, m_positionInFile < m_reserveBufferSize ? 0 : m_positionInFile - m_reserveBufferSize);
+
+        m_availableToRead.fetchAndAddOrdered(-available);
     }
 
     return available;
@@ -220,7 +239,7 @@ bool TorcNetworkRequest::WritePriv(QNetworkReply *Reply, char *Buffer, int Size)
         m_writePosition += read;
         if (m_writePosition >= m_bufferSize)
             m_writePosition -= m_bufferSize;
-        m_available.fetchAndAddOrdered(read);
+        m_availableToRead.fetchAndAddOrdered(read);
 
         m_replyBytesAvailable = Reply->bytesAvailable();
 
@@ -246,7 +265,7 @@ void TorcNetworkRequest::Write(QNetworkReply *Reply)
         return;
     }
 
-    qint64 available = qMin(m_bufferSize - (qint64)m_available.fetchAndAddOrdered(0), Reply->bytesAvailable());
+    qint64 available = qMin(m_writeBufferSize - (qint64)m_availableToRead.fetchAndAddOrdered(0), Reply->bytesAvailable());
 
     if (m_writePosition + available > m_bufferSize)
     {
@@ -271,7 +290,10 @@ void TorcNetworkRequest::SetReadSize(int Size)
 void TorcNetworkRequest::SetRange(int Start, int End)
 {
     if (m_rangeStart != 0 || m_rangeEnd != 0)
-        LOG(VB_GENERAL, LOG_WARNING, "Resetting byte ranges - potentially disastrous");
+    {
+        LOG(VB_GENERAL, LOG_WARNING, "Byte ranges already set - ignoring");
+        return;
+    }
 
     if (Start < 0)
     {
@@ -285,7 +307,8 @@ void TorcNetworkRequest::SetRange(int Start, int End)
         m_rangeEnd = -1;
 
     // adjust known position in file
-    m_positionInFile += m_rangeStart;
+    m_positionInFile       += m_rangeStart;
+    m_rewindPositionInFile += m_rangeStart;
 
     // and update the request
     m_request.setRawHeader("Range", QString("bytes=%1-%2").arg(m_rangeStart).arg(m_rangeEnd != -1 ? QString::number(m_rangeEnd) : "").toLatin1());

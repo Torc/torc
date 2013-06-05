@@ -9,6 +9,8 @@
 #include "torcbuffer.h"
 #include "torcnetwork.h"
 
+#define NETWORK_TIMEOUT 20000
+
 class TORC_CORE_PUBLIC TorcNetworkBuffer : public TorcBuffer
 {
   public:

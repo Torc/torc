@@ -42,10 +42,13 @@ class TorcNetworkRequest : public TorcReferenceCounter
     int            *m_abort;
     bool            m_started;
     qint64          m_positionInFile;
+    qint64          m_rewindPositionInFile;
     int             m_readPosition;
     int             m_writePosition;
-    QAtomicInt      m_available;
+    QAtomicInt      m_availableToRead;
     int             m_bufferSize;
+    int             m_reserveBufferSize;
+    int             m_writeBufferSize;
     QByteArray      m_buffer;
     int             m_readSize;
     int             m_redirectionCount;
