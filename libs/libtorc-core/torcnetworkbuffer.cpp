@@ -68,7 +68,7 @@ bool TorcNetworkBuffer::Open(void)
     int buffersize = DEFAULT_STREAMED_BUFFER_SIZE;
 
     // can we use byte serving/streamed download for media files
-    if (m_media && m_type == Buffered)
+    if (m_media && m_type == Buffered && QString::compare(url.scheme(), "ftp", Qt::CaseInsensitive) != 0)
     {
         QNetworkRequest request(url);
         TorcNetworkRequest *test = new TorcNetworkRequest(request, QNetworkAccessManager::HeadOperation,
@@ -108,6 +108,7 @@ bool TorcNetworkBuffer::Open(void)
     {
         if (m_request->WaitForStart(NETWORK_TIMEOUT))
         {
+            LOG(VB_NETWORK, LOG_INFO, QString("Content length: %1 Type: %2").arg(m_request->GetSize()).arg(m_request->GetContentType()));
             m_state = Status_Opened;
             return TorcBuffer::Open();
         }
