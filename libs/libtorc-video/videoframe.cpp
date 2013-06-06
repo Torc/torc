@@ -102,7 +102,7 @@ void VideoFrame::Initialise(AVPixelFormat Format, int Width, int Height)
 
     if (Height < 1 || Width < 1 || Format == AV_PIX_FMT_NONE)
     {
-        LOG(VB_GENERAL, LOG_ERR, QString("Cannot initialise frame (%1 %2x%3")
+        LOG(VB_GENERAL, LOG_ERR, QString("Cannot initialise frame (%1 %2x%3)")
             .arg(av_get_pix_fmt_name(Format)).arg(Width).arg(Height));
         return;
     }
