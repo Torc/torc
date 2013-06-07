@@ -8,11 +8,7 @@
 // Torc
 #include "torccoreexport.h"
 
-#if QT_VERSION < QT_VERSION_CHECK(4, 8, 0)
-#define DEFAULT_QT_LANGUAGE (QLocale::C)
-#else
 #define DEFAULT_QT_LANGUAGE (QLocale::AnyLanguage)
-#endif
 
 class TORC_CORE_PUBLIC TorcLanguage
 {
