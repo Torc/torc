@@ -21,16 +21,19 @@
 */
 
 // Qt
+#include <QScopedPointer>
 #include <QTcpSocket>
 #include <QTextStream>
 #include <QStringList>
 #include <QDateTime>
 #include <QRegExp>
+#include <QFile>
 #include <QUrl>
 
 // Torc
 #include "version.h"
 #include "torclogging.h"
+#include "torcmime.h"
 #include "torchttpserver.h"
 #include "torcserialiser.h"
 #include "torcjsonserialiser.h"
@@ -38,6 +41,10 @@
 #include "torcplistserialiser.h"
 #include "torcbinaryplistserialiser.h"
 #include "torchttprequest.h"
+
+#ifdef __linux__
+#include <sys/sendfile.h>
+#endif
 
 /*! \class TorcHTTPRequest
  *  \brief A class to encapsulte an incoming HTTP request.
@@ -65,7 +72,8 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
     m_allowed(0),
     m_responseType(HTTPResponseUnknown),
     m_responseStatus(HTTP_NotFound),
-    m_responseContent(NULL)
+    m_responseContent(NULL),
+    m_responseFile(NULL)
 {
     QStringList items = Method.split(gRegExp, QString::SkipEmptyParts);
     QString item;
@@ -137,6 +145,10 @@ TorcHTTPRequest::~TorcHTTPRequest()
     delete m_headers;
     delete m_content;
     delete m_responseContent;
+
+    if (m_responseFile)
+        m_responseFile->close();
+    delete m_responseFile;
 }
 
 bool TorcHTTPRequest::KeepAlive(void)
@@ -156,8 +168,24 @@ void TorcHTTPRequest::SetResponseType(HTTPResponseType Type)
 
 void TorcHTTPRequest::SetResponseContent(QByteArray *Content)
 {
+    if (m_responseFile)
+        m_responseFile->close();
+
+    delete m_responseFile;
     delete m_responseContent;
     m_responseContent = Content;
+    m_responseFile    = NULL;
+}
+
+void TorcHTTPRequest::SetResponseFile(QFile *File)
+{
+    if (m_responseFile)
+        m_responseFile->close();
+
+    delete m_responseContent;
+    delete m_responseFile;
+    m_responseFile    = File;
+    m_responseContent = NULL;
 }
 
 void TorcHTTPRequest::SetAllowed(int Allowed)
@@ -200,7 +228,16 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
     if (!Socket)
         return;
 
-    QByteArray contentheader = QString("Content-Type: %1\r\n").arg(ResponseTypeToString(m_responseType)).toLatin1();
+    QString contenttype = ResponseTypeToString(m_responseType);
+
+    // set the response type based upon file
+    if (m_responseFile)
+    {
+        contenttype = TorcMime::MimeTypeForFileNameAndData(m_responseFile->fileName(), m_responseFile);
+        m_responseType = HTTPResponseDefault;
+    }
+
+    QByteArray contentheader = QString("Content-Type: %1\r\n").arg(contenttype).toLatin1();
 
     if (m_responseType == HTTPResponseUnknown)
     {
@@ -210,7 +247,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
     }
 
     // process byte range requests
-    qint64 totalsize  = m_responseContent ? m_responseContent->size() : 0;
+    qint64 totalsize  = m_responseContent ? m_responseContent->size() : m_responseFile ? m_responseFile->size() : 0;
     qint64 sendsize   = totalsize;
     bool multipart    = false;
     static QByteArray seperator("\r\n--STaRT\r\n");
@@ -321,6 +358,109 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
             else
                 LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 content bytes").arg(sent));
         }
+    }
+    else if (!(*Abort) && m_responseFile && m_requestType != HTTPHead)
+    {
+        m_responseFile->open(QIODevice::ReadOnly);
+
+        if (multipart)
+        {
+            QScopedPointer<QByteArray> buffer(new QByteArray(READ_CHUNK_SIZE, 0));
+
+            QList<QPair<quint64,quint64> >::const_iterator it = m_ranges.begin();
+            QList<QByteArray>::const_iterator bit = partheaders.begin();
+            for ( ; (it != m_ranges.end() && !(*Abort)); ++it, ++bit)
+            {
+                qint64 sent = Socket->write((*bit).data(), (*bit).size());
+                if ((*bit).size() != sent)
+                    LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg((*bit).size()).arg(sent));
+                else
+                    LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 multipart header bytes").arg(sent));
+
+                if (*Abort)
+                    break;
+
+                sent   = 0;
+                qint64 offset = (*it).first;
+                qint64 size   = (*it).second - offset + 1;
+
+                m_responseFile->seek(offset);
+
+#ifdef __linux__
+// TODO add sendfile support with fallback to regular writes
+#endif
+                if (size > sent)
+                {
+                    do
+                    {
+                        qint64 remaining = qMin(size - sent, (qint64)READ_CHUNK_SIZE);
+                        qint64 read = m_responseFile->read(buffer.data()->data(), remaining);
+                        if (read < 0)
+                        {
+                            LOG(VB_GENERAL, LOG_ERR, QString("Error reading from '%1' (%2)").arg(m_responseFile->fileName()).arg(m_responseFile->errorString()));
+                            break;
+                        }
+
+                        qint64 send = Socket->write(buffer.data()->data(), read);
+
+                        if (send != read)
+                        {
+                            LOG(VB_GENERAL, LOG_ERR, QString("Error sending data (%1)").arg(Socket->errorString()));
+                            break;
+                        }
+
+                        sent += read;
+                    }
+                    while (sent < size);
+
+                    if (sent < size)
+                        LOG(VB_GENERAL, LOG_ERR, QString("Failed to send all data for '%1'").arg(m_responseFile->fileName()));
+                }
+            }
+        }
+        else
+        {
+            qint64 sent = 0;
+            qint64 size = sendsize;
+            qint64 offset = m_ranges.isEmpty() ? 0 : m_ranges[0].first;
+
+            m_responseFile->seek(offset);
+
+#ifdef __linux__
+// TODO add sendfile support with fallback to regular writes
+#endif
+            if (size > sent)
+            {
+                QScopedPointer<QByteArray> buffer(new QByteArray(READ_CHUNK_SIZE, 0));
+
+                do
+                {
+                    qint64 remaining = qMin(size - sent, (qint64)READ_CHUNK_SIZE);
+                    qint64 read = m_responseFile->read(buffer.data()->data(), remaining);
+                    if (read < 0)
+                    {
+                        LOG(VB_GENERAL, LOG_ERR, QString("Error reading from '%1' (%2)").arg(m_responseFile->fileName()).arg(m_responseFile->errorString()));
+                        break;
+                    }
+
+                    qint64 send = Socket->write(buffer.data()->data(), read);
+
+                    if (send != read)
+                    {
+                        LOG(VB_GENERAL, LOG_ERR, QString("Error sending data (%1)").arg(Socket->errorString()));
+                        break;
+                    }
+
+                    sent += read;
+                }
+                while (sent < size);
+
+                if (sent < size)
+                    LOG(VB_GENERAL, LOG_ERR, QString("Failed to send all data for '%1'").arg(m_responseFile->fileName()));
+            }
+        }
+
+        m_responseFile->close();
     }
 
     Socket->flush();

@@ -11,6 +11,7 @@
 
 class TorcSerialiser;
 class QTcpSocket;
+class QFile;
 
 typedef enum
 {
@@ -41,8 +42,7 @@ typedef enum
     HTTPResponsePList,
     HTTPResponseBinaryPList,
     HTTPResponsePListApple,
-    HTTPResponseBinaryPListApple,
-    HTTPResponseFile
+    HTTPResponseBinaryPListApple
 } HTTPResponseType;
 
 typedef enum
@@ -67,6 +67,8 @@ typedef enum
     HTTP_InternalServerError = 500
 } HTTPStatus;
 
+#define READ_CHUNK_SIZE (1024 *64)
+
 class TORC_CORE_PUBLIC TorcHTTPRequest
 {
   public:
@@ -88,6 +90,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     void                   SetStatus                (HTTPStatus Status);
     void                   SetResponseType          (HTTPResponseType Type);
     void                   SetResponseContent       (QByteArray *Content);
+    void                   SetResponseFile          (QFile *File);
     void                   SetAllowed               (int Allowed);
     HTTPType               GetHTTPType              (void);
     HTTPRequestType        GetHTTPRequestType       (void);
@@ -118,6 +121,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     HTTPResponseType       m_responseType;
     HTTPStatus             m_responseStatus;
     QByteArray            *m_responseContent;
+    QFile                 *m_responseFile;
 };
 
 #endif // TORCHTTPREQUEST_H
