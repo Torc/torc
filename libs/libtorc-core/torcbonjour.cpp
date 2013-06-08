@@ -610,12 +610,6 @@ class TorcBonjourPriv
         if (!Reference)
             return;
 
-        if (ErrorType != kDNSServiceErr_NoError)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("Resolve error '%1'").arg(ErrorType));
-            return;
-        }
-
         {
             QMutexLocker locker(m_discoveredLock);
             QMap<quint32,TorcBonjourService>::iterator it = m_discoveredServices.begin();
@@ -623,6 +617,12 @@ class TorcBonjourPriv
             {
                 if ((*it).m_dnssRef == Reference)
                 {
+                    if (ErrorType != kDNSServiceErr_NoError)
+                    {
+                        LOG(VB_GENERAL, LOG_ERR, QString("Failed to resolve '%1' (Error %2)").arg((*it).m_name.data()).arg(ErrorType));
+                        return;
+                    }
+
                     uint16_t port = ntohs(Port);
                     (*it).m_host = HostTarget;
                     (*it).m_port = port;
