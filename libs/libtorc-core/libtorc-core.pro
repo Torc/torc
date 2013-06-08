@@ -130,6 +130,47 @@ inc.files += torchttpserver.h
 inc.files += torchtmlhandler.h
 inc.files += torchttpservice.h
 
+# Qt 5 mime backport for Qt 4.8
+lessThan(QT_MAJOR_VERSION, 5) {
+    DEPENDPATH   += ./mime
+    INCLUDEPATH  += ./mime
+
+    HEADERS += mime/qmimedatabase.h
+    HEADERS += mime/qmimetype.h
+    HEADERS += mime/qmimedatabase_p.h
+    HEADERS += mime/qmimetype_p.h
+    HEADERS += mime/qmimeglobpattern_p.h
+    HEADERS += mime/qmimetypeparser_p.h
+    HEADERS += mime/qmimeprovider_p.h
+    HEADERS += mime/qmimemagicrule_p.h
+    HEADERS += mime/qmimemagicrulematcher_p.h
+
+    SOURCES += mime/qmimedatabase.cpp
+    SOURCES += mime/qmimetype.cpp
+    SOURCES += mime/qmimeglobpattern.cpp
+    SOURCES += mime/qmimetypeparser.cpp
+    SOURCES += mime/qmimeprovider.cpp
+    SOURCES += mime/qmimemagicrule.cpp
+    SOURCES += mime/qmimemagicrulematcher.cpp
+
+    RESOURCES += mime/mimetypes.qrc
+
+    HEADERS += mime/qstandardpaths.h
+    SOURCES += mime/qstandardpaths.cpp
+
+    macx {
+        SOURCES += qstandardpaths_mac.cpp
+    } else:unix {
+        SOURCES += qstandardpaths_unix.cpp
+    } else:win32 {
+        SOURCES += qstandardpaths_win.cpp
+    } else:os2 {
+        SOURCES += qstandardpaths_os2.cpp
+    } else {
+        error("No QStandardPaths support in mime")
+    }
+}
+
 unix:contains(CONFIG_LIBUDEV, yes) {
     HEADERS += platforms/torcusbprivunix.h
     SOURCES += platforms/torcusbprivunix.cpp

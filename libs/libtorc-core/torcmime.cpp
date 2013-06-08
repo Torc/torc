@@ -20,47 +20,12 @@
 * USA.
 */
 
-#include <QtGlobal> // remove
+#include <QtGlobal>
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-#include <QStringList>
-#include "torcmime.h"
-QString TorcMime::MimeTypeForData(const QByteArray &Data)
-{
-    return QString();
-}
-
-QString TorcMime::MimeTypeForData(QIODevice *Device)
-{
-    return QString();
-}
-
-QString TorcMime::MimeTypeForFileNameAndData(const QString &FileName, QIODevice *Device)
-{
-    return QString();
-}
-
-QString TorcMime::MimeTypeForFileNameAndData(const QString &FileName, const QByteArray &Data)
-{
-    return QString();
-}
-
-QString TorcMime::MimeTypeForName(const QString &Name)
-{
-    return QString();
-}
-
-QString TorcMime::MimeTypeForUrl(const QUrl &Url)
-{
-    return QString();
-}
-
-QStringList TorcMime::MimeTypeForFileName(const QString &FileName)
-{
-    return QStringList();
-}
-
+#include "mime/qmimedatabase.h"
 #else
 #include <QMimeDatabase>
+#endif
 
 //Torc
 #include "torcmime.h"
@@ -115,4 +80,3 @@ QStringList TorcMime::MimeTypeForFileName(const QString &FileName)
 
     return result;
 }
-#endif
