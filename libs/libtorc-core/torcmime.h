@@ -4,6 +4,7 @@
 // Qt
 #include <QIODevice>
 #include <QString>
+#include <QUrl>
 
 class TorcMime
 {
