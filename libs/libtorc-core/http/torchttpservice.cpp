@@ -211,9 +211,7 @@ TorcHTTPService::~TorcHTTPService()
 {
     TorcHTTPServer::DeregisterHandler(this);
 
-    QMap<QString,MethodParameters*>::iterator it = m_methods.begin();
-    for ( ; it != m_methods.end(); ++it)
-        delete (*it);
+    qDeleteAll(m_methods);
 }
 
 void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
