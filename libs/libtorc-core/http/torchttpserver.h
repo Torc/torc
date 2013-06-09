@@ -15,6 +15,7 @@ typedef int qintptr;
 #include "torcsetting.h"
 #include "torchtmlhandler.h"
 #include "torchtmlserviceshelp.h"
+#include "torchtmlstaticcontent.h"
 
 class TorcHTTPConnection;
 class TorcHTTPHandler;
@@ -67,6 +68,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     TorcSetting                      *m_port;
     TorcHTMLHandler                  *m_defaultHandler;
     TorcHTMLServicesHelp             *m_servicesHelpHandler;
+    TorcHTMLStaticContent            *m_staticContent;
     QString                           m_servicesDirectory;
 
     QThreadPool                       m_connectionPool;

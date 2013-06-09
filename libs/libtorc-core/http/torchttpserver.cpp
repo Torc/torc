@@ -122,6 +122,7 @@ TorcHTTPServer::TorcHTTPServer()
     m_port(NULL),
     m_defaultHandler(NULL),
     m_servicesHelpHandler(NULL),
+    m_staticContent(NULL),
     m_servicesDirectory(SERVICES_DIRECTORY),
     m_abort(0),
     m_handlersLock(new QMutex(QMutex::Recursive)),
@@ -178,6 +179,9 @@ TorcHTTPServer::TorcHTTPServer()
     m_servicesHelpHandler = new TorcHTMLServicesHelp(this);
     AddHandler(m_servicesHelpHandler);
 
+    m_staticContent = new TorcHTMLStaticContent();
+    AddHandler(m_staticContent);
+
     // set thread pool max size
     m_connectionPool.setMaxThreadCount(50);
 
@@ -191,6 +195,7 @@ TorcHTTPServer::~TorcHTTPServer()
 {
     delete m_defaultHandler;
     delete m_servicesHelpHandler;
+    delete m_staticContent;
 
     Close();
 
@@ -319,9 +324,28 @@ void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPReque
     if (Request && Connection)
     {
         m_handlersLock->lock();
-        QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.find(Request->GetPath());
+        QString path = Request->GetPath();
+
+        QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.find(path);
         if (it != m_handlers.end())
+        {
+            // direct path match
             (*it)->ProcessHTTPRequest(this, Request, Connection);
+        }
+        else
+        {
+            // fully recursive handler
+            it = m_handlers.begin();
+            for ( ; it != m_handlers.end(); ++it)
+            {
+                if ((*it)->GetRecursive() && path.startsWith(it.key()))
+                {
+                    (*it)->ProcessHTTPRequest(this, Request, Connection);
+                    break;
+                }
+            }
+        }
+
         m_handlersLock->unlock();
     }
 }
