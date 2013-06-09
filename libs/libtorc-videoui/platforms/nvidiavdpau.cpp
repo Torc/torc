@@ -74,13 +74,23 @@ bool NVInterop::IsValid(void)
 bool NVInterop::MapFrame(void)
 {
     if (m_valid && m_initialised && m_registeredSurface)
+    {
         m_mapSurface(1, &m_registeredSurface);
+        return true;
+    }
+
+    return false;
 }
 
 bool NVInterop::UnmapFrame(void)
 {
     if (m_valid && m_initialised && m_registeredSurface)
+    {
         m_unmapSurface(1, &m_registeredSurface);
+        return true;
+    }
+
+    return false;
 }
 
 QAtomicInt gNVInteropInstances;
@@ -92,7 +102,10 @@ bool NVInterop::Initialise(void *Device, void *GetProcAddress)
         m_initialised = true;
         m_init(Device, GetProcAddress);
         gNVInteropInstances.ref();
+        return true;
     }
+
+    return false;
 }
 
 void NVInterop::Deinitialise(void)
