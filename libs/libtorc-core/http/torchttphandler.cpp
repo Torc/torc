@@ -40,6 +40,7 @@
 
 TorcHTTPHandler::TorcHTTPHandler(const QString &Signature, const QString &Name)
   : m_signature(Signature),
+    m_recursive(false),
     m_name(Name)
 {
     if (!m_signature.endsWith("/"))
@@ -53,6 +54,11 @@ TorcHTTPHandler::~TorcHTTPHandler()
 QString TorcHTTPHandler::Signature(void)
 {
     return m_signature;
+}
+
+bool TorcHTTPHandler::GetRecursive(void)
+{
+    return m_recursive;
 }
 
 QString TorcHTTPHandler::Name(void)
