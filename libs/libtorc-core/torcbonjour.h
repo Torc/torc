@@ -18,6 +18,8 @@ class TORC_CORE_PUBLIC TorcBonjour : public QObject
     static  TorcBonjour*     Instance (void);
     static  void             Suspend  (bool Suspend);
     static  void             TearDown (void);
+    static  QByteArray       MapToTxtRecord (const QMap<QByteArray,QByteArray> &Map);
+    static  QMap<QByteArray,QByteArray> TxtRecordToMap(const QByteArray &TxtRecord);
 
     quint32 Register        (quint16 Port, const QByteArray &Type,
                              const QByteArray &Name, const QByteArray &Txt);

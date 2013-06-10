@@ -583,6 +583,7 @@ class TorcBonjourPriv
                 {
                     QVariantMap data;
                     data.insert("name", it.value().m_type.data());
+                    data.insert("txtrecords", it.value().m_txt);
                     TorcEvent event(Torc::ServiceWentAway, data);
                     gLocalContext->Notify(event);
 
@@ -623,6 +624,7 @@ class TorcBonjourPriv
                         .arg((*it).m_name.data()).arg((*it).m_type.data()).arg(HostTarget).arg(port));
                     QString name(HostTarget);
                     (*it).m_lookupID = QHostInfo::lookupHost(name, m_parent, SLOT(HostLookup(QHostInfo)));
+                    (*it).m_txt      = QByteArray((const char *)TxtRecord, TxtLen);
                 }
             }
         }
@@ -669,6 +671,7 @@ class TorcBonjourPriv
                         data.insert("name", (*it).m_type.data());
                         data.insert("port", (*it).m_port);
                         data.insert("addresses", addresses);
+                        data.insert("txtrecords", (*it).m_txt);
                         TorcEvent event(Torc::ServiceDiscovered, data);
                         gLocalContext->Notify(event);
                     }
@@ -780,6 +783,39 @@ void TorcBonjour::TearDown(void)
     QMutexLocker locker(gBonjourLock);
     delete gBonjour;
     gBonjour = NULL;
+}
+
+QByteArray TorcBonjour::MapToTxtRecord(const QMap<QByteArray, QByteArray> &Map)
+{
+    QByteArray result;
+
+    QMap<QByteArray,QByteArray>::const_iterator it = Map.begin();
+    for ( ; it != Map.end(); ++it)
+    {
+        QByteArray record(1, it.key().size() + it.value().size() + 1);
+        record.append(it.key() + "=" + it.value());
+        result.append(record);
+    }
+
+    return result;
+}
+
+QMap<QByteArray,QByteArray> TorcBonjour::TxtRecordToMap(const QByteArray &TxtRecord)
+{
+    QMap<QByteArray,QByteArray> result;
+
+    int position = 0;
+    while (position < TxtRecord.size())
+    {
+        int size = TxtRecord[position++];
+        QList<QByteArray> records = TxtRecord.mid(position, size).split('=');
+        position += size;
+
+        if (records.size() == 2)
+            result.insert(records[0], records[1]);
+    }
+
+    return result;
 }
 
 TorcBonjour::TorcBonjour()
