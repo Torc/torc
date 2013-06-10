@@ -31,13 +31,16 @@
 #include "torclogging.h"
 #include "torcadminthread.h"
 #include "torcnetwork.h"
-#include "torcbonjour.h"
 #include "torchttpconnection.h"
 #include "torchttprequest.h"
 #include "torchtmlhandler.h"
 #include "torchttphandler.h"
 #include "torchttpservice.h"
 #include "torchttpserver.h"
+
+#if defined(CONFIG_LIBDNS_SD)
+#include "torcbonjour.h"
+#endif
 
 #ifndef Q_OS_WIN
 #include <sys/utsname.h>
@@ -259,6 +262,7 @@ bool TorcHTTPServer::Open(void)
         port = serverPort();
         m_port->SetValue(QVariant((int)port));
 
+#if defined(CONFIG_LIBDNS_SD)
         // re-advertise if the port has changed
         if (m_httpBonjourReference)
         {
@@ -271,8 +275,10 @@ bool TorcHTTPServer::Open(void)
             TorcBonjour::Instance()->Deregister(m_torcBonjourReference);
             m_torcBonjourReference = 0;
         }
+#endif
     }
 
+#if defined(CONFIG_LIBDNS_SD)
     // advertise service if not already doing so
     if (!m_httpBonjourReference || !m_torcBonjourReference)
     {
@@ -287,7 +293,7 @@ bool TorcHTTPServer::Open(void)
         if (!m_torcBonjourReference)
             m_torcBonjourReference = TorcBonjour::Instance()->Register(port, "_torc._tcp", name, dummy);
     }
-
+#endif
     if (!waslistening)
         LOG(VB_GENERAL, LOG_INFO, QString("Web server listening on port %1").arg(port));
     return true;
@@ -295,6 +301,7 @@ bool TorcHTTPServer::Open(void)
 
 void TorcHTTPServer::Close(void)
 {
+#if defined(CONFIG_LIBDNS_SD)
     // stop advertising
     if (m_httpBonjourReference)
     {
@@ -307,6 +314,7 @@ void TorcHTTPServer::Close(void)
         TorcBonjour::Instance()->Deregister(m_torcBonjourReference);
         m_torcBonjourReference = 0;
     }
+#endif
 
     // close all pool threads
     m_abort = 1;
