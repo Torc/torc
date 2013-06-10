@@ -232,6 +232,7 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     QLocale::Language        GetLanguage   (void);
     void                     SetUIObject   (QObject* UI);
     void                     CloseDatabaseConnections (void);
+    QString                  GetUuid       (void);
 
 
   private:

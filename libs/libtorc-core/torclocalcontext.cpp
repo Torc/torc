@@ -71,6 +71,7 @@ class TorcLocalContextPriv
     void    SetSetting           (const QString &Name, const QString &Value);
     QString GetPreference        (const QString &Name, const QString &DefaultValue);
     void    SetPreference        (const QString &Name, const QString &Value);
+    QString GetUuid              (void);
 
     void    PrintSessionSettings (void);
 
@@ -84,6 +85,7 @@ class TorcLocalContextPriv
     QObject              *m_UIObject;
     TorcAdminThread      *m_adminThread;
     TorcLanguage          m_language;
+    QUuid                 m_uuid;
 };
 
 TorcLocalContextPriv::TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFlags)
@@ -92,7 +94,8 @@ TorcLocalContextPriv::TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFla
     m_localSettingsLock(new QReadWriteLock(QReadWriteLock::Recursive)),
     m_preferencesLock(new QReadWriteLock(QReadWriteLock::Recursive)),
     m_UIObject(NULL),
-    m_adminThread(NULL)
+    m_adminThread(NULL),
+    m_uuid(QUuid::createUuid())
 {
 }
 
@@ -130,6 +133,9 @@ TorcLocalContextPriv::~TorcLocalContextPriv()
 
 bool TorcLocalContextPriv::Init(void)
 {
+    // log uuid
+    LOG(VB_GENERAL, LOG_INFO, QString("UUID: %1").arg(m_uuid.toString()));
+
     // Create the configuration directory
     QString configdir = GetTorcConfigDir();
 
@@ -246,6 +252,11 @@ void TorcLocalContextPriv::SetPreference(const QString &Name, const QString &Val
     if (m_sqliteDB)
         m_sqliteDB->SetPreference(Name, Value);
     m_preferences[Name] = Value;
+}
+
+QString TorcLocalContextPriv::GetUuid(void)
+{
+    return m_uuid.toString();
 }
 
 void TorcLocalContextPriv::PrintSessionSettings(void)
@@ -518,6 +529,11 @@ void TorcLocalContext::CloseDatabaseConnections(void)
 {
     if (m_priv && m_priv->m_sqliteDB)
         m_priv->m_sqliteDB->CloseThreadConnection();
+}
+
+QString TorcLocalContext::GetUuid(void)
+{
+    return m_priv->GetUuid();
 }
 
 bool TorcLocalContext::FlagIsSet(Torc::ApplicationFlag Flag)
