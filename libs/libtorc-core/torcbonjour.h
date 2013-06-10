@@ -22,7 +22,7 @@ class TORC_CORE_PUBLIC TorcBonjour : public QObject
     static  QMap<QByteArray,QByteArray> TxtRecordToMap(const QByteArray &TxtRecord);
 
     quint32 Register        (quint16 Port, const QByteArray &Type,
-                             const QByteArray &Name, const QByteArray &Txt);
+                             const QByteArray &Name, const QMap<QByteArray,QByteArray> &TxtRecords);
     quint32 Browse          (const QByteArray &Type);
     void    Deregister      (quint32 Reference);
 

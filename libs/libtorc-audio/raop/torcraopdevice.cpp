@@ -186,22 +186,22 @@ bool TorcRAOPDevice::Open(void)
         name.append(" on ");
         name.append(QHostInfo::localHostName());
         QByteArray type = "_raop._tcp";
-        QByteArray txt;
-        txt.append(6); txt.append("tp=UDP");
-        txt.append(8); txt.append("sm=false");
-        txt.append(8); txt.append("sv=false");
-        txt.append(4); txt.append("ek=1");
-        txt.append(6); txt.append("et=0,1");
-        txt.append(6); txt.append("cn=0,1");
-        txt.append(4); txt.append("ch=2");
-        txt.append(5); txt.append("ss=16");
-        txt.append(8); txt.append("sr=44100");
-        txt.append(8); txt.append("pw=false");
-        txt.append(4); txt.append("vn=3");
-        txt.append(9); txt.append("txtvers=1");
-        txt.append(8); txt.append("md=0,1,2");
-        txt.append(9); txt.append("vs=130.14");
-        txt.append(7); txt.append("da=true");
+        QMap<QByteArray,QByteArray> txt;
+        txt.insert("tp",      "UDP");
+        txt.insert("sm",      "false");
+        txt.insert("sv",      "false");
+        txt.insert("ek",      "1");
+        txt.insert("et",      "0,1");
+        txt.insert("cn",      "0,1");
+        txt.insert("ch",      "2");
+        txt.insert("ss",      "16");
+        txt.insert("sr",      "44100");
+        txt.insert("pw",      "false");
+        txt.insert("vn",      "3");
+        txt.insert("txtvers", "1");
+        txt.insert("md",      "0,1,2");
+        txt.insert("vs",      "130.14");
+        txt.insert("da",      "true");
 
         m_bonjourReference = TorcBonjour::Instance()->Register(port, type, name, txt);
         if (!m_bonjourReference)

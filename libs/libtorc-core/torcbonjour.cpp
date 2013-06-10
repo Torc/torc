@@ -835,11 +835,15 @@ TorcBonjour::~TorcBonjour()
     m_priv = NULL;
 }
 
-quint32 TorcBonjour::Register(quint16 Port, const QByteArray &Type,
-                              const QByteArray &Name, const QByteArray &Txt)
+quint32 TorcBonjour::Register(quint16 Port, const QByteArray &Type, const QByteArray &Name,
+                              const QMap<QByteArray, QByteArray> &TxtRecords)
 {
     if (m_priv)
-        return m_priv->Register(Port, Type, Name, Txt);
+    {
+        QByteArray txt = MapToTxtRecord(TxtRecords);
+        return m_priv->Register(Port, Type, Name, txt);
+    }
+
     return 0;
 }
 

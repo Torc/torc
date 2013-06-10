@@ -284,16 +284,15 @@ bool TorcHTTPServer::Open(void)
     {
         QMap<QByteArray,QByteArray> map;
         map.insert("uuid", gLocalContext->GetUuid().toLatin1());
-        QByteArray data = TorcBonjour::MapToTxtRecord(map);
         QByteArray name(QCoreApplication::applicationName().toLatin1());
         name.append(" on ");
         name.append(QHostInfo::localHostName());
 
         if (!m_httpBonjourReference)
-            m_httpBonjourReference = TorcBonjour::Instance()->Register(port, "_http._tcp.", name, data);
+            m_httpBonjourReference = TorcBonjour::Instance()->Register(port, "_http._tcp.", name, map);
 
         if (!m_torcBonjourReference)
-            m_torcBonjourReference = TorcBonjour::Instance()->Register(port, "_torc._tcp", name, data);
+            m_torcBonjourReference = TorcBonjour::Instance()->Register(port, "_torc._tcp", name, map);
     }
 #endif
     if (!waslistening)
