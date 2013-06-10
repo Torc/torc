@@ -79,8 +79,7 @@ class TorcBonjourService
 
   public:
     TorcBonjourService()
-      : m_external(true),
-        m_serviceType(Service),
+      : m_serviceType(Service),
         m_dnssRef(NULL),
         m_name(QByteArray()),
         m_type(QByteArray()),
@@ -96,8 +95,7 @@ class TorcBonjourService
     }
 
     TorcBonjourService(ServiceType BonjourType, DNSServiceRef DNSSRef, const QByteArray &Name, const QByteArray &Type)
-      : m_external(true),
-        m_serviceType(BonjourType),
+      : m_serviceType(BonjourType),
         m_dnssRef(DNSSRef),
         m_name(Name),
         m_type(Type),
@@ -115,8 +113,7 @@ class TorcBonjourService
     TorcBonjourService(ServiceType BonjourType,
                        const QByteArray &Name, const QByteArray &Type,
                        const QByteArray &Domain, uint32_t InterfaceIndex)
-      : m_external(true),
-        m_serviceType(BonjourType),
+      : m_serviceType(BonjourType),
         m_dnssRef(NULL),
         m_name(Name),
         m_type(Type),
@@ -188,7 +185,6 @@ class TorcBonjourService
         m_socketNotifier = NULL;
     }
 
-    bool             m_external;
     ServiceType      m_serviceType;
     DNSServiceRef    m_dnssRef;
     QByteArray       m_name;
@@ -585,13 +581,10 @@ class TorcBonjourPriv
                     it.value().m_domain == Service.m_domain &&
                     it.value().m_interfaceIndex == Service.m_interfaceIndex)
                 {
-                    if (it.value().m_external)
-                    {
-                        QVariantMap data;
-                        data.insert("name", it.value().m_type.data());
-                        TorcEvent event(Torc::ServiceWentAway, data);
-                        gLocalContext->Notify(event);
-                    }
+                    QVariantMap data;
+                    data.insert("name", it.value().m_type.data());
+                    TorcEvent event(Torc::ServiceWentAway, data);
+                    gLocalContext->Notify(event);
 
                     LOG(VB_GENERAL, LOG_INFO, QString("Service '%1' on '%2' went away")
                         .arg(it.value().m_type.data())
@@ -667,18 +660,10 @@ class TorcBonjourPriv
                     foreach (QHostAddress address, (*it).m_ipAddresses)
                     {
                         LOG(VB_NETWORK, LOG_INFO, address.toString());
-
-                        if (TorcNetwork::IsOwnAddress(address))
-                        {
-                            LOG(VB_GENERAL, LOG_INFO, "Address refers to this application - ignoring");
-                            (*it).m_external = false;
-                            break;
-                        }
-
                         addresses << address.toString();
                     }
 
-                    if ((*it).m_external)
+                    if (!addresses.isEmpty())
                     {
                         QVariantMap data;
                         data.insert("name", (*it).m_type.data());
