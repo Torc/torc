@@ -282,16 +282,18 @@ bool TorcHTTPServer::Open(void)
     // advertise service if not already doing so
     if (!m_httpBonjourReference || !m_torcBonjourReference)
     {
-        QByteArray dummy;
+        QMap<QByteArray,QByteArray> map;
+        map.insert("uuid", gLocalContext->GetUuid().toLatin1());
+        QByteArray data = TorcBonjour::MapToTxtRecord(map);
         QByteArray name(QCoreApplication::applicationName().toLatin1());
         name.append(" on ");
         name.append(QHostInfo::localHostName());
 
         if (!m_httpBonjourReference)
-            m_httpBonjourReference = TorcBonjour::Instance()->Register(port, "_http._tcp.", name, dummy);
+            m_httpBonjourReference = TorcBonjour::Instance()->Register(port, "_http._tcp.", name, data);
 
         if (!m_torcBonjourReference)
-            m_torcBonjourReference = TorcBonjour::Instance()->Register(port, "_torc._tcp", name, dummy);
+            m_torcBonjourReference = TorcBonjour::Instance()->Register(port, "_torc._tcp", name, data);
     }
 #endif
     if (!waslistening)
