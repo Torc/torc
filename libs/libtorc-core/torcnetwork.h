@@ -38,6 +38,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static bool IsAllowedOutbound   (void);
     static bool IsOwnAddress        (const QHostAddress &Address);
     static QString GetMACAddress    (void);
+    static QNetworkInterface GetInterface (void);
     static bool Get                 (TorcNetworkRequest* Request);
     static void Cancel              (TorcNetworkRequest* Request);
     static void Poke                (TorcNetworkRequest* Request);
@@ -83,6 +84,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     void    CloseConnections        (void);
     void    UpdateConfiguration     (bool Creating = false);
     QString MACAddress              (void);
+    QNetworkInterface Interface     (void);
 
   private:
     bool                             m_online;

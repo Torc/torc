@@ -73,6 +73,13 @@ QString TorcNetwork::GetMACAddress(void)
     return gNetwork ? gNetwork->MACAddress() : DEFAULT_MAC_ADDRESS;
 }
 
+QNetworkInterface TorcNetwork::GetInterface(void)
+{
+    QMutexLocker locker(gNetworkLock);
+
+    return gNetwork ? gNetwork->Interface() : QNetworkInterface();
+}
+
 bool TorcNetwork::Get(TorcNetworkRequest* Request)
 {
     QMutexLocker locker(gNetworkLock);
@@ -609,6 +616,14 @@ QString TorcNetwork::MACAddress(void)
         return m_interface.hardwareAddress();
 
     return DEFAULT_MAC_ADDRESS;
+}
+
+QNetworkInterface TorcNetwork::Interface(void)
+{
+    if (m_interface.isValid())
+        return QNetworkInterface(m_interface);
+
+    return QNetworkInterface();
 }
 
 /*! \class TorcNetworkObject
