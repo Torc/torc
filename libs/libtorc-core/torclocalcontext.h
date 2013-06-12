@@ -246,7 +246,6 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
 };
 
 extern TORC_CORE_PUBLIC TorcLocalContext *gLocalContext;
-extern TORC_CORE_PUBLIC QMutex           *gLocalContextLock;
 extern TORC_CORE_PUBLIC QMutex           *gAVCodecLock;
 extern TORC_CORE_PUBLIC TorcSetting      *gRootSetting;
 

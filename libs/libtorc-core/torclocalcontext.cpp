@@ -47,7 +47,6 @@
 #include "version.h"
 
 TorcLocalContext *gLocalContext = NULL;
-QMutex*       gLocalContextLock = new QMutex(QMutex::Recursive);
 QMutex*            gAVCodecLock = new QMutex(QMutex::Recursive);
 TorcSetting       *gRootSetting = NULL;
 
@@ -290,7 +289,6 @@ int Torc::StringToAction(const QString &Action)
 
 qint16 TorcLocalContext::Create(TorcCommandLineParser* CommandLine, Torc::ApplicationFlags ApplicationFlags)
 {
-    QMutexLocker locker(gLocalContextLock);
     if (gLocalContext)
         return GENERIC_EXIT_OK;
 
@@ -304,14 +302,12 @@ qint16 TorcLocalContext::Create(TorcCommandLineParser* CommandLine, Torc::Applic
 
 void TorcLocalContext::TearDown(void)
 {
-    QMutexLocker locker(gLocalContextLock);
     delete gLocalContext;
     gLocalContext = NULL;
 }
 
 void TorcLocalContext::NotifyEvent(int Event)
 {
-    QMutexLocker locker(gLocalContextLock);
     TorcEvent event(Event);
     if (gLocalContext)
         gLocalContext->Notify(event);
