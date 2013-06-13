@@ -80,3 +80,15 @@ QStringList TorcMime::MimeTypeForFileName(const QString &FileName)
 
     return result;
 }
+
+QStringList TorcMime::ExtensionsForType(const QString &Type)
+{
+    QStringList extensions;
+
+    QList<QMimeType> mimes = gMimeDatabase->allMimeTypes();
+    foreach (QMimeType mime, mimes)
+        if (mime.name().startsWith(Type, Qt::CaseInsensitive))
+            extensions.append(mime.suffixes());
+
+    return extensions;
+}

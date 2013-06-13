@@ -16,6 +16,7 @@ class TorcMime
     static QString MimeTypeForName            (const QString &Name);
     static QString MimeTypeForUrl             (const QUrl &Url);
     static QStringList MimeTypeForFileName    (const QString &FileName);
+    static QStringList ExtensionsForType      (const QString &Type);
 };
 
 #endif // TORCMIME_H
