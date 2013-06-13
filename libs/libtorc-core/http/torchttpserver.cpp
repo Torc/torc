@@ -180,8 +180,8 @@ TorcHTTPServer::TorcHTTPServer()
 
     // services help
     m_servicesHelpHandler = new TorcHTMLServicesHelp(this);
-    AddHandler(m_servicesHelpHandler);
 
+    // static files
     m_staticContent = new TorcHTMLStaticContent();
     AddHandler(m_staticContent);
 
@@ -444,7 +444,7 @@ void TorcHTTPServer::UpdateHandlers(void)
             QString signature = handler->Signature();
             if (m_handlers.contains(signature))
             {
-                LOG(VB_GENERAL, LOG_WARNING, QString("Handler '%1' already registered - ignoring").arg(signature));
+                LOG(VB_GENERAL, LOG_ERR, QString("Handler '%1' for '%2' already registered - ignoring").arg(handler->Name()).arg(signature));
             }
             else if (!signature.isEmpty())
             {
