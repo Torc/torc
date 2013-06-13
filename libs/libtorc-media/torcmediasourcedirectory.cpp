@@ -27,6 +27,7 @@
 // Torc
 #include "torclocalcontext.h"
 #include "torclogging.h"
+#include "torcmime.h"
 #include "torcmediasource.h"
 #include "torcmediasourcedirectory.h"
 
@@ -84,13 +85,17 @@ TorcMediaSourceDirectory::TorcMediaSourceDirectory()
     m_updatedPathsLock(new QMutex())
 {
     // name filters
-    m_videoExtensions << "mpeg" << "mpg" << "ps" << "ts" << "mkv" << "mp4" << "m4v" << "h264" << "vob" << "iso";
-    m_audioExtensions << "mp3" << "m4a";
-    m_photoExtensions << "jpg" << "jpeg" << "bmp" << "png" << "mjpeg";
+    m_videoExtensions = TorcMime::ExtensionsForType("video");
+    m_audioExtensions = TorcMime::ExtensionsForType("audio");
+    m_photoExtensions = TorcMime::ExtensionsForType("image");
 
     foreach (QString extension, m_videoExtensions) { m_fileNameFilters << QString("*." + extension); }
     foreach (QString extension, m_audioExtensions) { m_fileNameFilters << QString("*." + extension); }
     foreach (QString extension, m_photoExtensions) { m_fileNameFilters << QString("*." + extension); }
+
+    LOG(VB_GENERAL, LOG_INFO, QString("Video extensions: %1").arg(m_videoExtensions.join(",")));
+    LOG(VB_GENERAL, LOG_INFO, QString("Audio extensions: %1").arg(m_audioExtensions.join(",")));
+    LOG(VB_GENERAL, LOG_INFO, QString("Image extensions: %1").arg(m_photoExtensions.join(",")));
 
     // configured directories to monitor
     QString directories = gLocalContext->GetSetting(LOCAL_DIRECTORIES, QString(""));
