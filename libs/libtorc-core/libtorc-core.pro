@@ -13,7 +13,7 @@ QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 QT += sql network
 QT -= gui
 
-DEPENDPATH  += ./platforms ./http
+DEPENDPATH  += ./platforms ./http ./upnp
 INCLUDEPATH += $$DEPENDPATH
 
 HEADERS += torccoreexport.h
@@ -64,6 +64,7 @@ HEADERS += http/torcxmlserialiser.h
 HEADERS += http/torcjsonserialiser.h
 HEADERS += http/torcplistserialiser.h
 HEADERS += http/torcbinaryplistserialiser.h
+HEADERS += upnp/torcssdp.h
 
 SOURCES += torcloggingimp.cpp
 SOURCES += torcplist.cpp
@@ -107,6 +108,7 @@ SOURCES += http/torcxmlserialiser.cpp
 SOURCES += http/torcjsonserialiser.cpp
 SOURCES += http/torcplistserialiser.cpp
 SOURCES += http/torcbinaryplistserialiser.cpp
+SOURCES += upnp/torcssdp.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files  = torclogging.h
@@ -133,6 +135,7 @@ inc.files += torcsetting.h
 inc.files += torchttpserver.h
 inc.files += torchtmlhandler.h
 inc.files += torchttpservice.h
+inc.files += torcssdp.h
 
 # Qt 5 mime backport for Qt 4.8
 lessThan(QT_MAJOR_VERSION, 5) {
