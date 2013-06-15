@@ -83,7 +83,7 @@ TorcSSDPPriv::~TorcSSDPPriv()
 QUdpSocket* CreateSearchSocket(const QHostAddress &HostAddress, TorcSSDP *Parent)
 {
     QUdpSocket *socket = new QUdpSocket();
-    if (!socket->bind(HostAddress))
+    if (!socket->bind(HostAddress, 0))
         LOG(VB_GENERAL, LOG_ERR, QString("Failed to bind SSDP search socket (%1)").arg(socket->errorString()));
     socket->setSocketOption(QAbstractSocket::MulticastTtlOption, 4);
     socket->setSocketOption(QAbstractSocket::MulticastLoopbackOption, 1);
