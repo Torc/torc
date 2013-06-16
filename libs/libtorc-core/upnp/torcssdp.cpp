@@ -48,6 +48,7 @@ class TorcSSDPPriv
   protected:
     TorcSSDP    *m_parent;
     bool         m_started;
+    QList<QHostAddress> m_addressess;
     QHostAddress m_ipv4GroupAddress;
     QUdpSocket  *m_ipv4SearchSocket;
     QUdpSocket  *m_ipv4MulticastSocket;
@@ -120,6 +121,10 @@ void TorcSSDPPriv::Start(void)
     m_ipv6LinkSearchSocket      = CreateSearchSocket(QHostAddress("::"), m_parent);
     m_ipv6LinkMulticastSocket   = CreateMulticastSocket(m_ipv6LinkGroupAddress, m_parent, interface);
 
+    QList<QNetworkAddressEntry> entries = interface.addressEntries();
+    foreach (QNetworkAddressEntry entry, entries)
+        m_addressess << entry.ip();
+
     // and search
     QByteArray search("M-SEARCH * HTTP/1.1\r\n"
                       "HOST: 239.255.255.250:1900\r\n"
@@ -141,6 +146,8 @@ void TorcSSDPPriv::Start(void)
 
 void TorcSSDPPriv::Stop(void)
 {
+    m_addressess.clear();
+
     if (m_started)
         LOG(VB_GENERAL, LOG_INFO, "Stopping SSDP discovery");
     m_started = false;
@@ -181,9 +188,19 @@ void TorcSSDPPriv::Read(QUdpSocket *Socket)
 {
     while (Socket && Socket->hasPendingDatagrams())
     {
+        QHostAddress address;
+        quint16 port;
         QByteArray datagram;
         datagram.resize(Socket->pendingDatagramSize());
-        Socket->readDatagram(datagram.data(), datagram.size());
+        Socket->readDatagram(datagram.data(), datagram.size(), &address, &port);
+
+        // filter out our own announcements
+        if (port == m_ipv4SearchSocket->localPort() || port == m_ipv6LinkSearchSocket->localPort())
+        {
+            if (m_addressess.contains(address))
+                continue;
+        }
+
         LOG(VB_NETWORK, LOG_DEBUG, datagram);
     }
 }
