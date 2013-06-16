@@ -39,23 +39,25 @@ class TorcSSDPPriv
     TorcSSDPPriv(TorcSSDP *Parent);
     ~TorcSSDPPriv();
 
-    void         Start       (void);
-    void         Stop        (void);
-    void         Search      (const QString &Name);
-    void         Announce    (const QString &Name, TorcSSDP::SSDPAnnounce Type);
-    void         Read        (QUdpSocket *Socket);
+    void         Start         (void);
+    void         Stop          (void);
+    void         Search        (const QString &Name, QObject* Owner);
+    void         CancelSearch  (const QString &Name, QObject* Owner);
+    void         Announce      (const QString &Name, TorcSSDP::SSDPAnnounce Type);
+    void         Read          (QUdpSocket *Socket);
 
   protected:
-    TorcSSDP    *m_parent;
-    bool         m_started;
-    QList<QHostAddress> m_addressess;
-    QHostAddress m_ipv4GroupAddress;
-    QUdpSocket  *m_ipv4SearchSocket;
-    QUdpSocket  *m_ipv4MulticastSocket;
-    QString      m_ipv6LinkGroupBaseAddress;
-    QHostAddress m_ipv6LinkGroupAddress;
-    QUdpSocket  *m_ipv6LinkSearchSocket;
-    QUdpSocket  *m_ipv6LinkMulticastSocket;
+    TorcSSDP                   *m_parent;
+    bool                        m_started;
+    QList<QHostAddress>         m_addressess;
+    QHostAddress                m_ipv4GroupAddress;
+    QUdpSocket                 *m_ipv4SearchSocket;
+    QUdpSocket                 *m_ipv4MulticastSocket;
+    QString                     m_ipv6LinkGroupBaseAddress;
+    QHostAddress                m_ipv6LinkGroupAddress;
+    QUdpSocket                 *m_ipv6LinkSearchSocket;
+    QUdpSocket                 *m_ipv6LinkMulticastSocket;
+    QMultiMap<QString,QObject*> m_searchRequests;
 };
 
 TorcSSDP* gSSDP = NULL;
@@ -125,22 +127,6 @@ void TorcSSDPPriv::Start(void)
     foreach (QNetworkAddressEntry entry, entries)
         m_addressess << entry.ip();
 
-    // and search
-    QByteArray search("M-SEARCH * HTTP/1.1\r\n"
-                      "HOST: 239.255.255.250:1900\r\n"
-                      "MAN: \"ssdp:discover\"\r\n"
-                      "MX: 3\r\n"
-                      "ST: ssdp:all\r\n\r\n");
-
-    qint64 sent = m_ipv4SearchSocket->writeDatagram(search, m_ipv4GroupAddress, 1900);
-    if (sent != search.size())
-        LOG(VB_GENERAL, LOG_ERR, QString("Error sending search request (%1)").arg(m_ipv4SearchSocket->errorString()));
-
-    sent = m_ipv6LinkSearchSocket->writeDatagram(search, m_ipv6LinkGroupAddress, 1900);
-    if (sent != search.size())
-        LOG(VB_GENERAL, LOG_ERR, QString("Error sending search request (%1)").arg(m_ipv6LinkSearchSocket->errorString()));
-
-    LOG(VB_NETWORK, LOG_INFO, "Sent SSDP search requests");
     m_started = true;
 }
 
@@ -174,7 +160,55 @@ void TorcSSDPPriv::Stop(void)
     m_ipv6LinkMulticastSocket = NULL;
 }
 
-void TorcSSDPPriv::Search(const QString &Name)
+void TorcSSDPPriv::Search(const QString &Name, QObject *Owner)
+{
+    if (Name.isEmpty() || !Owner)
+    {
+        // full search
+
+        if (m_ipv4SearchSocket && m_ipv4SearchSocket->isValid() && m_ipv4SearchSocket->state() == QAbstractSocket::BoundState)
+        {
+            QByteArray search("M-SEARCH * HTTP/1.1\r\n"
+                              "HOST: 239.255.255.250:1900\r\n"
+                              "MAN: \"ssdp:discover\"\r\n"
+                              "MX: 3\r\n"
+                              "ST: ssdp:all\r\n\r\n");
+
+            qint64 sent = m_ipv4SearchSocket->writeDatagram(search, m_ipv4GroupAddress, 1900);
+            if (sent != search.size())
+                LOG(VB_GENERAL, LOG_ERR, QString("Error sending search request (%1)").arg(m_ipv4SearchSocket->errorString()));
+            else
+                LOG(VB_NETWORK, LOG_INFO, "Sent IPv4 SSDP search request");
+        }
+
+        if (m_ipv6LinkSearchSocket && m_ipv6LinkSearchSocket->isValid() && m_ipv6LinkSearchSocket->state() == QAbstractSocket::BoundState)
+        {
+            QByteArray search("M-SEARCH * HTTP/1.1\r\n"
+                              "HOST: [FF02::C]:1900\r\n"
+                              "MAN: \"ssdp:discover\"\r\n"
+                              "MX: 3\r\n"
+                              "ST: ssdp:all\r\n\r\n");
+
+            qint64 sent = m_ipv6LinkSearchSocket->writeDatagram(search, m_ipv6LinkGroupAddress, 1900);
+            if (sent != search.size())
+                LOG(VB_GENERAL, LOG_ERR, QString("Error sending search request (%1)").arg(m_ipv6LinkSearchSocket->errorString()));
+            else
+                LOG(VB_NETWORK, LOG_INFO, "Sent IPv6 SSDP search request");
+        }
+
+        return;
+    }
+
+    // specific search request
+    // NB we don't search specifically, just use the cache
+
+    if (!m_searchRequests.contains(Name, Owner))
+        m_searchRequests.insert(Name, Owner);
+
+    // TODO - notify existing matches to owner
+}
+
+void TorcSSDPPriv::CancelSearch(const QString &Name, QObject *Owner)
 {
     LOG(VB_GENERAL, LOG_INFO, "SEARCH");
 }
@@ -210,6 +244,12 @@ TorcSSDP::TorcSSDP()
     m_priv(new TorcSSDPPriv(this))
 {
     gLocalContext->AddObserver(this);
+
+    // kick off a full local search
+    SearchPriv(QString(), NULL);
+
+    // and schedule another search for after the MX time in our first request (3)
+    m_searchTimer = startTimer(3000 + qrand() % 2000);
 }
 
 TorcSSDP::~TorcSSDP()
@@ -218,13 +258,26 @@ TorcSSDP::~TorcSSDP()
     delete m_priv;
 }
 
-bool TorcSSDP::Search(const QString &Name)
+bool TorcSSDP::Search(const QString &Name, QObject *Owner)
 {
     QMutexLocker locker(gSSDPLock);
 
     if (gSSDP)
     {
-        QMetaObject::invokeMethod(gSSDP, "SearchPriv", Qt::AutoConnection, Q_ARG(QString, Name));
+        QMetaObject::invokeMethod(gSSDP, "SearchPriv", Qt::AutoConnection, Q_ARG(QString, Name), Q_ARG(QObject*, Owner));
+        return true;
+    }
+
+    return false;
+}
+
+bool TorcSSDP::CancelSearch(const QString &Name, QObject *Owner)
+{
+    QMutexLocker locker(gSSDPLock);
+
+    if (gSSDP)
+    {
+        QMetaObject::invokeMethod(gSSDP, "CancelSearchPriv", Qt::AutoConnection, Q_ARG(QString, Name), Q_ARG(QObject*, Owner));
         return true;
     }
 
@@ -259,12 +312,17 @@ TorcSSDP* TorcSSDP::Create(bool Destroy)
     return NULL;
 }
 
-void TorcSSDP::SearchPriv(const QString &Name)
+void TorcSSDP::SearchPriv(const QString &Name, QObject *Owner)
 {
     if (m_priv)
-        m_priv->Search(Name);
+        m_priv->Search(Name, Owner);
 }
 
+void TorcSSDP::CancelSearchPriv(const QString &Name, QObject *Owner)
+{
+    if (m_priv)
+        m_priv->CancelSearch(Name, Owner);
+}
 
 void TorcSSDP::AnnouncePriv(const QString &Name, SSDPAnnounce Type)
 {
@@ -283,6 +341,15 @@ bool TorcSSDP::event(QEvent *Event)
                 m_priv->Start();
             else if (event->Event() == Torc::NetworkUnavailable && m_priv)
                 m_priv->Stop();
+        }
+    }
+    else if (Event->type() == QEvent::Timer)
+    {
+        QTimerEvent* event = dynamic_cast<QTimerEvent*>(Event);
+        if (event && event->timerId() == m_searchTimer)
+        {
+            killTimer(m_searchTimer);
+            SearchPriv(QString(), NULL);
         }
     }
 
