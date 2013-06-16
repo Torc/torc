@@ -573,32 +573,29 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
 
         if (m_configuration.isValid())
         {
-            LOG(VB_GENERAL, LOG_INFO, QString("Network Name: %1 Bearer: %2 Type: %3")
-                .arg(configuration.name())
-                .arg(configuration.bearerTypeName())
-                .arg(ConfigurationTypeToString(configuration.type())));
+            LOG(VB_GENERAL, LOG_INFO, QString("Network interface: %1 Bearer: %2").arg(configuration.name()).arg(configuration.bearerTypeName()));
             m_online = true;
-
-            QNetworkInterface interface = QNetworkInterface::interfaceFromName(m_configuration.name());
-            m_interface = interface;
+            m_interface = QNetworkInterface::interfaceFromName(m_configuration.name());
         }
         else
         {
             LOG(VB_GENERAL, LOG_INFO, "No valid network connection");
+            m_interface = QNetworkInterface();
             m_online = false;
         }
     }
 
     if (m_online && !wasonline)
     {
-        LOG(VB_GENERAL, LOG_INFO, "Network up");
         gLocalContext->NotifyEvent(Torc::NetworkAvailable);
-        gLocalContext->SendMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout,
-                                   tr("Network"), tr("Network available"));
+        gLocalContext->SendMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout, tr("Network"), tr("Network available"));
 
-        QList<QHostAddress> addresses = m_interface.allAddresses();
-        foreach (QHostAddress address, addresses)
-            LOG(VB_NETWORK, LOG_INFO, "Address: " + address.toString());
+        QStringList addresses;
+        QList<QNetworkAddressEntry> entries = m_interface.addressEntries();
+        foreach (QNetworkAddressEntry entry, entries)
+            addresses << entry.ip().toString();
+
+        LOG(VB_GENERAL, LOG_INFO, QString("Network up (%1)").arg(addresses.join(", ")));
     }
     else if (wasonline && !m_online)
     {
