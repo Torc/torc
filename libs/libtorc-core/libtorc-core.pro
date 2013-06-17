@@ -64,6 +64,7 @@ HEADERS += http/torcxmlserialiser.h
 HEADERS += http/torcjsonserialiser.h
 HEADERS += http/torcplistserialiser.h
 HEADERS += http/torcbinaryplistserialiser.h
+HEADERS += upnp/torcupnp.h
 HEADERS += upnp/torcssdp.h
 
 SOURCES += torcloggingimp.cpp
@@ -108,6 +109,7 @@ SOURCES += http/torcxmlserialiser.cpp
 SOURCES += http/torcjsonserialiser.cpp
 SOURCES += http/torcplistserialiser.cpp
 SOURCES += http/torcbinaryplistserialiser.cpp
+SOURCES += upnp/torcupnp.cpp
 SOURCES += upnp/torcssdp.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
