@@ -85,6 +85,7 @@ class TorcLocalContextPriv
     TorcAdminThread      *m_adminThread;
     TorcLanguage          m_language;
     QUuid                 m_uuid;
+    QString               m_uuidString;
 };
 
 TorcLocalContextPriv::TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFlags)
@@ -96,6 +97,11 @@ TorcLocalContextPriv::TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFla
     m_adminThread(NULL),
     m_uuid(QUuid::createUuid())
 {
+    m_uuidString = m_uuid.toString();
+    if (m_uuidString.startsWith('{'))
+        m_uuidString = m_uuidString.mid(1);
+    if (m_uuidString.endsWith('}'))
+        m_uuidString.chop(1);
 }
 
 TorcLocalContextPriv::~TorcLocalContextPriv()
@@ -133,7 +139,7 @@ TorcLocalContextPriv::~TorcLocalContextPriv()
 bool TorcLocalContextPriv::Init(void)
 {
     // log uuid
-    LOG(VB_GENERAL, LOG_INFO, QString("UUID: %1").arg(m_uuid.toString()));
+    LOG(VB_GENERAL, LOG_INFO, QString("UUID: %1").arg(m_uuidString));
 
     // Create the configuration directory
     QString configdir = GetTorcConfigDir();
@@ -255,7 +261,7 @@ void TorcLocalContextPriv::SetPreference(const QString &Name, const QString &Val
 
 QString TorcLocalContextPriv::GetUuid(void)
 {
-    return m_uuid.toString();
+    return m_uuidString;
 }
 
 void TorcLocalContextPriv::PrintSessionSettings(void)
