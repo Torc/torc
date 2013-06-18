@@ -461,18 +461,42 @@ void TorcSSDPPriv::Refresh(void)
     int count = 0;
     qint64 now = QDateTime::currentMSecsSinceEpoch();
 
+    // remove stale discovered devices (if still present, they should have notified
+    // a refresh)
+    QList<TorcUPNPDescription> removed;
     QMutableHashIterator<QString,TorcUPNPDescription> it(m_discoveredDevices);
     while (it.hasNext())
     {
         it.next();
         if (it.value().GetExpiry() < now)
         {
+            removed << it.value();
             it.remove();
             count++;
         }
     }
 
-    LOG(VB_NETWORK, LOG_INFO, QString("Remove %1 stale cache entries").arg(count));
+    // notify interested parties that they've been removed
+    if (!removed.isEmpty())
+    {
+        QMultiHash<QString,QObject*>::iterator it = m_searchRequests.begin();
+        for ( ; it != m_searchRequests.end(); ++it)
+        {
+            QList<TorcUPNPDescription>::const_iterator it2 = removed.begin();
+            for ( ; it2 != removed.end(); ++it2)
+            {
+                if ((*it2).GetType() == it.key())
+                {
+                    QVariantMap data;
+                    data.insert("usn", (*it2).GetUSN());
+                    TorcEvent *event = new TorcEvent(Torc::ServiceWentAway, data);
+                    QCoreApplication::postEvent(it.value(), event);
+                }
+            }
+        }
+    }
+
+    LOG(VB_NETWORK, LOG_INFO, QString("Removed %1 stale cache entries").arg(count));
 }
 
 TorcSSDP::TorcSSDP()
