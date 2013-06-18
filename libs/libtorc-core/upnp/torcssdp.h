@@ -6,6 +6,7 @@
 
 // Torc
 #include "torccoreexport.h"
+#include "upnp/torcupnp.h"
 
 class TorcSSDPPriv;
 
@@ -16,33 +17,29 @@ class TORC_CORE_PUBLIC TorcSSDP : public QObject
     Q_OBJECT
 
   public:
-    enum SSDPAnnounce
-    {
-        Alive,
-        ByeBye
-    };
-
-  public:
-    static bool      Search        (const QString &Name, QObject *Owner);
-    static bool      CancelSearch  (const QString &Name, QObject *Owner);
-    static bool      Announce      (const QString &Name, SSDPAnnounce Type);
+    static bool      Search             (const QString &Name, QObject *Owner);
+    static bool      CancelSearch       (const QString &Name, QObject *Owner);
+    static bool      Announce           (const TorcUPNPDescription &Description);
+    static bool      CancelAnnounce     (const TorcUPNPDescription &Description);
 
   protected:
     TorcSSDP();
     ~TorcSSDP();
 
-    static TorcSSDP* Create        (bool Destroy = false);
+    static TorcSSDP* Create             (bool Destroy = false);
 
   protected slots:
-    void             SearchPriv    (const QString &Name, QObject *Owner);
-    void             CancelSearchPriv (const QString &Name, QObject *Owner);
-    void             AnnouncePriv  (const QString &Name, SSDPAnnounce Type);
-    bool             event         (QEvent *Event);
-    void             Read          (void);
+    void             SearchPriv         (const QString &Name, QObject *Owner);
+    void             CancelSearchPriv   (const QString &Name, QObject *Owner);
+    void             AnnouncePriv       (const TorcUPNPDescription Description);
+    void             CancelAnnouncePriv (const TorcUPNPDescription Description);
+    bool             event              (QEvent *Event);
+    void             Read               (void);
 
   private:
     TorcSSDPPriv    *m_priv;
     int              m_searchTimer;
+    int              m_refreshTimer;
 };
 
 #endif // TORCSSDP_H

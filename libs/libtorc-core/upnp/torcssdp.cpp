@@ -31,7 +31,17 @@
 #include "torcadminthread.h"
 #include "torcnetwork.h"
 #include "torcthread.h"
+#include "torcupnp.h"
 #include "torcssdp.h"
+
+/*! \class TorcSSDPPriv
+ *  \class The internal handler for all Simple Service Discovery Protocol messaging
+ *
+ * \todo Revisit behaviour for search and announce wrt network availability and network allowed inbound/outbound
+ * \todo Actually announce (with random 0-100ms delay) plus retry
+ * \todo Schedule announce refreshes (half of cache-control)
+ * \todo Respond to search requests
+*/
 
 class TorcSSDPPriv
 {
@@ -39,29 +49,35 @@ class TorcSSDPPriv
     TorcSSDPPriv(TorcSSDP *Parent);
     ~TorcSSDPPriv();
 
-    void         Start         (void);
-    void         Stop          (void);
-    void         Search        (const QString &Name, QObject* Owner);
-    void         CancelSearch  (const QString &Name, QObject* Owner);
-    void         Announce      (const QString &Name, TorcSSDP::SSDPAnnounce Type);
-    void         Read          (QUdpSocket *Socket);
+    void         Start                (void);
+    void         Stop                 (void);
+    void         Search               (const QString &Name, QObject* Owner);
+    void         CancelSearch         (const QString &Name, QObject* Owner);
+    void         Announce             (const TorcUPNPDescription &Description);
+    void         CancelAnnounce       (const TorcUPNPDescription &Description);
+    void         Read                 (QUdpSocket *Socket);
+    void         ProcessDevice        (const QString &USN, const QString &Type, const QString &Location, qint64 Expires, bool Add);
+    void         Refresh              (void);
 
   protected:
-    TorcSSDP                   *m_parent;
-    bool                        m_started;
-    QList<QHostAddress>         m_addressess;
-    QHostAddress                m_ipv4GroupAddress;
-    QUdpSocket                 *m_ipv4SearchSocket;
-    QUdpSocket                 *m_ipv4MulticastSocket;
-    QString                     m_ipv6LinkGroupBaseAddress;
-    QHostAddress                m_ipv6LinkGroupAddress;
-    QUdpSocket                 *m_ipv6LinkSearchSocket;
-    QUdpSocket                 *m_ipv6LinkMulticastSocket;
-    QMultiMap<QString,QObject*> m_searchRequests;
+    TorcSSDP                          *m_parent;
+    bool                               m_started;
+    QList<QHostAddress>                m_addressess;
+    QHostAddress                       m_ipv4GroupAddress;
+    QUdpSocket                        *m_ipv4SearchSocket;
+    QUdpSocket                        *m_ipv4MulticastSocket;
+    QString                            m_ipv6LinkGroupBaseAddress;
+    QHostAddress                       m_ipv6LinkGroupAddress;
+    QUdpSocket                        *m_ipv6LinkSearchSocket;
+    QUdpSocket                        *m_ipv6LinkMulticastSocket;
+    QHash<QString,TorcUPNPDescription> m_discoveredDevices;
+    QMultiHash<QString,QObject*>       m_searchRequests;
 };
 
 TorcSSDP* gSSDP = NULL;
-QMutex*   gSSDPLock = new QMutex();
+QMutex*   gSSDPLock = new QMutex(QMutex::Recursive);
+QMap<QString,QObject*> gQueuedSearches;
+QList<TorcUPNPDescription> gQueuedAnnouncements;
 
 TorcSSDPPriv::TorcSSDPPriv(TorcSSDP *Parent)
   : m_parent(Parent),
@@ -76,6 +92,22 @@ TorcSSDPPriv::TorcSSDPPriv(TorcSSDP *Parent)
 {
     if (TorcNetwork::IsAvailable())
         Start();
+
+    {
+        QMutexLocker locker(gSSDPLock);
+
+        if (!gQueuedSearches.isEmpty())
+        {
+            QMap<QString,QObject*>::const_iterator it = gQueuedSearches.begin();
+            for ( ; it != gQueuedSearches.end(); ++it)
+                Search(it.key(), it.value());
+
+            gQueuedSearches.clear();
+        }
+
+        while (!gQueuedAnnouncements.isEmpty())
+            Announce(gQueuedAnnouncements.takeFirst());
+    }
 }
 
 TorcSSDPPriv::~TorcSSDPPriv()
@@ -117,21 +149,45 @@ void TorcSSDPPriv::Start(void)
 
     // get the interface the network is using
     QNetworkInterface interface = TorcNetwork::GetInterface();
+
+    // create sockets
     m_ipv6LinkGroupAddress      = QHostAddress(m_ipv6LinkGroupBaseAddress + "%" + interface.name());
     m_ipv4SearchSocket          = CreateSearchSocket(QHostAddress("0.0.0.0"), m_parent);
     m_ipv4MulticastSocket       = CreateMulticastSocket(m_ipv4GroupAddress, m_parent, interface);
     m_ipv6LinkSearchSocket      = CreateSearchSocket(QHostAddress("::"), m_parent);
     m_ipv6LinkMulticastSocket   = CreateMulticastSocket(m_ipv6LinkGroupAddress, m_parent, interface);
 
+    // refresh the list of local ip addresses
     QList<QNetworkAddressEntry> entries = interface.addressEntries();
     foreach (QNetworkAddressEntry entry, entries)
         m_addressess << entry.ip();
 
     m_started = true;
+
+    // search is evented from TorcSSDP parent..
 }
 
 void TorcSSDPPriv::Stop(void)
 {
+    // Network is no longer available - notify clients that services have gone away
+    QMultiHash<QString,QObject*>::iterator it = m_searchRequests.begin();
+    for ( ; it != m_searchRequests.end(); ++it)
+    {
+        QHash<QString,TorcUPNPDescription>::const_iterator it2 = m_discoveredDevices.begin();
+        for ( ; it2 != m_discoveredDevices.end(); ++it2)
+        {
+            if (it2.value().GetType() == it.key())
+            {
+                QVariantMap data;
+                data.insert("usn", it2.value().GetUSN());
+                TorcEvent *event = new TorcEvent(Torc::ServiceWentAway, data);
+                QCoreApplication::postEvent(it.value(), event);
+            }
+        }
+    }
+
+    m_discoveredDevices.clear();
+
     m_addressess.clear();
 
     if (m_started)
@@ -199,23 +255,64 @@ void TorcSSDPPriv::Search(const QString &Name, QObject *Owner)
         return;
     }
 
-    // specific search request
-    // NB we don't search specifically, just use the cache
+    // search request (NB we don't search specifically, just use the cache)
 
     if (!m_searchRequests.contains(Name, Owner))
+    {
         m_searchRequests.insert(Name, Owner);
+        LOG(VB_NETWORK, LOG_INFO, QString("Starting search for '%1'").arg(Name));
+    }
 
-    // TODO - notify existing matches to owner
+    // notify existing matches to owner
+    QHash<QString,TorcUPNPDescription>::const_iterator it = m_discoveredDevices.begin();
+    for ( ; it != m_discoveredDevices.end(); ++it)
+    {
+        if (it.value().GetType() == Name)
+        {
+            QVariantMap data;
+            data.insert("usn",      it.value().GetUSN());
+            data.insert("type",     it.value().GetType());
+            data.insert("location", it.value().GetLocation());
+            TorcEvent *event = new TorcEvent(Torc::ServiceDiscovered, data);
+            QCoreApplication::postEvent(Owner, event);
+        }
+    }
 }
 
 void TorcSSDPPriv::CancelSearch(const QString &Name, QObject *Owner)
 {
-    LOG(VB_GENERAL, LOG_INFO, "SEARCH");
+    if (m_searchRequests.contains(Name, Owner))
+    {
+        m_searchRequests.remove(Name, Owner);
+        LOG(VB_NETWORK, LOG_INFO, QString("Cancelled search for '%1'").arg(Name));
+    }
 }
 
-void TorcSSDPPriv::Announce(const QString &Name, TorcSSDP::SSDPAnnounce Type)
+void TorcSSDPPriv::Announce(const TorcUPNPDescription &Description)
 {
-    LOG(VB_GENERAL, LOG_INFO, "ANNOUNCE");
+    LOG(VB_GENERAL, LOG_INFO, "ANNOUNCE " + Description.GetType());
+}
+
+void TorcSSDPPriv::CancelAnnounce(const TorcUPNPDescription &Description)
+{
+    LOG(VB_GENERAL, LOG_INFO, "CANCEL ANNOUNCE " + Description.GetType());
+}
+
+qint64 GetExpiryTime(const QString &Expires)
+{
+    // NB this ignores the date header - just assume it is correct
+    int index = Expires.indexOf("max-age", 0, Qt::CaseInsensitive);
+    if (index > -1)
+    {
+        int index2 = Expires.indexOf("=", index);
+        if (index2 > -1)
+        {
+            int seconds = Expires.mid(index2 + 1).toInt();
+            return QDateTime::currentMSecsSinceEpoch() + 1000 * seconds;
+        }
+    }
+
+    return -1;
 }
 
 void TorcSSDPPriv::Read(QUdpSocket *Socket)
@@ -230,30 +327,184 @@ void TorcSSDPPriv::Read(QUdpSocket *Socket)
 
         // filter out our own announcements
         if (port == m_ipv4SearchSocket->localPort() || port == m_ipv6LinkSearchSocket->localPort())
-        {
             if (m_addressess.contains(address))
                 continue;
+
+        // use a QString for greater flexibility in splitting and searching text
+        QString data(datagram);
+        LOG(VB_NETWORK, LOG_DEBUG, "Raw datagram:\r\n" + data);
+
+        // split data into lines
+        QStringList lines = data.split("\r\n", QString::SkipEmptyParts);
+        if (!lines.isEmpty())
+        {
+            QMap<QString,QString> headers;
+
+            // pull out type
+            QString type = lines.takeFirst().trimmed();
+
+            // process headers
+            while (!lines.isEmpty())
+            {
+                QString header = lines.takeFirst();
+                int index = header.indexOf(':');
+                if (index > -1)
+                    headers.insert(header.left(index).trimmed().toLower(), header.mid(index + 1).trimmed());
+            }
+
+            if (type.startsWith("HTTP", Qt::CaseInsensitive))
+            {
+                // response
+                if (headers.contains("cache-control"))
+                {
+                    qint64 expires = GetExpiryTime(headers.value("cache-control"));
+                    if (expires > 0)
+                        ProcessDevice(headers.value("usn"), headers.value("st"), headers.value("location"), expires, true/*add*/);
+                }
+            }
+            else if (type.startsWith("NOTIFY", Qt::CaseInsensitive))
+            {
+                // notfification ssdp:alive or ssdp:bye
+                if (headers.contains("nts"))
+                {
+                    bool add = headers["nts"] == "ssdp:alive";
+
+                    if (add)
+                    {
+                        if (headers.contains("cache-control"))
+                        {
+                            qint64 expires = GetExpiryTime(headers.value("cache-control"));
+                            if (expires > 0)
+                                ProcessDevice(headers.value("usn"), headers.value("nt"), headers.value("location"), expires, true/*add*/);
+                        }
+                    }
+                    else
+                    {
+                        ProcessDevice(headers.value("usn"), headers.value("nt"), headers.value("location"), 1, false/*remove*/);
+                    }
+                }
+            }
+            else if (type.startsWith("M-SEARCH", Qt::CaseInsensitive))
+            {
+                // search
+            }
+        }
+    }
+}
+
+void TorcSSDPPriv::ProcessDevice(const QString &USN, const QString &Type, const QString &Location, qint64 Expires, bool Add)
+{
+    if (USN.isEmpty() || Type.isEmpty() || Location.isEmpty() || Expires < 1)
+        return;
+
+    bool notify = true;
+
+    if (m_discoveredDevices.contains(USN))
+    {
+        // is this just an expiry update?
+        if (Add)
+        {
+            TorcUPNPDescription &desc = m_discoveredDevices[USN];
+            if (desc.GetLocation() == Location && desc.GetType() == Type)
+            {
+                notify = false;
+            }
+            else
+            {
+                // TODO BtHomeHub sends two different location urls for the devices (same USN and ST)
+                // One uses a 'upnp' sub-directory and the other 'dslforum' - and the xml is different.
+                (void)m_discoveredDevices.remove(USN);
+                m_discoveredDevices.insert(USN, TorcUPNPDescription(USN, Type, Location, Expires));
+                LOG(VB_NETWORK, LOG_DEBUG, "Updated USN: " + USN);
+            }
+        }
+        else
+        {
+            (void)m_discoveredDevices.remove(USN);
+            LOG(VB_NETWORK, LOG_DEBUG, "Removed USN: " + USN);
+        }
+    }
+    else if (Add)
+    {
+        m_discoveredDevices.insert(USN, TorcUPNPDescription(USN, Type, Location, Expires));
+        LOG(VB_NETWORK, LOG_DEBUG, "Added USN: " + USN);
+    }
+
+    // update interested parties
+    if (notify && m_searchRequests.contains(Type))
+    {
+        QVariantMap data;
+        data.insert("usn", USN);
+
+        if (Add)
+        {
+            data.insert("type", Type);
+            data.insert("location", Location);
         }
 
-        LOG(VB_NETWORK, LOG_DEBUG, datagram);
+        TorcEvent event(Add ? Torc::ServiceDiscovered : Torc::ServiceWentAway, data);
+
+        QMultiHash<QString,QObject*>::const_iterator it = m_searchRequests.find(Type);
+        while (it != m_searchRequests.end() && it.key() == Type)
+        {
+            QCoreApplication::postEvent(it.value(), event.Copy());
+            ++it;
+        }
     }
+}
+
+void TorcSSDPPriv::Refresh(void)
+{
+    if (!m_started)
+        return;
+
+    int count = 0;
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+
+    QMutableHashIterator<QString,TorcUPNPDescription> it(m_discoveredDevices);
+    while (it.hasNext())
+    {
+        it.next();
+        if (it.value().GetExpiry() < now)
+        {
+            it.remove();
+            count++;
+        }
+    }
+
+    LOG(VB_NETWORK, LOG_INFO, QString("Remove %1 stale cache entries").arg(count));
 }
 
 TorcSSDP::TorcSSDP()
   : QObject(),
-    m_priv(new TorcSSDPPriv(this))
+    m_priv(new TorcSSDPPriv(this)),
+    m_searchTimer(0),
+    m_refreshTimer(0)
 {
     gLocalContext->AddObserver(this);
 
-    // kick off a full local search
-    SearchPriv(QString(), NULL);
+    if (TorcNetwork::IsAvailable())
+    {
+        // kick off a full local search
+        SearchPriv(QString(), NULL);
 
-    // and schedule another search for after the MX time in our first request (3)
-    m_searchTimer = startTimer(3000 + qrand() % 2000);
+        // and schedule another search for after the MX time in our first request (3)
+        m_searchTimer = startTimer(3000 + qrand() % 2000);
+    }
+
+    // minimum advertisement duration is 30 mins (1800 seconds). Check for expiry
+    // every 5 minutes and flush stale entries
+    m_refreshTimer = startTimer(5 * 60 * 1000);
 }
 
 TorcSSDP::~TorcSSDP()
 {
+    if (m_searchTimer)
+        killTimer(m_searchTimer);
+
+    if (m_refreshTimer)
+        killTimer(m_refreshTimer);
+
     gLocalContext->RemoveObserver(this);
     delete m_priv;
 }
@@ -266,6 +517,10 @@ bool TorcSSDP::Search(const QString &Name, QObject *Owner)
     {
         QMetaObject::invokeMethod(gSSDP, "SearchPriv", Qt::AutoConnection, Q_ARG(QString, Name), Q_ARG(QObject*, Owner));
         return true;
+    }
+    else
+    {
+        gQueuedSearches.insert(Name, Owner);
     }
 
     return false;
@@ -284,13 +539,30 @@ bool TorcSSDP::CancelSearch(const QString &Name, QObject *Owner)
     return false;
 }
 
-bool TorcSSDP::Announce(const QString &Name, SSDPAnnounce Type)
+bool TorcSSDP::Announce(const TorcUPNPDescription &Description)
 {
     QMutexLocker locker(gSSDPLock);
 
     if (gSSDP)
     {
-        QMetaObject::invokeMethod(gSSDP, "AnnouncePriv", Qt::AutoConnection, Q_ARG(QString, Name), Q_ARG(SSDPAnnounce, Type));
+        QMetaObject::invokeMethod(gSSDP, "AnnouncePriv", Qt::AutoConnection, Q_ARG(TorcUPNPDescription, Description));
+        return true;
+    }
+    else
+    {
+        gQueuedAnnouncements << Description;
+    }
+
+    return false;
+}
+
+bool TorcSSDP::CancelAnnounce(const TorcUPNPDescription &Description)
+{
+    QMutexLocker locker(gSSDPLock);
+
+    if (gSSDP)
+    {
+        QMetaObject::invokeMethod(gSSDP, "CancelAnnouncePriv", Qt::AutoConnection, Q_ARG(TorcUPNPDescription, Description));
         return true;
     }
 
@@ -309,6 +581,7 @@ TorcSSDP* TorcSSDP::Create(bool Destroy)
     }
 
     delete gSSDP;
+    gSSDP = NULL;
     return NULL;
 }
 
@@ -324,10 +597,16 @@ void TorcSSDP::CancelSearchPriv(const QString &Name, QObject *Owner)
         m_priv->CancelSearch(Name, Owner);
 }
 
-void TorcSSDP::AnnouncePriv(const QString &Name, SSDPAnnounce Type)
+void TorcSSDP::AnnouncePriv(const TorcUPNPDescription Description)
 {
     if (m_priv)
-        m_priv->Announce(Name, Type);
+        m_priv->Announce(Description);
+}
+
+void TorcSSDP::CancelAnnouncePriv(const TorcUPNPDescription Description)
+{
+    if (m_priv)
+        m_priv->CancelAnnounce(Description);
 }
 
 bool TorcSSDP::event(QEvent *Event)
@@ -338,18 +617,37 @@ bool TorcSSDP::event(QEvent *Event)
         if (event)
         {
             if (event->Event() == Torc::NetworkAvailable && m_priv)
+            {
                 m_priv->Start();
+                SearchPriv(QString(), NULL);
+                if (m_searchTimer)
+                    killTimer(m_searchTimer);
+                m_searchTimer = startTimer(3000 + qrand() % 2000);
+            }
             else if (event->Event() == Torc::NetworkUnavailable && m_priv)
+            {
+                if (m_searchTimer)
+                    killTimer(m_searchTimer);
+                m_searchTimer = 0;
                 m_priv->Stop();
+            }
         }
     }
     else if (Event->type() == QEvent::Timer)
     {
         QTimerEvent* event = dynamic_cast<QTimerEvent*>(Event);
-        if (event && event->timerId() == m_searchTimer)
+        if (event)
         {
-            killTimer(m_searchTimer);
-            SearchPriv(QString(), NULL);
+            if (event->timerId() == m_searchTimer)
+            {
+                killTimer(m_searchTimer);
+                m_searchTimer = 0;
+                SearchPriv(QString(), NULL);
+            }
+            else if (event->timerId() == m_refreshTimer && m_priv)
+            {
+                m_priv->Refresh();
+            }
         }
     }
 
