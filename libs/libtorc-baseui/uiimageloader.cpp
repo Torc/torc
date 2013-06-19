@@ -28,7 +28,7 @@
 #include "uiimagetracker.h"
 #include "uiimageloader.h"
 
-#if defined(CONFIG_QTSVG)
+#if defined(CONFIG_QTSVG) && CONFIG_QTSVG
 #include <QPainter>
 #include <QSvgRenderer>
 #endif
@@ -75,7 +75,7 @@ void UIImageLoader::run(void)
 
     if (m_image->GetRawSVGData())
     {
-#if defined(CONFIG_QTSVG)
+#if defined(CONFIG_QTSVG) && CONFIG_QTSVG
         image = new QImage(m_image->GetMaxSize(), QImage::Format_ARGB32_Premultiplied);
         QPainter painter(image);
         QSvgRenderer renderer(*m_image->GetRawSVGData());
@@ -113,7 +113,7 @@ void UIImageLoader::run(void)
 
         if (filename.endsWith("svg", Qt::CaseInsensitive))
         {
-#if defined(CONFIG_QTSVG)
+#if defined(CONFIG_QTSVG) && CONFIG_QTSVG
             image = new QImage(m_image->GetMaxSize(), QImage::Format_ARGB32_Premultiplied);
             QPainter painter(image);
             QSvgRenderer renderer(content);
