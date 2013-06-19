@@ -1,5 +1,5 @@
---- libs/libtorc-av/configure	2013-05-01 20:34:52.277266987 +0100
-+++ configure	2013-06-03 08:25:21.689105960 +0100
+--- libs/libtorc-av/configure	2013-05-01 10:16:11.000000000 +0100
++++ configure	2013-06-19 08:16:41.000000000 +0100
 @@ -1,6 +1,6 @@
  #!/bin/sh
  #
@@ -38,10 +38,14 @@
  }
  
  add_asflags(){
-@@ -750,6 +764,18 @@
-     check_cmd $cxx $CPPFLAGS $CFLAGS $CXXFLAGS "$@" $CXX_C -o $TMPO $TMPCPP
- }
- 
+@@ -747,7 +761,19 @@
+     log check_cxx "$@"
+     cat > $TMPCPP
+     log_file $TMPCPP
+-    check_cmd $cxx $CPPFLAGS $CFLAGS $CXXFLAGS "$@" $CXX_C -o $TMPO $TMPCPP
++    check_cmd $cxx $CPPFLAGS $CXXFLAGS "$@" $CXX_C -o $TMPO $TMPCPP
++}
++
 +add_cxxppflags(){
 +    append CXXPPFLAGS "$@"
 +}
@@ -52,11 +56,9 @@
 +class X {};
 +int x;
 +EOF
-+}
-+
+ }
+ 
  check_cpp(){
-     log check_cpp "$@"
-     cat > $TMPC
 @@ -904,6 +930,7 @@
              echo "#include <$hdr>"
          done

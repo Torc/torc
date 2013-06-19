@@ -761,7 +761,7 @@ check_cxx(){
     log check_cxx "$@"
     cat > $TMPCPP
     log_file $TMPCPP
-    check_cmd $cxx $CPPFLAGS $CFLAGS $CXXFLAGS "$@" $CXX_C -o $TMPO $TMPCPP
+    check_cmd $cxx $CPPFLAGS $CXXFLAGS "$@" $CXX_C -o $TMPO $TMPCPP
 }
 
 add_cxxppflags(){
