@@ -18,3 +18,4 @@ object_script.*
 .pc
 patches
 Makefile
+*qrc_*
