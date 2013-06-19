@@ -35,12 +35,13 @@
 #include "torcssdp.h"
 
 /*! \class TorcSSDPPriv
- *  \class The internal handler for all Simple Service Discovery Protocol messaging
+ *  \brief The internal handler for all Simple Service Discovery Protocol messaging
  *
  * \todo Revisit behaviour for search and announce wrt network availability and network allowed inbound/outbound
  * \todo Actually announce (with random 0-100ms delay) plus retry
  * \todo Schedule announce refreshes (half of cache-control)
  * \todo Respond to search requests
+ * \todo Correct handling of multiple responses (i.e. via both IPv4 and IPv6)
 */
 
 class TorcSSDPPriv
@@ -51,8 +52,8 @@ class TorcSSDPPriv
 
     void         Start                (void);
     void         Stop                 (void);
-    void         Search               (const QString &Name, QObject* Owner);
-    void         CancelSearch         (const QString &Name, QObject* Owner);
+    void         Search               (const QString &Type, QObject* Owner);
+    void         CancelSearch         (const QString &Type, QObject* Owner);
     void         Announce             (const TorcUPNPDescription &Description);
     void         CancelAnnounce       (const TorcUPNPDescription &Description);
     void         Read                 (QUdpSocket *Socket);
@@ -216,9 +217,9 @@ void TorcSSDPPriv::Stop(void)
     m_ipv6LinkMulticastSocket = NULL;
 }
 
-void TorcSSDPPriv::Search(const QString &Name, QObject *Owner)
+void TorcSSDPPriv::Search(const QString &Type, QObject *Owner)
 {
-    if (Name.isEmpty() || !Owner)
+    if (Type.isEmpty() || !Owner)
     {
         // full search
 
@@ -257,17 +258,17 @@ void TorcSSDPPriv::Search(const QString &Name, QObject *Owner)
 
     // search request (NB we don't search specifically, just use the cache)
 
-    if (!m_searchRequests.contains(Name, Owner))
+    if (!m_searchRequests.contains(Type, Owner))
     {
-        m_searchRequests.insert(Name, Owner);
-        LOG(VB_NETWORK, LOG_INFO, QString("Starting search for '%1'").arg(Name));
+        m_searchRequests.insert(Type, Owner);
+        LOG(VB_NETWORK, LOG_INFO, QString("Starting search for '%1'").arg(Type));
     }
 
     // notify existing matches to owner
     QHash<QString,TorcUPNPDescription>::const_iterator it = m_discoveredDevices.begin();
     for ( ; it != m_discoveredDevices.end(); ++it)
     {
-        if (it.value().GetType() == Name)
+        if (it.value().GetType() == Type)
         {
             QVariantMap data;
             data.insert("usn",      it.value().GetUSN());
@@ -279,12 +280,12 @@ void TorcSSDPPriv::Search(const QString &Name, QObject *Owner)
     }
 }
 
-void TorcSSDPPriv::CancelSearch(const QString &Name, QObject *Owner)
+void TorcSSDPPriv::CancelSearch(const QString &Type, QObject *Owner)
 {
-    if (m_searchRequests.contains(Name, Owner))
+    if (m_searchRequests.contains(Type, Owner))
     {
-        m_searchRequests.remove(Name, Owner);
-        LOG(VB_NETWORK, LOG_INFO, QString("Cancelled search for '%1'").arg(Name));
+        m_searchRequests.remove(Type, Owner);
+        LOG(VB_NETWORK, LOG_INFO, QString("Cancelled search for '%1'").arg(Type));
     }
 }
 
@@ -499,6 +500,12 @@ void TorcSSDPPriv::Refresh(void)
     LOG(VB_NETWORK, LOG_INFO, QString("Removed %1 stale cache entries").arg(count));
 }
 
+/*! \class TorcSSDP
+ *  \brief The public class for handling Simple Service Discovery Protocol searches and announcements
+ *
+ * All SSDP interaction is via the static methods Search, CancelSearch, Announce and CancelAnnounce
+*/
+
 TorcSSDP::TorcSSDP()
   : QObject(),
     m_priv(new TorcSSDPPriv(this)),
@@ -533,36 +540,60 @@ TorcSSDP::~TorcSSDP()
     delete m_priv;
 }
 
-bool TorcSSDP::Search(const QString &Name, QObject *Owner)
+/*! \fn    TorcSSDP::Search
+ *  \brief Search for a specific UPnP device type
+ *
+ * Owner is notified (via a Torc::ServiceDiscovered event) about each discovered UPnP service or device
+ * that matches Type (e.g urn:schemas-upnp-org:device:MediaServer:1). If the service is no longer available
+ * or its announcement expires, Owner is sent a Torc::ServiceWentAway event.
+ *
+ * Searches initiated before the global TorcSSDP singleton has been created will be queued and
+ * actioned when available.
+ *
+ * Call TorcSSDP::CancelSearch with matching arguments when notifications are no longer required.
+*/
+bool TorcSSDP::Search(const QString &Type, QObject *Owner)
 {
     QMutexLocker locker(gSSDPLock);
 
     if (gSSDP)
     {
-        QMetaObject::invokeMethod(gSSDP, "SearchPriv", Qt::AutoConnection, Q_ARG(QString, Name), Q_ARG(QObject*, Owner));
+        QMetaObject::invokeMethod(gSSDP, "SearchPriv", Qt::AutoConnection, Q_ARG(QString, Type), Q_ARG(QObject*, Owner));
         return true;
     }
     else
     {
-        gQueuedSearches.insert(Name, Owner);
+        gQueuedSearches.insert(Type, Owner);
     }
 
     return false;
 }
 
-bool TorcSSDP::CancelSearch(const QString &Name, QObject *Owner)
+/*! \fn    TorcSSDP::CancelSearch
+ *  \brief Stop searching for a UPnP device type
+ *
+ * Owner will receive no more notifications about new or removed UPnP devices matching Type
+*/
+bool TorcSSDP::CancelSearch(const QString &Type, QObject *Owner)
 {
     QMutexLocker locker(gSSDPLock);
 
     if (gSSDP)
     {
-        QMetaObject::invokeMethod(gSSDP, "CancelSearchPriv", Qt::AutoConnection, Q_ARG(QString, Name), Q_ARG(QObject*, Owner));
+        QMetaObject::invokeMethod(gSSDP, "CancelSearchPriv", Qt::AutoConnection, Q_ARG(QString, Type), Q_ARG(QObject*, Owner));
         return true;
     }
 
     return false;
 }
 
+/*! \fn    TorcSSDP::Announce
+ *  \brief Add a device to the list of services notified via SSDP
+ *
+ * The service described by Description will be announced via the SSDP mulitcast socket(s) and will be
+ * re-announced approximately every 30 minutes (all devices/services are assumed to have an expiry of 1
+ * hour).
+*/
 bool TorcSSDP::Announce(const TorcUPNPDescription &Description)
 {
     QMutexLocker locker(gSSDPLock);
@@ -580,6 +611,9 @@ bool TorcSSDP::Announce(const TorcUPNPDescription &Description)
     return false;
 }
 
+/*! \fn    TorcSSDP::CancelAnnounce
+ *  \brief Cancel announcing a device via SSDP
+*/
 bool TorcSSDP::CancelAnnounce(const TorcUPNPDescription &Description)
 {
     QMutexLocker locker(gSSDPLock);
@@ -609,16 +643,16 @@ TorcSSDP* TorcSSDP::Create(bool Destroy)
     return NULL;
 }
 
-void TorcSSDP::SearchPriv(const QString &Name, QObject *Owner)
+void TorcSSDP::SearchPriv(const QString &Type, QObject *Owner)
 {
     if (m_priv)
-        m_priv->Search(Name, Owner);
+        m_priv->Search(Type, Owner);
 }
 
-void TorcSSDP::CancelSearchPriv(const QString &Name, QObject *Owner)
+void TorcSSDP::CancelSearchPriv(const QString &Type, QObject *Owner)
 {
     if (m_priv)
-        m_priv->CancelSearch(Name, Owner);
+        m_priv->CancelSearch(Type, Owner);
 }
 
 void TorcSSDP::AnnouncePriv(const TorcUPNPDescription Description)

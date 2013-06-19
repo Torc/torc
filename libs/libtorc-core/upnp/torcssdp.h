@@ -17,8 +17,8 @@ class TORC_CORE_PUBLIC TorcSSDP : public QObject
     Q_OBJECT
 
   public:
-    static bool      Search             (const QString &Name, QObject *Owner);
-    static bool      CancelSearch       (const QString &Name, QObject *Owner);
+    static bool      Search             (const QString &Type, QObject *Owner);
+    static bool      CancelSearch       (const QString &Type, QObject *Owner);
     static bool      Announce           (const TorcUPNPDescription &Description);
     static bool      CancelAnnounce     (const TorcUPNPDescription &Description);
 
@@ -29,8 +29,8 @@ class TORC_CORE_PUBLIC TorcSSDP : public QObject
     static TorcSSDP* Create             (bool Destroy = false);
 
   protected slots:
-    void             SearchPriv         (const QString &Name, QObject *Owner);
-    void             CancelSearchPriv   (const QString &Name, QObject *Owner);
+    void             SearchPriv         (const QString &Type, QObject *Owner);
+    void             CancelSearchPriv   (const QString &Type, QObject *Owner);
     void             AnnouncePriv       (const TorcUPNPDescription Description);
     void             CancelAnnouncePriv (const TorcUPNPDescription Description);
     bool             event              (QEvent *Event);
