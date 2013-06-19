@@ -17,6 +17,8 @@ class TORC_CORE_PUBLIC TorcUPNPDescription
     qint64  GetExpiry   (void) const;
     void    SetExpiry   (qint64 Expires);
 
+    bool operator == (const TorcUPNPDescription &Other) const;
+
   private:
     QString m_usn;
     QString m_type;

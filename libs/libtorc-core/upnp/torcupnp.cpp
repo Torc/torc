@@ -64,6 +64,11 @@ void TorcUPNPDescription::SetExpiry(qint64 Expires)
     m_expiry = Expires;
 }
 
+bool TorcUPNPDescription::operator == (const TorcUPNPDescription &Other) const
+{
+    return this->GetLocation() == Other.GetLocation() && this->GetType() == Other.GetType() && this->GetUSN() == Other.GetUSN();
+}
+
 QString TorcUPNP::UUIDFromUSN(const QString &USN)
 {
     QString result;
