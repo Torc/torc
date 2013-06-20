@@ -119,27 +119,43 @@ TorcSSDPPriv::~TorcSSDPPriv()
 QUdpSocket* CreateSearchSocket(const QHostAddress &HostAddress, TorcSSDP *Parent)
 {
     QUdpSocket *socket = new QUdpSocket();
-    if (!socket->bind(HostAddress, 0))
-        LOG(VB_GENERAL, LOG_ERR, QString("Failed to bind SSDP search socket (%1)").arg(socket->errorString()));
-    socket->setSocketOption(QAbstractSocket::MulticastTtlOption, 4);
-    socket->setSocketOption(QAbstractSocket::MulticastLoopbackOption, 1);
-    QObject::connect(socket, SIGNAL(readyRead()), Parent, SLOT(Read()));
-    LOG(VB_NETWORK, LOG_INFO, "SSDP search socket " + socket->localAddress().toString() + ":" + QString::number(socket->localPort()));
+    if (socket->bind(HostAddress, 0))
+    {
+        socket->setSocketOption(QAbstractSocket::MulticastTtlOption, 4);
+        socket->setSocketOption(QAbstractSocket::MulticastLoopbackOption, 1);
+        QObject::connect(socket, SIGNAL(readyRead()), Parent, SLOT(Read()));
+        LOG(VB_NETWORK, LOG_INFO, "SSDP search socket " + socket->localAddress().toString() + ":" + QString::number(socket->localPort()));
+        return socket;
+    }
 
-    return socket;
+    LOG(VB_GENERAL, LOG_ERR, QString("Failed to bind %1 SSDP search socket (%2)")
+        .arg(HostAddress.protocol() == QAbstractSocket::IPv6Protocol ? "IPv6" : "IPv4").arg(socket->errorString()));
+    delete socket;
+    return NULL;
 }
 
 QUdpSocket* CreateMulticastSocket(const QHostAddress &HostAddress, TorcSSDP *Parent, const QNetworkInterface &Interface)
 {
     QUdpSocket *socket = new QUdpSocket();
-    if (!socket->bind(HostAddress, 1900, QUdpSocket::ShareAddress))
-        LOG(VB_GENERAL, LOG_ERR, QString("Failed to bind SSDP multicase socket (%1)").arg(socket->errorString()));
-    if (!socket->joinMulticastGroup(HostAddress, Interface))
-        LOG(VB_GENERAL, LOG_ERR, QString("Failed to join multicast group (%1)").arg(socket->errorString()));
-    QObject::connect(socket, SIGNAL(readyRead()), Parent, SLOT(Read()));
-    LOG(VB_NETWORK, LOG_INFO, "SSDP multicast socket " + socket->localAddress().toString() + ":" + QString::number(socket->localPort()));
+    if (socket->bind(HostAddress, 1900, QUdpSocket::ShareAddress))
+    {
+        if (socket->joinMulticastGroup(HostAddress, Interface))
+        {
+            QObject::connect(socket, SIGNAL(readyRead()), Parent, SLOT(Read()));
+            LOG(VB_NETWORK, LOG_INFO, "SSDP multicast socket " + socket->localAddress().toString() + ":" + QString::number(socket->localPort()));
+            return socket;
+        }
 
-    return socket;
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to join multicast group (%1)").arg(socket->errorString()));
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to bind %1 SSDP multicast socket (%2)")
+            .arg(HostAddress.protocol() == QAbstractSocket::IPv6Protocol ? "IPv6" : "IPv4").arg(socket->errorString()));
+    }
+
+    delete socket;
+    return NULL;
 }
 
 void TorcSSDPPriv::Start(void)
@@ -327,7 +343,7 @@ void TorcSSDPPriv::Read(QUdpSocket *Socket)
         Socket->readDatagram(datagram.data(), datagram.size(), &address, &port);
 
         // filter out our own announcements
-        if (port == m_ipv4SearchSocket->localPort() || port == m_ipv6LinkSearchSocket->localPort())
+        if ((m_ipv4SearchSocket && (port == m_ipv4SearchSocket->localPort())) || (m_ipv6LinkSearchSocket && (port == m_ipv6LinkSearchSocket->localPort())))
             if (m_addressess.contains(address))
                 continue;
 
