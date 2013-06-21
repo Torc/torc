@@ -209,7 +209,7 @@ class TorcBonjourPriv
         m_serviceLock(new QMutex(QMutex::Recursive)),
         m_discoveredLock(new QMutex(QMutex::Recursive))
     {
-        setenv("AVAHI_COMPAT_NOWARN", "1", 1);
+        qputenv("AVAHI_COMPAT_NOWARN", "1");
     }
 
     ~TorcBonjourPriv()
