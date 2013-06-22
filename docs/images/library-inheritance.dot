@@ -1,0 +1,16 @@
+digraph G {
+    node [shape=rect];
+    "libtorc-core"   -> "libtorc-audio";
+    "libtorc-core"   -> "libtorc-baseui";
+    "libtorc-core"   -> "libtorc-media";
+    "libtorc-baseui" -> "libtorc-videoui";
+    "libtorc-video"  -> "libtorc-videoui";
+    "libtorc-baseui" -> "libtorc-tenfootui";
+    "libtorc-audio"  -> "libtorc-video";
+    subgraph {
+        rank=same;
+        node [shape=oval,style=filled,fillcolor="grey90"];
+        "libtorc-av" -> "libtorc-audio";
+    }
+
+}
