@@ -37,7 +37,7 @@
  *
  * \sa TorcAdminObject
  *
- * \note There is currently no mechanism to add TorcAdminObjects at run time (e.g. plugins).
+ * \todo Add a mechanism to add and remove TorcAdminObject's dynamically
 */
 
 TorcAdminThread::TorcAdminThread()
@@ -131,11 +131,17 @@ TorcAdminObject* TorcAdminObject::GetNextObject(void)
     return m_nextTorcAdminObject;
 }
 
+/*! \fn    TorcAdminObject::HigherPriority
+ *  \brief Sort TorcAdminObject's based on relative priorities
+*/
 bool TorcAdminObject::HigherPriority(const TorcAdminObject *Object1, const TorcAdminObject *Object2)
 {
     return Object1->Priority() > Object2->Priority();
 }
 
+/*! \fn    TorcAdminObject::CreateObjects
+ *  \brief Iterates through the list of registered TorcAdminObject's and creates them
+*/
 void TorcAdminObject::CreateObjects(void)
 {
     QMutexLocker lock(gTorcAdminObjectsLock);
@@ -165,6 +171,9 @@ void TorcAdminObject::CreateObjects(void)
         (*it)->Create();
 }
 
+/*! \fn    TorcAdminObject::DestroyObjects
+ *  \brief Destroys each created admin object
+*/
 void TorcAdminObject::DestroyObjects(void)
 {
     QMutexLocker lock(gTorcAdminObjectsLock);
