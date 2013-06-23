@@ -60,8 +60,6 @@
  * \sa TorcHTTPRequest
  * \sa TorcHTTPHandler
  * \sa TorcHTTPConnection
- *
- * \todo Entirely single threaded
 */
 
 TorcHTTPServer* TorcHTTPServer::gWebServer = NULL;
