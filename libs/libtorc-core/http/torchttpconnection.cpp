@@ -37,9 +37,7 @@
  * \sa TorcHTTPHandler
  * \sa TorcHTTPRequest
  *
- * \todo Handle abort in TorcHTTRequest::Respond
  * \todo Check content length early and deal with large or unexpected content payloads
- * \todo Return media and static content (i.e. handle files)
 */
 
 TorcHTTPConnection::TorcHTTPConnection(TorcHTTPServer *Parent, qintptr SocketDescriptor, int *Abort)

@@ -56,8 +56,8 @@
  * \sa TorcHTTPHandler
  * \sa TorcHTTPConnection
  *
- * \todo Break out writes into 'small' chunks to facilitate abort handling
- * \todo Handle file transfers
+ * \todo Break out writes into 'small' chunks to facilitate abort handling.
+ * \todo Add linux sendfile support with fallback to regular writes.
 */
 
 QRegExp gRegExp = QRegExp("[ \r\n][ \r\n]*");
