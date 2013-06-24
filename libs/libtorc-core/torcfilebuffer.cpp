@@ -29,7 +29,17 @@
 #include "torcfilebuffer.h"
 
 /*! \class TorcFileBuffer
- *  \brief A class for opening local media files.
+ *  \brief A class for opening local files.
+ *
+ * TorcFileBuffer is the TorcBuffer implementation of 'last' resort - or lowest priority - and will
+ * attempt to handle any file accessible via QFile.
+ *
+ * It implements in full the TorcBuffer API.
+ *
+ * \sa TorcBuffer
+ * \sa TorcBufferFactory
+ * \sa TorcFileBufferFactory
+ * \sa TorcNetworkBuffer
 */
 
 TorcFileBuffer::TorcFileBuffer(const QString &URI, int *Abort)
@@ -45,6 +55,9 @@ TorcFileBuffer::~TorcFileBuffer()
     Close();
 }
 
+/*! \fn    TorcFileBuffer::Open
+ *  \brief Open the file using QFile
+*/
 bool TorcFileBuffer::Open(void)
 {
     m_state = Status_Opening;
@@ -78,6 +91,11 @@ void TorcFileBuffer::Close(void)
     m_state = Status_Closed;
 }
 
+/*! \fn    TorcFileBuffer::Read
+ *  \brief Read at most BufferSize bytes from the file.
+ *
+ * \returns The number of bytes actually read or < 0 on error
+*/
 int TorcFileBuffer::Read(quint8 *Buffer, qint32 BufferSize)
 {
     int result = -1;
@@ -93,6 +111,11 @@ int TorcFileBuffer::Read(quint8 *Buffer, qint32 BufferSize)
     return result;
 }
 
+/*! \fn    TorcFileBuffer::Peek
+ *  \brief Peek at most BufferSize bytes from the file.
+ *
+ * \returns The number of bytes actually read or < 0 on error
+*/
 int TorcFileBuffer::Peek(quint8 *Buffer, qint32 BufferSize)
 {
     int result = -1;
@@ -108,6 +131,9 @@ int TorcFileBuffer::Peek(quint8 *Buffer, qint32 BufferSize)
     return result;
 }
 
+/*! \fn    TorcFileBuffer::Write
+ *  \brief Not yet implemented
+*/
 int TorcFileBuffer::Write(quint8 *Buffer, qint32 BufferSize)
 {
     (void)Buffer;
@@ -115,6 +141,15 @@ int TorcFileBuffer::Write(quint8 *Buffer, qint32 BufferSize)
     return -1;
 }
 
+/*! \fn    TorcFileBuffer::Seek
+ *  \brief Seek within the file.
+ *
+ * TorcBuffer subclasses will be used by libavformat which adds AVSEEK_SIZE and
+ * AVSEEK_FORCE constants. These are defined in TorcBuffer to avoid a dependency
+ * on libavformat in libtorc-core.
+ *
+ * /returns The new position in the file on success, < 0 on error.
+*/
 int64_t TorcFileBuffer::Seek(int64_t Offset, int Whence)
 {
     int whence = Whence & ~AVSEEK_FORCE;
@@ -162,11 +197,19 @@ qint64 TorcFileBuffer::GetSize(void)
     return size();
 }
 
+/*! \fn    TorcFileBuffer::GetPosition
+ *  \brief Get the current position within the file.
+*/
 qint64 TorcFileBuffer::GetPosition(void)
 {
     return pos();
 }
 
+/*! \fn    TorcFileBuffer::IsSequential
+ *  \brief Determine whether the file is open for sequential access.
+ *
+ * Most files opened by QFile will be random acccess.
+*/
 bool TorcFileBuffer::IsSequential(void)
 {
     return isSequential();
@@ -179,13 +222,19 @@ qint64 TorcFileBuffer::BytesAvailable(void)
 
 int TorcFileBuffer::BestBufferSize(void)
 {
+    // entirely arbitrary
     return 32768;
 }
 
+/*! \class TorcFileBufferFactory
+ *  \brief Static class to register TorcFileBuffer handling.
+*/
 static class TorcFileBufferFactory : public TorcBufferFactory
 {
     void Score(const QString &URI, const QUrl &URL, int &Score, const bool &Media)
     {
+        // handle anything that looks like a regular file but set score low to
+        // allow other handlers to override.
         if ((URL.scheme().size() < 2) && URL.port() < 0 && Score <= 10)
             Score = 10;
     }
