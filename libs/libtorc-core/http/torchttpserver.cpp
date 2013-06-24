@@ -38,7 +38,7 @@
 #include "torchttpservice.h"
 #include "torchttpserver.h"
 
-#if defined(CONFIG_LIBDNS_SD)
+#if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
 #include "torcbonjour.h"
 #endif
 
@@ -260,7 +260,7 @@ bool TorcHTTPServer::Open(void)
         port = serverPort();
         m_port->SetValue(QVariant((int)port));
 
-#if defined(CONFIG_LIBDNS_SD)
+#if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
         // re-advertise if the port has changed
         if (m_httpBonjourReference)
         {
@@ -276,7 +276,7 @@ bool TorcHTTPServer::Open(void)
 #endif
     }
 
-#if defined(CONFIG_LIBDNS_SD)
+#if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
     // advertise service if not already doing so
     if (!m_httpBonjourReference || !m_torcBonjourReference)
     {
@@ -300,7 +300,7 @@ bool TorcHTTPServer::Open(void)
 
 void TorcHTTPServer::Close(void)
 {
-#if defined(CONFIG_LIBDNS_SD)
+#if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
     // stop advertising
     if (m_httpBonjourReference)
     {

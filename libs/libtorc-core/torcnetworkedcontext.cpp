@@ -43,6 +43,7 @@ TorcNetworkedContext::TorcNetworkedContext()
     // listen for events
     gLocalContext->AddObserver(this);
 
+#if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
     // always create the global instance
     TorcBonjour::Instance();
 
@@ -54,6 +55,7 @@ TorcNetworkedContext::TorcNetworkedContext()
     // Torc::Client implies it is a consumer of media - may need revisiting
     if (gLocalContext->FlagIsSet(Torc::Client))
         m_bonjourBrowserReference = TorcBonjour::Instance()->Browse("_torc._tcp.");
+#endif
 }
 
 TorcNetworkedContext::~TorcNetworkedContext()
@@ -61,6 +63,7 @@ TorcNetworkedContext::~TorcNetworkedContext()
     // stoplistening
     gLocalContext->RemoveObserver(this);
 
+#if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
     // stop browsing for torc._tcp
     if (m_bonjourBrowserReference)
         TorcBonjour::Instance()->Deregister(m_bonjourBrowserReference);
@@ -68,6 +71,7 @@ TorcNetworkedContext::~TorcNetworkedContext()
 
     // N.B. We delete the global instance here
     TorcBonjour::TearDown();
+#endif
 }
 
 bool TorcNetworkedContext::event(QEvent *Event)
@@ -77,6 +81,7 @@ bool TorcNetworkedContext::event(QEvent *Event)
         TorcEvent *event = static_cast<TorcEvent*>(Event);
         if (event && (event->Event() == Torc::ServiceDiscovered || event->Event() == Torc::ServiceWentAway))
         {
+#if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
             // NB txtrecords is Bonjour specific
             QMap<QByteArray,QByteArray> records = TorcBonjour::TxtRecordToMap(event->Data().value("txtrecords").toByteArray());
 
@@ -97,6 +102,7 @@ bool TorcNetworkedContext::event(QEvent *Event)
                     LOG(VB_GENERAL, LOG_INFO, QString("Torc peer %1 went away").arg(uuid.data()));
                 }
             }
+#endif
         }
     }
 
