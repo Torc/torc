@@ -244,7 +244,7 @@ bool TorcBuffer::HandleAction(int Action)
  *
  * \param Timeout The maximum number of Milliseconds to wait before returning.
 */
-QByteArray TorcBuffer::ReadAll(int Timeout =/*0*/)
+QByteArray TorcBuffer::ReadAll(int Timeout /*=0*/)
 {
     (void)Timeout;
     return QByteArray();
