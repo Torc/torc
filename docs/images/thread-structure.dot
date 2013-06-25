@@ -1,0 +1,96 @@
+digraph G {
+    node [shape=rect];
+    rank=same;
+    rankdir="LR";
+    subgraph cluster_0 {
+        label = "'MainLoop'";
+        style=filled;
+        fillcolor="grey80";
+        TorcLocalContext->Settings;
+        TorcLocalContext->Preferences;
+        Settings->TorcDB;
+        Preferences->TorcDB;
+        UIWindow->UIImageTracker;
+        UIWindow->UITheme->UIWidget;
+        subgraph cluster_0a {
+            label="Simplified";
+            UIWidget->TorcPlayer;
+            UIWidget->VideoRenderer;
+            UIWidget->VideoColourSpace;
+        }
+        UIWindow->UIActions;
+        UIWindow->UIDisplay;
+    }
+    subgraph cluster_0b {
+        style=filled;
+        fillcolor=grey90;
+        label = "'QRunnable'";
+        UIShapeRenderer;
+        UITextRenderer;
+        UIImageLoader;
+    }
+    subgraph cluster_1 {
+        label = "'AdminLoop'";
+        TorcAdminThread->TorcHTTPServer;
+        TorcAdminThread->TorcPower;
+        TorcAdminThread->TorcUSB;
+        TorcAdminThread->TorcNetwork;
+        TorcAdminThread->TorcStorage;
+        TorcAdminThread->TorcBonjour;
+        TorcAdminThread->TorcNetworkedContext;
+    }
+    subgraph cluster_1a {
+        style=filled;
+        fillcolor=grey90;
+        label = "'QRunnable'";
+        TorcHTTPConnection->TorcHTTPRequest;
+    }
+    subgraph cluster_2 {
+        label = "'MediaLoop'";
+        style=filled;
+        fillcolor=grey70;
+        TorcMediaThread->DirectoryScanner;
+    }
+    subgraph cluster_3 {
+        label = "'SSDP'";
+        style=filled;
+        fillcolor=grey85;
+        TorcSSDPThread->TorcSSDP;
+    }
+    subgraph cluster_4 {
+        label = "'Demuxer'";
+        style=filled;
+        fillcolor=grey75;
+        TorcDemuxerThread->TorcDemuxer;
+    }
+    subgraph cluster_5 {
+        label = "'AudioDecode'";
+        style=filled;
+        fillcolor=grey95;
+        TorcAudioThread->AudioWrapper->AudioOutput;
+    }
+    subgraph cluster_6 {
+        label = "'VideoDecode'";
+        style=filled;
+        fillcolor=grey65;
+        TorcVideoThread->VideoBuffers;
+    }
+    subgraph cluster_7 {
+        label = "'SubtitleDecode'";
+        style=filled;
+        fillcolor=grey85;
+        TorcSubtitleThread;
+    }
+
+    TorcLocalContext->TorcAdminThread;
+    TorcAdminThread->TorcMediaThread;
+    TorcAdminThread->TorcSSDPThread;
+    TorcPlayer->TorcDemuxerThread;
+    TorcDemuxer->TorcAudioThread;
+    TorcDemuxer->TorcVideoThread;
+    TorcDemuxer->TorcSubtitleThread;
+    TorcHTTPServer->TorcHTTPConnection;
+    UIImageTracker->UIShapeRenderer;
+    UIImageTracker->UITextRenderer;
+    UIImageTracker->UIImageLoader;
+}
