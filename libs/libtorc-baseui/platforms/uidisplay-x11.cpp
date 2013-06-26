@@ -18,6 +18,7 @@ extern "C" {
 #endif
 #include "adl/uiadl.h"
 
+/// \cond
 typedef XID RROutput;
 typedef XID RRCrtc;
 typedef XID RRMode;
@@ -70,6 +71,7 @@ typedef struct _XRRCrtcInfo
 } XRRCrtcInfo;
 
 typedef struct _XRRScreenConfiguration XRRScreenConfiguration;
+/// \endcond
 
 typedef bool                    (*XRandrQueryExtension)             (Display*, int*, int*);
 typedef Status                  (*XRandrQueryVersion)               (Display*, int*, int*);
