@@ -30,8 +30,8 @@
 #include "uinvcontrol.h"
 
 extern "C" {
-#include "NVCtrl.h"
-#include "NVCtrlLib.h"
+#include "include/NVCtrl.h"
+#include "include/NVCtrlLib.h"
 }
 
 class MetaRate

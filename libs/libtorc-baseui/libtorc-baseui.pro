@@ -135,11 +135,11 @@ win32|contains(CONFIG_X11BASE, yes) {
 
 contains(CONFIG_X11BASE, yes) {
     DEPENDPATH += ./platforms/nvctrl
-    HEADERS    += platforms/nvctrl/NVCtrl.h
-    HEADERS    += platforms/nvctrl/NVCtrlLib.h
-    HEADERS    += platforms/nvctrl/nv_control.h
+    HEADERS    += platforms/nvctrl/include/NVCtrl.h
+    HEADERS    += platforms/nvctrl/include/NVCtrlLib.h
+    HEADERS    += platforms/nvctrl/include/nv_control.h
     HEADERS    += platforms/nvctrl/uinvcontrol.h
-    SOURCES    += platforms/nvctrl/NVCtrl.c
+    SOURCES    += platforms/nvctrl/include/NVCtrl.c
     SOURCES    += platforms/nvctrl/uinvcontrol.cpp
     SOURCES    += platforms/uidisplay-x11.cpp
     LIBS       += -lXxf86vm
