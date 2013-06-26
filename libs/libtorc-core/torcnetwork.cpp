@@ -626,7 +626,7 @@ QNetworkInterface TorcNetwork::Interface(void)
 /*! \class TorcNetworkObject
  *  \brief A static class used to create the TorcNetwork singleton in the admin thread.
 */
-class TorcNetworkObject : TorcAdminObject
+class TorcNetworkObject : public TorcAdminObject
 {
   public:
     TorcNetworkObject()
