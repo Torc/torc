@@ -29,6 +29,22 @@
 #include "torclogging.h"
 #include "torcdb.h"
 
+/*! \class TorcDBPriv
+ *  \brief Private implementation of Sql database management.
+ *
+ * TorcDBPriv handles multi-threaded access to the database engine.
+ *
+ * By default, QSql database access is not thread safe and a new connection must be opened for
+ * each thread that wishes to use the database. TorcDB (and its subclasses) will ask
+ * for a connection each time the database is accessed and connections are cached on a per-thread
+ * basis. The thread name (and pointer) is used for cache tracking and thus any thread must have
+ * a name. This implicitly limits database access to a QThread or one its subclasses (e.g. TorcThread) and
+ * hence database access will not work from QRunnable's or other miscellaneous threads - this is by design
+ * and is NOT a bug.
+ *
+ * \sa TorcDB
+ * \sa TorcSQLiteDB
+*/
 class TorcDBPriv
 {
   public:
@@ -45,6 +61,9 @@ class TorcDBPriv
         m_lock = NULL;
     }
 
+    /*! \fn    TorcDBPriv::CloseConnections
+     *  \brief Close all cached database connections.
+    */
     void CloseConnections(void)
     {
         QMutexLocker locker(m_lock);
@@ -67,6 +86,14 @@ class TorcDBPriv
         m_connectionMap.clear();
     }
 
+/*! \fn    TorcDBPriv::GetThreadConnection
+ *  \brief Retrieve a database connection for the current thread.
+ *
+ * Database connections are cached (thus limiting connections to one per thread).
+ *
+ * \sa CloseConnections
+ * \sa CloseThreadConnection
+*/
     QString GetThreadConnection(void)
     {
         QThread* thread = QThread::currentThread();
@@ -98,6 +125,9 @@ class TorcDBPriv
         return name;
     }
 
+    /*! \fn    TorcDBPriv::CloseThreadConnection
+     *  \brief Close the database connection for the current thread.
+    */
     void CloseThreadConnection(void)
     {
         QThread* thread = QThread::currentThread();
@@ -118,6 +148,18 @@ class TorcDBPriv
     QHash<QThread*,QString> m_connectionMap;
 };
 
+/*! \class TorcDB
+ *  \brief Base Sql database access class.
+ *
+ * TorcDB is the base implementation for Sql database access. It is currently limited
+ * to setting and retrieving preferences and settings and whilst designed for generic Sql
+ * usage, the only current concrete subclass is TorcSQliteDB. Changes may (will) be required for
+ * other database types and usage.
+ *
+ * \sa TorcDBPriv
+ * \sa TorcSQLiteDB
+ * \sa TorcLocalContext
+*/
 TorcDB::TorcDB(const QString &DatabaseName, const QString &DatabaseType)
   : m_databaseValid(false),
     m_databaseName(DatabaseName),
@@ -133,21 +175,37 @@ TorcDB::~TorcDB()
     m_databasePriv = NULL;
 }
 
+/*! \fn    TorcDB::IsValid
+ *  \brief Returns true if the datbase has been opened/created.
+*/
 bool TorcDB::IsValid(void)
 {
     return m_databaseValid;
 }
 
+/*! \fn TorcDB::CloseThreadConnection
+ *
+ * \sa TorcDBPriv::CloseThreadConnection
+*/
 void TorcDB::CloseThreadConnection(void)
 {
     m_databasePriv->CloseThreadConnection();
 }
 
+/*! \fn TorcDB::GetThreadConnection
+ *
+ * \sa TorcDBPriv::GetThreadConnection
+*/
 QString TorcDB::GetThreadConnection(void)
 {
     return m_databasePriv->GetThreadConnection();
 }
 
+/*! \fn    TorcDB::DebugError(QSqlQuery*)
+ *  \brief Log database errors following a failed query.
+ *
+ * \sa Debugerror(QSqlDatabase*)
+*/
 void TorcDB::DebugError(QSqlQuery *Query)
 {
     if (!Query)
@@ -171,6 +229,11 @@ void TorcDB::DebugError(QSqlQuery *Query)
     }
 }
 
+/*! \fn    TorcDB::DebugError(QSqlDatabase*)
+ *  \brief Log database errors following database creation.
+ *
+ * \sa Debugerror(QSqlQuery*)
+*/
 void TorcDB::DebugError(QSqlDatabase *Database)
 {
     if (!Database)
@@ -194,6 +257,25 @@ void TorcDB::DebugError(QSqlDatabase *Database)
     }
 }
 
+/*! \fn    TorcDB::LoadSettings
+ *  \brief Retrieve all persistent settings stored in the database.
+ *
+ * Both settings and preferences are key/value pairs (of strings).
+ *
+ * Settings are designed as application wide configurable settings that can
+ * only changed by the administrative user (if present, otherwise the default user).
+ *
+ * Preferences are designed as configurable, user specific behaviour that are modified
+ * by the current user.
+ *
+ * For example, a preference might set the level of contrast while playing video content and
+ * a setting would enable or disable all external network acccess (thus preventing access to
+ * 'undesirable' content).
+ *
+ * \sa SetSetting
+ * \sa SetPreference
+ * \sa LoadPreferences
+*/
 void TorcDB::LoadSettings(QMap<QString, QString> &Settings)
 {
     QSqlDatabase db = QSqlDatabase::database(GetThreadConnection());
@@ -211,6 +293,15 @@ void TorcDB::LoadSettings(QMap<QString, QString> &Settings)
     }
 }
 
+/*! \fn    TorcDB::LoadPreferences
+ *  \brief Retrieve all persistent preferences stored in the database for the current user.
+ *
+ * Preferences are per user and hence this function MUST be called if the user is changed.
+ *
+ * \sa SetPreference
+ * \sa LoadSettings
+ * \sa SetSetting
+*/
 void TorcDB::LoadPreferences(QMap<QString, QString> &Preferences)
 {
     QSqlDatabase db = QSqlDatabase::database(GetThreadConnection());
@@ -228,6 +319,11 @@ void TorcDB::LoadPreferences(QMap<QString, QString> &Preferences)
     }
 }
 
+/*! \fn    TorcDB::SetSetting
+ *  \brief Set the setting Name to the value Value.
+ *
+ * \sa SetPreference
+*/
 void TorcDB::SetSetting(const QString &Name, const QString &Value)
 {
     if (Name.isEmpty())
@@ -255,6 +351,11 @@ void TorcDB::SetSetting(const QString &Name, const QString &Value)
         DebugError(&query);
 }
 
+/*! \fn    TorcDB::SetPreference
+ *  \brief Set the preference Name to the value Value for the current user.
+ *
+ * \sa SetSetting
+*/
 void TorcDB::SetPreference(const QString &Name, const QString &Value)
 {
     if (Name.isEmpty())
