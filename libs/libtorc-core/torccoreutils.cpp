@@ -32,6 +32,9 @@
 #include "torccompat.h"
 #include "torccoreutils.h"
 
+/*! \fn    TorcDateTimeFromString
+ *  \brief Parse a QDataTime from the given QString
+*/
 QDateTime TorcDateTimeFromString(const QString &String)
 {
     if (String.isEmpty())
@@ -46,6 +49,12 @@ QDateTime TorcDateTimeFromString(const QString &String)
     return QDateTime::fromString(String, Qt::ISODate);
 }
 
+/*! \fn    GetMicrosecondCount
+ *  \brief Get the current system clock time in microseconds.
+ *
+ * If microsecond clock accuracy is not available, it is inferred from the best
+ * resolution available.
+*/
 quint64 GetMicrosecondCount(void)
 {
 #ifdef Q_OS_WIN
@@ -70,6 +79,12 @@ quint64 GetMicrosecondCount(void)
     return 0;
 }
 
+/*! \fn    TorcUSleep
+ *  \brief Sleep for the given number of microseconds.
+ *
+ * If microsecond accuracy is not available, the best available approximation
+ * will be used.
+*/
 void TorcUSleep(int USecs)
 {
 #if HAVE_NANOSLEEP
@@ -82,6 +97,12 @@ void TorcUSleep(int USecs)
 #endif
 }
 
+/*! \fn    EnumToScript
+ *  \breif Convert a QMetaEnum into a QString that can be passed to QScript.
+ *
+ * This function is used to pass the string representation of enumerations to a QScript
+ * context. The enumerations can then be used directly within scripts.
+ */
 QString EnumsToScript(const QMetaObject &MetaObject)
 {
     QString name   = MetaObject.className();
