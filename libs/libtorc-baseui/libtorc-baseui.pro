@@ -151,7 +151,7 @@ else:macx {
 else:win32 {
     SOURCES += platforms/uidisplay-win.cpp
 
-    HEADERS += platforms/nvapi/nvapi.h
+    HEADERS += platforms/nvapi/include/nvapi.h
     HEADERS += platforms/nvapi/uinvapi.h
     SOURCES += platforms/nvapi/uinvapi.cpp
 

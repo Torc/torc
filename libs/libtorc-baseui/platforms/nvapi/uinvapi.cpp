@@ -28,7 +28,7 @@
 #include "torclocaldefs.h"
 #include "torccompat.h"
 #include "torclogging.h"
-#include "nvapi.h"
+#include "include/nvapi.h"
 #include "uiedid.h"
 #include "uinvapi.h"
 
