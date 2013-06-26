@@ -27,12 +27,23 @@
 #include "torclogging.h"
 #include "torcsqlitedb.h"
 
+/*! \class TorcSQLiteDB
+ *  \brief SQLite implementation of TorcDB
+ *
+ * All Sql specific code resides in TorcDB. TorcSQLiteDB applies SQLite specifics
+ * when creating the database and upon first use after startup.
+ *
+ * \sa TorcDB
+*/
 TorcSQLiteDB::TorcSQLiteDB(const QString &DatabaseName)
   : TorcDB(DatabaseName, "QSQLITE")
 {
     InitDatabase();
 }
 
+/*! \fn    TorcSQLiteDB::InitDatabase
+ *  \brief Create and/or open an SQLiteDatabase
+*/
 bool TorcSQLiteDB::InitDatabase(void)
 {
     LOG(VB_GENERAL, LOG_INFO, QString("Attempting to open '%1'")
