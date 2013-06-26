@@ -36,9 +36,9 @@ class TORC_CORE_PUBLIC TorcBuffer
   public:
     virtual ~TorcBuffer();
     static TorcBuffer* Create             (const QString &URI, int *Abort, bool Media = false);
-    static int         Read               (void* Object, quint8* Buffer, qint32 BufferSize);
-    static int         Write              (void* Object, quint8* Buffer, qint32 BufferSize);
-    static int64_t     Seek               (void* Object, int64_t Offset, int Whence);
+    static int         StaticRead         (void* Object, quint8* Buffer, qint32 BufferSize);
+    static int         StaticWrite        (void* Object, quint8* Buffer, qint32 BufferSize);
+    static int64_t     StaticSeek         (void* Object, int64_t Offset, int Whence);
 
     virtual int        (*GetReadFunction  (void))(void*, quint8*, qint32);
     virtual int        (*GetWriteFunction (void))(void*, quint8*, qint32);
