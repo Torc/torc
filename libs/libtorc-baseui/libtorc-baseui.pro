@@ -126,9 +126,9 @@ linux-rasp-pi-g++ {
 
 win32|contains(CONFIG_X11BASE, yes) {
     DEPENDPATH += ./platforms/adl
-    HEADERS    += platforms/adl/adl_defines.h
-    HEADERS    += platforms/adl/adl_sdk.h
-    HEADERS    += platforms/adl/adl_structures.h
+    HEADERS    += platforms/adl/include/adl_defines.h
+    HEADERS    += platforms/adl/include/adl_sdk.h
+    HEADERS    += platforms/adl/include/adl_structures.h
     HEADERS    += platforms/adl/uiadl.h
     SOURCES    += platforms/adl/uiadl.cpp
 }
