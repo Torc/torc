@@ -120,13 +120,13 @@ void* TorcBuffer::RequiredAVFormat(void)
     return NULL;
 }
 
-/*! \fn    TorcBuffer::Read
+/*! \fn    TorcBuffer::StaticRead
  *  \brief Read from the buffer Object.
  *
  * Do not call this function directly. It acts as part of the interface between an
  * AVFormatContext structure and the underlying TorcBuffer that supplies it with data.
 */
-int TorcBuffer::Read(void *Object, quint8 *Buffer, qint32 BufferSize)
+int TorcBuffer::StaticRead(void *Object, quint8 *Buffer, qint32 BufferSize)
 {
     TorcBuffer* buffer = static_cast<TorcBuffer*>(Object);
 
@@ -136,13 +136,13 @@ int TorcBuffer::Read(void *Object, quint8 *Buffer, qint32 BufferSize)
     return -1;
 }
 
-/*! \fn    TorcBuffer::Write
+/*! \fn    TorcBuffer::StaticWrite
  *  \brief Write tothe buffer Object.
  *
  * Do not call this function directly. It acts as part of the interface between an
  * AVFormatContext structure and the underlying TorcBuffer that supplies it with data.
 */
-int TorcBuffer::Write(void *Object, quint8 *Buffer, qint32 BufferSize)
+int TorcBuffer::StaticWrite(void *Object, quint8 *Buffer, qint32 BufferSize)
 {
     TorcBuffer* buffer = static_cast<TorcBuffer*>(Object);
 
@@ -152,13 +152,13 @@ int TorcBuffer::Write(void *Object, quint8 *Buffer, qint32 BufferSize)
     return -1;
 }
 
-/*! \fn    TorcBuffer::Seek
+/*! \fn    TorcBuffer::StaticSeek
  *  \brief Seek within the buffer Object.
  *
  * Do not call this function directly. It acts as part of the interface between an
  * AVFormatContext structure and the underlying TorcBuffer that supplies it with data.
 */
-int64_t TorcBuffer::Seek(void *Object, int64_t Offset, int Whence)
+int64_t TorcBuffer::StaticSeek(void *Object, int64_t Offset, int Whence)
 {
     TorcBuffer* buffer = static_cast<TorcBuffer*>(Object);
 
@@ -175,7 +175,7 @@ int64_t TorcBuffer::Seek(void *Object, int64_t Offset, int Whence)
 */
 int (*TorcBuffer::GetReadFunction(void))(void*, quint8*, qint32)
 {
-    return &TorcBuffer::Read;
+    return &TorcBuffer::StaticRead;
 }
 
 /*! \fn    TorcBuffer::GetWriteFunction
@@ -185,7 +185,7 @@ int (*TorcBuffer::GetReadFunction(void))(void*, quint8*, qint32)
 */
 int (*TorcBuffer::GetWriteFunction(void))(void*, quint8*, qint32)
 {
-    return &TorcBuffer::Write;
+    return &TorcBuffer::StaticWrite;
 }
 
 /*! \fn    TorcBuffer::GetSeekFunction
@@ -195,7 +195,7 @@ int (*TorcBuffer::GetWriteFunction(void))(void*, quint8*, qint32)
 */
 int64_t (*TorcBuffer::GetSeekFunction(void))(void*, int64_t, int)
 {
-    return &TorcBuffer::Seek;
+    return &TorcBuffer::StaticSeek;
 }
 
 /*! \fn    TorcBuffer::Open
