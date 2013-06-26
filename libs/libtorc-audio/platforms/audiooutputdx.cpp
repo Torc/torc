@@ -10,7 +10,7 @@ using namespace std;
 #include <mmsystem.h>
 #include <initguid.h>
 
-#include "dsound.h"
+#include "include/dsound.h"
 
 #ifndef WAVE_FORMAT_DOLBY_AC3_SPDIF
 #define WAVE_FORMAT_DOLBY_AC3_SPDIF 0x0092

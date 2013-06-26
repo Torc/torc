@@ -82,8 +82,8 @@ macx {
 }
 
 win32 {
-    HEADERS += platforms/_mingw_unicode.h
-    HEADERS += platforms/dsound.h
+    HEADERS += platforms/include/_mingw_unicode.h
+    HEADERS += platforms/include/dsound.h
     HEADERS += platforms/audiooutputdx.h
     HEADERS += platforms/audiooutputwin.h
     SOURCES += platforms/audiooutputdx.cpp
