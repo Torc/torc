@@ -7,7 +7,7 @@
 
 // Torc
 #include "torcbaseuiexport.h"
-#include "d3dx9.h"
+#include "include/d3dx9.h"
 #include "uidirect3d9defs.h"
 
 class TORC_BASEUI_PUBLIC D3D9Shader

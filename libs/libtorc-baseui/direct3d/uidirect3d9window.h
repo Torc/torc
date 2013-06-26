@@ -16,7 +16,7 @@
 #include "../uiperformance.h"
 #include "../uiwindow.h"
 
-#include "d3d9.h"
+#include "include/d3d9.h"
 #include "uidirect3d9view.h"
 #include "uidirect3d9textures.h"
 #include "uidirect3d9shaders.h"

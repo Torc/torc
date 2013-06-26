@@ -155,13 +155,13 @@ else:win32 {
     HEADERS += platforms/nvapi/uinvapi.h
     SOURCES += platforms/nvapi/uinvapi.cpp
 
-    HEADERS += direct3d/_mingw_unicode.h
-    HEADERS += direct3d/d3dx9.h
-    HEADERS += direct3d/d3dx9core.h
-    HEADERS += direct3d/d3dx9math.h
-    HEADERS += direct3d/d3dx9math.inl
-    HEADERS += direct3d/d3dx9shader.h
-    HEADERS += direct3d/d3dx9tex.h
+    HEADERS += direct3d/include/_mingw_unicode.h
+    HEADERS += direct3d/include/d3dx9.h
+    HEADERS += direct3d/include/d3dx9core.h
+    HEADERS += direct3d/include/d3dx9math.h
+    HEADERS += direct3d/include/d3dx9math.inl
+    HEADERS += direct3d/include/d3dx9shader.h
+    HEADERS += direct3d/include/d3dx9tex.h
     HEADERS += direct3d/uidirect3d9window.h
     HEADERS += direct3d/uidirect3d9view.h
     HEADERS += direct3d/uidirect3d9textures.h

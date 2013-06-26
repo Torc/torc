@@ -1,7 +1,7 @@
 #ifndef UIDIRECT3D9DEFS_H
 #define UIDIRECT3D9DEFS_H
 
-#include "d3dx9.h"
+#include "include/d3dx9.h"
 
 typedef HRESULT (__stdcall * TORC_D3DXCOMPILESHADER)
     (const char*, UINT,  const D3DXMACRO*, ID3DXInclude*, const char*,
