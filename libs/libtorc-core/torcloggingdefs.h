@@ -1,9 +1,6 @@
 #ifndef TORCLOGGINGDEFS_H_
 #define TORCLOGGINGDEFS_H_
 
-// Std
-#include <stdint.h>
-
 #undef VERBOSE_PREAMBLE
 #undef VERBOSE_POSTAMBLE
 #undef VERBOSE_MAP
