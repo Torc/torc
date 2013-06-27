@@ -223,7 +223,7 @@ class AudioOutputDXPrivate
                 (m_bufferPosition >= play_pos &&
                  m_bufferPosition + size >= play_pos + m_parent->m_soundcardBufferSize))
             {
-                TorcUSleep(50000);
+                TorcCoreUtils::USleep(50000);
                 continue;
             }
 

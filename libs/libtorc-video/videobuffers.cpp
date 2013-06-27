@@ -271,7 +271,7 @@ VideoFrame* VideoBuffers::GetFrameForDecoding(void)
         if (m_unused.isEmpty())
         {
             m_lock->unlock();
-            TorcUSleep(WAIT_FOR_UNUSED_RETRY);
+            TorcCoreUtils::USleep(WAIT_FOR_UNUSED_RETRY);
             continue;
         }
 
@@ -334,7 +334,7 @@ bool VideoBuffers::GetNextVideoTimeStamp(qint64 &TimeStamp, int WaitUSecs /*= 0*
         if (m_ready.isEmpty())
         {
             m_lock->unlock();
-            TorcUSleep(WAIT_FOR_READY_RETRY);
+            TorcCoreUtils::USleep(WAIT_FOR_READY_RETRY);
             continue;
         }
 
@@ -360,7 +360,7 @@ VideoFrame* VideoBuffers::GetFrameForDisplaying(int WaitUSecs /*= 0*/)
         if (m_ready.isEmpty())
         {
             m_lock->unlock();
-            TorcUSleep(WAIT_FOR_READY_RETRY);
+            TorcCoreUtils::USleep(WAIT_FOR_READY_RETRY);
             continue;
         }
 

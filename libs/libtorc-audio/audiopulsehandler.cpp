@@ -254,7 +254,7 @@ bool PulseHandler::Init(void)
     while ((tries++ < 100) && !IS_READY(m_contextState))
     {
         pa_mainloop_iterate(m_loop, 0, &ret);
-        TorcUSleep(10000);
+        TorcCoreUtils::USleep(10000);
     }
 
     if (PA_CONTEXT_READY != m_contextState)
@@ -305,7 +305,7 @@ bool PulseHandler::SuspendInternal(bool Suspend)
     while (m_pendingOperations && count++ < 100)
     {
         pa_mainloop_iterate(m_loop, 0, &ret);
-        TorcUSleep(10000);
+        TorcCoreUtils::USleep(10000);
     }
 
     // a failure isn't necessarily disastrous

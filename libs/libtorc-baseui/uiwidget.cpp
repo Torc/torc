@@ -142,13 +142,13 @@ UIWidget::UIWidget(UIWidget *Root, UIWidget* Parent, const QString &Name, int Fl
             factory->RegisterConstructor(m_engine);
 
         // register Qt:: ('Qt')
-        AddScriptProperty(QString("Qt"), EnumsToScript(this->staticQtMetaObject));
+        AddScriptProperty(QString("Qt"), TorcCoreUtils::EnumsToScript(this->staticQtMetaObject));
 
         // register Torc:: ('Torc')
-        AddScriptProperty(QString("Torc"), EnumsToScript(Torc::staticMetaObject));
+        AddScriptProperty(QString("Torc"), TorcCoreUtils::EnumsToScript(Torc::staticMetaObject));
 
         // register TorcPlayer:: ('TorcPlayer') for PlayerProperty
-        AddScriptProperty(QString("TorcPlayer"), EnumsToScript(TorcPlayer::staticMetaObject));
+        AddScriptProperty(QString("TorcPlayer"), TorcCoreUtils::EnumsToScript(TorcPlayer::staticMetaObject));
 
         // add this widget to the script environment
         AddScriptObject(this);

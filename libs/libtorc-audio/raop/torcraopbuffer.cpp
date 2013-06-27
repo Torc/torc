@@ -265,7 +265,7 @@ int TorcRAOPBuffer::Read(quint8 *Buffer, qint32 BufferSize)
 
     // need to give TorcRAOPConnection time to recover from missed packets and other temporary interruptions
     while (!(data = TorcRAOPDevice::Read(m_streamId)) && (tries++ < 100) && !m_avFormatContext->interrupt_callback.callback(m_avFormatContext->interrupt_callback.opaque))
-        TorcUSleep(50000);
+        TorcCoreUtils::USleep(50000);
 
     if (!data)
         return result;

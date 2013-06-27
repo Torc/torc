@@ -467,7 +467,7 @@ bool CommandLineArg::Set(QString Option, QByteArray Value)
         break;
 
       case QVariant::DateTime:
-        m_stored = QVariant(TorcDateTimeFromString(QString(Value)));
+        m_stored = QVariant(TorcCoreUtils::DateTimeFromString(QString(Value)));
         break;
 
       case QVariant::StringList:

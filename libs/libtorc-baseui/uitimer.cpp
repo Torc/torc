@@ -33,14 +33,14 @@ UITimer::UITimer(qreal Interval)
 
 void UITimer::Start(void)
 {
-    m_nextEvent = GetMicrosecondCount() + m_interval;
+    m_nextEvent = TorcCoreUtils::GetMicrosecondCount() + m_interval;
 }
 
 void UITimer::Wait(void)
 {
-    qint64 remaining = m_nextEvent - GetMicrosecondCount();
+    qint64 remaining = m_nextEvent - TorcCoreUtils::GetMicrosecondCount();
     if (remaining > 0 && remaining < (m_interval * 4))
-        TorcUSleep(remaining);
+        TorcCoreUtils::USleep(remaining);
 }
 
 void UITimer::Reset(void)

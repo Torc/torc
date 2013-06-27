@@ -117,7 +117,7 @@ bool TorcNetworkRequest::WaitForStart(int Timeout)
     m_readTimer->Restart();
 
     while (!m_started && !m_replyFinished && !(*m_abort))
-        TorcUSleep(50000);
+        TorcCoreUtils::USleep(50000);
 
     return m_started || m_replyFinished;
 }
@@ -172,7 +172,7 @@ int TorcNetworkRequest::Read(char *Buffer, qint32 BufferSize, int Timeout, bool 
     {
         if (m_replyBytesAvailable && m_writeTimer->Elapsed() > 100)
             gNetwork->Poke(this);
-        TorcUSleep(50000);
+        TorcCoreUtils::USleep(50000);
     }
 
     if (*m_abort)
@@ -343,7 +343,7 @@ QByteArray TorcNetworkRequest::ReadAll(int Timeout)
     m_readTimer->Restart();
 
     while (!(*m_abort) && (m_readTimer->Elapsed() < Timeout) && !m_replyFinished)
-        TorcUSleep(50000);
+        TorcCoreUtils::USleep(50000);
 
     if (*m_abort)
         return QByteArray();

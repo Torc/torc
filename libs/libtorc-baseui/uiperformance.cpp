@@ -70,7 +70,7 @@ quint64 UIPerformance::StartFrame(void)
     if (!m_totalCount)
         return 0;
 
-    quint64 time = GetMicrosecondCount();
+    quint64 time = TorcCoreUtils::GetMicrosecondCount();
     RecordEndTime(time);
     RecordStartTime(time);
     return time;
@@ -81,7 +81,7 @@ void UIPerformance::FinishDrawing(void)
     if (!m_totalCount || !m_starttimeValid)
         return;
 
-    m_renderTimes[m_currentCount] = GetMicrosecondCount() - m_starttime;
+    m_renderTimes[m_currentCount] = TorcCoreUtils::GetMicrosecondCount() - m_starttime;
 }
 
 void UIPerformance::RecordEndTime(quint64 Time)

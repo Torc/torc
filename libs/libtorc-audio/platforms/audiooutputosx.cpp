@@ -1340,7 +1340,7 @@ bool AudioOutputOSX::OpenDevice(void)
             if (result < 0)
             {
                 m_priv->CloseAnalog();
-                TorcUSleep(1000 * 1000);
+                TorcCoreUtils::USleep(1000 * 1000);
             }
         }
 
@@ -1412,7 +1412,7 @@ bool AudioOutputOSX::RenderAudio(unsigned char *Buffer, int Size, unsigned long 
                              m_outputBytesPerFrame);        // bytes/frame
 
     if (updateparent && m_parent)
-        m_parent->SetAudioTime(GetAudiotime(), GetMicrosecondCount());
+        m_parent->SetAudioTime(GetAudiotime(), TorcCoreUtils::GetMicrosecondCount());
 
     return (written_size > 0);
 }

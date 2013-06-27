@@ -27,7 +27,7 @@ int TorcUtils::Probe(const UtilsCommandLineParser *Cmdline)
                  decoder->GetState() == TorcDecoder::Paused ||
                  decoder->GetState() == TorcDecoder::Errored))
         {
-            TorcUSleep(50000);
+            TorcCoreUtils::USleep(50000);
         }
     }
 

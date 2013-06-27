@@ -364,7 +364,7 @@ bool VideoDecoder::FilterAudioFrames(qint64 Timecode)
         {
             // slow the audio decoder thread down a little and avoid it dumping
             // large amounts of audio before the video thread is ready
-            TorcUSleep(50000);
+            TorcCoreUtils::USleep(50000);
             return true;
         }
 

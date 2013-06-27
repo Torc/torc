@@ -243,7 +243,7 @@ bool TorcPlayer::HandleEvent(QEvent *Event)
             if (id == m_refreshTimer)
             {
                 static QSizeF dummy;
-                Refresh(GetMicrosecondCount(), dummy, false);
+                Refresh(TorcCoreUtils::GetMicrosecondCount(), dummy, false);
                 return true;
             }
             else if (id == m_nextDecoderStartTimer)

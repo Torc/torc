@@ -55,7 +55,7 @@ UIImageTracker::~UIImageTracker()
 
     int count = 0;
     while (!m_outstandingImages.isEmpty() && count++ < 100)
-        TorcUSleep(50000);
+        TorcCoreUtils::USleep(50000);
 
     if (!m_outstandingImages.isEmpty())
         LOG(VB_GENERAL, LOG_ERR, QString("Waited for 5 seconds and %1 images still not complete").arg(m_outstandingImages.size()));

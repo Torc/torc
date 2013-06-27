@@ -168,7 +168,7 @@ bool AudioOutputOSS::OpenDevice()
                          .arg(m_mainDevice));
         }
         if (m_audioFd < 0)
-            TorcUSleep(50);
+            TorcCoreUtils::USleep(50);
     }
 
     if (m_audioFd == -1)

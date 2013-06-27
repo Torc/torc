@@ -1142,7 +1142,7 @@ void AudioOutput::PauseUntilBuffered()
 void AudioOutput::Drain()
 {
     while (AudioReady() > m_fragmentSize)
-        TorcUSleep(1000);
+        TorcCoreUtils::USleep(1000);
 }
 
 /**
@@ -1793,7 +1793,7 @@ void AudioOutput::run(void)
                 WriteAudio(zeros, zerofragmentsize);
 
                 if (m_parent)
-                    m_parent->SetAudioTime(GetAudiotime(), GetMicrosecondCount());
+                    m_parent->SetAudioTime(GetAudiotime(), TorcCoreUtils::GetMicrosecondCount());
 
                 continue;
             }
@@ -1814,7 +1814,7 @@ void AudioOutput::run(void)
                                       "have %1 want %2")
                               .arg(ready).arg(m_fragmentSize));
 
-                TorcUSleep(10000);
+                TorcCoreUtils::USleep(10000);
                 continue;
             }
 
@@ -1829,7 +1829,7 @@ void AudioOutput::run(void)
                     WriteAudio(fragment, m_fragmentSize);
 
                     if (m_parent)
-                        m_parent->SetAudioTime(GetAudiotime(), GetMicrosecondCount());
+                        m_parent->SetAudioTime(GetAudiotime(), TorcCoreUtils::GetMicrosecondCount());
 
                     if (!m_resetActive->TestAndDeref())
                         m_raud = nextraud;
