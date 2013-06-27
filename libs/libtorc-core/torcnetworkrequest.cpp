@@ -127,7 +127,7 @@ int TorcNetworkRequest::Peek(char *Buffer, qint32 BufferSize, int Timeout)
     return Read(Buffer, BufferSize, Timeout, true);
 }
 
-/*! \fn Seek
+/*! \fn TorcNetworkRequest::Seek
  * If this is a streamed download, attempt to seek within the range
  * of what is currently buffered.
 */

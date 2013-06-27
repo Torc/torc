@@ -361,10 +361,15 @@ class TorcBonjourPriv
  * when Bonjour is available - in which case a reference is still returned
  * (i.e. it does not return an error).
  *
+ * \param Port      The port number the service is available on (e.g. 80).
+ * \param Type      A string describing the Bonjour service type (e.g. _http._tcp).
+ * \param Name      A string containing a user friendly name for the service (e.g. webserver).
+ * \param Txt       A pre-formatted QByteArray containing the Txt records for this service.
  * \param Reference Used to re-create a service registration following a Resume.
  * \returns An opaque reference to be passed to Deregister when complete or 0 on error.
  *
  * \sa Deregister
+ * \sa TorcBonjour::MapToTxtRecord
 */
     quint32 Register(quint16 Port, const QByteArray &Type,
                      const QByteArray &Name, const QByteArray &Txt,
@@ -422,6 +427,7 @@ class TorcBonjourPriv
     /*! \fn    TorcBonjourPriv::Browse
      *  \brief Search for a service named Type
      *
+     * \param   Type      A string describing the Bonjour service type (e.g. _http._tcp).
      * \param   Reference Used to re-create a Browse following a Resume.
      * \returns An opaque reference to be passed to Deregister when complete or 0 on error.
      *
