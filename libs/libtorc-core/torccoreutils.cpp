@@ -94,8 +94,7 @@ void TorcCoreUtils::USleep(int USecs)
 #endif
 }
 
-/*! \fn    TorcCoreUtils::EnumToScript
- *  \brief Convert a QMetaEnum into a QString that can be passed to QScript.
+/*! \brief Convert a QMetaEnum into a QString that can be passed to QScript.
  *
  * This function is used to pass the string representation of enumerations to a QScript
  * context. The enumerations can then be used directly within scripts.
