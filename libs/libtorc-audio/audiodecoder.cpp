@@ -1575,9 +1575,9 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
         m_priv->m_avFormatContext->pb = avio_alloc_context(m_priv->m_libavBuffer,
                                                            m_priv->m_libavBufferSize,
                                                            0, m_priv->m_buffer,
-                                                           m_priv->m_buffer->GetReadFunction(),
-                                                           m_priv->m_buffer->GetWriteFunction(),
-                                                           m_priv->m_buffer->GetSeekFunction());
+                                                           &TorcBuffer::StaticRead,
+                                                           &TorcBuffer::StaticWrite,
+                                                           &TorcBuffer::StaticSeek);
 
         m_priv->m_avFormatContext->pb->seekable = !m_priv->m_buffer->IsSequential();
     }

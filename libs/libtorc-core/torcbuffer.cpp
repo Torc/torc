@@ -168,36 +168,6 @@ int64_t TorcBuffer::StaticSeek(void *Object, int64_t Offset, int Whence)
     return -1;
 }
 
-/*! \fn    TorcBuffer::GetReadFunction
- *  \brief Get the static Read function.
- *
- * Returns a pointer to the static TorcBuffer::Read function for AVFormatContext
-*/
-int (*TorcBuffer::GetReadFunction(void))(void*, quint8*, qint32)
-{
-    return &TorcBuffer::StaticRead;
-}
-
-/*! \fn    TorcBuffer::GetWriteFunction
- *  \brief Get the static Write function.
- *
- * Returns a pointer to the static TorcBuffer::Write function for AVFormatContext
-*/
-int (*TorcBuffer::GetWriteFunction(void))(void*, quint8*, qint32)
-{
-    return &TorcBuffer::StaticWrite;
-}
-
-/*! \fn    TorcBuffer::GetSeekFunction
- *  \brief Get the static Seek function.
- *
- * Returns a pointer to the static TorcBuffer::Seek function for AVFormatContext
-*/
-int64_t (*TorcBuffer::GetSeekFunction(void))(void*, int64_t, int)
-{
-    return &TorcBuffer::StaticSeek;
-}
-
 /*! \fn    TorcBuffer::Open
  *  \brief Open the buffer.
  *
