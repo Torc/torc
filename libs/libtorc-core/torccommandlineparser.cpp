@@ -1123,7 +1123,7 @@ TorcCommandLineParser::~TorcCommandLineParser()
  *             if this is empty, the argument will not be shown
  *  LongHelpText
              - extended help text, displayed when help about a specific option
- *             is requested using '--help <option>'
+ *             is requested using '--help option'
  *
  *  Allowed types are:
  *    Bool          - set to value, or default if value is not provided
