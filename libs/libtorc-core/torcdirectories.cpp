@@ -31,8 +31,7 @@ static QString gInstallDir = QString("");
 static QString gShareDir   = QString("");
 static QString gConfDir    = QString("");
 
-/*! \fn    InitialiaseTorcDirectories
- *  \brief Statically initialise the various directories that Torc uses.
+/*! \brief Statically initialise the various directories that Torc uses.
  *
  * gInstallDir will default to /usr/local
  * gShareDir will default to  /usr/local/share
@@ -54,8 +53,7 @@ void InitialiseTorcDirectories(void)
     gConfDir    = QDir::homePath() + "/.torc";
 }
 
-/*! \fn    GetTorcConfigDir
- *  \brief Return the path to the application configuration directory
+/*! \brief Return the path to the application configuration directory
  *
  * This is the directory where (under a default setup) the database is stored.
 */
@@ -64,8 +62,7 @@ QString GetTorcConfigDir(void)
     return gConfDir;
 }
 
-/*! \fn    GetTorcShareDir
- *  \brief Return the path to the installed Torc shared resources.
+/*! \brief Return the path to the installed Torc shared resources.
  *
  * Shared resources might include UI themes, other images and static HTML content.
 */
