@@ -15,11 +15,11 @@ class TORC_CORE_PUBLIC TorcEvent : public QEvent
     TorcEvent(int Event, const QVariantMap Data = QVariantMap());
     virtual ~TorcEvent();
 
-    int          Event (void);
-    QVariantMap& Data  (void);
-    TorcEvent*   Copy  (void) const;
+    int          GetEvent (void);
+    QVariantMap& Data     (void);
+    TorcEvent*   Copy     (void) const;
 
-    static       Type   TorcEventType;
+    static       Type      TorcEventType;
 
   private:
     int         m_event;

@@ -328,7 +328,7 @@ void UIOpenGLWindow::customEvent(QEvent *Event)
         if (!torcevent)
             return;
 
-        int event = torcevent->Event();
+        int event = torcevent->GetEvent();
 
         switch (event)
         {

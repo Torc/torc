@@ -1080,7 +1080,7 @@ bool TorcBonjour::event(QEvent *Event)
         TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
         if (torcevent)
         {
-            int event = torcevent->Event();
+            int event = torcevent->GetEvent();
 
             if (event == Torc::NetworkDisabled)
             {

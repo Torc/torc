@@ -304,7 +304,7 @@ bool TorcRAOPDevice::event(QEvent *Event)
         TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
         if (torcevent)
         {
-            if (torcevent->Event() == Torc::NetworkAvailable)
+            if (torcevent->GetEvent() == Torc::NetworkAvailable)
                 Enable(true);
         }
     }

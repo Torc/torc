@@ -778,7 +778,7 @@ bool TorcPlayerInterface::HandleEvent(QEvent *Event)
         return false;
 
     QVariantMap data = torcevent->Data();
-    int event = torcevent->Event();
+    int event = torcevent->GetEvent();
     switch (event)
     {
         case Torc::Exit:

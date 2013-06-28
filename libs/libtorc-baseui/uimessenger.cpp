@@ -113,7 +113,7 @@ bool UIMessenger::event(QEvent *Event)
     }
 
     TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
-    if (torcevent && torcevent->Event() == Torc::Message)
+    if (torcevent && torcevent->GetEvent() == Torc::Message)
     {
         QVariantMap data = torcevent->Data();
 

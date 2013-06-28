@@ -106,6 +106,8 @@ TorcMediaSourceDirectory::TorcMediaSourceDirectory()
             m_configuredPaths << path;
     }
 
+    //m_configuredPaths << "/Users/mark/Dropbox/";
+
     // connect up the dots
     connect(this, SIGNAL(directoryChanged(QString)), this, SLOT(DirectoryChanged(QString)));
     gLocalContext->AddObserver(this);
@@ -180,7 +182,7 @@ void TorcMediaSourceDirectory::customEvent(QEvent *Event)
         TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
         if (torcevent)
         {
-            int event = torcevent->Event();
+            int event = torcevent->GetEvent();
 
             if (event == Torc::DisableStorage)
             {

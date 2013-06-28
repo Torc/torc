@@ -889,7 +889,7 @@ bool TorcCECDevice::event(QEvent *Event)
         TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
         if (torcevent)
         {
-            int event = torcevent->Event();
+            int event = torcevent->GetEvent();
             switch (event)
             {
                 case Torc::Suspending:

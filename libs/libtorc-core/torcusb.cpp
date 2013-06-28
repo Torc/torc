@@ -221,7 +221,7 @@ bool TorcUSB::event(QEvent *Event)
     if (Event && Event->type() == TorcEvent::TorcEventType)
     {
         TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
-        if (torcevent && torcevent->Event() == Torc::USBRescan && m_priv)
+        if (torcevent && torcevent->GetEvent() == Torc::USBRescan && m_priv)
         {
             m_priv->Refresh();
             return true;

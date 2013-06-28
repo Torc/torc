@@ -690,7 +690,7 @@ bool TorcSSDP::event(QEvent *Event)
         TorcEvent* event = dynamic_cast<TorcEvent*>(Event);
         if (event)
         {
-            if (event->Event() == Torc::NetworkAvailable && m_priv)
+            if (event->GetEvent() == Torc::NetworkAvailable && m_priv)
             {
                 m_priv->Start();
                 SearchPriv(QString(), NULL);
@@ -698,7 +698,7 @@ bool TorcSSDP::event(QEvent *Event)
                     killTimer(m_searchTimer);
                 m_searchTimer = startTimer(3000 + qrand() % 2000);
             }
-            else if (event->Event() == Torc::NetworkUnavailable && m_priv)
+            else if (event->GetEvent() == Torc::NetworkUnavailable && m_priv)
             {
                 if (m_searchTimer)
                     killTimer(m_searchTimer);

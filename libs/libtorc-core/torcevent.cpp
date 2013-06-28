@@ -66,7 +66,7 @@ TorcEvent::~TorcEvent()
 }
 
 /// \brief Return the Torc action associated with this event.
-int TorcEvent::Event(void)
+int TorcEvent::GetEvent(void)
 {
     return m_event;
 }
