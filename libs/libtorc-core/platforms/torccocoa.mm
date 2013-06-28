@@ -1,63 +1,69 @@
-// OS X
-#import <Cocoa/Cocoa.h>
+/* Class TorcCocoa
+*
+* This file is part of the Torc project.
+*
+* Copyright (C) Mark Kendall 2013
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+* USA.
+*/
 
 // Torc
 #include "torclogging.h"
 #include "torccocoa.h"
 
-void* CreateOSXCocoaPool(void);
-void  DeleteOSXCocoaPool(void *&pool);
+// OS X
+#import <Cocoa/Cocoa.h>
 
-// Dummy NSThread for Cocoa multithread initialization
 @implementation NSThread (Dummy)
-
 - (void) run;
 {
 }
-
 @end
 
-void *CreateOSXCocoaPool(void)
+/*! /class CocoaAutoReleasePool
+ *  /brief A convenience class to instantiate a Cocoa auto release pool for a thread.
+*/
+CocoaAutoReleasePool::CocoaAutoReleasePool()
 {
-    // Cocoa requires a message to be sent informing the Cocoa event
-    // thread that the application is multi-threaded. Apple recommends
-    // creating a dummy NSThread to get this message sent.
-
+    // Inform the Cocoa framework that we are multithreaded so that it creates
+    // its internal locks.
     if (![NSThread isMultiThreaded])
     {
         NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-        NSThread *thr = [[NSThread alloc] init];
+        NSThread *thread = [[NSThread alloc] init];
         SEL threadSelector = @selector(run);
-        [NSThread detachNewThreadSelector:threadSelector toTarget:thr withObject:nil];
+        [NSThread detachNewThreadSelector:threadSelector toTarget:thread withObject:nil];
         [pool release];
     }
 
     NSAutoreleasePool *pool = NULL;
     pool = [[NSAutoreleasePool alloc] init];
-    return pool;
-}
-
-void DeleteOSXCocoaPool(void* &pool)
-{
-    if (pool)
-    {
-        NSAutoreleasePool *a_pool = (NSAutoreleasePool*) pool;
-        pool = NULL;
-        [a_pool release];
-    }
-}
-
-CocoaAutoReleasePool::CocoaAutoReleasePool()
-{
-    m_pool = CreateOSXCocoaPool();
+    m_pool = pool;
 }
 
 CocoaAutoReleasePool::~CocoaAutoReleasePool()
 {
     if (m_pool)
-        DeleteOSXCocoaPool(m_pool);
+    {
+        NSAutoreleasePool *pool = (NSAutoreleasePool*) m_pool;
+        [pool release];
+    }
 }
 
+/// \brief Retrieve the display ID for the given window.
 CGDirectDisplayID GetOSXCocoaDisplay(void* Window)
 {
     NSView *thisview = static_cast<NSView *>(Window);
@@ -70,6 +76,7 @@ CGDirectDisplayID GetOSXCocoaDisplay(void* Window)
     return (CGDirectDisplayID)[[desc objectForKey:@"NSScreenNumber"] intValue];
 }
 
+/// \brief Get the EDID for the display Display.
 QByteArray GetOSXEDID(CGDirectDisplayID Display)
 {
     QByteArray result;
@@ -97,6 +104,7 @@ QByteArray GetOSXEDID(CGDirectDisplayID Display)
     return result;
 }
 
+/// \brief Get the EDID for the current display.
 QByteArray GetOSXEDID(void)
 {
     QByteArray result;
