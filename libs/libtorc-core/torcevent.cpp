@@ -24,20 +24,37 @@
 #include "torcevent.h"
 
 /*! \class TorcEvent
- *  \brief A general purpose event object
+ *  \brief A general purpose event object.
  *
- *  TorcEvent is used to send Torc specific events to other objects.
- *  For a simple event message, the constructor requires only a Torc event
- *  type. For more complicated events, add addtional data with a QVariantMap.
+ * TorcEvent is used to send Torc::Actions events to other objects.
+ * For a simple event message, the constructor requires only a Torc event
+ * type. For more complicated events, add additional data with a QVariantMap.
+ *
+ * To listen for Torc events, an object must be a QObject subclass and reimplement QObject::event.
+ * It can then call gLocalContext->AddObserver(this) and remember
+ * to call gLocalContext->RemoveObserver(this) when event notification is no longer
+ * required.
+ *
+ * (N.B. Take care to return an appropriate value from event() and be wary of implementing other
+ * QObject event handlers (such as timerEvent) as they can interact in unexpected ways).
+ *
+ * For specific functionality for which there are a known and/or limited number of 'listeners',
+ * consider sending events directly with QCoreApplication::postEvent (or alternatively, use the
+ * signal/slot mechanism, which is also thread safe).
  *
  * \sa TorcLocalContext::AddObserver
  * \sa TorcLocalContext::RemoveObserver
  * \sa TorcLocalContext::NotifyEvent
+ *
+ * \sa TorcLocalContext
+ * \sa TorcObservable
  */
 
+/// Register TorcEventType with QEvent
 QEvent::Type TorcEvent::TorcEventType = (QEvent::Type) QEvent::registerEventType();
 
-TorcEvent::TorcEvent(int Event, const QVariantMap Data)
+/// The default implementation contains no data.
+TorcEvent::TorcEvent(int Event, const QVariantMap Data/* = QVariantMap()*/)
   : QEvent(TorcEventType),
     m_event(Event),
     m_data(Data)
@@ -48,16 +65,24 @@ TorcEvent::~TorcEvent()
 {
 }
 
+/// \brief Return the Torc action associated with this event.
 int TorcEvent::Event(void)
 {
     return m_event;
 }
 
+/// \brief Return a reference to the Data contained within this event.
 QVariantMap& TorcEvent::Data(void)
 {
     return m_data;
 }
 
+/*! \brief Copy this event.
+ *
+ * TorcObservable will iterate over the list of 'listening' objects and send events
+ * to each using QCoreApplication::postEvent. postEvent will however take ownership of the
+ * event object, hence we need to create a copy for each message.
+*/
 TorcEvent* TorcEvent::Copy(void) const
 {
     return new TorcEvent(m_event, m_data);
