@@ -2451,7 +2451,7 @@ void AudioDecoder::DebugStreams(const QList<TorcStreamData*> &Streams)
     }
 }
 
-class AudioDecoderFactory : public DecoderFactory
+class TorcAudioDecoderFactory : public TorcDecoderFactory
 {
     void Score(int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent)
     {
@@ -2472,4 +2472,4 @@ class AudioDecoderFactory : public DecoderFactory
 
         return new AudioDecoder(URI, Parent, DecodeFlags);
     }
-} AudioDecoderFactory;
+} TorcAudioDecoderFactory;

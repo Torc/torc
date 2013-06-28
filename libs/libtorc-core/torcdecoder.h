@@ -60,19 +60,19 @@ class TORC_CORE_PUBLIC TorcDecoder
     virtual int          GetStreamCount   (TorcStreamTypes Type) = 0;
 };
 
-class TORC_CORE_PUBLIC DecoderFactory
+class TORC_CORE_PUBLIC TorcDecoderFactory
 {
   public:
-    DecoderFactory();
-    virtual ~DecoderFactory();
-    static DecoderFactory* GetDecoderFactory (void);
-    DecoderFactory*        NextFactory       (void) const;
-    virtual void           Score             (int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent) = 0;
-    virtual TorcDecoder*   Create            (int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent) = 0;
+    TorcDecoderFactory();
+    virtual ~TorcDecoderFactory();
+    static TorcDecoderFactory* GetTorcDecoderFactory (void);
+    TorcDecoderFactory*        NextFactory           (void) const;
+    virtual void               Score                 (int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent) = 0;
+    virtual TorcDecoder*       Create                (int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent) = 0;
 
   protected:
-    static DecoderFactory* gDecoderFactory;
-    DecoderFactory*        nextDecoderFactory;
+    static TorcDecoderFactory* gTorcDecoderFactory;
+    TorcDecoderFactory*        nextTorcDecoderFactory;
 };
 
 #endif // TORCDECODER_H

@@ -31,7 +31,7 @@ extern "C" {
 
 class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
 {
-    friend class AudioDecoderFactory;
+    friend class TorcAudioDecoderFactory;
     friend class TorcDemuxerThread;
     friend class TorcVideoThread;
     friend class TorcAudioThread;

@@ -569,7 +569,7 @@ int64_t VideoDecoder::GetValidTimestamp(int64_t PTS, int64_t DTS)
     return DTS;
 }
 
-class VideoDecoderFactory : public DecoderFactory
+class TorcVideoDecoderFactory : public TorcDecoderFactory
 {
     void Score(int DecodeFlags, const QString &URI, int &Score, TorcPlayer *Parent)
     {
@@ -584,7 +584,7 @@ class VideoDecoderFactory : public DecoderFactory
 
         return NULL;
     }
-} VideoDecoderFactory;
+} TorcVideoDecoderFactory;
 
 AccelerationFactory* AccelerationFactory::gAccelerationFactory = NULL;
 

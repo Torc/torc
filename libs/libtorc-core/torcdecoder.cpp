@@ -34,7 +34,7 @@
  * \sa AudioDecoder
  * \sa VideoDecoder
  * \sa TorcPlayer
- * \sa DecoderFactory
+ * \sa TorcDecoderFactory
 */
 
 TorcDecoder::~TorcDecoder()
@@ -128,11 +128,11 @@ TorcDecoder* TorcDecoder::Create(int DecodeFlags, const QString &URI, TorcPlayer
     TorcDecoder *decoder = NULL;
 
     int score = 0;
-    DecoderFactory* factory = DecoderFactory::GetDecoderFactory();
+    TorcDecoderFactory* factory = TorcDecoderFactory::GetTorcDecoderFactory();
     for ( ; factory; factory = factory->NextFactory())
         (void)factory->Score(DecodeFlags, URI, score, Parent);
 
-    factory = DecoderFactory::GetDecoderFactory();
+    factory = TorcDecoderFactory::GetTorcDecoderFactory();
     for ( ; factory; factory = factory->NextFactory())
     {
         decoder = factory->Create(DecodeFlags, URI, score, Parent);
@@ -146,32 +146,32 @@ TorcDecoder* TorcDecoder::Create(int DecodeFlags, const QString &URI, TorcPlayer
     return decoder;
 }
 
-/*! \class DecoderFactory
+/*! \class TorcDecoderFactory
  *  \brief Base class for adding a TorcDecoder implementation.
  *
- * To make a TorcDecoder subclass available for use within an application, subclass DecoderFactory
+ * To make a TorcDecoder subclass available for use within an application, subclass TorcDecoderFactory
  * and implement Score and Create. Implementations can offer new decoder functionality and ensure
  * they are selected over the default decoder class by increasing their 'score'.
  *
  * \sa TorcDecoder
- * \sa AudioDecoderFactory
- * \sa VideoDecoderFactory
+ * \sa TorcAudioDecoderFactory
+ * \sa TorcVideoDecoderFactory
 */
 
-DecoderFactory* DecoderFactory::gDecoderFactory = NULL;
+TorcDecoderFactory* TorcDecoderFactory::gTorcDecoderFactory = NULL;
 
-/// The base contstructor adds this object to the head of the linked list of DecoderFactory concrete implementations.
-DecoderFactory::DecoderFactory()
+/// The base contstructor adds this object to the head of the linked list of TorcDecoderFactory concrete implementations.
+TorcDecoderFactory::TorcDecoderFactory()
 {
-    nextDecoderFactory = gDecoderFactory;
-    gDecoderFactory = this;
+    nextTorcDecoderFactory = gTorcDecoderFactory;
+    gTorcDecoderFactory = this;
 }
 
-DecoderFactory::~DecoderFactory()
+TorcDecoderFactory::~TorcDecoderFactory()
 {
 }
 
-/*! \fn    DecoderFactory::Score
+/*! \fn    TorcDecoderFactory::Score
  *  \brief Assess whether the item described by by URI can be handled.
  *
  * DecodeFlags and URI describe an item of media that requires decoding in a specific manner.
@@ -180,7 +180,7 @@ DecoderFactory::~DecoderFactory()
  * \sa Create
 */
 
-/*! \fn    DecoderFactory::Create
+/*! \fn    TorcDecoderFactory::Create
  *  \brief Create a TorcDecoder object capable of decoding the media described by URI.
  *
  * If Score is less than the value set by the associated Score implementation, do not create an
@@ -189,15 +189,15 @@ DecoderFactory::~DecoderFactory()
  * \sa Score
 */
 
-/*! \fn    DecoderFactory::GetDecoderFactory
- *  \brief Returns a pointer to the first item in the linked list of DecoderFactory objects.
+/*! \fn    TorcDecoderFactory::GetTorcDecoderFactory
+ *  \brief Returns a pointer to the first item in the linked list of TorcDecoderFactory objects.
 */
-DecoderFactory* DecoderFactory::GetDecoderFactory(void)
+TorcDecoderFactory* TorcDecoderFactory::GetTorcDecoderFactory(void)
 {
-    return gDecoderFactory;
+    return gTorcDecoderFactory;
 }
 
-DecoderFactory* DecoderFactory::NextFactory(void) const
+TorcDecoderFactory* TorcDecoderFactory::NextFactory(void) const
 {
-    return nextDecoderFactory;
+    return nextTorcDecoderFactory;
 }

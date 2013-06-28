@@ -19,7 +19,7 @@ class VideoColourSpace;
 
 class VideoDecoder : public AudioDecoder
 {
-    friend class VideoDecoderFactory;
+    friend class TorcVideoDecoderFactory;
 
   public:
     static double  GetFrameAspectRatio (AVStream *Stream, AVFrame &Frame);
