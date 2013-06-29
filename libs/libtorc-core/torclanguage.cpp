@@ -30,25 +30,32 @@ QMap<QString,int> TorcLanguage::gLanguageMap;
 /*! \class TorcLanguage
  *  \brief A class to track and manage language and locale settings.
  *
- *  \note Currently incomplete and only used for media decoding and playback.
+ * \note Currently incomplete and only used for media decoding and playback.
+ *
+ * \todo The mast TorcLanguage object is created before logging has started.
+ * \todo Should locale settings be a setting or preference.
+ * \todo Add action notifiers for a local change.
 */
-
 TorcLanguage::TorcLanguage()
 {
     Initialise();
 
-    // NB the country doesn't appear to be accurate on OS X
     LOG(VB_GENERAL, LOG_INFO, QString("System language: %1 (%2) (%3)(env - %4)")
         .arg(QLocale::languageToString(m_locale.language()))
         .arg(QLocale::countryToString(m_locale.country()))
         .arg(m_locale.name()).arg(qgetenv("LANG").data()));
 }
 
+/// \brief Return the current language.
 QLocale::Language TorcLanguage::GetLanguage(void)
 {
     return m_locale.language();
 }
 
+/*! \brief Load the user's preferred Language and Country settings
+ *
+ * This will override the default locale detected from the system.
+*/
 void TorcLanguage::LoadPreferences(void)
 {
     QString language = gLocalContext->GetSetting(TORC_CORE + "Language", QString(""));
@@ -70,6 +77,7 @@ void TorcLanguage::LoadPreferences(void)
         .arg(m_locale.name()).arg(qgetenv("LANG").data()));
 }
 
+/// \brief Return a user readable string for the current language.
 QString TorcLanguage::ToString(QLocale::Language Language, bool Empty)
 {
     if (Language == DEFAULT_QT_LANGUAGE)
@@ -78,11 +86,13 @@ QString TorcLanguage::ToString(QLocale::Language Language, bool Empty)
     return QLocale::languageToString(Language);
 }
 
+/// \brief Return the language associated with the given 2 character code.
 QLocale::Language TorcLanguage::From2CharCode(const char *Code)
 {
     return From2CharCode(QString(Code));
 }
 
+/// \brief Return the language associated with the given 2 character code.
 QLocale::Language TorcLanguage::From2CharCode(const QString &Code)
 {
     QString language = Code.toLower();
@@ -96,11 +106,13 @@ QLocale::Language TorcLanguage::From2CharCode(const QString &Code)
     return DEFAULT_QT_LANGUAGE;
 }
 
+/// \brief Return the language associated with the given 3 character code.
 QLocale::Language TorcLanguage::From3CharCode(const char *Code)
 {
     return From3CharCode(QString(Code));
 }
 
+/// \brief Return the language associated with the given 3 character code.
 QLocale::Language TorcLanguage::From3CharCode(const QString &Code)
 {
     QString language = Code.toLower();
@@ -115,6 +127,12 @@ QLocale::Language TorcLanguage::From3CharCode(const QString &Code)
     return DEFAULT_QT_LANGUAGE;
 }
 
+/*! \brief Initialise the list of supported languages.
+ *
+ * We aim to use the 3 character code internally for compatability with
+ * other libraries and devices. To maintain performance, we create a static
+ * list of languages mapping 3 character codes to Qt constants.
+*/
 void TorcLanguage::Initialise(void)
 {
     static bool initialised = false;
