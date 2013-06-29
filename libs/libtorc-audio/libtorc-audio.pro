@@ -72,13 +72,9 @@ contains(CONFIG_LIBPULSE, yes) {
 }
 
 macx {
+    LIBS    += -framework ApplicationServices -framework AudioUnit -framework AudioToolbox -framework CoreAudio
     HEADERS += platforms/audiooutputosx.h
     SOURCES += platforms/audiooutputosx.cpp
-
-    FWKS = ApplicationServices AudioUnit AudioToolbox CoreAudio
-    FC = $$join(FWKS,",","{","}")
-    QMAKE_CXXFLAGS += -F/System/Library/Frameworks/$${FC}.framework/Frameworks
-    LIBS           += -framework $$join(FWKS," -framework ")
 }
 
 win32 {
