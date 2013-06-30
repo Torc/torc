@@ -30,13 +30,27 @@
 //Torc
 #include "torcmime.h"
 
+/// Pointer to the static singleton QMimeDatabase
 QMimeDatabase *gMimeDatabase = new QMimeDatabase();
 
+/*! \class TorcMime
+ *  \brief A wrapper around QMimeDatabase.
+ *
+ * TorcMime provides a static interface to the database of MIME types
+ * provided by QMimeDatabase.
+ *
+ * \note QMimeDatabase is only available with Qt 5.0 and greater. For Qt 4.8 support, a backport
+ * of the QMimeDatabase code is included. This will be removed when Qt 5.0 becomes the minimum
+ * requirement.
+*/
+
+/// \brief Return a MIME type for the media described by Data.
 QString TorcMime::MimeTypeForData(const QByteArray &Data)
 {
     return gMimeDatabase->mimeTypeForData(Data).name();
 }
 
+/// \brief Return a MIME type for the media accessed via Device.
 QString TorcMime::MimeTypeForData(QIODevice *Device)
 {
     if (Device)
@@ -44,6 +58,7 @@ QString TorcMime::MimeTypeForData(QIODevice *Device)
     return QString();
 }
 
+/// \brief Return a MIME type for the media described by FileName and Device.
 QString TorcMime::MimeTypeForFileNameAndData(const QString &FileName, QIODevice *Device)
 {
     if (FileName.isEmpty() || !Device)
@@ -52,6 +67,7 @@ QString TorcMime::MimeTypeForFileNameAndData(const QString &FileName, QIODevice 
     return gMimeDatabase->mimeTypeForFileNameAndData(FileName, Device).name();
 }
 
+/// \brief Return a MIME type for the media described by FileName and Data.
 QString TorcMime::MimeTypeForFileNameAndData(const QString &FileName, const QByteArray &Data)
 {
     if (FileName.isEmpty() || Data.isEmpty())
@@ -60,16 +76,19 @@ QString TorcMime::MimeTypeForFileNameAndData(const QString &FileName, const QByt
     return gMimeDatabase->mimeTypeForFileNameAndData(FileName, Data).name();
 }
 
+/// \brief Return a MIME type for the file named Name.
 QString TorcMime::MimeTypeForName(const QString &Name)
 {
     return gMimeDatabase->mimeTypeForName(Name).name();
 }
 
+/// \brief Return a MIME type for the media pointed to by Url.
 QString TorcMime::MimeTypeForUrl(const QUrl &Url)
 {
     return gMimeDatabase->mimeTypeForUrl(Url).name();
 }
 
+/// \brief Return a list of possible MIME types for the file named Name.
 QStringList TorcMime::MimeTypeForFileName(const QString &FileName)
 {
     QStringList result;
@@ -81,6 +100,10 @@ QStringList TorcMime::MimeTypeForFileName(const QString &FileName)
     return result;
 }
 
+/*! \brief Returns a list of known file extensions for a given top level MIME type.
+ *
+ * For example, passing "audio" as the type will return mp3, aac, ogg, wav etc.
+*/
 QStringList TorcMime::ExtensionsForType(const QString &Type)
 {
     QStringList extensions;
