@@ -97,6 +97,7 @@ QStringList TorcMime::MimeTypeForFileName(const QString &FileName)
     foreach (QMimeType type, types)
         result << type.name();
 
+    (void)result.removeDuplicates();
     return result;
 }
 
@@ -113,5 +114,6 @@ QStringList TorcMime::ExtensionsForType(const QString &Type)
         if (mime.name().startsWith(Type, Qt::CaseInsensitive))
             extensions.append(mime.suffixes());
 
+    (void)extensions.removeDuplicates();
     return extensions;
 }
