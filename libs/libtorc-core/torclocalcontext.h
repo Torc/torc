@@ -39,7 +39,8 @@ class TORC_CORE_PUBLIC Torc
         Power       = (1 << 3),
         Storage     = (1 << 4),
         USB         = (1 << 5),
-        Network     = (1 << 6)
+        Network     = (1 << 6),
+        AdminThread = (1 << 7)
     };
 
     Q_DECLARE_FLAGS(ApplicationFlags, ApplicationFlag);
@@ -228,12 +229,12 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     Q_INVOKABLE   void       SetPreference (const QString &Name, const int     &Value);
     Q_INVOKABLE   bool       FlagIsSet     (Torc::ApplicationFlag Flag);
     Q_INVOKABLE   QObject*   GetUIObject   (void);
+    Q_INVOKABLE   QString    GetUuid       (void);
+    Q_INVOKABLE   TorcSetting* GetRootSetting (void);
 
     QLocale::Language        GetLanguage   (void);
     void                     SetUIObject   (QObject* UI);
     void                     CloseDatabaseConnections (void);
-    QString                  GetUuid       (void);
-
 
   private:
     TorcLocalContext(TorcCommandLineParser* CommandLine, Torc::ApplicationFlags ApplicationFlags);

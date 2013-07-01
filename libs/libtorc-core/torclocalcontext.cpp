@@ -114,6 +114,10 @@ TorcLocalContextPriv::~TorcLocalContextPriv()
         delete m_adminThread;
         m_adminThread = NULL;
     }
+    else
+    {
+        TorcAdminObject::DestroyObjects();
+    }
 
     // wait for threads to exit
     QThreadPool::globalInstance()->waitForDone();
@@ -203,9 +207,17 @@ bool TorcLocalContextPriv::Init(void)
     // Load language preferences
     m_language.LoadPreferences();
 
-    // create an admin thread (and associated objects)
-    m_adminThread = new TorcAdminThread();
-    m_adminThread->start();
+    // create an admin thread (and associated objects). This is only
+    // required if the UI runs in the main thread.
+    if (m_flags & Torc::AdminThread)
+    {
+        m_adminThread = new TorcAdminThread();
+        m_adminThread->start();
+    }
+    else
+    {
+        TorcAdminObject::CreateObjects();
+    }
 
     return true;
 }
@@ -536,6 +548,11 @@ void TorcLocalContext::CloseDatabaseConnections(void)
 QString TorcLocalContext::GetUuid(void)
 {
     return m_priv->GetUuid();
+}
+
+TorcSetting* TorcLocalContext::GetRootSetting(void)
+{
+    return gRootSetting;
 }
 
 bool TorcLocalContext::FlagIsSet(Torc::ApplicationFlag Flag)
