@@ -79,10 +79,10 @@ TorcRAOPDevice::TorcRAOPDevice()
             m_enabled->SetActive(true);
         if (parent->GetValue().toBool())
             m_enabled->SetActive(true);
-        connect(parent,    SIGNAL(ValueChanged(bool)),      m_enabled, SLOT(SetActive(bool)));
-        connect(parent,    SIGNAL(ActivationChanged(bool)), m_enabled, SLOT(SetActive(bool)));
-        connect(m_enabled, SIGNAL(ValueChanged(bool)),      this,      SLOT(Enable(bool)));
-        connect(m_enabled, SIGNAL(ActivationChanged(bool)), this,      SLOT(Enable(bool)));
+        connect(parent,    SIGNAL(ValueChanged(bool)),  m_enabled, SLOT(SetActive(bool)));
+        connect(parent,    SIGNAL(ActiveChanged(bool)), m_enabled, SLOT(SetActive(bool)));
+        connect(m_enabled, SIGNAL(ValueChanged(bool)),  this,      SLOT(Enable(bool)));
+        connect(m_enabled, SIGNAL(ActiveChanged(bool)), this,      SLOT(Enable(bool)));
     }
     else
     {

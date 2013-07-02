@@ -48,7 +48,7 @@
 
 TorcSetting::TorcSetting(TorcSetting *Parent, const QString &DBName, const QString &UIName,
                          Type SettingType, bool Persistent, const QVariant &Default)
-  : QObject(),
+  : QAbstractListModel(),
     m_parent(Parent),
     m_type(SettingType),
     m_persistent(Persistent),
@@ -58,6 +58,7 @@ TorcSetting::TorcSetting(TorcSetting *Parent, const QString &DBName, const QStri
     m_begin(0),
     m_end(1),
     m_step(1),
+    m_isActive(false),
     m_active(0),
     m_activeThreshold(1),
     m_childrenLock(new QMutex(QMutex::Recursive))
@@ -106,14 +107,40 @@ TorcSetting::~TorcSetting()
     delete m_childrenLock;
 }
 
+int TorcSetting::rowCount(const QModelIndex &Parent) const
+{
+    // TODO does this need locking
+    return m_children.size();
+}
+
+QVariant TorcSetting::data(const QModelIndex &Index, int Role) const
+{
+    // TODO does this need locking
+    int row = Index.row();
+
+    if (row < 0 || row >= m_children.size() || Role != Qt::DisplayRole)
+        return QVariant();
+
+    return QVariant::fromValue(m_children.at(row));
+}
+
+QHash<int,QByteArray> TorcSetting::roleNames(void) const
+{
+    QHash<int,QByteArray> roles;
+    roles.insert(Qt::DisplayRole, "m_value");
+    roles.insert(Qt::DisplayRole, "m_uiName");
+    roles.insert(Qt::DisplayRole, "m_description");
+    roles.insert(Qt::DisplayRole, "m_helpText");
+    roles.insert(Qt::DisplayRole, "m_default");
+    roles.insert(Qt::DisplayRole, "m_persistent");
+    roles.insert(Qt::DisplayRole, "m_isActive");
+    roles.insert(Qt::DisplayRole, "m_type");
+    return roles;
+}
+
 QVariant::Type TorcSetting::GetStorageType(void)
 {
     return m_default.type();
-}
-
-TorcSetting::Type TorcSetting::GetSettingType(void)
-{
-    return m_type;
 }
 
 void TorcSetting::AddChild(TorcSetting *Child)
@@ -122,20 +149,23 @@ void TorcSetting::AddChild(TorcSetting *Child)
     {
         {
             QMutexLocker locker(m_childrenLock);
-            m_children.insert(Child);
+            int position = m_children.size();
+            QModelIndex index = this->index(position);
+            beginInsertRows(index, position + 1, position + 2);
+            m_children.insert(position, Child);
+            endInsertRows();
         }
 
         Child->UpRef();
     }
 }
-
 void TorcSetting::RemoveChild(TorcSetting *Child)
 {
     if (Child)
     {
         {
             QMutexLocker locker(m_childrenLock);
-            m_children.remove(Child);
+            m_children.removeAll(Child);
         }
 
         Child->DownRef();
@@ -188,7 +218,7 @@ QSet<TorcSetting*> TorcSetting::GetChildren(void)
 
 bool TorcSetting::IsActive(void)
 {
-    return m_active >= m_activeThreshold;
+    return m_isActive;
 }
 
 QString TorcSetting::GetName(void)
@@ -204,6 +234,30 @@ QString TorcSetting::GetDescription(void)
 QString TorcSetting::GetHelpText(void)
 {
     return m_helpText;
+}
+
+QVariant TorcSetting::GetDefault(void)
+{
+    return m_default;
+}
+
+bool TorcSetting::GetPersistent(void)
+{
+    return m_persistent;
+}
+
+TorcSetting::Type TorcSetting::GetSettingType(void)
+{
+    return m_type;
+}
+
+TorcSetting* TorcSetting::GetChildByIndex(int Index)
+{
+    // TODO does this need locking
+    if (Index < 0 || Index >= m_children.size())
+        return NULL;
+
+    return m_children.at(Index);
 }
 
 int TorcSetting::GetBegin(void)
@@ -223,20 +277,22 @@ int TorcSetting::GetStep(void)
 
 void TorcSetting::SetActive(bool Value)
 {
-    bool wasactive = IsActive();
+    bool wasactive = m_isActive;
     m_active += Value ? 1 : -1;
+    m_isActive = m_active >= m_activeThreshold;
 
-    if (wasactive != IsActive())
-        emit ActivationChanged(IsActive());
+    if (wasactive != m_isActive)
+        emit ActiveChanged(m_isActive);
 }
 
 void TorcSetting::SetActiveThreshold(int Threshold)
 {
-    bool wasactive = IsActive();
+    bool wasactive = m_isActive;
     m_activeThreshold = Threshold;
+    m_isActive = m_active >= m_activeThreshold;
 
-    if (wasactive != IsActive())
-        emit ActivationChanged(IsActive());
+    if (wasactive != m_isActive)
+        emit ActiveChanged(m_isActive);
 }
 
 void TorcSetting::SetTrue(void)

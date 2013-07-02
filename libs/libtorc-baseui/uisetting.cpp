@@ -140,10 +140,10 @@ void UISetting::AddSetting(UIWidget *Widget, TorcSetting *Setting, UIWidget *Par
                         button->SetPushed(Setting->GetValue().toBool());
                         button->SetActive(Setting->IsActive());
 
-                        connect(Setting, SIGNAL(ValueChanged(bool)),      button,  SLOT(SetPushed(bool)));
-                        connect(Setting, SIGNAL(ActivationChanged(bool)), button,  SLOT(SetActive(bool)));
-                        connect(button,  SIGNAL(Pushed()),                Setting, SLOT(SetTrue()));
-                        connect(button,  SIGNAL(Released()),              Setting, SLOT(SetFalse()));
+                        connect(Setting, SIGNAL(ValueChanged(bool)),  button,  SLOT(SetPushed(bool)));
+                        connect(Setting, SIGNAL(ActiveChanged(bool)), button,  SLOT(SetActive(bool)));
+                        connect(button,  SIGNAL(Pushed()),            Setting, SLOT(SetTrue()));
+                        connect(button,  SIGNAL(Released()),          Setting, SLOT(SetFalse()));
                     }
                 }
             }

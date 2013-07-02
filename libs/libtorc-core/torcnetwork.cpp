@@ -179,11 +179,11 @@ TorcNetwork::TorcNetwork()
         m_networkAllowedOutbound->SetActive(true);
     }
 
-    connect(m_networkAllowed, SIGNAL(ValueChanged(bool)),      this,                     SLOT(SetAllowed(bool)));
-    connect(m_networkAllowed, SIGNAL(ValueChanged(bool)),      m_networkAllowedInbound,  SLOT(SetActive(bool)));
-    connect(m_networkAllowed, SIGNAL(ActivationChanged(bool)), m_networkAllowedInbound,  SLOT(SetActive(bool)));
-    connect(m_networkAllowed, SIGNAL(ValueChanged(bool)),      m_networkAllowedOutbound, SLOT(SetActive(bool)));
-    connect(m_networkAllowed, SIGNAL(ActivationChanged(bool)), m_networkAllowedOutbound, SLOT(SetActive(bool)));
+    connect(m_networkAllowed, SIGNAL(ValueChanged(bool)),  this,                     SLOT(SetAllowed(bool)));
+    connect(m_networkAllowed, SIGNAL(ValueChanged(bool)),  m_networkAllowedInbound,  SLOT(SetActive(bool)));
+    connect(m_networkAllowed, SIGNAL(ActiveChanged(bool)), m_networkAllowedInbound,  SLOT(SetActive(bool)));
+    connect(m_networkAllowed, SIGNAL(ValueChanged(bool)),  m_networkAllowedOutbound, SLOT(SetActive(bool)));
+    connect(m_networkAllowed, SIGNAL(ActiveChanged(bool)), m_networkAllowedOutbound, SLOT(SetActive(bool)));
 
     connect(m_manager, SIGNAL(configurationAdded(const QNetworkConfiguration&)),
             this,      SLOT(ConfigurationAdded(const QNetworkConfiguration&)));
