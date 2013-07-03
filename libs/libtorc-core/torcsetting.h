@@ -39,7 +39,6 @@ class TORC_CORE_PUBLIC TorcSetting : public QAbstractListModel, public TorcRefer
     Q_PROPERTY (Type     m_type        READ GetSettingType   NOTIFY TypeChanged()        )
 
     // QAbstractListModel
-    int                    rowCount             (const QModelIndex &Parent = QModelIndex()) const;
     QVariant               data                 (const QModelIndex &Index, int Role) const;
     QHash<int,QByteArray>  roleNames            (void) const;
 
@@ -52,6 +51,9 @@ class TORC_CORE_PUBLIC TorcSetting : public QAbstractListModel, public TorcRefer
     QSet<TorcSetting*>     GetChildren          (void);
 
   public slots:
+    // QAbstractListModel
+    int                    rowCount             (const QModelIndex &Parent = QModelIndex()) const;
+
     void                   SetValue             (const QVariant &Value);
     void                   SetRange             (int Begin, int End, int Step);
     bool                   IsActive             (void);
