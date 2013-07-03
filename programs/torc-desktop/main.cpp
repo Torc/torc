@@ -17,11 +17,6 @@
 #include "torcdirectories.h"
 #include "torccommandlineparser.h"
 
-static QObject *TorcLocalContextProvider(QQmlEngine*, QJSEngine*)
-{
-    return gLocalContext;
-}
-
 int main(int argc, char *argv[])
 {
     // create the application, name it and name the main thread
@@ -32,24 +27,25 @@ int main(int argc, char *argv[])
     {
         // FIXME add proper command line handling
         QScopedPointer<TorcCommandLineParser> cmdline(new TorcCommandLineParser());
-        Torc::ApplicationFlags flags = Torc::Database | Torc::Server | Torc::Client | Torc::Storage | Torc::Power | Torc::USB | Torc::Network;
+        Torc::ApplicationFlags flags = Torc::Database | Torc::Server | Torc::Client | Torc::Storage | Torc::USB | Torc::Network;
         if (int error = TorcLocalContext::Create(cmdline.data(), flags))
             return error;
     }
 
     // register Torc types and APIs
-    // QQmlEngine will take ownerhsip of gLocalContext - do not delete it.
-    qmlRegisterSingletonType<TorcLocalContext>("Torc.Core.TorcLocalContext", 0, 1, "TorcLocalContext", TorcLocalContextProvider);
     qmlRegisterUncreatableType<TorcSetting>("Torc.Core.TorcSetting", 0, 1, "TorcSetting", "TorcSetting cannot be created within scripts");
 
     // create the engine and show the window
-    QQmlApplicationEngine engine(GetTorcShareDir() + "torc-desktop/qml/main.qml");
+    QQmlApplicationEngine *engine = new QQmlApplicationEngine();
+    engine->rootContext()->setContextProperty("TorcLocalContext", gLocalContext);
+    engine->rootContext()->setContextProperty("RootSetting",      gRootSetting);
+    engine->load(GetTorcShareDir() + "torc-desktop/qml/main.qml");
 
     int ret = -1;
 
-    if (engine.rootObjects().size())
+    if (engine->rootObjects().size())
     {
-        QObject *top = engine.rootObjects().value(0);
+        QObject *top = engine->rootObjects().value(0);
         QQuickWindow *window = qobject_cast<QQuickWindow *>(top);
         if (window)
         {
@@ -68,7 +64,9 @@ int main(int argc, char *argv[])
         LOG(VB_GENERAL, LOG_ERR, "Failed to load QML objects");
     }
 
-    // N.B. QQmlEngine takes ownership of gLocalContext and deletes it on exit
+    delete engine;
+
+    TorcLocalContext::TearDown();
 
     return ret;
 }

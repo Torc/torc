@@ -1,8 +1,6 @@
 import QtQuick 2.1
 import QtQuick.Controls 1.0
 import QtQuick.Layouts 1.0
-import Torc.Core.TorcLocalContext 0.1
-import Torc.Core.TorcSetting 0.1
 
 ApplicationWindow {
     id: window
@@ -11,7 +9,6 @@ ApplicationWindow {
     title: qsTr("torc-desktop")
 
     Component.onCompleted: window.title = TorcLocalContext.GetUuid()
-    property var rootSetting: TorcLocalContext.GetRootSetting()
 
     TabView {
         id: frame
@@ -48,7 +45,7 @@ ApplicationWindow {
                             enabled: modelData.rowCount() > 0
                         }
 
-                        model: rootSetting
+                        model: RootSetting
                     }
                 }
 
