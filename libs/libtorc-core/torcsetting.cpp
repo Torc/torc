@@ -107,7 +107,7 @@ TorcSetting::~TorcSetting()
     delete m_childrenLock;
 }
 
-int TorcSetting::rowCount(const QModelIndex &Parent) const
+int TorcSetting::rowCount(const QModelIndex&) const
 {
     // TODO does this need locking
     return m_children.size();
@@ -116,6 +116,10 @@ int TorcSetting::rowCount(const QModelIndex &Parent) const
 QVariant TorcSetting::data(const QModelIndex &Index, int Role) const
 {
     // TODO does this need locking
+
+    if (!Index.isValid())
+        return QVariant();
+
     int row = Index.row();
 
     if (row < 0 || row >= m_children.size() || Role != Qt::DisplayRole)
@@ -151,7 +155,7 @@ void TorcSetting::AddChild(TorcSetting *Child)
             QMutexLocker locker(m_childrenLock);
 
             int position = m_children.size();
-            beginInsertRows(index(position), position, position + 1);
+            beginInsertRows(QModelIndex(), position, position);
             m_children.insert(position, Child);
             endInsertRows();
         }
@@ -170,7 +174,7 @@ void TorcSetting::RemoveChild(TorcSetting *Child)
             {
                 if (m_children.at(i) == Child)
                 {
-                    beginRemoveRows(index(i), i, i);
+                    beginRemoveRows(QModelIndex(), i, i);
                     m_children.removeAt(i);
                     endRemoveRows();
                     break;
