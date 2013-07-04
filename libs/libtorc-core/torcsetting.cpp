@@ -149,9 +149,9 @@ void TorcSetting::AddChild(TorcSetting *Child)
     {
         {
             QMutexLocker locker(m_childrenLock);
+
             int position = m_children.size();
-            QModelIndex index = this->index(position);
-            beginInsertRows(index, position + 1, position + 2);
+            beginInsertRows(index(position), position, position + 1);
             m_children.insert(position, Child);
             endInsertRows();
         }
@@ -165,7 +165,17 @@ void TorcSetting::RemoveChild(TorcSetting *Child)
     {
         {
             QMutexLocker locker(m_childrenLock);
-            m_children.removeAll(Child);
+
+            for (int i = 0; i < m_children.size(); ++i)
+            {
+                if (m_children.at(i) == Child)
+                {
+                    beginRemoveRows(index(i), i, i);
+                    m_children.removeAt(i);
+                    endRemoveRows();
+                    break;
+                }
+            }
         }
 
         Child->DownRef();
