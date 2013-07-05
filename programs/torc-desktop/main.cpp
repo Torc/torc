@@ -14,6 +14,7 @@
 
 // Torc
 #include "torclocalcontext.h"
+#include "torcnetworkedcontext.h"
 #include "torcdirectories.h"
 #include "torccommandlineparser.h"
 
@@ -34,11 +35,16 @@ int main(int argc, char *argv[])
 
     // register Torc types and APIs
     qmlRegisterUncreatableType<TorcSetting>("Torc.Core.TorcSetting", 0, 1, "TorcSetting", "TorcSetting cannot be created within scripts");
+    qmlRegisterUncreatableType<TorcNetworkService>("Torc.Core.TorcNetworkService", 0, 1, "TorcNetworkService", "TorcNetworkService cannot be created within scripts");
 
     // create the engine and show the window
     QQmlApplicationEngine *engine = new QQmlApplicationEngine();
     engine->rootContext()->setContextProperty("TorcLocalContext", gLocalContext);
-    engine->rootContext()->setContextProperty("RootSetting",      gRootSetting);
+    if (gRootSetting)
+        engine->rootContext()->setContextProperty("RootSetting", gRootSetting);
+    if (gNetworkedContext)
+        engine->rootContext()->setContextProperty("TorcNetworkedContext", gNetworkedContext);
+
     engine->load(GetTorcShareDir() + "torc-desktop/qml/main.qml");
 
     int ret = -1;
