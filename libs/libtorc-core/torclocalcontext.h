@@ -187,6 +187,10 @@ class TORC_CORE_PUBLIC Torc
         // service discovery
         ServiceDiscovered = 10000,
         ServiceWentAway,
+        // media discovery
+        MediaAdded = 11000,
+        MediaRemoved,
+        MediaChanged,
         // end of predefined
         MaxTorc = 60000,
         // plugins etc
