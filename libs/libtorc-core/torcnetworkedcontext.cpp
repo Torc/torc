@@ -30,15 +30,47 @@
 #include "upnp/torcssdp.h"
 #include "torcnetworkedcontext.h"
 
-TorcPeer::TorcPeer(const QString &Uuid, int Port, const QStringList &Addresses)
-    : m_uuid(Uuid),
-      m_port(Port),
-      m_addresses(Addresses)
+TorcNetworkedContext *gNetworkedContext = NULL;
+
+TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QStringList &Addresses)
+  : m_name(Name),
+    m_uuid(UUID),
+    m_port(Port),
+    m_uiAddress(QString()),
+    m_addresses(Addresses)
 {
+    QString port = QString::number(m_port);
+    foreach (QString address, Addresses)
+        m_uiAddress += address + ":" + port + " ";
+}
+
+QString TorcNetworkService::GetName(void)
+{
+    return m_name;
+}
+
+QString TorcNetworkService::GetUuid(void)
+{
+    return m_uuid;
+}
+
+int TorcNetworkService::GetPort(void)
+{
+    return m_port;
+}
+
+QString TorcNetworkService::GetAddress(void)
+{
+    return m_uiAddress;
+}
+
+QStringList TorcNetworkService::GetAddresses(void)
+{
+    return m_addresses;
 }
 
 TorcNetworkedContext::TorcNetworkedContext()
-  : QObject(),
+  : QAbstractListModel(),
     TorcObservable(),
     m_bonjourBrowserReference(0)
 {
@@ -90,6 +122,34 @@ TorcNetworkedContext::~TorcNetworkedContext()
     // N.B. We delete the global instance here
     TorcBonjour::TearDown();
 #endif
+
+    while (!m_discoveredServices.isEmpty())
+        delete m_discoveredServices.takeLast();
+}
+
+QVariant TorcNetworkedContext::data(const QModelIndex &Index, int Role) const
+{
+    int row = Index.row();
+
+    if (row < 0 || row >= m_discoveredServices.size() || Role != Qt::DisplayRole)
+        return QVariant();
+
+    return QVariant::fromValue(m_discoveredServices.at(row));
+}
+
+QHash<int,QByteArray> TorcNetworkedContext::roleNames(void) const
+{
+    QHash<int,QByteArray> roles;
+    roles.insert(Qt::DisplayRole, "m_name");
+    roles.insert(Qt::DisplayRole, "m_uuid");
+    roles.insert(Qt::DisplayRole, "m_port");
+    roles.insert(Qt::DisplayRole, "m_uiaddress");
+    return roles;
+}
+
+int TorcNetworkedContext::rowCount(const QModelIndex&) const
+{
+    return m_discoveredServices.size();
 }
 
 bool TorcNetworkedContext::event(QEvent *Event)
@@ -108,17 +168,38 @@ bool TorcNetworkedContext::event(QEvent *Event)
                 if (records.contains("uuid"))
                 {
                     QByteArray uuid = records.value("uuid");
+                    QByteArray name = event->Data().value("name").toByteArray();
 
-                    if (event->GetEvent() == Torc::ServiceDiscovered && !m_knownPeers.contains(uuid) &&
+                    if (event->GetEvent() == Torc::ServiceDiscovered && !m_serviceList.contains(uuid) &&
                         uuid != gLocalContext->GetUuid().toLatin1())
                     {
                         QStringList addresses = event->Data().value("addresses").toStringList();
-                        m_knownPeers.insert(uuid, TorcPeer(uuid, event->Data().value("port").toInt(), addresses));
-                        LOG(VB_GENERAL, LOG_INFO, QString("New Torc peer %1").arg(uuid.data()));
+
+                        int position = m_discoveredServices.size();
+                        beginInsertRows(QModelIndex(), position, position);
+                        m_discoveredServices.append(new TorcNetworkService(name, uuid, event->Data().value("port").toInt(), addresses));
+                        endInsertRows();
+                        m_serviceList.append(uuid);
+
+                        LOG(VB_GENERAL, LOG_INFO, QString("New Torc peer %1").arg(name.data()));
                     }
-                    else if (event->GetEvent() == Torc::ServiceWentAway && m_knownPeers.contains(uuid))
+                    else if (event->GetEvent() == Torc::ServiceWentAway && m_serviceList.contains(uuid))
                     {
-                        m_knownPeers.remove(uuid);
+                        (void)m_serviceList.removeAll(uuid);
+
+                        for (int i = 0; i < m_discoveredServices.size(); ++i)
+                        {
+                            if (m_discoveredServices.at(i)->GetUuid() == uuid)
+                            {
+                                // remove the item from the model
+                                beginRemoveRows(QModelIndex(), i, i);
+                                delete m_discoveredServices.takeAt(i);
+                                endRemoveRows();
+
+                                break;
+                            }
+                        }
+
                         LOG(VB_GENERAL, LOG_INFO, QString("Torc peer %1 went away").arg(uuid.data()));
                     }
                 }
@@ -139,8 +220,7 @@ static class TorcNetworkedContextObject : public TorcAdminObject
 {
   public:
     TorcNetworkedContextObject()
-      : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY + 1 /* start after network and before http server */),
-        m_context(NULL)
+      : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY + 1 /* start after network and before http server */)
     {
     }
 
@@ -153,16 +233,13 @@ static class TorcNetworkedContextObject : public TorcAdminObject
     {
         Destroy();
 
-        m_context = new TorcNetworkedContext();
+        gNetworkedContext = new TorcNetworkedContext();
     }
 
     void Destroy(void)
     {
-        delete m_context;
-        m_context = NULL;
+        delete gNetworkedContext;
+        gNetworkedContext = NULL;
     }
-
-  private:
-    TorcNetworkedContext* m_context;
 
 } TorcNetworkedContextObject;

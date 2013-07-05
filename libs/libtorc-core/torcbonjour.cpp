@@ -680,7 +680,8 @@ class TorcBonjourPriv
                     it.value().m_interfaceIndex == Service.m_interfaceIndex)
                 {
                     QVariantMap data;
-                    data.insert("name", it.value().m_type.data());
+                    data.insert("name", it.value().m_name.data());
+                    data.insert("type", it.value().m_type.data());
                     data.insert("txtrecords", it.value().m_txt);
                     TorcEvent event(Torc::ServiceWentAway, data);
                     gLocalContext->Notify(event);
@@ -781,7 +782,8 @@ class TorcBonjourPriv
                     if (!addresses.isEmpty())
                     {
                         QVariantMap data;
-                        data.insert("name", (*it).m_type.data());
+                        data.insert("name", (*it).m_name.data());
+                        data.insert("type", (*it).m_type.data());
                         data.insert("port", (*it).m_port);
                         data.insert("addresses", addresses);
                         data.insert("txtrecords", (*it).m_txt);
