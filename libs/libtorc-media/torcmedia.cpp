@@ -33,70 +33,119 @@
  *  artist, etc. for use in the UI, the API, and elsewhere.
  */
 
-TorcMedia::TorcMedia(const QString Name,
-                     const QString URL,
-                     TorcMediaType Type,
-                     TorcMetadata *Metadata)
-  : m_valid(true),
-    m_name(Name),
-    m_url(URL),
-    m_type(Type),
-    m_metadata(Metadata)
+TorcMedia::TorcMedia()
+  : name(QString()),
+    url(QString()),
+    type(MediaTypeNone),
+    source(MediaSourceLocal),
+    metadata(NULL)
+{
+}
+
+TorcMedia::TorcMedia(const QString &Name, const QString &URL, MediaType Type,
+                     MediaSource Source, TorcMetadata *Metadata)
+  : name(Name),
+    url(URL),
+    type(Type),
+    source(Source),
+    metadata(Metadata)
 {
 }
 
 TorcMedia::~TorcMedia()
 {
-    if (m_metadata)
-        delete m_metadata;
-}
-
-bool TorcMedia::IsValid(void)
-{
-    return m_valid;
-}
-
-void TorcMedia::Invalidate(void)
-{
-    m_valid = false;
+    if (metadata)
+        delete metadata;
 }
 
 QString TorcMedia::GetName(void)
 {
-    return m_name;
+    return name;
 }
 
 QString TorcMedia::GetURL(void)
 {
-    return m_url;
+    return url;
+}
+
+TorcMedia::MediaType TorcMedia::GetMediaType(void)
+{
+    return type;
+}
+
+TorcMedia::MediaSource TorcMedia::GetMediaSource(void)
+{
+    return source;
 }
 
 TorcMetadata* TorcMedia::GetMetadata(void)
 {
-    return m_metadata;
+    return metadata;
 }
 
 void TorcMedia::SetName(const QString &Name)
 {
-    m_name = Name;
+    if (name != Name)
+    {
+        name = Name;
+        emit nameChanged(name);
+    }
 }
 
 void TorcMedia::SetURL(const QString &URL)
 {
-    m_url = URL;
+    if (url != URL)
+    {
+        url = URL;
+        emit urlChanged(url);
+    }
+}
+
+void TorcMedia::SetMediaType(MediaType Type)
+{
+    if (type != Type)
+    {
+        type = Type;
+        emit typeChanged(type);
+    }
+}
+
+void TorcMedia::SetMediaSource(MediaSource Source)
+{
+    if (source != Source)
+    {
+        source = Source;
+        emit sourceChanged(source);
+    }
 }
 
 void TorcMedia::SetMetadata(TorcMetadata *Metadata)
 {
-    m_metadata = Metadata;
+    if (metadata != Metadata)
+    {
+        if (metadata)
+            delete metadata;
+
+        metadata = Metadata;
+        emit metadataChanged(metadata);
+    }
 }
 
-TorcMediaType TorcMedia::GetMediaType(void)
+TorcMediaDescription::TorcMediaDescription()
+  : name(),
+    url(),
+    type(TorcMedia::MediaTypeNone),
+    source(TorcMedia::MediaSourceLocal),
+    metadata(NULL)
 {
-    return m_type;
 }
 
-void TorcMedia::SetMediaType(TorcMediaType Type)
+TorcMediaDescription::TorcMediaDescription(const QString &Name, const QString &URL, TorcMedia::MediaType Type,
+                                           TorcMedia::MediaSource Source, TorcMetadata *Metadata)
+  : name(Name),
+    url(URL),
+    type(Type),
+    source(Source),
+    metadata(Metadata)
 {
-    m_type = Type;
 }

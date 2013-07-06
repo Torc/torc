@@ -22,16 +22,19 @@ QT -= gui
 HEADERS += torcmedia.h
 HEADERS += torcmetadata.h
 HEADERS += torcmediasource.h
+HEADERS += torcmediamaster.h
 HEADERS += torcmediasourcedirectory.h
 
 SOURCES += torcmedia.cpp
 SOURCES += torcmetadata.cpp
 SOURCES += torcmediasource.cpp
+SOURCES += torcmediamaster.cpp
 SOURCES += torcmediasourcedirectory.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files  = torcmedia.h
 inc.files += torcmetadata.h
+inc.files += torcmediamaster.h
 inc.files += torcmediasource.cpp
 
 # Allow both #include <blah.h> and #include <libxx/blah.h>

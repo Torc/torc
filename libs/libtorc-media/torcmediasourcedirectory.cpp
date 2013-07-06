@@ -23,11 +23,13 @@
 // Qt
 #include <QObject>
 #include <QDirIterator>
+#include <QCoreApplication>
 
 // Torc
 #include "torclocalcontext.h"
 #include "torclogging.h"
 #include "torcmime.h"
+#include "torcmediamaster.h"
 #include "torcmediasource.h"
 #include "torcmediasourcedirectory.h"
 
@@ -155,7 +157,7 @@ void TorcMediaSourceDirectory::DirectoryChanged(const QString &Path)
     m_updatedPathsLock->unlock();
 }
 
-TorcMediaType TorcMediaSourceDirectory::GuessFileType(const QString &Path)
+TorcMedia::MediaType TorcMediaSourceDirectory::GuessFileType(const QString &Path)
 {
     QStringList list = Path.split(".");
     if (!list.isEmpty())
@@ -163,16 +165,16 @@ TorcMediaType TorcMediaSourceDirectory::GuessFileType(const QString &Path)
         QString extension = list.last().toLower();
 
         if (m_audioExtensions.contains(extension))
-            return kMediaTypeMusic;
+            return TorcMedia::MediaTypeMusic;
 
         if (m_photoExtensions.contains(extension))
-            return kMediaTypePicture;
+            return TorcMedia::MediaTypePicture;
 
         if (m_videoExtensions.contains(extension))
-            return kMediaTypeMovie;
+            return TorcMedia::MediaTypeMovie;
     }
 
-    return kMediaTypeNone;
+    return TorcMedia::MediaTypeNone;
 }
 
 void TorcMediaSourceDirectory::customEvent(QEvent *Event)
@@ -314,6 +316,9 @@ void TorcMediaSourceDirectory::timerEvent(QTimerEvent *Event)
         }
 
         // check for new files
+        QVariantList notifynew;
+        QVariantList notifyold;
+
         foreach (QString path, updatedpaths)
         {
             if (!m_monitoredPaths.contains(path))
@@ -330,9 +335,11 @@ void TorcMediaSourceDirectory::timerEvent(QTimerEvent *Event)
                 QString name = it.filePath();
                 if (!m_mediaItems.contains(name))
                 {
-                    TorcMediaType type = GuessFileType(name);
-                    TorcMedia *media = new TorcMedia(QObject::tr("Unknown"), name, type);
+                    TorcMedia::MediaType type = GuessFileType(name);
+                    TorcMediaDescription *media = new TorcMediaDescription(it.fileName(), name, type,
+                                                                TorcMedia::MediaSourceLocal, NULL);
                     m_mediaItems.insert(name, media);
+                    notifynew.append(QVariant::fromValue(*media));
 
                     LOG(VB_GENERAL, LOG_INFO, QString("Added '%1'").arg(name));
                 }
@@ -345,8 +352,26 @@ void TorcMediaSourceDirectory::timerEvent(QTimerEvent *Event)
             foreach (QString name, oldfiles)
             {
                 LOG(VB_GENERAL, LOG_INFO, QString("File '%1' no longer available").arg(name));
-                RemoveItem(name);
+                TorcMediaDescription *media = m_mediaItems.take(name);
+                notifyold.append(QVariant::fromValue(*media));
+                delete media;
             }
+        }
+
+        if (!notifynew.isEmpty() && gTorcMediaMaster)
+        {
+            QVariantMap data;
+            data.insert("files", notifynew);
+            TorcEvent *event = new TorcEvent(Torc::MediaAdded, data);
+            QCoreApplication::postEvent(gTorcMediaMaster, event);
+        }
+
+        if (!notifyold.isEmpty() && gTorcMediaMaster)
+        {
+            QVariantMap data;
+            data.insert("files", notifyold);
+            TorcEvent *event = new TorcEvent(Torc::MediaRemoved, data);
+            QCoreApplication::postEvent(gTorcMediaMaster, event);
         }
     }
 }
@@ -398,11 +423,10 @@ void TorcMediaSourceDirectory::StopMonitoring(void)
     {
         LOG(VB_GENERAL, LOG_ERR, QString("Still tracking %1 media items - removing").arg(m_mediaItems.size()));
 
-        QHash<QString,TorcMedia*>::iterator it = m_mediaItems.begin();
+        QHash<QString,TorcMediaDescription*>::iterator it = m_mediaItems.begin();
         for ( ; it != m_mediaItems.end(); ++it)
         {
-            it.value()->Invalidate();
-            it.value()->DownRef();
+            delete it.value();
             LOG(VB_GENERAL, LOG_INFO, QString("Removed '%1'").arg(it.key()));
         }
     }
@@ -410,6 +434,8 @@ void TorcMediaSourceDirectory::StopMonitoring(void)
 
 void TorcMediaSourceDirectory::RemovePaths(QStringList &Paths)
 {
+    QVariantList notifyold;
+
     foreach (QString path, Paths)
     {
         if (!m_monitoredPaths.contains(path))
@@ -445,11 +471,21 @@ void TorcMediaSourceDirectory::RemovePaths(QStringList &Paths)
         {
             it.next();
             knownpaths.removeOne(it.filePath());
-            RemoveItem(it.filePath());
+            TorcMediaDescription *media = m_mediaItems.take(it.filePath());
+            notifyold.append(QVariant::fromValue(*media));
+            delete media;
         }
 
         foreach (QString leftover, knownpaths)
             RemoveItem(leftover);
+    }
+
+    if (!notifyold.isEmpty() && gTorcMediaMaster)
+    {
+        QVariantMap data;
+        data.insert("files", notifyold);
+        TorcEvent *event = new TorcEvent(Torc::MediaRemoved, data);
+        QCoreApplication::postEvent(gTorcMediaMaster, event);
     }
 }
 
@@ -457,10 +493,7 @@ void TorcMediaSourceDirectory::RemoveItem(const QString &Path)
 {
     if (m_mediaItems.contains(Path))
     {
-        TorcMedia* media = m_mediaItems.take(Path);
-        media->Invalidate();
-        media->DownRef();
-
+        delete m_mediaItems.take(Path);
         LOG(VB_GENERAL, LOG_INFO, QString("Removed '%1'").arg(Path));
     }
 }

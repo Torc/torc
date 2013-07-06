@@ -33,7 +33,7 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher
     void            StopMonitoring     (void);
 
   public:
-    TorcMediaType   GuessFileType      (const QString &Path);
+    TorcMedia::MediaType GuessFileType (const QString &Path);
 
   protected:
     void            customEvent        (QEvent *Event);
@@ -58,8 +58,8 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher
     QStringList     m_fileNameFilters;
     QStringList     m_directoryNameFilters;
 
-    QHash<QString,TorcMediaDirectory*> m_monitoredPaths;
-    QHash<QString,TorcMedia*>          m_mediaItems;
+    QHash<QString,TorcMediaDirectory*>   m_monitoredPaths;
+    QHash<QString,TorcMediaDescription*> m_mediaItems;
 
     QStringList     m_addedPaths;
     QStringList     m_removedPaths;

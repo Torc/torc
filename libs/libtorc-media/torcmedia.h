@@ -3,6 +3,7 @@
 
 // Qt
 #include <QObject>
+#include <QMetaType>
 
 // Torc
 #include "torcreferencecounted.h"
@@ -10,47 +11,89 @@
 
 class TorcMetadata;
 
-enum TorcMediaType {
-    kMediaTypeNone = 0,
-    kMediaTypeGeneric,
-    kMediaTypeTVEpisode,
-    kMediaTypeMovie,
-    kMediaTypeAdultMovie,
-    kMediaTypeHomeMovie,
-    kMediaTypeMusicVideo,
-    kMediaTypeMusic,
-    kMediaTypeAudiobook,
-    kMediaTypePicture
-};
-
-class TORC_MEDIA_PUBLIC TorcMedia : public TorcReferenceCounter
+class TORC_MEDIA_PUBLIC TorcMedia : public QObject, public TorcReferenceCounter
 {
+    Q_OBJECT
+
+    Q_ENUMS(MediaType)
+    Q_ENUMS(MediaSource)
+
   public:
-    TorcMedia(const QString Name = "", const QString URL = "", TorcMediaType Type = kMediaTypeNone,
-              TorcMetadata *Metadata = NULL);
+    enum MediaType {
+        MediaTypeNone = 0,
+        MediaTypeGeneric,
+        MediaTypeTVEpisode,
+        MediaTypeMovie,
+        MediaTypeAdultMovie,
+        MediaTypeHomeMovie,
+        MediaTypeMusicVideo,
+        MediaTypeMusic,
+        MediaTypeAudiobook,
+        MediaTypePicture
+    };
 
-    bool          IsValid          (void);
-    void          Invalidate       (void);
+    enum MediaSource {
+        MediaSourceLocal = 0,
+        MediaSourceLAN,
+        MediaSourceWAN
+    };
 
-    QString       GetName          (void);
-    QString       GetURL           (void);
-    TorcMetadata* GetMetadata      (void);
-    TorcMediaType GetMediaType     (void);
+  public:
+    TorcMedia();
+    TorcMedia(const QString &Name, const QString &URL, MediaType Type, MediaSource Source, TorcMetadata *Metadata);
 
-    void          SetName          (const QString &Name);
-    void          SetURL           (const QString &Name);
-    void          SetMetadata      (TorcMetadata *Metadata);
-    void          SetMediaType     (TorcMediaType Type);
+    Q_PROPERTY (QString       name     READ GetName        WRITE SetName        NOTIFY nameChanged)
+    Q_PROPERTY (QString       url      READ GetURL         WRITE SetURL         NOTIFY urlChanged)
+    Q_PROPERTY (MediaType     type     READ GetMediaType   WRITE SetMediaType   NOTIFY typeChanged)
+    Q_PROPERTY (MediaSource   source   READ GetMediaSource WRITE SetMediaSource NOTIFY sourceChanged)
+    Q_PROPERTY (TorcMetadata* metadata READ GetMetadata    WRITE SetMetadata    NOTIFY metadataChanged)
+
+    QString           GetName          (void);
+    QString           GetURL           (void);
+    MediaType         GetMediaType     (void);
+    MediaSource       GetMediaSource   (void);
+    TorcMetadata*     GetMetadata      (void);
+
+    void              SetValid         (bool Valid);
+    void              SetName          (const QString &Name);
+    void              SetURL           (const QString &Name);
+    void              SetMediaType     (MediaType Type);
+    void              SetMediaSource   (MediaSource Source);
+    void              SetMetadata      (TorcMetadata *Metadata);
+
+  signals:
+    void              nameChanged      (const QString&);
+    void              urlChanged       (const QString&);
+    void              typeChanged      (MediaType);
+    void              sourceChanged    (MediaSource);
+    void              metadataChanged  (TorcMetadata*);
 
   protected:
     virtual ~TorcMedia();
 
   private:
-    bool          m_valid;
-    QString       m_name;
-    QString       m_url;
-    TorcMediaType m_type;
-    TorcMetadata* m_metadata;
+    QString           name;
+    QString           url;
+    MediaType         type;
+    MediaSource       source;
+    TorcMetadata*     metadata;
 };
+
+class TORC_MEDIA_PUBLIC TorcMediaDescription
+{
+  public:
+    TorcMediaDescription();
+    TorcMediaDescription(const QString &Name, const QString &URL, TorcMedia::MediaType Type,
+                         TorcMedia::MediaSource Source, TorcMetadata *Metadata);
+
+    QString                 name;
+    QString                 url;
+    TorcMedia::MediaType    type;
+    TorcMedia::MediaSource  source;
+    TorcMetadata*           metadata;
+};
+
+Q_DECLARE_METATYPE(TorcMediaDescription);
+Q_DECLARE_METATYPE(TorcMediaDescription*);
 
 #endif // TORCMEDIA_H

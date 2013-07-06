@@ -24,6 +24,7 @@
 #include "torclogging.h"
 #include "torcthread.h"
 #include "torcadminthread.h"
+#include "torcmediamaster.h"
 #include "torcmediasource.h"
 
 #define TORC_MEDIA_THREAD QString("MediaLoop")
@@ -35,6 +36,7 @@
  *  subclass and call Create on each. Sources are then destoyed when the thread is closed.
  *
  * \sa TorcMediaSource
+ * \sa TorcMediaMaster
  * \sa TorcMediaThreadObject
 */
 
@@ -87,6 +89,17 @@ class TorcMediaThreadObject : public TorcAdminObject
 
     void Create(void)
     {
+        Destroy();
+
+        // create the master media source in the admin thread first
+        gTorcMediaMaster = new TorcMediaMaster();
+
+        m_mediaThread = new TorcMediaThread();
+        m_mediaThread->start();
+    }
+
+    void Destroy(void)
+    {
         if (m_mediaThread)
         {
             m_mediaThread->quit();
@@ -95,16 +108,9 @@ class TorcMediaThreadObject : public TorcAdminObject
             m_mediaThread = NULL;
         }
 
-        m_mediaThread = new TorcMediaThread();
-        m_mediaThread->start();
-    }
-
-    void Destroy(void)
-    {
-        m_mediaThread->quit();
-        m_mediaThread->wait();
-        delete m_mediaThread;
-        m_mediaThread = NULL;
+        if (gTorcMediaMaster)
+            gTorcMediaMaster->deleteLater();
+        gTorcMediaMaster = NULL;
     }
 
   private:
