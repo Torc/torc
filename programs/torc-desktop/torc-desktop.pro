@@ -14,8 +14,9 @@ qtHaveModule(widgets) {
     QT += widgets
 }
 
-INCLUDEPATH += ../../libs/libtorc-core
+INCLUDEPATH += ../../libs/libtorc-core ../../libs/libtorc-media
 LIBS += -L../../libs/libtorc-core -ltorc-core-$$LIBVERSION
+LIBS += -L../../libs/libtorc-media -ltorc-media-$$LIBVERSION
 
 SOURCES += main.cpp
 

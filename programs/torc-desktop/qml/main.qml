@@ -23,6 +23,24 @@ ApplicationWindow {
 
         Tab {
             title: qsTr("Media")
+            TableView {
+                id: mediaView
+                anchors.fill: parent
+                anchors.margins: 8
+                model: TorcMediaMaster
+
+                TableViewColumn {
+                    width: 250
+                    title: qsTr("Name")
+                    role: "name"
+                }
+
+                TableViewColumn {
+                    width: 350
+                    title: qsTr("Location")
+                    role: "url"
+                }
+            }
         }
 
         Tab {

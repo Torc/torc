@@ -17,6 +17,7 @@
 #include "torcnetworkedcontext.h"
 #include "torcdirectories.h"
 #include "torccommandlineparser.h"
+#include "torcmediamaster.h"
 
 int main(int argc, char *argv[])
 {
@@ -36,6 +37,7 @@ int main(int argc, char *argv[])
     // register Torc types and APIs
     qmlRegisterUncreatableType<TorcSetting>("Torc.Core.TorcSetting", 0, 1, "TorcSetting", "TorcSetting cannot be created within scripts");
     qmlRegisterUncreatableType<TorcNetworkService>("Torc.Core.TorcNetworkService", 0, 1, "TorcNetworkService", "TorcNetworkService cannot be created within scripts");
+    qmlRegisterUncreatableType<TorcMedia>("Torc.Media.TorcMedia", 0, 1, "TorcMedia", "TorcMedia cannot be created within scripts");
 
     // create the engine and show the window
     QQmlApplicationEngine *engine = new QQmlApplicationEngine();
@@ -44,6 +46,8 @@ int main(int argc, char *argv[])
         engine->rootContext()->setContextProperty("RootSetting", gRootSetting);
     if (gNetworkedContext)
         engine->rootContext()->setContextProperty("TorcNetworkedContext", gNetworkedContext);
+    if (gTorcMediaMaster)
+        engine->rootContext()->setContextProperty("TorcMediaMaster", gTorcMediaMaster);
 
     engine->load(GetTorcShareDir() + "torc-desktop/qml/main.qml");
 
