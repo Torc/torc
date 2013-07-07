@@ -18,7 +18,9 @@ INCLUDEPATH += ../../libs/libtorc-core ../../libs/libtorc-media
 LIBS += -L../../libs/libtorc-core -ltorc-core-$$LIBVERSION
 LIBS += -L../../libs/libtorc-media -ltorc-media-$$LIBVERSION
 
+HEADERS += eventproxy.h
 SOURCES += main.cpp
+SOURCES += eventproxy.cpp
 
 qmlfiles.path  = $${PREFIX}/share/$${PROJECTNAME}/torc-desktop/
 qmlfiles.files = qml
