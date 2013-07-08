@@ -41,6 +41,7 @@ class TORC_MEDIA_PUBLIC TorcMedia : public QObject, public TorcReferenceCounter
   public:
     TorcMedia();
     TorcMedia(const QString &Name, const QString &URL, MediaType Type, MediaSource Source, TorcMetadata *Metadata);
+    virtual ~TorcMedia();
 
     Q_PROPERTY (QString       name     READ GetName        WRITE SetName        NOTIFY nameChanged)
     Q_PROPERTY (QString       url      READ GetURL         WRITE SetURL         NOTIFY urlChanged)
@@ -67,9 +68,6 @@ class TORC_MEDIA_PUBLIC TorcMedia : public QObject, public TorcReferenceCounter
     void              typeChanged      (MediaType);
     void              sourceChanged    (MediaSource);
     void              metadataChanged  (TorcMetadata*);
-
-  protected:
-    virtual ~TorcMedia();
 
   private:
     QString           name;
