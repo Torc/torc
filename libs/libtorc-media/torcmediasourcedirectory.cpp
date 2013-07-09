@@ -34,7 +34,7 @@
 #include "torcmediasourcedirectory.h"
 
 // process updates every 5 seconds
-#define UPDATE_FREQUENCY  5000
+#define UPDATE_FREQUENCY  1000
 #define RECURSIVE_PATH    QString("rECuRSiVE")
 #define LOCAL_DIRECTORIES (TORC_CORE + QString("LocalMediaDirectories"))
 
