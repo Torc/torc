@@ -36,7 +36,7 @@
 TorcMedia::TorcMedia()
   : name(QString()),
     url(QString()),
-    type(MediaTypeNone),
+    type(UnknownType),
     source(MediaSourceLocal),
     metadata(NULL)
 {
@@ -134,7 +134,7 @@ void TorcMedia::SetMetadata(TorcMetadata *Metadata)
 TorcMediaDescription::TorcMediaDescription()
   : name(),
     url(),
-    type(TorcMedia::MediaTypeNone),
+    type(TorcMedia::UnknownType),
     source(TorcMedia::MediaSourceLocal),
     metadata(NULL)
 {

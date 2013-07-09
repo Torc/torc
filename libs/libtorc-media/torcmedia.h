@@ -6,33 +6,47 @@
 #include <QMetaType>
 
 // Torc
-#include "torcreferencecounted.h"
 #include "torcmediaexport.h"
 
 class TorcMetadata;
 
-class TORC_MEDIA_PUBLIC TorcMedia : public QObject, public TorcReferenceCounter
+class TORC_MEDIA_PUBLIC TorcMedia : public QObject
 {
     Q_OBJECT
 
     Q_ENUMS(MediaType)
+    Q_ENUMS(MediaSubType)
     Q_ENUMS(MediaSource)
 
   public:
-    enum MediaType {
-        MediaTypeNone = 0,
-        MediaTypeGeneric,
-        MediaTypeTVEpisode,
-        MediaTypeMovie,
-        MediaTypeAdultMovie,
-        MediaTypeHomeMovie,
-        MediaTypeMusicVideo,
-        MediaTypeMusic,
-        MediaTypeAudiobook,
-        MediaTypePicture
+    enum MediaType
+    {
+        UnknownType = (0 << 0),
+        Audio       = (1 << 0),
+        Video       = (1 << 1),
+        Image       = (1 << 2),
+        AllTypes    = Audio | Video | Image
     };
 
-    enum MediaSource {
+    enum MediaSubType
+    {
+        UnknownSubtype = 0,
+        // audio types
+        MusicTrack = 1000,
+        MusicAlbum,
+        Radio,
+        AudioBook,
+        // video types
+        Movie = 2000,
+        HomeVideo,
+        MusicVideo,
+        TvEpisode,
+        // image types
+        HomePhoto = 3000
+    };
+
+    enum MediaSource
+    {
         MediaSourceLocal = 0,
         MediaSourceLAN,
         MediaSourceWAN
@@ -93,5 +107,7 @@ class TORC_MEDIA_PUBLIC TorcMediaDescription
 
 Q_DECLARE_METATYPE(TorcMediaDescription);
 Q_DECLARE_METATYPE(TorcMediaDescription*);
+Q_DECLARE_METATYPE(TorcMedia::MediaType);
+Q_DECLARE_METATYPE(TorcMedia::MediaSubType);
 
 #endif // TORCMEDIA_H

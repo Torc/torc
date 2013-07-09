@@ -165,16 +165,16 @@ TorcMedia::MediaType TorcMediaSourceDirectory::GuessFileType(const QString &Path
         QString extension = list.last().toLower();
 
         if (m_audioExtensions.contains(extension))
-            return TorcMedia::MediaTypeMusic;
+            return TorcMedia::Audio;
 
         if (m_photoExtensions.contains(extension))
-            return TorcMedia::MediaTypePicture;
+            return TorcMedia::Image;
 
         if (m_videoExtensions.contains(extension))
-            return TorcMedia::MediaTypeMovie;
+            return TorcMedia::Video;
     }
 
-    return TorcMedia::MediaTypeNone;
+    return TorcMedia::UnknownType;
 }
 
 void TorcMediaSourceDirectory::customEvent(QEvent *Event)
