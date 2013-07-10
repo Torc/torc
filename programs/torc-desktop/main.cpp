@@ -18,6 +18,21 @@
 #include "torcdirectories.h"
 #include "torccommandlineparser.h"
 #include "torcmediamaster.h"
+#include "torcmediamasterfilter.h"
+#include "eventproxy.h"
+
+void AddProperty(const QString &Name, QObject* Property, QQmlContext *Context)
+{
+    if (Property && Context)
+    {
+        Context->setContextProperty(Name, Property);
+        LOG(VB_GENERAL, LOG_INFO, QString("Added QML property '%1'").arg(Name));
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_WARNING, QString("Failed to add property %1").arg(Name));
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -35,20 +50,23 @@ int main(int argc, char *argv[])
     }
 
     // register Torc types and APIs
-    qmlRegisterUncreatableType<TorcSetting>("Torc.Core.TorcSetting", 0, 1, "TorcSetting", "TorcSetting cannot be created within scripts");
-    qmlRegisterUncreatableType<TorcNetworkService>("Torc.Core.TorcNetworkService", 0, 1, "TorcNetworkService", "TorcNetworkService cannot be created within scripts");
-    qmlRegisterUncreatableType<TorcMedia>("Torc.Media.TorcMedia", 0, 1, "TorcMedia", "TorcMedia cannot be created within scripts");
+    qmlRegisterUncreatableType<TorcSetting>        ("Torc.Core",  0, 1, "TorcSetting",        "TorcSetting cannot be created within scripts");
+    qmlRegisterUncreatableType<TorcNetworkService> ("Torc.Core",  0, 1, "TorcNetworkService", "TorcNetworkService cannot be created within scripts");
+    qmlRegisterUncreatableType<TorcMedia>          ("Torc.Media", 0, 1, "TorcMedia",          "TorcMedia cannot be created within scripts");
+    qmlRegisterType<TorcMediaMasterFilter>         ("Torc.Media", 0, 1, "TorcMediaMasterFilter");
+    qmlRegisterType<QAbstractItemModel>();
 
-    // create the engine and show the window
+    // create the engine
     QQmlApplicationEngine *engine = new QQmlApplicationEngine();
-    engine->rootContext()->setContextProperty("TorcLocalContext", gLocalContext);
-    if (gRootSetting)
-        engine->rootContext()->setContextProperty("RootSetting", gRootSetting);
-    if (gNetworkedContext)
-        engine->rootContext()->setContextProperty("TorcNetworkedContext", gNetworkedContext);
-    if (gTorcMediaMaster)
-        engine->rootContext()->setContextProperty("TorcMediaMaster", gTorcMediaMaster);
+    QQmlContext *context = engine->rootContext();
 
+    // add Torc objects before loading
+    AddProperty("TorcLocalContext",     gLocalContext, context);
+    AddProperty("RootSetting",          gRootSetting, context);
+    AddProperty("TorcNetworkedContext", gNetworkedContext, context);
+    AddProperty("TorcMediaMaster",      gTorcMediaMaster, context);
+
+    // load the 'theme'
     engine->load(GetTorcShareDir() + "torc-desktop/qml/main.qml");
 
     int ret = -1;
@@ -59,6 +77,8 @@ int main(int argc, char *argv[])
         QQuickWindow *window = qobject_cast<QQuickWindow *>(top);
         if (window)
         {
+            // install a Torc event handler (primarily for interrupt handling)
+            QScopedPointer<EventProxy> proxy(new EventProxy(window));
             window->show();
 
             // and execute

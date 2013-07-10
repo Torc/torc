@@ -1,6 +1,8 @@
 import QtQuick 2.1
 import QtQuick.Controls 1.0
 import QtQuick.Layouts 1.0
+import Torc.Core 0.1
+import Torc.Media 0.1
 
 ApplicationWindow {
     id: window
@@ -23,22 +25,92 @@ ApplicationWindow {
 
         Tab {
             title: qsTr("Media")
-            TableView {
-                id: mediaView
-                anchors.fill: parent
-                anchors.margins: 8
-                model: TorcMediaMaster
 
-                TableViewColumn {
-                    width: 250
-                    title: qsTr("Name")
-                    role: "name"
+            Column {
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.left: parent.left
+                anchors.bottom:  parent.bottom
+                anchors.margins: 8
+                spacing: 12
+
+                TableView {
+                    id: mediaView
+                    model: TorcMediaMasterFilter {
+                        id: mediaFilter
+                        sourceModel: TorcMediaMaster
+                    }
+
+                    sortIndicatorVisible: true
+
+                    height: parent.height - 34
+                    anchors.right: parent.right
+                    anchors.left: parent.left
+
+                    onSortIndicatorOrderChanged: mediaFilter.SetSortOrder(mediaView.sortIndicatorOrder, mediaView.sortIndicatorColumn)
+                    onSortIndicatorColumnChanged: mediaFilter.SetSortOrder(mediaView.sortIndicatorOrder, mediaView.sortIndicatorColumn)
+
+                    TableViewColumn {
+                        width: 250
+                        title: qsTr("Name")
+                        role: "name"
+                    }
+
+                    TableViewColumn {
+                        width: 350
+                        title: qsTr("Location")
+                        role: "url"
+                    }
                 }
 
-                TableViewColumn {
-                    width: 350
-                    title: qsTr("Location")
-                    role: "url"
+                Row {
+                    spacing: 12
+                    Text {
+                        text: qsTr("Search")
+                    }
+
+                    TextField {
+                        text: mediaFilter.textFilter
+                        onTextChanged: mediaFilter.SetTextFilter(text)
+                    }
+
+                    Button {
+                        text: qsTr("Search using")
+                        menu: Menu {
+                            MenuItem {
+                                text: "Name"
+                                checkable: true
+                                checked: mediaFilter.filterByName
+                                onTriggered: mediaFilter.filterByName = true
+                            }
+                            MenuItem {
+                                text: "Location"
+                                checkable: true
+                                checked: !mediaFilter.filterByName
+                                onTriggered: mediaFilter.filterByName = false
+                            }
+                        }
+                    }
+
+                    CheckBox{
+                        anchors.leftMargin: 16
+                        id: videoCheckbox
+                        checked: true
+                        text: qsTr("Videos")
+                        onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Video, checked)
+                    }
+                    CheckBox{
+                        id: musicCheckbox
+                        checked: true
+                        text: qsTr("Music")
+                        onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Audio, checked)
+                    }
+                    CheckBox{
+                        id: photosCheckbox
+                        checked: true
+                        text: qsTr("Photos")
+                        onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Image, checked)
+                    }
                 }
             }
         }
