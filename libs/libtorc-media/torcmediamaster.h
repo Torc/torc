@@ -13,18 +13,22 @@ class TORC_MEDIA_PUBLIC TorcMediaMaster : public QAbstractListModel
     Q_OBJECT
 
   public:
+    // QAbstractListModel
+    QVariant                   data             (const QModelIndex &Index, int Role) const;
+    QHash<int,QByteArray>      roleNames        (void) const;
+    int                        rowCount         (const QModelIndex &Parent = QModelIndex()) const;
+
     TorcMediaMaster();
     virtual ~TorcMediaMaster();
-    
-    // QAbstractListModel
-    QVariant                   data          (const QModelIndex &Index, int Role) const;
-    QHash<int,QByteArray>      roleNames     (void) const;
-    int                        rowCount      (const QModelIndex &Parent = QModelIndex()) const;
+
+    TorcMedia*                 GetChildByIndex  (int Index) const;
 
   protected:
-    bool                       event         (QEvent *Event);
+    bool                       event            (QEvent *Event);
 
-    QList<TorcMedia*> m_media;
+  private:
+    QList<TorcMedia*>          m_media;
+    QMap<QString,TorcMedia*>   m_mediaMap;
 };
 
 extern TORC_MEDIA_PUBLIC TorcMediaMaster *gTorcMediaMaster;

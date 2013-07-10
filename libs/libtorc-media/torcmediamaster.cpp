@@ -35,6 +35,8 @@ TorcMediaMaster::TorcMediaMaster()
 
 TorcMediaMaster::~TorcMediaMaster()
 {
+    while (!m_media.isEmpty())
+        delete m_media.takeLast();
 }
 
 QVariant TorcMediaMaster::data(const QModelIndex &Index, int Role) const
@@ -48,6 +50,14 @@ QVariant TorcMediaMaster::data(const QModelIndex &Index, int Role) const
         return QVariant();
 
     return QVariant::fromValue(m_media.at(position));
+}
+
+TorcMedia* TorcMediaMaster::GetChildByIndex(int Index) const
+{
+    if (Index < 0 || Index >= m_media.size())
+        return NULL;
+
+    return m_media.at(Index);
 }
 
 QHash<int,QByteArray> TorcMediaMaster::roleNames(void) const
@@ -84,20 +94,48 @@ bool TorcMediaMaster::event(QEvent *Event)
 
                     for (int i = 0; i < items.size(); ++i)
                     {
-                        // TODO duplicate checking??
                         TorcMediaDescription media = items[i].value<TorcMediaDescription>();
-                        newfiles.append(new TorcMedia(media.name, media.url, media.type, media.source, media.metadata));
+
+                        if (!m_mediaMap.contains(media.url))
+                        {
+                            TorcMedia* newmedia = new TorcMedia(media.name, media.url, media.type, media.source, media.metadata);
+                            newfiles.append(newmedia);
+                            m_mediaMap.insert(media.url, newmedia);
+                        }
                     }
 
-                    beginInsertRows(QModelIndex(), m_media.size(), m_media.size() + newfiles.size() - 1);
-                    m_media.append(newfiles);
-                    endInsertRows();
+                    if (!newfiles.isEmpty())
+                    {
+                        beginInsertRows(QModelIndex(), m_media.size(), m_media.size() + newfiles.size() - 1);
+                        m_media.append(newfiles);
+                        endInsertRows();
+                    }
                 }
             }
         }
         else if (event && event->GetEvent() == Torc::MediaRemoved)
         {
-            LOG(VB_GENERAL, LOG_INFO, "REMOVING");
+            if (event->Data().contains("files"))
+            {
+                QVariantList items = event->Data().value("files").toList();
+
+                if (!items.isEmpty())
+                {
+                    for (int i = 0; i < items.size(); ++i)
+                    {
+                        TorcMediaDescription media = items[i].value<TorcMediaDescription>();
+
+                        if (m_mediaMap.contains(media.url))
+                        {
+                            TorcMedia *oldmedia = m_mediaMap.take(media.url);
+                            int position = m_media.indexOf(oldmedia);
+                            beginRemoveRows(QModelIndex(), position, position);
+                            m_media.removeAt(position);
+                            endRemoveRows();
+                        }
+                    }
+                }
+            }
         }
     }
 
