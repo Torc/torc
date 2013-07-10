@@ -23,12 +23,14 @@ HEADERS += torcmedia.h
 HEADERS += torcmetadata.h
 HEADERS += torcmediasource.h
 HEADERS += torcmediamaster.h
+HEADERS += torcmediamasterfilter.h
 HEADERS += torcmediasourcedirectory.h
 
 SOURCES += torcmedia.cpp
 SOURCES += torcmetadata.cpp
 SOURCES += torcmediasource.cpp
 SOURCES += torcmediamaster.cpp
+SOURCES += torcmediamasterfilter.cpp
 SOURCES += torcmediasourcedirectory.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
