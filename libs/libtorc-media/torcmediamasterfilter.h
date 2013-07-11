@@ -32,6 +32,7 @@ class TORC_MEDIA_PUBLIC TorcMediaMasterFilter : public QSortFilterProxyModel
     void                 SetTextFilter       (const QString &Text);
     void                 SetFilterByName     (bool Value);
     void                 SourceChanged       (void);
+    TorcMedia*           GetChildByIndex     (int Index) const;
 
   protected:
     bool                 filterAcceptsRow    (int Row, const QModelIndex &Parent) const;

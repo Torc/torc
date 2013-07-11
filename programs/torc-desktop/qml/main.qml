@@ -1,4 +1,5 @@
 import QtQuick 2.1
+import QtMultimedia 5.0
 import QtQuick.Controls 1.0
 import QtQuick.Layouts 1.0
 import Torc.Core 0.1
@@ -6,8 +7,8 @@ import Torc.Media 0.1
 
 ApplicationWindow {
     id: window
-    width: 600
-    height: 400
+    width: 1920
+    height: 1080
     title: qsTr("torc-desktop")
 
     Component.onCompleted: window.title = TorcLocalContext.GetUuid()
@@ -19,97 +20,104 @@ ApplicationWindow {
         anchors.margins: Qt.platform.os === "osx" ? 12 : 2
 
         Tab {
-            id: controlPage
-            title: qsTr("Player")
-        }
-
-        Tab {
             title: qsTr("Media")
 
-            Column {
-                anchors.top: parent.top
-                anchors.right: parent.right
-                anchors.left: parent.left
-                anchors.bottom:  parent.bottom
+            SplitView {
+                anchors.fill: parent
                 anchors.margins: 8
-                spacing: 12
+                orientation: Qt.Vertical
 
-                TableView {
-                    id: mediaView
-                    model: TorcMediaMasterFilter {
-                        id: mediaFilter
-                        sourceModel: TorcMediaMaster
-                    }
-
-                    sortIndicatorVisible: true
-
-                    height: parent.height - 34
-                    anchors.right: parent.right
-                    anchors.left: parent.left
-
-                    onSortIndicatorOrderChanged: mediaFilter.SetSortOrder(mediaView.sortIndicatorOrder, mediaView.sortIndicatorColumn)
-                    onSortIndicatorColumnChanged: mediaFilter.SetSortOrder(mediaView.sortIndicatorOrder, mediaView.sortIndicatorColumn)
-
-                    TableViewColumn {
-                        width: 250
-                        title: qsTr("Name")
-                        role: "name"
-                    }
-
-                    TableViewColumn {
-                        width: 350
-                        title: qsTr("Location")
-                        role: "url"
-                    }
+                MediaPlayer {
+                    id: mediaPlayer
+                    source: "/Users/mark/Dropbox/Videos/bourne.mp4"
+                    autoPlay: true
                 }
 
-                Row {
-                    spacing: 12
-                    Text {
-                        text: qsTr("Search")
-                    }
+                VideoOutput {
+                    id: videoOutput
+                    height: 400
+                    source: mediaPlayer
+                }
 
-                    TextField {
-                        text: mediaFilter.textFilter
-                        onTextChanged: mediaFilter.SetTextFilter(text)
-                    }
+                Column {
+                    TableView {
+                        id: mediaView
+                        model: TorcMediaMasterFilter {
+                            id: mediaFilter
+                            sourceModel: TorcMediaMaster
+                        }
 
-                    Button {
-                        text: qsTr("Search using")
-                        menu: Menu {
-                            MenuItem {
-                                text: "Name"
-                                checkable: true
-                                checked: mediaFilter.filterByName
-                                onTriggered: mediaFilter.filterByName = true
-                            }
-                            MenuItem {
-                                text: "Location"
-                                checkable: true
-                                checked: !mediaFilter.filterByName
-                                onTriggered: mediaFilter.filterByName = false
-                            }
+                        sortIndicatorVisible: true
+
+                        height: parent.height - 34
+                        anchors.right: parent.right
+                        anchors.left: parent.left
+
+                        onSortIndicatorOrderChanged: mediaFilter.SetSortOrder(mediaView.sortIndicatorOrder, mediaView.sortIndicatorColumn)
+                        onSortIndicatorColumnChanged: mediaFilter.SetSortOrder(mediaView.sortIndicatorOrder, mediaView.sortIndicatorColumn)
+                        onDoubleClicked: mediaPlayer.source = mediaFilter.GetChildByIndex(currentRow).url
+
+                        TableViewColumn {
+                            width: 250
+                            title: qsTr("Name")
+                            role: "name"
+                        }
+
+                        TableViewColumn {
+                            width: 350
+                            title: qsTr("Location")
+                            role: "url"
                         }
                     }
 
-                    CheckBox{
-                        anchors.leftMargin: 16
-                        id: videoCheckbox
-                        checked: true
-                        text: qsTr("Videos")
-                        onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Video, checked)
-                    }
-                    CheckBox{
-                        id: musicCheckbox
-                        checked: true
-                        text: qsTr("Music")
-                        onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Audio, checked)
-                    }
-                    CheckBox{
-                        id: photosCheckbox
-                        checked: true
-                        text: qsTr("Photos")
-                        onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Image, checked)
+                    Row {
+                        spacing: 12
+                        Text {
+                            text: qsTr("Search")
+                        }
+
+                        TextField {
+                            text: mediaFilter.textFilter
+                            onTextChanged: mediaFilter.SetTextFilter(text)
+                        }
+
+                        Button {
+                            text: qsTr("Search using")
+                            menu: Menu {
+                                MenuItem {
+                                    text: "Name"
+                                    checkable: true
+                                    checked: mediaFilter.filterByName
+                                    onTriggered: mediaFilter.filterByName = true
+                                }
+                                MenuItem {
+                                    text: "Location"
+                                    checkable: true
+                                    checked: !mediaFilter.filterByName
+                                    onTriggered: mediaFilter.filterByName = false
+                                }
+                            }
+                        }
+
+                        CheckBox{
+                            anchors.leftMargin: 16
+                            id: videoCheckbox
+                            checked: true
+                            text: qsTr("Videos")
+                            onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Video, checked)
+                        }
+                        CheckBox{
+                            id: musicCheckbox
+                            checked: true
+                            text: qsTr("Music")
+                            onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Audio, checked)
+                        }
+                        CheckBox{
+                            id: photosCheckbox
+                            checked: true
+                            text: qsTr("Photos")
+                            onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Image, checked)
+                        }
                     }
                 }
             }

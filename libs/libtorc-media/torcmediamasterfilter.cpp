@@ -101,6 +101,15 @@ void TorcMediaMasterFilter::SourceChanged(void)
     m_model = static_cast<TorcMediaMaster*>(sourceModel());
 }
 
+/*! \brief Returns the TorcMedia object at the given index.
+ *
+ * \note The supplied index refers to the filtered and sorted data list.
+*/
+TorcMedia* TorcMediaMasterFilter::GetChildByIndex(int Index) const
+{
+    return data(index(Index, 0)).value<TorcMedia*>();
+}
+
 bool TorcMediaMasterFilter::filterAcceptsRow(int Row, const QModelIndex &Parent) const
 {
     if (m_model)
