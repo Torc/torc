@@ -7,8 +7,8 @@ import Torc.Media 0.1
 
 ApplicationWindow {
     id: window
-    width: 1920
-    height: 1080
+    width: 800
+    height: 600
     title: qsTr("torc-desktop")
 
     Component.onCompleted: window.title = TorcLocalContext.GetUuid()

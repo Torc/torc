@@ -77,6 +77,9 @@ int main(int argc, char *argv[])
         QQuickWindow *window = qobject_cast<QQuickWindow *>(top);
         if (window)
         {
+            // enable OS X fullscreen toggle
+            window->setFlags(window->flags() | Qt::WindowFullscreenButtonHint);
+
             // install a Torc event handler (primarily for interrupt handling)
             QScopedPointer<EventProxy> proxy(new EventProxy(window));
             window->show();
