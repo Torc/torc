@@ -105,9 +105,8 @@ class TORC_MEDIA_PUBLIC TorcMediaDescription
     TorcMetadata*           metadata;
 };
 
+Q_DECLARE_METATYPE(TorcMedia*);
 Q_DECLARE_METATYPE(TorcMediaDescription);
 Q_DECLARE_METATYPE(TorcMediaDescription*);
-Q_DECLARE_METATYPE(TorcMedia::MediaType);
-Q_DECLARE_METATYPE(TorcMedia::MediaSubType);
 
 #endif // TORCMEDIA_H
