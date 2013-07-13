@@ -122,4 +122,6 @@ class TORC_CORE_PUBLIC TorcSettingGroup : public TorcSetting
     TorcSettingGroup(TorcSetting *Parent, const QString &UIName);
 };
 
+Q_DECLARE_METATYPE(TorcSetting*);
+
 #endif // TORCSETTING_H

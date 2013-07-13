@@ -36,6 +36,8 @@ class TorcNetworkService : public QObject
     QStringList     m_addresses;
 };
 
+Q_DECLARE_METATYPE(TorcNetworkService*);
+
 class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public TorcObservable
 {
     friend class TorcNetworkedContextObject;
