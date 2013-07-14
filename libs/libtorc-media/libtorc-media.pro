@@ -17,7 +17,14 @@ LIBS += -L../libtorc-core -ltorc-core-$$LIBVERSION
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 
 QT += sql
-QT -= gui
+
+# QSortFilterProxyModel is part of core in Qt 5 and gui in Qt 4.8
+greaterThan(QT_MAJOR_VERSION, 4) {
+    QT -= gui
+}
+else {
+    QT += gui
+}
 
 HEADERS += torcmedia.h
 HEADERS += torcmetadata.h
