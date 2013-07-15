@@ -290,6 +290,19 @@ void TorcMediaSourceDirectory::timerEvent(QTimerEvent *Event)
             {
                 it.next();
                 QString dir = it.filePath();
+
+                if (QFile::exists(dir + "/BDMV"))
+                {
+                    LOG(VB_GENERAL, LOG_INFO, QString("Found BD file structure - ignoring for now ('%1')").arg(dir));
+                    continue;
+                }
+
+                if (QFile::exists(dir + "/VIDEO_TS"))
+                {
+                    LOG(VB_GENERAL, LOG_INFO, QString("Found DVD file structure - ignoring for now ('%1')").arg(dir));
+                    continue;
+                }
+
                 directory->m_knownDirectories << dir;
                 if (olddirectories.contains(dir))
                     olddirectories.removeAll(dir);
