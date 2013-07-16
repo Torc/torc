@@ -8,6 +8,7 @@
 #include "torcexitcodes.h"
 #include "audioclientcommandlineparser.h"
 #include "audiointerface.h"
+#include "torcmediamaster.h"
 
 int main(int argc, char **argv)
 {
@@ -31,6 +32,9 @@ int main(int argc, char **argv)
     }
 
     int ret = GENERIC_EXIT_OK;
+
+    if (!gTorcMediaMaster)
+        LOG(VB_GENERAL, LOG_WARNING, "TorcMediaMaster not available");
 
     QObject dummy;
     AudioInterface* interface = new AudioInterface(&dummy, true);
