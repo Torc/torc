@@ -15,6 +15,7 @@
 #include "tenfoottheme.h"
 #include "videouiplayer.h"
 #include "clientcommandlineparser.h"
+#include "torcmediamaster.h"
 
 using namespace std;
 
@@ -51,6 +52,10 @@ int main(int argc, char **argv)
         // will optimise away any linkage by default. So force its hand and initialise
         // the hardware decoders now.
         VideoUIPlayer::Initialise();
+
+        // and force linking of libtorc-media
+        if (!gTorcMediaMaster)
+            LOG(VB_GENERAL, LOG_WARNING, "TorcMediaMaster not available");
 
         ret = qApp->exec();
 
