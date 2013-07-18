@@ -72,12 +72,9 @@ class TorcLocalContextPriv
     void    SetPreference        (const QString &Name, const QString &Value);
     QString GetUuid              (void);
 
-    void    PrintSessionSettings (void);
-
     Torc::ApplicationFlags m_flags;
     TorcSQLiteDB         *m_sqliteDB;
     QMap<QString,QString> m_localSettings;
-    QMap<QString,QString> m_sessionSettings;
     QReadWriteLock       *m_localSettingsLock;
     QMap<QString,QString> m_preferences;
     QReadWriteLock       *m_preferencesLock;
@@ -227,10 +224,6 @@ QString TorcLocalContextPriv::GetSetting(const QString &Name,
 {
     {
         QReadLocker locker(m_localSettingsLock);
-
-        if (m_sessionSettings.contains(Name))
-            return m_sessionSettings.value(Name);
-
         if (m_localSettings.contains(Name))
             return m_localSettings.value(Name);
     }
@@ -274,19 +267,6 @@ void TorcLocalContextPriv::SetPreference(const QString &Name, const QString &Val
 QString TorcLocalContextPriv::GetUuid(void)
 {
     return m_uuidString;
-}
-
-void TorcLocalContextPriv::PrintSessionSettings(void)
-{
-    QReadLocker locker(m_localSettingsLock);
-    QMapIterator<QString,QString> it(m_sessionSettings);
-    while (it.hasNext())
-    {
-        it.next();
-        LOG(VB_GENERAL, LOG_NOTICE,
-            QString("Temp setting: '%1'='%2'")
-            .arg(it.key()).arg(it.value()));
-    }
 }
 
 QString Torc::ActionToString(Actions Action)
@@ -388,18 +368,6 @@ TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine, Torc::App
     signal(SIGINT,  ExitHandler);
     signal(SIGTERM, ExitHandler);
 
-    // Get overridden settings
-    QMap<QString,QString> settings = CommandLine->GetSettingsOverride();
-    {
-        QWriteLocker locker(m_priv->m_localSettingsLock);
-        QMapIterator<QString,QString> it(settings);
-        while (it.hasNext())
-        {
-            it.next();
-            m_priv->m_sessionSettings.insert(it.key(), it.value());
-        }
-    }
-
     // Initialise local directories
     InitialiseTorcDirectories();
 
@@ -433,9 +401,6 @@ TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine, Torc::App
         .arg(TORC_SOURCE_PATH).arg(TORC_SOURCE_VERSION));
     LOG(VB_GENERAL, LOG_NOTICE,
         QString("Enabled verbose msgs: %1").arg(gVerboseString));
-
-    // Debug the overide settings
-    m_priv->PrintSessionSettings();
 }
 
 TorcLocalContext::~TorcLocalContext()
