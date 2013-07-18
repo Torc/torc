@@ -10,17 +10,9 @@
 #include "audiooutput.h"
 #include "torcutils.h"
 
-int TorcUtils::Probe(const UtilsCommandLineParser *Cmdline)
+int TorcUtils::Probe(const QString &URI)
 {
-    if (!Cmdline)
-        return GENERIC_EXIT_NOT_OK;
-
-    QString uri = Cmdline->ToString("infile");
-
-    if (uri.isEmpty())
-        return GENERIC_EXIT_INVALID_CMDLINE;
-
-    TorcDecoder* decoder = TorcDecoder::Create(TorcDecoder::DecodeNone, uri, NULL);
+    TorcDecoder* decoder = TorcDecoder::Create(TorcDecoder::DecodeNone, URI, NULL);
     if (decoder && decoder->Open())
     {
         while (!(decoder->GetState() == TorcDecoder::Stopped ||
@@ -35,21 +27,14 @@ int TorcUtils::Probe(const UtilsCommandLineParser *Cmdline)
     return GENERIC_EXIT_OK;
 }
 
-int TorcUtils::Play(const UtilsCommandLineParser *Cmdline)
+int TorcUtils::Play(const QString &URI)
 {
-    int result = GENERIC_EXIT_NOT_OK;
-    if (!Cmdline)
-        return result;
-
-    QString uri = Cmdline->ToString("infile");
-
-    if (uri.isEmpty())
-        return GENERIC_EXIT_INVALID_CMDLINE;
+    int result = GENERIC_EXIT_OK;
 
     AudioInterface* interface = new AudioInterface(NULL, true);
     if (interface->InitialisePlayer())
     {
-        interface->SetURI(uri);
+        interface->SetURI(URI);
         if (interface->PlayMedia(false))
             result = qApp->exec();
     }

@@ -16,6 +16,8 @@ int main(int argc, char **argv)
     QCoreApplication::setApplicationName(QObject::tr("torc-utils"));
     QThread::currentThread()->setObjectName(TORC_MAIN_THREAD);
 
+    int result = GENERIC_EXIT_OK;
+
     {
         QScopedPointer<UtilsCommandLineParser> cmdline(new UtilsCommandLineParser());
         if (!cmdline.data())
@@ -30,16 +32,21 @@ int main(int argc, char **argv)
         if (int error = TorcLocalContext::Create(cmdline.data(), Torc::Network))
             return error;
 
-        if (cmdline.data()->ToBool("probe"))
-            TorcUtils::Probe(cmdline.data());
+        QString uri = cmdline->ToString("infile");
 
-        if (cmdline.data()->ToBool("play"))
-            TorcUtils::Play(cmdline.data());
+        if (!uri.isEmpty())
+        {
+            if (cmdline.data()->ToBool("probe"))
+                result = TorcUtils::Probe(uri);
+
+            if (cmdline.data()->ToBool("play"))
+                result = TorcUtils::Play(uri);
+        }
     }
 
     TorcLocalContext::TearDown();
 
-    return GENERIC_EXIT_OK;
+    return result;
 }
 
 

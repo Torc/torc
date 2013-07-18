@@ -1,14 +1,11 @@
 #ifndef TORCUTILS_H
 #define TORCUTILS_H
 
-// Torc
-#include "utilscommandlineparser.h"
-
 class TorcUtils
 {
   public:
-    static int Probe (const UtilsCommandLineParser *Cmdline);
-    static int Play  (const UtilsCommandLineParser *Cmdline);
+    static int Probe (const QString &URI);
+    static int Play  (const QString &URI);
 };
 
 #endif // TORCUTILS_H
