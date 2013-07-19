@@ -23,9 +23,9 @@ INSTALLS += setting
 QMAKE_CLEAN += $(TARGET)
 
 # Input
-HEADERS += utilscommandlineparser.h    torcutils.h
+HEADERS += torcutils.h
 SOURCES += main.cpp
-SOURCES += utilscommandlineparser.cpp  torcutils.cpp
+SOURCES += torcutils.cpp
 
 macx {
     # OS X has no ldconfig

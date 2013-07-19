@@ -36,10 +36,7 @@ INSTALLS += setting
 QMAKE_CLEAN += $(TARGET)
 
 # Input
-HEADERS += clientcommandlineparser.h
-
 SOURCES += main.cpp
-SOURCES += clientcommandlineparser.cpp
 
 macx {
     # OS X has no ldconfig

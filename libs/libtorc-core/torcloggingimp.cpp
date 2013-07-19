@@ -602,9 +602,11 @@ bool GetQuietLogPropagation(void)
 }
 
 void StartLogging(QString Logfile, int progress, int quiet,
-                  LogLevel level, bool Propagate)
+                  QString Level, bool Propagate)
 {
     RegisterLoggingThread("MainLoop");
+
+    LogLevel level = GetLogLevel(Level);
 
     {
         QMutexLocker lock(&gLogQueueLock);

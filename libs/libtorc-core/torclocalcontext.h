@@ -12,7 +12,7 @@
 #include "torcsetting.h"
 #include "torclanguage.h"
 #include "torcobservable.h"
-#include "torccommandlineparser.h"
+#include "torccommandline.h"
 
 #if HAVE_UNISTD_H
 #include <unistd.h>
@@ -212,7 +212,7 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     Q_OBJECT
 
   public:
-    static qint16 Create      (TorcCommandLineParser* CommandLine, Torc::ApplicationFlags ApplicationFlags);
+    static qint16 Create      (TorcCommandLine* CommandLine, Torc::ApplicationFlags ApplicationFlags);
     static void   TearDown    (void);
 
     Q_INVOKABLE static void  NotifyEvent   (int Event);
@@ -241,7 +241,7 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     void                     CloseDatabaseConnections (void);
 
   private:
-    TorcLocalContext(TorcCommandLineParser* CommandLine, Torc::ApplicationFlags ApplicationFlags);
+    TorcLocalContext(TorcCommandLine* CommandLine, Torc::ApplicationFlags ApplicationFlags);
    ~TorcLocalContext();
 
     bool          Init(void);

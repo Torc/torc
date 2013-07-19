@@ -6,6 +6,7 @@
 #include "version.h"
 #include "torclocalcontext.h"
 #include "torcexitcodes.h"
+#include "torccommandline.h"
 #include "audioclientcommandlineparser.h"
 #include "audiointerface.h"
 #include "torcmediamaster.h"
@@ -16,22 +17,26 @@ int main(int argc, char **argv)
     QCoreApplication::setApplicationName(QObject::tr("torc-audioclient"));
     QThread::currentThread()->setObjectName(TORC_MAIN_THREAD);
 
+    int ret = GENERIC_EXIT_OK;
+
     {
-        QScopedPointer<AudioClientCommandLineParser> cmdline(new AudioClientCommandLineParser());
+        bool justexit = false;
+        QScopedPointer<TorcCommandLine> cmdline(new TorcCommandLine(TorcCommandLine::URI));
+
         if (!cmdline.data())
             return GENERIC_EXIT_NOT_OK;
 
-        bool justexit = false;
-        if (!cmdline->Parse(argc, argv, justexit))
-            return GENERIC_EXIT_INVALID_CMDLINE;
+        ret = cmdline->Evaluate(argc, argv, justexit);
+
+        if (ret != GENERIC_EXIT_OK)
+            return ret;
+
         if (justexit)
-            return GENERIC_EXIT_OK;
+            return ret;
 
         if (int error = TorcLocalContext::Create(cmdline.data(), Torc::Database | Torc::Server | Torc::Client | Torc::Storage | Torc::Power | Torc::USB | Torc::Network))
             return error;
     }
-
-    int ret = GENERIC_EXIT_OK;
 
     if (!gTorcMediaMaster)
         LOG(VB_GENERAL, LOG_WARNING, "TorcMediaMaster not available");

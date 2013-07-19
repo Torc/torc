@@ -285,7 +285,7 @@ int Torc::StringToAction(const QString &Action)
     return metaEnum.keyToValue(Action.toLatin1());
 }
 
-qint16 TorcLocalContext::Create(TorcCommandLineParser* CommandLine, Torc::ApplicationFlags ApplicationFlags)
+qint16 TorcLocalContext::Create(TorcCommandLine* CommandLine, Torc::ApplicationFlags ApplicationFlags)
 {
     if (gLocalContext)
         return GENERIC_EXIT_OK;
@@ -355,7 +355,7 @@ void TorcLocalContext::SendMessage(int Type, int Destination, int Timeout,
     gLocalContext->Notify(event);
 }
 
-TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine, Torc::ApplicationFlags ApplicationFlags)
+TorcLocalContext::TorcLocalContext(TorcCommandLine* CommandLine, Torc::ApplicationFlags ApplicationFlags)
   : QObject(),
     m_priv(new TorcLocalContextPriv(ApplicationFlags))
 {
@@ -372,23 +372,13 @@ TorcLocalContext::TorcLocalContext(TorcCommandLineParser* CommandLine, Torc::App
     InitialiseTorcDirectories();
 
     // Start logging at the first opportunity
-    QString logfile(GetTorcConfigDir() + "/" +
-                    QCoreApplication::applicationName() + ".log");
+    QString logfile(GetTorcConfigDir() + "/" + QCoreApplication::applicationName() + ".log");
 
-    ParseVerboseArgument("general");
-    if (CommandLine->ToBool("verbose"))
-        ParseVerboseArgument(CommandLine->ToString("verbose"));
+    ParseVerboseArgument(CommandLine->GetValue("l").toString());
 
     gVerboseMask |= VB_STDIO | VB_FLUSH;
 
-    int quiet = CommandLine->ToUInt("quiet");
-    if (quiet > 1)
-    {
-        gVerboseMask = VB_NONE | VB_FLUSH;
-        ParseVerboseArgument("none");
-    }
-
-    StartLogging(logfile, 0, quiet, CommandLine->GetLoggingLevel(), false);
+    StartLogging(logfile, 0, 0, CommandLine->GetValue("v").toString(), false);
 
     // Debug the config directory
     LOG(VB_GENERAL, LOG_INFO, QString("Dir: Using '%1'")

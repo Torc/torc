@@ -16,7 +16,8 @@
 #include "torclocalcontext.h"
 #include "torcnetworkedcontext.h"
 #include "torcdirectories.h"
-#include "torccommandlineparser.h"
+#include "torcexitcodes.h"
+#include "torccommandline.h"
 #include "torcmediamaster.h"
 #include "torcmediamasterfilter.h"
 #include "eventproxy.h"
@@ -40,10 +41,24 @@ int main(int argc, char *argv[])
     Application app(argc, argv);
     QThread::currentThread()->setObjectName(TORC_MAIN_THREAD);
 
+    int ret = GENERIC_EXIT_OK;
+
     // create local context
     {
-        // FIXME add proper command line handling
-        QScopedPointer<TorcCommandLineParser> cmdline(new TorcCommandLineParser());
+        QScopedPointer<TorcCommandLine> cmdline(new TorcCommandLine(TorcCommandLine::None));
+
+        if (!cmdline.data())
+            return GENERIC_EXIT_NOT_OK;
+
+        bool justexit = false;
+        ret = cmdline->Evaluate(argc, argv, justexit);
+
+        if (ret != GENERIC_EXIT_OK)
+            return ret;
+
+        if (justexit)
+            return ret;
+
         Torc::ApplicationFlags flags = Torc::Database | Torc::Server | Torc::Client | Torc::Storage | Torc::USB | Torc::Network;
         if (int error = TorcLocalContext::Create(cmdline.data(), flags))
             return error;
@@ -68,8 +83,6 @@ int main(int argc, char *argv[])
 
     // load the 'theme'
     engine->load(GetTorcShareDir() + "torc-desktop/qml/main.qml");
-
-    int ret = -1;
 
     if (engine->rootObjects().size())
     {

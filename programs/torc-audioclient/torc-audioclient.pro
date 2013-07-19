@@ -25,9 +25,7 @@ INSTALLS += setting
 QMAKE_CLEAN += $(TARGET)
 
 # Input
-HEADERS += audioclientcommandlineparser.h
 SOURCES += main.cpp
-SOURCES += audioclientcommandlineparser.cpp
 
 macx {
     # OS X has no ldconfig

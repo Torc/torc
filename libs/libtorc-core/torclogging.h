@@ -55,7 +55,7 @@ extern TORC_CORE_PUBLIC QString    gLogPropagationArgs;
 extern TORC_CORE_PUBLIC QString    gVerboseString;
 
 TORC_CORE_PUBLIC void     StartLogging(QString Logfile, int progress = 0,
-                                       int quiet = 0, LogLevel level = LOG_INFO,
+                                       int quiet = 0, QString level = "info",
                                        bool Propagate = false);
 TORC_CORE_PUBLIC void     StopLogging(void);
 TORC_CORE_PUBLIC void     CalculateLogPropagation(void);
