@@ -73,6 +73,9 @@ TorcStorageOSX::~TorcStorageOSX()
     // unregister for updates
     if (m_daSession)
     {
+        if (gAdminRunLoop)
+            DASessionUnscheduleFromRunLoop(m_daSession, gAdminRunLoop, kCFRunLoopDefaultMode);
+
         DAUnregisterCallback(m_daSession, (void(*))DiskChangedCallback,     this);
         DAUnregisterCallback(m_daSession, (void(*))DiskDisappearedCallback, this);
         DAUnregisterCallback(m_daSession, (void(*))DiskAppearedCallback,    this);
