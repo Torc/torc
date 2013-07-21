@@ -106,6 +106,7 @@ class TORC_MEDIA_PUBLIC TorcMediaDescription
 };
 
 Q_DECLARE_METATYPE(TorcMedia*);
+Q_DECLARE_METATYPE(TorcMedia::MediaType);
 Q_DECLARE_METATYPE(TorcMediaDescription);
 Q_DECLARE_METATYPE(TorcMediaDescription*);
 
