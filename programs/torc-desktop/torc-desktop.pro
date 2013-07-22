@@ -14,13 +14,12 @@ qtHaveModule(widgets) {
     QT += widgets
 }
 
-INCLUDEPATH += ../../libs/libtorc-core ../../libs/libtorc-media
+INCLUDEPATH += ../../libs/libtorc-core ../../libs/libtorc-media ../../libs/libtorc-qml
 LIBS += -L../../libs/libtorc-core -ltorc-core-$$LIBVERSION
 LIBS += -L../../libs/libtorc-media -ltorc-media-$$LIBVERSION
+LIBS += -L../../libs/libtorc-qml -ltorc-qml-$$LIBVERSION
 
-HEADERS += eventproxy.h
 SOURCES += main.cpp
-SOURCES += eventproxy.cpp
 
 qmlfiles.path  = $${PREFIX}/share/$${PROJECTNAME}/torc-desktop/
 qmlfiles.files = qml

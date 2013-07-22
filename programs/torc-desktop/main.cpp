@@ -20,20 +20,8 @@
 #include "torccommandline.h"
 #include "torcmediamaster.h"
 #include "torcmediamasterfilter.h"
-#include "eventproxy.h"
-
-void AddProperty(const QString &Name, QObject* Property, QQmlContext *Context)
-{
-    if (Property && Context)
-    {
-        Context->setContextProperty(Name, Property);
-        LOG(VB_GENERAL, LOG_INFO, QString("Added QML property '%1'").arg(Name));
-    }
-    else
-    {
-        LOG(VB_GENERAL, LOG_WARNING, QString("Failed to add property %1").arg(Name));
-    }
-}
+#include "torcqmlutils.h"
+#include "torcqmleventproxy.h"
 
 int main(int argc, char *argv[])
 {
@@ -76,10 +64,10 @@ int main(int argc, char *argv[])
     QQmlContext *context = engine->rootContext();
 
     // add Torc objects before loading
-    AddProperty("TorcLocalContext",     gLocalContext, context);
-    AddProperty("RootSetting",          gRootSetting, context);
-    AddProperty("TorcNetworkedContext", gNetworkedContext, context);
-    AddProperty("TorcMediaMaster",      gTorcMediaMaster, context);
+    TorcQMLUtils::AddProperty("TorcLocalContext",     gLocalContext,     context);
+    TorcQMLUtils::AddProperty("RootSetting",          gRootSetting,      context);
+    TorcQMLUtils::AddProperty("TorcNetworkedContext", gNetworkedContext, context);
+    TorcQMLUtils::AddProperty("TorcMediaMaster",      gTorcMediaMaster,  context);
 
     // load the 'theme'
     engine->load(GetTorcShareDir() + "torc-desktop/qml/main.qml");
@@ -94,7 +82,7 @@ int main(int argc, char *argv[])
             window->setFlags(window->flags() | Qt::WindowFullscreenButtonHint);
 
             // install a Torc event handler (primarily for interrupt handling)
-            QScopedPointer<EventProxy> proxy(new EventProxy(window));
+            QScopedPointer<TorcQMLEventProxy> proxy(new TorcQMLEventProxy(window));
             window->show();
 
             // and execute
