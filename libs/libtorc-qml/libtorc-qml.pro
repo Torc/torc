@@ -22,12 +22,15 @@ QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 HEADERS += torcqmlexport.h
 HEADERS += torcqmleventproxy.h
 HEADERS += torcqmlutils.h
+HEADERS += torcqmlframerate.h
 SOURCES += torcqmlutils.cpp
 SOURCES += torcqmleventproxy.cpp
+SOURCES += torcqmlframerate.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files += torcqmlutils.h
 inc.files += torcqmleventproxy.h
+inc.files += torcqmlframerate.h
 
 inc2.path  = $${PREFIX}/include/$${PROJECTNAME}/lib$${THIS_LIB}
 inc2.files = $${inc.files}
