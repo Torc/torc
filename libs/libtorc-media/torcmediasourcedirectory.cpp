@@ -313,7 +313,7 @@ void TorcMediaSourceDirectory::timerEvent(QTimerEvent *Event)
             // add new directories
             foreach (QString newdirectory, newdirectories)
             {
-                LOG(VB_GENERAL, LOG_INFO, QString("Added directory '%1'").arg(newdirectory));
+                LOG(VB_GENERAL, LOG_DEBUG, QString("Added directory '%1'").arg(newdirectory));
                 m_monitoredPaths.insert(newdirectory, new TorcMediaDirectory(true));
                 addPath(newdirectory);
             }
@@ -354,7 +354,7 @@ void TorcMediaSourceDirectory::timerEvent(QTimerEvent *Event)
                     m_mediaItems.insert(name, media);
                     notifynew.append(QVariant::fromValue(*media));
 
-                    LOG(VB_GENERAL, LOG_INFO, QString("Added '%1'").arg(name));
+                    LOG(VB_GENERAL, LOG_DEBUG, QString("Added '%1'").arg(name));
                 }
 
                 directory->m_knownFiles << name;
