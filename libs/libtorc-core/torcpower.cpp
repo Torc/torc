@@ -62,7 +62,7 @@ TorcPowerPriv* TorcPowerPriv::Create(TorcPower *Parent)
 
 TorcPowerPriv::TorcPowerPriv(TorcPower *Parent)
   : QObject(static_cast<QObject*>(Parent)),
-    m_batteryLevel(TORC_UNKNOWN_POWER)
+    m_batteryLevel(TorcPower::UnknownPower)
 {
     m_canShutdown  = new TorcSetting(NULL, QString("CanShutdown"),  QString(), TorcSetting::Checkbox, false, QVariant((bool)false));
     m_canSuspend   = new TorcSetting(NULL, QString("CanSuspend"),   QString(), TorcSetting::Checkbox, false, QVariant((bool)false));
@@ -219,7 +219,7 @@ void TorcPower::TearDown(void)
 TorcPower::TorcPower()
   : QObject(),
     TorcHTTPService(this, "/power", tr("Power"), TorcPower::staticMetaObject, "ShuttingDown,Suspending,Hibernating,Restarting,WokeUp,LowBattery,Refresh"),
-    m_lastBatteryLevel(TORC_UNKNOWN_POWER),
+    m_lastBatteryLevel(UnknownPower),
     m_priv(TorcPowerPriv::Create(this))
 {
     m_powerGroupItem = new TorcSettingGroup(gRootSetting, tr("Power"));
@@ -333,17 +333,17 @@ void TorcPower::BatteryUpdated(int Level)
     if (m_lastBatteryLevel == Level)
         return;
 
-    bool wasalreadylow = m_lastBatteryLevel >= 0 && m_lastBatteryLevel <= TORC_LOWBATTERY_LEVEL;
+    bool wasalreadylow = m_lastBatteryLevel >= 0 && m_lastBatteryLevel <= BatteryLow;
     m_lastBatteryLevel = Level;
 
-    if (m_lastBatteryLevel == TORC_AC_POWER)
+    if (m_lastBatteryLevel == ACPower)
         LOG(VB_GENERAL, LOG_INFO, "On AC power");
-    else if (m_lastBatteryLevel == TORC_UNKNOWN_POWER)
+    else if (m_lastBatteryLevel == UnknownPower)
         LOG(VB_GENERAL, LOG_INFO, "Unknown power status");
     else
         LOG(VB_GENERAL, LOG_INFO, QString("Battery level %1%").arg(m_lastBatteryLevel));
 
-    if (!wasalreadylow && (m_lastBatteryLevel >= 0 && m_lastBatteryLevel <= TORC_LOWBATTERY_LEVEL))
+    if (!wasalreadylow && (m_lastBatteryLevel >= 0 && m_lastBatteryLevel <= BatteryLow))
         LowBattery();
 }
 

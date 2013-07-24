@@ -190,7 +190,7 @@ void TorcPowerOSX::Refresh(void)
             CFStringRef state = (CFStringRef)CFDictionaryGetValue(description, CFSTR(kIOPSPowerSourceStateKey));
             if (state && CFStringCompare(state, CFSTR(kIOPSACPowerValue), 0) == kCFCompareEqualTo)
             {
-                m_batteryLevel = TORC_AC_POWER;
+                m_batteryLevel = TorcPower::ACPower;
             }
             else if (state && CFStringCompare(state, CFSTR(kIOPSBatteryPowerValue), 0) == kCFCompareEqualTo)
             {
@@ -204,7 +204,7 @@ void TorcPowerOSX::Refresh(void)
             }
             else
             {
-                m_batteryLevel = TORC_UNKNOWN_POWER;
+                m_batteryLevel = TorcPower::UnknownPower;
             }
         }
     }

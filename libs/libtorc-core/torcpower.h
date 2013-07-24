@@ -10,10 +10,6 @@
 #include "torcsetting.h"
 #include "http/torchttpservice.h"
 
-#define TORC_AC_POWER         -1
-#define TORC_LOWBATTERY_LEVEL 10
-#define TORC_UNKNOWN_POWER    101
-
 class TorcPower;
 
 class TorcPowerPriv : public QObject
@@ -38,10 +34,10 @@ class TorcPowerPriv : public QObject
     void                Debug           (void);
 
   protected:
-    TorcSetting    *m_canShutdown;
-    TorcSetting    *m_canSuspend;
-    TorcSetting    *m_canHibernate;
-    TorcSetting    *m_canRestart;
+    TorcSetting        *m_canShutdown;
+    TorcSetting        *m_canSuspend;
+    TorcSetting        *m_canHibernate;
+    TorcSetting        *m_canRestart;
     int                 m_batteryLevel;
 };
 
@@ -69,6 +65,18 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
     Q_CLASSINFO("Suspend",   "PUT")
     Q_CLASSINFO("Hibernate", "PUT")
     Q_CLASSINFO("Restart",   "PUT")
+
+    Q_ENUMS(PowerLevels)
+
+  public:
+    enum PowerLevels
+    {
+        ACPower       = -1,
+        BatteryEmpty  = 0,
+        BatteryLow    = 10,
+        BatteryFull   = 100,
+        UnknownPower  = 101
+    };
 
   public:
     static QMutex *gPowerLock;

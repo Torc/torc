@@ -332,12 +332,12 @@ void TorcPowerUnixDBus::UpdateBattery(void)
         }
         else
         {
-            m_batteryLevel = TORC_UNKNOWN_POWER;
+            m_batteryLevel = TorcPower::UnknownPower;
         }
     }
     else
     {
-        m_batteryLevel = TORC_AC_POWER;
+        m_batteryLevel = TorcPower::ACPower;
     }
 
     ((TorcPower*)parent())->BatteryUpdated(m_batteryLevel);
@@ -363,11 +363,11 @@ int TorcPowerUnixDBus::GetBatteryLevel(const QString &Path)
         }
         else
         {
-            return TORC_AC_POWER;
+            return TorcPower::ACPower;
         }
     }
 
-    return TORC_UNKNOWN_POWER;
+    return TorcPower::UnknownPower;
 }
 
 void TorcPowerUnixDBus::UpdateProperties(void)

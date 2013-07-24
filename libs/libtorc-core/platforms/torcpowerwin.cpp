@@ -152,15 +152,15 @@ void TorcPowerWin::Refresh(void)
     if (GetSystemPowerStatus(&status))
     {
         if (status.ACLineStatus)
-            m_batteryLevel = TORC_AC_POWER;
+            m_batteryLevel = TorcPower::ACPower;
         else if (status.BatteryLifePercent != 255)
             m_batteryLevel = status.BatteryLifePercent;
         else
-            m_batteryLevel = TORC_UNKNOWN_POWER;
+            m_batteryLevel = TorcPower::UnknownPower;
     }
     else
     {
-        m_batteryLevel = TORC_UNKNOWN_POWER;
+        m_batteryLevel = TorcPower::UnknownPower;
     }
 
     ((TorcPower*)parent())->BatteryUpdated(m_batteryLevel);
