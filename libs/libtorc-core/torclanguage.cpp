@@ -373,17 +373,6 @@ void TorcLanguage::Initialise(void)
     gLanguageMap.insert("ses", QLocale::KoyraboroSenni);
     gLanguageMap.insert("ksb", QLocale::Shambala);
     gLanguageMap.insert("gsw", QLocale::SwissGerman);
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-    gLanguageMap.insert("fij", QLocale::FijiLanguage);
-    gLanguageMap.insert("lao", QLocale::Laothian);
-    gLanguageMap.insert("sag", QLocale::Sangho);
-    gLanguageMap.insert("sin", QLocale::Singhalese);
-    gLanguageMap.insert("sot", QLocale::Sesotho);
-    gLanguageMap.insert("ssw", QLocale::Siswati);
-    gLanguageMap.insert("ton", QLocale::TongaLanguage);
-    gLanguageMap.insert("tsn", QLocale::Setswana);
-#else
     gLanguageMap.insert("fij", QLocale::Fijian);
     gLanguageMap.insert("lao", QLocale::Lao);
     gLanguageMap.insert("sag", QLocale::Sango);
@@ -392,5 +381,4 @@ void TorcLanguage::Initialise(void)
     gLanguageMap.insert("ssw", QLocale::Swati);
     gLanguageMap.insert("ton", QLocale::Tongan);
     gLanguageMap.insert("tsn", QLocale::Tswana);
-#endif
 }
