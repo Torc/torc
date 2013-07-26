@@ -108,11 +108,6 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
 
         if (url.hasQuery())
         {
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-            QList<QPair<QString, QString> > pairs = url.queryItems();
-            for (int i = 0; i < pairs.size(); ++i)
-                m_queries.insert(pairs[i].first, pairs[i].second);
-#else
             QStringList pairs = url.query().split('&');
             foreach (QString pair, pairs)
             {
@@ -121,7 +116,6 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
                 QString val = pair.mid(index + 1);
                 m_queries.insert(key, val);
             }
-#endif
         }
     }
 
