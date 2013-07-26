@@ -45,12 +45,7 @@ class MethodParameters
     {
         // the return type/value is first
         int returntype = QMetaType::type(Method.typeName());
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-        void* param = returntype > 0 ? QMetaType::construct(returntype) : NULL;
-#else
-        void* param = returntype > 0 ? QMetaType::create(returntype) : NULL;
-#endif
+        void* param    = returntype > 0 ? QMetaType::create(returntype) : NULL;
 
         m_parameters.append(param);
         m_types.append(returntype > 0 ? returntype : 0);
@@ -63,12 +58,8 @@ class MethodParameters
         for (int i = 0; i < names.size(); ++i)
         {
             int type    = QMetaType::type(types[i]);
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-            void* param = type != 0 ? QMetaType::construct(type) : NULL;
-#else
             void* param = type != 0 ? QMetaType::create(type) : NULL;
-#endif
+
             m_names.append(names[i]);
             m_parameters.append(param);
             m_types.append(type);
@@ -163,11 +154,7 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
         if ((method.methodType() == QMetaMethod::Slot) &&
             (method.access()     == QMetaMethod::Public))
         {
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-            QString name(method.signature());
-#else
             QString name(method.methodSignature());
-#endif
             name = name.section('(', 0, 0);
 
             // discard unwanted slots
