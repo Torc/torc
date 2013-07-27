@@ -6,10 +6,6 @@
 #include <QTcpServer>
 #include <QMutex>
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-typedef int qintptr;
-#endif
-
 // Torc
 #include "torccoreexport.h"
 #include "torcsetting.h"
