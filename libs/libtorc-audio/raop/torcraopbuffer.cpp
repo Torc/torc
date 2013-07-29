@@ -147,31 +147,6 @@ bool TorcRAOPBuffer::Open(void)
         return false;
     }
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-    QList<QPair<QString, QString> > data = m_url.queryItems();
-    if (data.size() != 6)
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Invalid url");
-        Close();
-        return false;
-    }
-
-    for (int i = 0; i < data.size(); ++i)
-    {
-        if (data[i].first == "channels")
-            m_channels = data[i].second.toInt();
-        if (data[i].first == "framesize")
-            m_frameSize = data[i].second.toInt();
-        if (data[i].first == "samplesize")
-            m_sampleSize = data[i].second.toInt();
-        if (data[i].first == "historymult")
-            m_historyMult = data[i].second.toInt();
-        if (data[i].first == "initialhistory")
-            m_initialHistory = data[i].second.toInt();
-        if (data[i].first == "kmodifier")
-            m_kModifier = data[i].second.toInt();
-    }
-#else
     QString query = m_url.query();
     QStringList queries = query.split('&');
     foreach (QString pair, queries)
@@ -193,7 +168,6 @@ bool TorcRAOPBuffer::Open(void)
         else if (key == "kmodifier")
             m_kModifier = val.toInt();
     }
-#endif
 
     if (!(m_channels > 0 && m_frameSize > 0 && m_sampleSize > 0 &&
           m_historyMult > -1 && m_initialHistory > -1 && m_kModifier > -1))
