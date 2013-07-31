@@ -4,11 +4,7 @@
 // Qt
 #include <QApplication>
 #include <QDesktopWidget>
-#if (QT_VERSION >= 0x050000)
 #include <QProxyStyle>
-#else
-#include <QWindowsStyle>
-#endif
 
 // Torc
 #include "torclogging.h"
@@ -167,24 +163,7 @@ CGDirectDisplayID GetOSXDisplay(WId win)
     if (!win)
         return 0;
 
-#if defined(QT_MAC_USE_COCOA) || (QT_VERSION >= 0x050000)
     return GetOSXCocoaDisplay((void*)win);
-#else
-    CGDirectDisplayID disp = NULL;
-    HIViewRef hiview = (HIViewRef)win;
-    WindowRef winref = HIViewGetWindow(hiview);
-    Rect bounds;
-    if (!GetWindowBounds(winref, kWindowStructureRgn, &bounds))
-    {
-        CGDisplayCount ct;
-        CGPoint pt;
-        pt.x = bounds.left;
-        pt.y = bounds.top;
-        if (kCGErrorSuccess != CGGetDisplaysWithPoint(pt, 1, &disp, &ct))
-            disp = CGMainDisplayID();
-    }
-    return disp;
-#endif
 }
 
 int DepthFromStringRef(CFStringRef Format)
