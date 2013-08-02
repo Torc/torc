@@ -2,6 +2,8 @@ include ( config.mak )
 
 CONFIG += $$CCONFIG
 
+cache()
+
 !win32 {
     CONFIG += silent
 }
