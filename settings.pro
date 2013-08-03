@@ -9,38 +9,38 @@ cache()
 }
 
 defineReplace(avLibName) {
-        NAME = $$1
+    NAME = $$1
 
-        major = \$\${lib$${NAME}_VERSION_MAJOR}
-        eval(LIBVERSION = $$major)
+    major = \$\${lib$${NAME}_VERSION_MAJOR}
+    eval(LIBVERSION = $$major)
 
-        temp = $$SLIBNAME_WITH_MAJOR_QT
-        temp = $$replace(temp, FULLNAME, $$NAME)
-        temp = $$replace(temp, NAME,     $$NAME)
-        temp = $$replace(temp, LIBMAJOR, $$LIBVERSION)
+    temp = $$SLIBNAME_WITH_MAJOR_QT
+    temp = $$replace(temp, FULLNAME, $$NAME)
+    temp = $$replace(temp, NAME,     $$NAME)
+    temp = $$replace(temp, LIBMAJOR, $$LIBVERSION)
 
-        return($$temp)
+    return($$temp)
 }
 
 #check QT major version
-contains(QT_MAJOR_VERSION, 3) {
-        error("Must build against Qt4")
+lessThan(QT_MAJOR_VERSION, 5) {
+    error("Must build against Qt5")
 }
 
 # Where binaries, includes and runtime assets are installed by 'make install'
-isEmpty( PREFIX ) {
+isEmpty(PREFIX) {
     PREFIX = /usr/local
 }
 # Where the binaries actually locate the assets/filters/plugins at runtime
-isEmpty( RUNPREFIX ) {
+isEmpty(RUNPREFIX) {
     RUNPREFIX = $$PREFIX
 }
 # Alternate library dir for OSes and packagers (e.g. lib64)
-isEmpty( LIBDIRNAME ) {
+isEmpty(LIBDIRNAME) {
     LIBDIRNAME = lib
 }
 # Where libraries, plugins and filters are installed
-isEmpty( LIBDIR ) {
+isEmpty(LIBDIR) {
     LIBDIR = $${RUNPREFIX}/$${LIBDIRNAME}
 }
 
@@ -116,18 +116,18 @@ DEFINES += _GNU_SOURCE
 
 # construct linking path
 LOCAL_LIBDIR_X11 =
-!isEmpty( QMAKE_LIBDIR_X11 ) {
+!isEmpty(QMAKE_LIBDIR_X11) {
     LOCAL_LIBDIR_X11 = -L$$QMAKE_LIBDIR_X11
 }
 QMAKE_LIBDIR_X11 =
 
 LOCAL_LIBDIR_OGL =
-!isEmpty( QMAKE_LIBDIR_OPENGL ) {
+!isEmpty(QMAKE_LIBDIR_OPENGL) {
     LOCAL_LIBDIR_OGL = -L$$QMAKE_LIBDIR_OPENGL
 }
 QMAKE_LIBDIR_OPENGL =
 
-!isEmpty( QMAKE_LIBDIR_QT ) {
+!isEmpty(QMAKE_LIBDIR_QT) {
     !macx {
         LATE_LIBS += "-L$$QMAKE_LIBDIR_QT"
         QMAKE_LIBDIR_QT = ""
