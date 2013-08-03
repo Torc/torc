@@ -55,6 +55,7 @@ typedef enum
 
 typedef enum
 {
+    HTTP_SwitchingProtocaols = 101,
     HTTP_OK                  = 200,
     HTTP_PartialContent      = 206,
     HTTP_MovedPermanently    = 301,
