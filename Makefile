@@ -2,7 +2,7 @@ include config.mak
 
 
 MAKE_SUBDIRS = libs/libtorc-av
-QT_SUBDIRS = libs programs tenfootthemes
+QT_SUBDIRS = libs programs
 
 SUBDIRS += $(MAKE_SUBDIRS) $(QT_SUBDIRS)
 
@@ -38,7 +38,6 @@ settings.pro: config.mak
 libs/Makefile: libs/libs.pro
 html/Makefile: html/html.pro
 programs/Makefile: programs/programs.pro
-tenfootthemes/Makefile: tenfootthemes/tenfootthemes.pro
 i18n/Makefile: i18n/i18n.pro
 locales/Makefile: locales/locales.pro
 
