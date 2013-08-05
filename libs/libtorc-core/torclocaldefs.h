@@ -17,8 +17,4 @@
 #define TORC_VIDEO                 QString("VIDEO_")
 #define TORC_DB                    QString("DB_")
 
-#define TORC_GUI_TENFOOT_THEMES    QString("tenfootthemes")
-#define TORC_GUI_TENINCH_THEMES    QString("teninchthemes")
-#define TORC_GUI_DESKTOP_THEMES    QString("desktopthemes")
-
 #endif // TORCLOCALDEFS_H
