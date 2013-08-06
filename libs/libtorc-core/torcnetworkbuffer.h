@@ -16,9 +16,9 @@ class TORC_CORE_PUBLIC TorcNetworkBuffer : public TorcBuffer
   public:
     enum Type
     {
-        Unbuffered, // straight download
-        Buffered,   // buffered but not seekable
-        Streamed    // buffered and seekable
+        Unbuffered,
+        Buffered,
+        Streamed
     };
 
   public:
