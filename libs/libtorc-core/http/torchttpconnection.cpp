@@ -75,7 +75,7 @@ void TorcHTTPConnection::run(void)
     QString peeraddress  = m_socket->peerAddress().toString() + ":" + QString::number(m_socket->peerPort());
     QString localaddress = m_socket->localAddress().toString() + ":" + QString::number(m_socket->localPort());
 
-    LOG(VB_NETWORK, LOG_INFO, "New connection from" + peeraddress + " on " + localaddress);
+    LOG(VB_NETWORK, LOG_INFO, "New connection from " + peeraddress + " on " + localaddress);
 
     // iniitialise state
     bool requeststarted     = false;
