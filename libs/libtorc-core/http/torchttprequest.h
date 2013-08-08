@@ -55,7 +55,7 @@ typedef enum
 
 typedef enum
 {
-    HTTP_SwitchingProtocaols = 101,
+    HTTP_SwitchingProtocols  = 101,
     HTTP_OK                  = 200,
     HTTP_PartialContent      = 206,
     HTTP_MovedPermanently    = 301,
@@ -92,12 +92,15 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     void                   SetResponseType          (HTTPResponseType Type);
     void                   SetResponseContent       (QByteArray *Content);
     void                   SetResponseFile          (QFile *File);
+    void                   SetResponseHeader        (const QString &Header, const QString &Value);
     void                   SetAllowed               (int Allowed);
     HTTPType               GetHTTPType              (void);
     HTTPRequestType        GetHTTPRequestType       (void);
+    HTTPProtocol           GetHTTPProtocol          (void);
     QString                GetUrl                   (void);
     QString                GetPath                  (void);
     QString                GetMethod                (void);
+    QMap<QString,QString>* Headers                  (void);
     QMap<QString,QString>  Queries                  (void);
     void                   Respond                  (QTcpSocket *Socket, int* Abort);
     void                   Redirected               (const QString &Redirected);
@@ -123,6 +126,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     HTTPStatus             m_responseStatus;
     QByteArray            *m_responseContent;
     QFile                 *m_responseFile;
+    QMap<QString,QString> *m_responseHeaders;
 };
 
 #endif // TORCHTTPREQUEST_H

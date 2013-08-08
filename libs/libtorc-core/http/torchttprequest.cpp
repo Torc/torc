@@ -47,7 +47,7 @@
 #endif
 
 /*! \class TorcHTTPRequest
- *  \brief A class to encapsulte an incoming HTTP request.
+ *  \brief A class to encapsulate an incoming HTTP request.
  *
  * TorcHTTPRequest validates an incoming HTTP request and prepares the appropriate
  * headers for the response.
@@ -73,7 +73,8 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
     m_responseType(HTTPResponseUnknown),
     m_responseStatus(HTTP_NotFound),
     m_responseContent(NULL),
-    m_responseFile(NULL)
+    m_responseFile(NULL),
+    m_responseHeaders(NULL)
 {
     QStringList items = Method.split(gRegExp, QString::SkipEmptyParts);
     QString item;
@@ -143,6 +144,7 @@ TorcHTTPRequest::~TorcHTTPRequest()
     if (m_responseFile)
         m_responseFile->close();
     delete m_responseFile;
+    delete m_responseHeaders;
 }
 
 bool TorcHTTPRequest::KeepAlive(void)
@@ -182,6 +184,14 @@ void TorcHTTPRequest::SetResponseFile(QFile *File)
     m_responseContent = NULL;
 }
 
+void TorcHTTPRequest::SetResponseHeader(const QString &Header, const QString &Value)
+{
+    if (!m_responseHeaders)
+        m_responseHeaders = new QMap<QString,QString>();
+
+    m_responseHeaders->insert(Header, Value);
+}
+
 void TorcHTTPRequest::SetAllowed(int Allowed)
 {
     m_allowed = Allowed;
@@ -197,6 +207,11 @@ HTTPRequestType TorcHTTPRequest::GetHTTPRequestType(void)
     return m_requestType;
 }
 
+HTTPProtocol TorcHTTPRequest::GetHTTPProtocol(void)
+{
+    return m_protocol;
+}
+
 QString TorcHTTPRequest::GetUrl(void)
 {
     return m_fullUrl;
@@ -210,6 +225,11 @@ QString TorcHTTPRequest::GetPath(void)
 QString TorcHTTPRequest::GetMethod(void)
 {
     return m_method;
+}
+
+QMap<QString,QString>* TorcHTTPRequest::Headers(void)
+{
+    return m_headers;
 }
 
 QMap<QString,QString> TorcHTTPRequest::Queries(void)
@@ -300,6 +320,14 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
 
     if (m_responseStatus == HTTP_MovedPermanently)
         response << "Location: " << m_redirectedTo.toLatin1() << "\r\n";
+
+    // process any custom headers
+    if (m_responseHeaders)
+    {
+        QMap<QString,QString>::iterator it = m_responseHeaders->begin();
+        for ( ; it != m_responseHeaders->end(); ++it)
+            response << it.key().toLatin1() << ": " << it.value().toLatin1() << "\r\n";
+    }
 
     response << "\r\n";
     response.flush();
@@ -511,6 +539,7 @@ QString TorcHTTPRequest::StatusToString(HTTPStatus Status)
 {
     switch (Status)
     {
+        case HTTP_SwitchingProtocols:  return QString("101 Switching Protocols");
         case HTTP_OK:                  return QString("200 OK");
         case HTTP_PartialContent:      return QString("206 Partial Content");
         case HTTP_MovedPermanently:    return QString("301 Moved Permanently");
