@@ -58,6 +58,7 @@
  *
  * \todo Break out writes into 'small' chunks to facilitate abort handling.
  * \todo Add linux sendfile support with fallback to regular writes.
+ * \todo Add support for multiple headers of the same type (e.g. Sec-WebSocket-Protocol).
 */
 
 QRegExp gRegExp = QRegExp("[ \r\n][ \r\n]*");
@@ -66,7 +67,7 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
   : m_type(HTTPRequest),
     m_requestType(HTTPUnknownType),
     m_protocol(HTTPUnknownProtocol),
-    m_keepAlive(false),
+    m_connection(HTTPConnectionClose),
     m_headers(Headers),
     m_content(Content),
     m_allowed(0),
@@ -123,14 +124,15 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
     if (!items.isEmpty())
         m_protocol = ProtocolFromString(items.takeFirst());
 
-    m_keepAlive = m_protocol > HTTPOneDotZero;
+    if (m_protocol > HTTPOneDotZero)
+        m_connection = HTTPConnectionKeepAlive;
 
     QString connection = m_headers->value("Connection").toLower();
 
     if (connection == "keep-alive")
-        m_keepAlive = true;
+        m_connection = HTTPConnectionKeepAlive;
     else if (connection == "close")
-        m_keepAlive = false;
+        m_connection = HTTPConnectionClose;
 
     LOG(VB_GENERAL, LOG_DEBUG, QString("HTTP request: path '%1' method '%2'").arg(m_path).arg(m_method));
 }
@@ -147,9 +149,9 @@ TorcHTTPRequest::~TorcHTTPRequest()
     delete m_responseHeaders;
 }
 
-bool TorcHTTPRequest::KeepAlive(void)
+void TorcHTTPRequest::SetConnection(HTTPConnection Connection)
 {
-    return m_keepAlive;
+    m_connection = Connection;
 }
 
 void TorcHTTPRequest::SetStatus(HTTPStatus Status)
@@ -301,7 +303,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
     response << TorcHTTPRequest::ProtocolToString(m_protocol) << " " << TorcHTTPRequest::StatusToString(m_responseStatus) << "\r\n";
     response << "Date: " << QDateTime::currentDateTimeUtc().toString("d MMM yyyy hh:mm:ss 'GMT'") << "\r\n";
     response << "Server: " << TorcHTTPServer::PlatformName() << ", Torc " << TORC_SOURCE_VERSION << "\r\n";
-    response << "Connection: " << (m_keepAlive ? QString("keep-alive") : QString("close")) << "\r\n";
+    response << "Connection: " << TorcHTTPRequest::ConnectionToString(m_connection) << "\r\n";
     response << "Accept-Ranges: bytes\r\n";
 
     if (multipart)
@@ -342,6 +344,8 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
         LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(headersize).arg(sent));
     else
         LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 header bytes").arg(sent));
+
+    LOG(VB_GENERAL, LOG_INFO, headers->data());
 
     // send content
     if (!(*Abort) && m_responseContent && !m_responseContent->isEmpty() && m_requestType != HTTPHead)
@@ -487,7 +491,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
 
     Socket->flush();
 
-    if (!m_keepAlive)
+    if (m_connection == HTTPConnectionClose)
         Socket->disconnectFromHost();
 }
 
@@ -586,6 +590,18 @@ QString TorcHTTPRequest::AllowedToString(int Allowed)
     if (Allowed & HTTPOptions) result << "OPTONS";
 
     return result.join(", ");
+}
+
+QString TorcHTTPRequest::ConnectionToString(HTTPConnection Connection)
+{
+    switch (Connection)
+    {
+        case HTTPConnectionClose:     return QString("close");
+        case HTTPConnectionKeepAlive: return QString("keep-alive");
+        case HTTPConnectionUpgrade:   return QString("Upgrade");
+    }
+
+    return QString();
 }
 
 int TorcHTTPRequest::StringToAllowed(const QString &Allowed)

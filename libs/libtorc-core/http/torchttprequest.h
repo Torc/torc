@@ -68,6 +68,13 @@ typedef enum
     HTTP_InternalServerError = 500
 } HTTPStatus;
 
+typedef enum
+{
+    HTTPConnectionClose     = 0,
+    HTTPConnectionKeepAlive = 1,
+    HTTPConnectionUpgrade   = 2
+} HTTPConnection;
+
 #define READ_CHUNK_SIZE (1024 *64)
 
 class TORC_CORE_PUBLIC TorcHTTPRequest
@@ -79,6 +86,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     static QString         StatusToString           (HTTPStatus   Status);
     static QString         ResponseTypeToString     (HTTPResponseType Response);
     static QString         AllowedToString          (int Allowed);
+    static QString         ConnectionToString       (HTTPConnection Connection);
     static int             StringToAllowed          (const QString &Allowed);
     static QList<QPair<quint64,quint64> > StringToRanges (const QString &Ranges, qint64 Size, qint64& SizeToSend);
     static QString         RangeToString            (const QPair<quint64,quint64> &Range, qint64 Size);
@@ -87,7 +95,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     TorcHTTPRequest(const QString &Method, QMap<QString,QString> *Headers, QByteArray *Content);
     ~TorcHTTPRequest();
 
-    bool                   KeepAlive                (void);
+    void                   SetConnection            (HTTPConnection Connection);
     void                   SetStatus                (HTTPStatus Status);
     void                   SetResponseType          (HTTPResponseType Type);
     void                   SetResponseContent       (QByteArray *Content);
@@ -115,7 +123,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     HTTPType               m_type;
     HTTPRequestType        m_requestType;
     HTTPProtocol           m_protocol;
-    bool                   m_keepAlive;
+    HTTPConnection         m_connection;
     QList<QPair<quint64,quint64> > m_ranges;
     QMap<QString,QString> *m_headers;
     QMap<QString,QString>  m_queries;
