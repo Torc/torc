@@ -74,6 +74,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     ~TorcWebSocket();
 
     static bool     ProcessUpgradeRequest (TorcHTTPConnection *Connection, TorcHTTPRequest *Request, QTcpSocket *Socket);
+    static QString  OpCodeToString        (OpCode Code);
 
   signals:
     void            Close                 (void);
@@ -83,6 +84,12 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     void            ReadyRead             (void);
     void            Disconnected          (void);
     void            CloseSocket           (void);
+
+  private:
+    void            SendFrame             (OpCode Code, QByteArray &Payload);
+    void            HandlePing            (QByteArray &Payload);
+    void            HandlePong            (QByteArray &Payload);
+    void            HandleClose           (QByteArray &Close);
 
   private:
     enum ReadState
@@ -105,8 +112,12 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     OpCode           m_frameOpCode;
     bool             m_frameMasked;
     quint64          m_framePayloadLength;
+    quint64          m_framePayloadReadPosition;
     QByteArray       m_frameMask;
     QByteArray       m_framePayload;
+
+    QByteArray      *m_bufferedPayload;
+    OpCode           m_bufferedPayloadOpCode;
 
     CloseCode        m_closeCode;
 };
