@@ -4,6 +4,7 @@
 // Qt
 #include <QThreadPool>
 #include <QTcpServer>
+#include <QTcpSocket>
 #include <QMutex>
 
 // Torc
@@ -12,6 +13,7 @@
 #include "torchtmlhandler.h"
 #include "torchtmlserviceshelp.h"
 #include "torchtmlstaticcontent.h"
+#include "torcwebsocket.h"
 
 class TorcHTTPConnection;
 class TorcHTTPHandler;
@@ -27,6 +29,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
   public:
     static void    RegisterHandler    (TorcHTTPHandler *Handler);
     static void    DeregisterHandler  (TorcHTTPHandler *Handler);
+    static void    UpgradeSocket      (TorcHTTPRequest *Request, QTcpSocket *Socket);
     static int     GetPort            (void);
     static bool    IsListening        (void);
     static QString PlatformName       (void);
@@ -41,6 +44,8 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
 
   protected slots:
     void           UpdateHandlers     (void);
+    void           HandleUpgrade      (TorcHTTPRequest *Request, QTcpSocket *Socket);
+    void           WebSocketClosed    (void);
 
   protected:
     TorcHTTPServer ();
@@ -79,6 +84,12 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
 
     quint32                           m_httpBonjourReference;
     quint32                           m_torcBonjourReference;
+
+    QList<TorcWebSocketThread*>       m_webSockets;
+    QMutex*                           m_webSocketsLock;
 };
+
+Q_DECLARE_METATYPE(TorcHTTPRequest*);
+Q_DECLARE_METATYPE(QTcpSocket*);
 
 #endif // TORCHTTPSERVER_H

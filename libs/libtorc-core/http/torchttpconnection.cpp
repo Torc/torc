@@ -78,6 +78,7 @@ void TorcHTTPConnection::run(void)
     LOG(VB_NETWORK, LOG_INFO, "New connection from " + peeraddress + " on " + localaddress);
 
     // iniitialise state
+    bool connectionupgraded = false;
     bool requeststarted     = false;
     bool headerscomplete    = false;
     int  headersread        = 0;
@@ -180,6 +181,20 @@ void TorcHTTPConnection::run(void)
         {
             LOG(VB_GENERAL, LOG_ERR, "Received unexpected HTTP response");
         }
+        else if (headers->contains("Upgrade"))
+        {
+            // if the connection is upgraded, both request and m_socket will be transferred
+            // to a new thread. DO NOT DELETE!
+            if (TorcWebSocket::ProcessUpgradeRequest(this, request, m_socket))
+            {
+                connectionupgraded = true;
+                break;
+            }
+            else
+            {
+                request->Respond(m_socket, m_abort);
+            }
+        }
         else
         {
             m_server->HandleRequest(this, request);
@@ -201,18 +216,25 @@ void TorcHTTPConnection::run(void)
     }
 
     // cleanup
-    delete headers;
-    delete content;
+    if (!connectionupgraded)
+    {
+        delete headers;
+        delete content;
 
-    if (*m_abort)
-        LOG(VB_NETWORK, LOG_INFO, "Socket closed at server's request");
+        if (*m_abort)
+            LOG(VB_NETWORK, LOG_INFO, "Socket closed at server's request");
 
-    if (m_socket->state() != QAbstractSocket::ConnectedState)
-        LOG(VB_NETWORK, LOG_INFO, "Socket was disconnected by remote host");
+        if (m_socket->state() != QAbstractSocket::ConnectedState)
+            LOG(VB_NETWORK, LOG_INFO, "Socket was disconnected by remote host");
 
-    m_socket->disconnectFromHost();
-    delete m_socket;
-    m_socket = NULL;
+        m_socket->disconnectFromHost();
+        delete m_socket;
+        m_socket = NULL;
 
-    LOG(VB_NETWORK, LOG_INFO, QString("Connection from %1 closed").arg(peeraddress));
+        LOG(VB_NETWORK, LOG_INFO, QString("Connection from %1 closed").arg(peeraddress));
+    }
+    else
+    {
+        LOG(VB_NETWORK, LOG_INFO, "Exiting - connection upgrading to full thread");
+    }
 }

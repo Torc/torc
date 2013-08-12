@@ -62,7 +62,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
         CloseStatusCodeMissing   = 1005,
         CloseAbnormal            = 1006,
         CloseInconsistentData    = 1007,
-        ClosePolicyViolationn    = 1008,
+        ClosePolicyViolation     = 1008,
         CloseMessageTooBig       = 1009,
         CloseMissingExtension    = 1010,
         CloseUnexpectedError     = 1011,
@@ -75,6 +75,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
 
     static bool     ProcessUpgradeRequest (TorcHTTPConnection *Connection, TorcHTTPRequest *Request, QTcpSocket *Socket);
     static QString  OpCodeToString        (OpCode Code);
+    static QString  CloseCodeToString     (CloseCode Code);
 
   signals:
     void            Close                 (void);
@@ -107,6 +108,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     int              m_abort;
     bool             m_serverSide;
     ReadState        m_readState;
+    bool             m_echoTest;
 
     bool             m_frameFinalFragment;
     OpCode           m_frameOpCode;
@@ -120,6 +122,9 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     OpCode           m_bufferedPayloadOpCode;
 
     CloseCode        m_closeCode;
+    bool             m_closeReceived;
+    bool             m_closeSent;
+    QString          m_closeReason;
 };
 
 class TORC_CORE_PUBLIC TorcWebSocketThread : public TorcThread

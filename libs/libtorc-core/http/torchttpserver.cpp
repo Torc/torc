@@ -92,6 +92,24 @@ void TorcHTTPServer::DeregisterHandler(TorcHTTPHandler *Handler)
         gWebServer->RemoveHandler(Handler);
 }
 
+void TorcHTTPServer::UpgradeSocket(TorcHTTPRequest *Request, QTcpSocket *Socket)
+{
+    QMutexLocker locker(gWebServerLock);
+
+    if (gWebServer && Request && Socket)
+    {
+        // at this stage, the remote device has sent a valid upgrade request, Request contains
+        // the appropriate response and Socket still resides in a QRunnable. The remote device
+        // should not send any more data until it has received a response.
+
+        // firstly, move the Socket into the server thread, which must be done from the QRunnable
+        Socket->moveToThread(gWebServer->thread());
+
+        // and process the upgrade from the server thread
+        QMetaObject::invokeMethod(gWebServer, "HandleUpgrade", Qt::AutoConnection, Q_ARG(TorcHTTPRequest*, Request), Q_ARG(QTcpSocket*, Socket));
+    }
+}
+
 int TorcHTTPServer::GetPort(void)
 {
     QMutexLocker locker(gWebServerLock);
@@ -130,7 +148,8 @@ TorcHTTPServer::TorcHTTPServer()
     m_newHandlersLock(new QMutex(QMutex::Recursive)),
     m_oldHandlersLock(new QMutex(QMutex::Recursive)),
     m_httpBonjourReference(0),
-    m_torcBonjourReference(0)
+    m_torcBonjourReference(0),
+    m_webSocketsLock(new QMutex(QMutex::Recursive))
 {
     // ensure service directory is valid
     if (!m_servicesDirectory.endsWith("/"))
@@ -217,6 +236,7 @@ TorcHTTPServer::~TorcHTTPServer()
     delete m_handlersLock;
     delete m_newHandlersLock;
     delete m_oldHandlersLock;
+    delete m_webSocketsLock;
 }
 
 void TorcHTTPServer::Enable(bool Enable)
@@ -312,6 +332,20 @@ void TorcHTTPServer::Close(void)
     m_abort = 1;
     if (!m_connectionPool.waitForDone(30000))
         LOG(VB_GENERAL, LOG_WARNING, "HTTP connection threads are still running");
+
+    // close websocket threads
+    {
+        QMutexLocker locker(m_webSocketsLock);
+
+        while (!m_webSockets.isEmpty())
+        {
+            LOG(VB_GENERAL, LOG_INFO, "Closing outstanding websocket");
+            TorcWebSocketThread* thread = m_webSockets.takeLast();
+            thread->quit();
+            thread->wait();
+            delete thread;
+        }
+    }
 
     // actually close
     close();
@@ -410,6 +444,51 @@ void TorcHTTPServer::RemoveHandler(TorcHTTPHandler *Handler)
     emit HandlersChanged();
 }
 
+void TorcHTTPServer::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *Socket)
+{
+    if (!Request || !Socket)
+        return;
+
+    QMutexLocker locker(m_webSocketsLock);
+
+    TorcWebSocketThread *thread = new TorcWebSocketThread(Request, Socket);
+    Socket->moveToThread(thread->GetQThread());
+    thread->Socket()->moveToThread(thread->GetQThread());
+
+    connect(thread->GetQThread(), SIGNAL(started()),  thread->Socket(), SLOT(Start()));
+    connect(thread->GetQThread(), SIGNAL(finished()), this, SLOT(WebSocketClosed()));
+
+    thread->start();
+
+    m_webSockets.append(thread);
+}
+
+void TorcHTTPServer::WebSocketClosed(void)
+{
+    QThread *thread = static_cast<QThread*>(sender());
+
+    if (thread)
+    {
+        QMutexLocker locker(m_webSocketsLock);
+
+        for (int i = 0; i < m_webSockets.size(); ++i)
+        {
+            if (m_webSockets[i]->GetQThread() == thread)
+            {
+                TorcWebSocketThread *ws = m_webSockets.takeAt(i);
+
+                ws->quit();
+                ws->wait();
+                delete ws;
+
+                LOG(VB_NETWORK, LOG_INFO, "WebSocket thread deleted");
+
+                break;
+            }
+        }
+    }
+}
+
 void TorcHTTPServer::UpdateHandlers(void)
 {
     QList<TorcHTTPHandler*> newhandlers;
@@ -465,6 +544,8 @@ class TorcHTTPServerObject : public TorcAdminObject
     TorcHTTPServerObject()
       : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY)
     {
+        qRegisterMetaType<TorcHTTPRequest*>();
+        qRegisterMetaType<QTcpSocket*>();
     }
 
     void Create(void)

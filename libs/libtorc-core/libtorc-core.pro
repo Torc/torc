@@ -59,6 +59,7 @@ HEADERS += http/torchtmlserviceshelp.h
 HEADERS += http/torchtmlstaticcontent.h
 HEADERS += http/torchttphandler.h
 HEADERS += http/torchttpconnection.h
+HEADERS += http/torcwebsocket.h
 HEADERS += http/torcserialiser.h
 HEADERS += http/torcxmlserialiser.h
 HEADERS += http/torcjsonserialiser.h
@@ -104,6 +105,7 @@ SOURCES += http/torchtmlstaticcontent.cpp
 SOURCES += http/torchttphandler.cpp
 SOURCES += http/torchttpconnection.cpp
 SOURCES += http/torchttpservice.cpp
+SOURCES += http/torcwebsocket.cpp
 SOURCES += http/torcserialiser.cpp
 SOURCES += http/torcxmlserialiser.cpp
 SOURCES += http/torcjsonserialiser.cpp
@@ -137,6 +139,7 @@ inc.files += torcsetting.h
 inc.files += torchttpserver.h
 inc.files += torchtmlhandler.h
 inc.files += torchttpservice.h
+inf.files += torcwebsocket.h
 inc.files += torcssdp.h
 
 unix:contains(CONFIG_LIBUDEV, yes) {
