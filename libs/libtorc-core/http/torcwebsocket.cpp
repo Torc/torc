@@ -168,12 +168,15 @@ bool TorcWebSocket::ProcessUpgradeRequest(TorcHTTPConnection *Connection, TorcHT
         valid = false;
     }
 
+    // disable host check. It offers us no additional security and may be a raw
+    // ip address, domain name or or other host name.
+#if 0
     if (valid && host.host() != Connection->GetSocket()->localAddress().toString())
     {
         error = "Invalid Host";
         valid = false;
     }
-
+#endif
     /*
        5.   The request MUST contain an |Upgrade| header field whose value
             MUST include the "websocket" keyword.
@@ -287,6 +290,8 @@ bool TorcWebSocket::ProcessUpgradeRequest(TorcHTTPConnection *Connection, TorcHT
 
     if (!valid)
     {
+        LOG(VB_GENERAL, LOG_ERR, error);
+
         Request->SetStatus(HTTP_BadRequest);
 
         if (versionerror)
