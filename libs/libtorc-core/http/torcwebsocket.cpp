@@ -51,7 +51,7 @@
  * \todo Fix thread exiting
  * \todo Client side socket
  * \todo Limit frame size for reading
- * \todo Fix testsuire partial failures (fail fast on invalid UTF-8)
+ * \todo Fix testsuite partial failures (fail fast on invalid UTF-8)
 */
 
 TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpSocket *Socket)
