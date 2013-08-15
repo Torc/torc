@@ -22,6 +22,7 @@
 
 // Qt
 #include <QUrl>
+#include <QTimer>
 #include <QtEndian>
 #include <QCryptographicHash>
 
@@ -46,9 +47,7 @@
  * \note To test using the Autobahn python test suite, configure the suite to
  *       request a connection using 'echo' as the method (e.g. 'http://your-ip-address:your-port/echo').
  *
- * \todo Add protocol handling (JSON, JSON-RPC, XML, XML-RPC, PLIST, PLIST-RPC)
- * \todo Complete close handshake (rather than just closing)
- * \todo Fix thread exiting
+ * \todo Add actual protocol handling (raw, JSON, JSON-RPC, XML, XML-RPC, PLIST, PLIST-RPC)
  * \todo Client side socket
  * \todo Limit frame size for reading
  * \todo Fix testsuite partial failures (fail fast on invalid UTF-8)
@@ -72,34 +71,27 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
     m_framePayloadReadPosition(0),
     m_bufferedPayload(NULL),
     m_bufferedPayloadOpCode(OpContinuation),
-    m_closeCode(CloseNormal),
     m_closeReceived(false),
-    m_closeSent(false)
+    m_closeSent(false),
+    m_closeTimerStarted(false)
 {
     if (Request->GetMethod().startsWith(QStringLiteral("echo"), Qt::CaseInsensitive))
     {
         m_echoTest = true;
         LOG(VB_GENERAL, LOG_INFO, "Enabling WebSocket echo for testing");
     }
-
-    connect(this, SIGNAL(Close()), this, SLOT(CloseSocket()));
 }
 
 TorcWebSocket::~TorcWebSocket()
 {
-    if (m_socket)
-    {
-        m_socket->disconnect();
-        m_socket->close();
-        m_socket->deleteLater();
-    }
+    InitiateClose(CloseGoingAway, QString("WebSocket exiting normally"), false);
+
+    CloseSocket();
 
     delete m_upgradeRequest;
     delete m_bufferedPayload;
-
     m_upgradeRequest  = NULL;
     m_bufferedPayload = NULL;
-    m_socket          = NULL;
 
     LOG(VB_GENERAL, LOG_INFO, "WebSocket dtor");
 }
@@ -371,8 +363,14 @@ void TorcWebSocket::Start(void)
 
     LOG(VB_GENERAL, LOG_INFO, "WebSocket thread started");
 
-    connect(m_socket, SIGNAL(readyRead()),    this, SLOT(ReadyRead()));
-    connect(m_socket, SIGNAL(disconnected()), this, SLOT(Disconnected()));
+    if (m_socket)
+    {
+        connect(m_socket, SIGNAL(bytesWritten(qint64)), this, SLOT(BytesWritten(qint64)));
+        connect(m_socket, SIGNAL(readyRead()),          this, SLOT(ReadyRead()));
+
+        if (m_parent)
+            connect(m_socket, SIGNAL(disconnected()), m_parent->GetQThread(), SLOT(quit()));
+    }
 
     m_upgradeRequest->Respond(m_socket, &m_abort);
 }
@@ -384,7 +382,7 @@ void TorcWebSocket::Start(void)
 */
 void TorcWebSocket::ReadyRead(void)
 {
-    while ((m_socket->bytesAvailable() || (m_readState == ReadPayload && m_framePayloadLength == 0)) && !m_abort)
+    while (m_socket && (m_socket->bytesAvailable() || (m_readState == ReadPayload && m_framePayloadLength == 0)) && !m_abort)
     {
         switch (m_readState)
         {
@@ -397,8 +395,7 @@ void TorcWebSocket::ReadyRead(void)
                 char header[2];
                 if (m_socket->read(header, 2) != 2)
                 {
-                    m_closeCode = CloseUnexpectedError;
-                    emit Close();
+                    InitiateClose(CloseUnexpectedError, QString("Read error"));
                     return;
                 }
 
@@ -410,25 +407,30 @@ void TorcWebSocket::ReadyRead(void)
 
                 // validate the header against current state and specification
                 CloseCode error = CloseNormal;
+                QString reason;
 
                 // invalid use of reserved bits
                 if (reservedbits)
                 {
-                    m_closeReason = QString("Invalid use of reserved bits");
+                    reason = QString("Invalid use of reserved bits");
                     error = CloseProtocolError;
                 }
 
                 // control frames can only have payloads of up to 125 bytes
                 else if ((m_frameOpCode & 0x8) && length > 125)
                 {
-                    m_closeReason = QString("Control frame payload too large");
+                    reason = QString("Control frame payload too large");
                     error = CloseProtocolError;
+
+                    // need to acknowledge when an OpClose is received
+                    if (OpClose == m_frameOpCode)
+                        m_closeReceived = true;
                 }
 
                 // if this is a server, clients must be sending masked frames and vice versa
                 else if (m_serverSide != m_frameMasked)
                 {
-                    m_closeReason = QString("Masking error");
+                    reason = QString("Masking error");
                     error = CloseProtocolError;
                 }
 
@@ -436,36 +438,35 @@ void TorcWebSocket::ReadyRead(void)
                 else if (m_frameOpCode != OpText && m_frameOpCode != OpBinary && m_frameOpCode != OpContinuation &&
                     m_frameOpCode != OpPing && m_frameOpCode != OpPong   && m_frameOpCode != OpClose)
                 {
-                    m_closeReason = QString("Invalid use of reserved opcode");
+                    reason = QString("Invalid use of reserved opcode");
                     error = CloseProtocolError;
                 }
 
                 // control frames cannot be fragmented
                 else if (!m_frameFinalFragment && (m_frameOpCode == OpPing || m_frameOpCode == OpPong || m_frameOpCode == OpClose))
                 {
-                    m_closeReason = QString("Fragmented control frame");
+                    reason = QString("Fragmented control frame");
                     error = CloseProtocolError;
                 }
 
                 // a continuation frame must have an opening frame
                 else if (!m_bufferedPayload && m_frameOpCode == OpContinuation)
                 {
-                    m_closeReason = QString("Fragmentation error");
+                    reason = QString("Fragmentation error");
                     error = CloseProtocolError;
                 }
 
                 // only continuation frames or control frames are expected once in the middle of a frame
                 else if (m_bufferedPayload && !(m_frameOpCode == OpContinuation || m_frameOpCode == OpPing || m_frameOpCode == OpPong || m_frameOpCode == OpClose))
                 {
-                    m_closeReason = QString("Fragmentation error");
+                    reason = QString("Fragmentation error");
                     error = CloseProtocolError;
                 }
 
                 if (error != CloseNormal)
                 {
-                    LOG(VB_GENERAL, LOG_ERR, QString("Read error: %1 (%2)").arg(CloseCodeToString(error)).arg(m_closeReason));
-                    m_closeCode = error;
-                    emit Close();
+                    LOG(VB_GENERAL, LOG_ERR, QString("Read error: %1 (%2)").arg(CloseCodeToString(error)).arg(reason));
+                    InitiateClose(error, reason);
                     return;
                 }
 
@@ -495,8 +496,7 @@ void TorcWebSocket::ReadyRead(void)
 
                 if (m_socket->read(reinterpret_cast<char *>(length), 2) != 2)
                 {
-                    m_closeCode = CloseUnexpectedError;
-                    emit Close();
+                    InitiateClose(CloseUnexpectedError, QString("Read error"));
                     return;
                 }
 
@@ -513,8 +513,7 @@ void TorcWebSocket::ReadyRead(void)
                 uchar length[8];
                 if (m_socket->read(reinterpret_cast<char *>(length), 8) != 8)
                 {
-                    m_closeCode = CloseUnexpectedError;
-                    emit Close();
+                    InitiateClose(CloseUnexpectedError, QString("Read error"));
                     return;
                 }
 
@@ -530,8 +529,7 @@ void TorcWebSocket::ReadyRead(void)
 
                 if (m_socket->read(m_frameMask.data(), 4) != 4)
                 {
-                    m_closeCode = CloseUnexpectedError;
-                    emit Close();
+                    InitiateClose(CloseUnexpectedError, QString("Read error"));
                     return;
                 }
 
@@ -554,8 +552,7 @@ void TorcWebSocket::ReadyRead(void)
 
                     if (m_socket->read(m_framePayload.data() + m_framePayloadReadPosition, read) != read)
                     {
-                        m_closeCode = CloseUnexpectedError;
-                        emit Close();
+                        InitiateClose(CloseUnexpectedError, QString("Read error"));
                         return;
                     }
 
@@ -607,7 +604,7 @@ void TorcWebSocket::ReadyRead(void)
                         }
                         else if (m_frameOpCode == OpClose)
                         {
-                            HandleClose(m_framePayload);
+                            HandleCloseRequest(m_framePayload);
                         }
                         else
                         {
@@ -641,8 +638,7 @@ void TorcWebSocket::ReadyRead(void)
 
                             if (invalidtext)
                             {
-                                m_closeCode = CloseInconsistentData;
-                                emit Close();
+                                InitiateClose(CloseInconsistentData, "Invalid UTF-8 text");
                             }
                             else
                             {
@@ -669,9 +665,7 @@ void TorcWebSocket::ReadyRead(void)
                 else if (m_framePayload.size() > m_framePayloadLength)
                 {
                     // this shouldn't happen
-                    LOG(VB_GENERAL, LOG_ERR, "Buffer overflow");
-                    m_closeCode = CloseUnexpectedError;
-                    emit Close();
+                    InitiateClose(CloseUnexpectedError, QString("Read error"));
                     return;
                 }
             }
@@ -680,21 +674,22 @@ void TorcWebSocket::ReadyRead(void)
     }
 }
 
-void TorcWebSocket::Disconnected(void)
-{
-    if (m_parent)
-        m_parent->quit();
-
-    LOG(VB_GENERAL, LOG_INFO, "Disconnected");
-}
-
 void TorcWebSocket::CloseSocket(void)
 {
-    m_socket->disconnect();
-    m_socket->close();
+    if (m_socket)
+    {
+        m_socket->disconnectFromHost();
+        m_socket->close();
+        m_socket->deleteLater();
+        m_socket = NULL;
+    }
+}
 
-    // FIXME - disconnect above isn't triggering...
-    Disconnected();
+void TorcWebSocket::BytesWritten(qint64 Bytes)
+{
+    // close the socket once the closing handshake is complete
+    if (m_closeReceived && m_socket && !m_socket->bytesToWrite())
+        CloseSocket();
 }
 
 /*! \brief Compose and send a properly formatted websocket frame.
@@ -703,6 +698,11 @@ void TorcWebSocket::CloseSocket(void)
 */
 void TorcWebSocket::SendFrame(OpCode Code, QByteArray &Payload)
 {
+    // don't send if OpClose has already been sent or OpClose received and
+    // we're sending anything other than the echoed OpClose
+    if (m_closeSent || (m_closeReceived && Code != OpClose))
+        return;
+
     QByteArray frame;
     QByteArray mask;
     QByteArray size;
@@ -774,13 +774,13 @@ void TorcWebSocket::SendFrame(OpCode Code, QByteArray &Payload)
         }
     }
 
-    LOG(VB_GENERAL, LOG_ERR, "Error sending frame");
-    m_closeCode = CloseUnexpectedError;
-    emit Close();
+    if (Code != OpClose)
+        InitiateClose(CloseUnexpectedError, QString("Send error"));
 }
 
 void TorcWebSocket::HandlePing(QByteArray &Payload)
 {
+    // ignore pings once in close down
     if (m_closeReceived || m_closeSent)
         return;
 
@@ -792,13 +792,28 @@ void TorcWebSocket::HandlePong(QByteArray &Payload)
     // TODO validate known pings
 }
 
-void TorcWebSocket::HandleClose(QByteArray &Close)
+void TorcWebSocket::HandleCloseRequest(QByteArray &Close)
 {
+    CloseCode newclosecode = CloseNormal;
     CloseCode closecode = CloseNormal;
     QString reason;
 
+    if (Close.size() < 1)
+    {
+        QByteArray newpayload;
+        newpayload.append((CloseNormal >> 8) & 0xff);
+        newpayload.append(CloseNormal & 0xff);
+        Close = newpayload;
+    }
+    // payload size 1 is invalid
+    else if (Close.size() == 1)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Invalid close payload size (<2)");
+        newclosecode = CloseProtocolError;
+    }
+
     // check close code if present
-    if (Close.size() > 1)
+    else if (Close.size() > 1)
     {
         closecode = (CloseCode)qFromBigEndian<quint16>(reinterpret_cast<const uchar *>(Close.data()));
         if ("Unknown" == CloseCodeToString(closecode) || closecode == CloseReserved1004 ||
@@ -807,22 +822,18 @@ void TorcWebSocket::HandleClose(QByteArray &Close)
             if (!(closecode >= 3000 && closecode <= 4999))
             {
                 LOG(VB_GENERAL, LOG_ERR, "Invalid close code");
-                // change code
-                Close[0] = 0x03;
-                Close[1] = 0xEA;
+                newclosecode = CloseProtocolError;
             }
         }
     }
 
     // check close reason if present
-    if (Close.size() > 2)
+    if (Close.size() > 2 && newclosecode == CloseNormal)
     {
         if (!utf8::is_valid(Close.data() + 2, Close.data() + Close.size()))
         {
             LOG(VB_GENERAL, LOG_ERR, "Invalid UTF8 in close payload");
-            // change close code
-            Close[0] = 0x03;
-            Close[1] = 0xEF;
+            newclosecode = CloseInconsistentData;
         }
         else
         {
@@ -830,11 +841,23 @@ void TorcWebSocket::HandleClose(QByteArray &Close)
         }
     }
 
-    LOG(VB_NETWORK, LOG_INFO, QString("Received Close: %1 ('%2')").arg(CloseCodeToString(closecode)).arg(reason));
+    if (newclosecode != CloseNormal)
+    {
+        QByteArray newpayload;
+        newpayload.append((newclosecode >> 8) & 0xff);
+        newpayload.append(newclosecode & 0xff);
+        Close = newpayload;
+    }
+    else
+    {
+        LOG(VB_NETWORK, LOG_INFO, QString("Received Close: %1 ('%2')").arg(CloseCodeToString(closecode)).arg(reason));
+    }
+
     m_closeReceived = true;
 
     if (m_closeSent)
     {
+        // OpClose sent and received, exit immediately
         CloseSocket();
     }
     else
@@ -842,7 +865,39 @@ void TorcWebSocket::HandleClose(QByteArray &Close)
         // echo back the payload and close request
         SendFrame(OpClose, Close);
         m_closeSent = true;
-        CloseSocket();
+    }
+}
+
+void TorcWebSocket::InitiateClose(CloseCode Close, const QString &Reason, bool ExitImmediately /*= true*/)
+{
+    if (!m_closeSent)
+    {
+        QByteArray payload;
+        payload.append((Close >> 8) & 0xff);
+        payload.append(Close & 0xff);
+        payload.append(Reason.toUtf8());
+        SendFrame(OpClose, payload);
+        m_closeSent = true;
+
+        if (ExitImmediately)
+        {
+            // start a single shot timer to close the socket if the closing handshake does
+            // not complete as expected and the socket is not closed
+            if (!m_closeTimerStarted)
+            {
+                QTimer::singleShot(2000, this, SLOT(CloseSocket()));
+                m_closeTimerStarted = true;
+            }
+        }
+        else
+        {
+            // allow a little time for OpClose to be sent and received, otherwise the socket
+            // will be closed immediately when we're shutting down normally, without actually
+            // sending anything.
+            int count = 0;
+            while (count++ < 100 && m_socket && m_socket->bytesToWrite() > 0)
+                QThread::usleep(10000);
+        }
     }
 }
 
@@ -854,7 +909,7 @@ TorcWebSocketThread::TorcWebSocketThread(TorcHTTPRequest *Request, QTcpSocket *S
 
 TorcWebSocketThread::~TorcWebSocketThread()
 {
-    m_webSocket->deleteLater();
+    delete m_webSocket;
     LOG(VB_GENERAL, LOG_INFO, "WebSocketThread dtor");
 }
 

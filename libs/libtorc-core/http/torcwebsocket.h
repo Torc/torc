@@ -77,20 +77,18 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     static QString  OpCodeToString        (OpCode Code);
     static QString  CloseCodeToString     (CloseCode Code);
 
-  signals:
-    void            Close                 (void);
-
   protected slots:
     void            Start                 (void);
     void            ReadyRead             (void);
-    void            Disconnected          (void);
     void            CloseSocket           (void);
+    void            BytesWritten          (qint64 Bytes);
 
   private:
     void            SendFrame             (OpCode Code, QByteArray &Payload);
     void            HandlePing            (QByteArray &Payload);
     void            HandlePong            (QByteArray &Payload);
-    void            HandleClose           (QByteArray &Close);
+    void            HandleCloseRequest    (QByteArray &Close);
+    void            InitiateClose         (CloseCode Close, const QString &Reason, bool ExitImmediately = true);
 
   private:
     enum ReadState
@@ -121,10 +119,9 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     QByteArray      *m_bufferedPayload;
     OpCode           m_bufferedPayloadOpCode;
 
-    CloseCode        m_closeCode;
     bool             m_closeReceived;
     bool             m_closeSent;
-    QString          m_closeReason;
+    bool             m_closeTimerStarted;
 };
 
 class TORC_CORE_PUBLIC TorcWebSocketThread : public TorcThread
