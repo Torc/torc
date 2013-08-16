@@ -343,9 +343,9 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
     if (headersize != sent)
         LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(headersize).arg(sent));
     else
-        LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 header bytes").arg(sent));
+        LOG(VB_NETWORK, LOG_DEBUG, QString("Sent %1 header bytes").arg(sent));
 
-    LOG(VB_GENERAL, LOG_INFO, headers->data());
+    LOG(VB_NETWORK, LOG_DEBUG, headers->data());
 
     // send content
     if (!(*Abort) && m_responseContent && !m_responseContent->isEmpty() && m_requestType != HTTPHead)
@@ -360,7 +360,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
                 if ((*bit).size() != sent)
                     LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg((*bit).size()).arg(sent));
                 else
-                    LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 multipart header bytes").arg(sent));
+                    LOG(VB_NETWORK, LOG_DEBUG, QString("Sent %1 multipart header bytes").arg(sent));
 
                 if (*Abort)
                     break;
@@ -371,7 +371,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
                 if (chunksize != sent)
                     LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(chunksize).arg(sent));
                 else
-                    LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 content bytes").arg(sent));
+                    LOG(VB_NETWORK, LOG_DEBUG, QString("Sent %1 content bytes").arg(sent));
             }
         }
         else
@@ -382,7 +382,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
             if (size != sent)
                 LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg(size).arg(sent));
             else
-                LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 content bytes").arg(sent));
+                LOG(VB_NETWORK, LOG_DEBUG, QString("Sent %1 content bytes").arg(sent));
         }
     }
     else if (!(*Abort) && m_responseFile && m_requestType != HTTPHead)
@@ -401,7 +401,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
                 if ((*bit).size() != sent)
                     LOG(VB_GENERAL, LOG_WARNING, QString("Buffer size %1 - but sent %2").arg((*bit).size()).arg(sent));
                 else
-                    LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 multipart header bytes").arg(sent));
+                    LOG(VB_NETWORK, LOG_DEBUG, QString("Sent %1 multipart header bytes").arg(sent));
 
                 if (*Abort)
                     break;
