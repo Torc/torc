@@ -93,7 +93,7 @@ QVariantMap TorcHTMLServicesHelp::GetServiceList(void)
     QMap<QString,QString> services =  m_server->GetServiceHandlers();
     QMap<QString,QString>::const_iterator it = services.begin();
     for ( ; it != services.end(); ++it)
-        results.insert(it.key(), QVariant(it.value()));
+        results.insert(it.value(), QVariant(it.key()));
 
     return results;
 }
