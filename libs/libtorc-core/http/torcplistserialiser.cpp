@@ -47,7 +47,20 @@ void TorcPListSerialiser::Begin(void)
 
 void TorcPListSerialiser::AddProperty(const QString &Name, const QVariant &Value)
 {
-    PListFromVariant(Name, Value);
+    // NB the JSON serialiser is the reference serialiser (as it is Qt code that we cannot
+    // manipulate). So try to ensure a consistent representation with JSON (which generally
+    // avoids the inclusion of named Qt types like QVariantMap and unnecessary nesting).
+    if (Value.type() == QVariant::Map)
+    {
+        QVariantMap map = Value.toMap();
+        QVariantMap::iterator it = map.begin();
+        for ( ; it != map.end(); ++it)
+            PListFromVariant(it.key(), it.value());
+    }
+    else
+    {
+        PListFromVariant(Name, Value);
+    }
 }
 
 void TorcPListSerialiser::End(void)
