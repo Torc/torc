@@ -32,9 +32,10 @@ class TorcStoragePriv : public QObject
 class TORC_CORE_PUBLIC TorcStorage : public QObject, public TorcHTTPService
 {
     Q_OBJECT
-    Q_CLASSINFO("Mount",   "PUT")
-    Q_CLASSINFO("Unmount", "PUT")
-    Q_CLASSINFO("Eject",   "PUT")
+    Q_CLASSINFO("Mount",    "methods=PUT")
+    Q_CLASSINFO("Unmount",  "methods=PUT")
+    Q_CLASSINFO("Eject",    "methods=PUT")
+    Q_CLASSINFO("GetDisks", "type=disks")
 
   public:
     static void Create        (void);

@@ -61,10 +61,10 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
 {
     Q_OBJECT
 
-    Q_CLASSINFO("Shutdown",  "PUT")
-    Q_CLASSINFO("Suspend",   "PUT")
-    Q_CLASSINFO("Hibernate", "PUT")
-    Q_CLASSINFO("Restart",   "PUT")
+    Q_CLASSINFO("Shutdown",  "methods=PUT")
+    Q_CLASSINFO("Suspend",   "methods=PUT")
+    Q_CLASSINFO("Hibernate", "methods=PUT")
+    Q_CLASSINFO("Restart",   "methods=PUT")
 
     Q_ENUMS(PowerLevels)
 

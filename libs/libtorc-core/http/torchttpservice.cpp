@@ -39,9 +39,10 @@
 class MethodParameters
 {
   public:
-    MethodParameters(int Index, const QMetaMethod &Method, int AllowedRequestTypes)
+    MethodParameters(int Index, const QMetaMethod &Method, int AllowedRequestTypes, const QString &ReturnType)
       : m_index(Index),
-        m_allowedRequestTypes(AllowedRequestTypes)
+        m_allowedRequestTypes(AllowedRequestTypes),
+        m_returnType(ReturnType)
     {
         // the return type/value is first
         int returntype = QMetaType::type(Method.typeName());
@@ -71,7 +72,7 @@ class MethodParameters
     {
     }
 
-    QVariant Invoke(QObject *Object, TorcHTTPRequest *Request)
+    QVariant Invoke(QObject *Object, TorcHTTPRequest *Request, QString &ReturnType)
     {
         // this may be called by multiple threads simultaneously, so we need to create our own paramaters instance.
         // N.B. QMetaObject::invokeMethod only supports up to 10 arguments (plus a return value)
@@ -94,6 +95,7 @@ class MethodParameters
             if (parameters[i])
                 QMetaType::destroy(m_types.data()[i], parameters[i]);
 
+        ReturnType = m_returnType;
         return result;
     }
 
@@ -148,6 +150,7 @@ class MethodParameters
     QVector<QByteArray> m_names;
     QVector<int>        m_types;
     int                 m_allowedRequestTypes;
+    QString             m_returnType;
 };
 
 TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, const QString &Name,
@@ -173,9 +176,33 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
             if (name == "deleteLater" || blacklist.contains(name))
                 continue;
 
+            // any Q_CLASSINFO for this method?
+            // current 'schema' allows specification of allowed HTTP methods (PUT, GET etc)
+            // and custom return types, which are used to improve the usability of maps and
+            // lists when returned via XML, JSON, PLIST etc
+            QString returntype;
+            int customallowed = HTTPUnknownType;
+
+            int index = m_metaObject.indexOfClassInfo(name.toLatin1());
+            if (index > -1)
+            {
+                QStringList infos = QString(m_metaObject.classInfo(index).value()).split(",", QString::SkipEmptyParts);
+                foreach (QString info, infos)
+                {
+                    if (info.startsWith("methods="))
+                        customallowed = TorcHTTPRequest::StringToAllowed(info.mid(8));
+                    else if (info.startsWith("type="))
+                         returntype = info.mid(5);
+                }
+            }
+
             // determine allowed request types
             int allowed = HTTPOptions;
-            if (name.startsWith("Get", Qt::CaseInsensitive))
+            if (customallowed != HTTPUnknownType)
+            {
+                allowed += customallowed;
+            }
+            else if (name.startsWith("Get", Qt::CaseInsensitive))
             {
                 allowed += HTTPGet | HTTPHead;
             }
@@ -186,20 +213,11 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
             }
             else
             {
-                int index = m_metaObject.indexOfClassInfo(name.toLatin1());
-                if (index > -1)
-                {
-                    QString alloweds(m_metaObject.classInfo(index).value());
-                    allowed |= TorcHTTPRequest::StringToAllowed(alloweds);
-                }
-                else
-                {
-                    LOG(VB_GENERAL, LOG_ERR, QString("Unable to determine request types of method '%1' - ignoring").arg(name));
-                    continue;
-                }
+                LOG(VB_GENERAL, LOG_ERR, QString("Unable to determine request types of method '%1' - ignoring").arg(name));
+                continue;
             }
 
-            m_methods.insert(name, new MethodParameters(i, method, allowed));
+            m_methods.insert(name, new MethodParameters(i, method, allowed, returntype));
         }
     }
 
@@ -259,11 +277,12 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
             return;
         }
 
-        QVariant result = (*it)->Invoke(m_parent, Request);
+        QString type;
+        QVariant result = (*it)->Invoke(m_parent, Request, type);
         Request->SetStatus(HTTP_OK);
         TorcSerialiser *serialiser = Request->GetSerialiser();
         Request->SetResponseType(serialiser->ResponseType());
-        Request->SetResponseContent(serialiser->Serialise(result));
+        Request->SetResponseContent(serialiser->Serialise(result, type));
         delete serialiser;
     }
 }

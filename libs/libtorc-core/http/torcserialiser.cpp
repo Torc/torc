@@ -33,11 +33,11 @@ TorcSerialiser::~TorcSerialiser()
     delete m_content;
 }
 
-QByteArray* TorcSerialiser::Serialise(const QVariant &Data)
+QByteArray* TorcSerialiser::Serialise(const QVariant &Data, const QString &Type)
 {
     Prepare();
     Begin();
-    AddProperty(Data.typeName(), Data);
+    AddProperty(Type.isEmpty() ? Data.typeName() : Type, Data);
     End();
 
     // pass ownership of content to caller

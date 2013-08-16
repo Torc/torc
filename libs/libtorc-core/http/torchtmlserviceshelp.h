@@ -16,6 +16,7 @@ class TorcHTTPConnection;
 class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public QObject, public TorcHTTPService
 {
     Q_OBJECT
+    Q_CLASSINFO("GetServiceList", "type=services")
 
   public:
     TorcHTMLServicesHelp(TorcHTTPServer *Server);
