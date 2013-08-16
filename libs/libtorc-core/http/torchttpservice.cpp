@@ -47,12 +47,14 @@ class MethodParameters
         int returntype = QMetaType::type(Method.typeName());
         void* param    = returntype > 0 ? QMetaType::create(returntype) : NULL;
 
-        m_parameters.append(param);
         m_types.append(returntype > 0 ? returntype : 0);
         m_names.append("");
 
         QList<QByteArray> names = Method.parameterNames();
         QList<QByteArray> types = Method.parameterTypes();
+
+        if (names.size() > 10)
+            LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' takes more than 10 parameters - this WILL fail").arg(Method.name().data()));
 
         // add type/value for each method parameter
         for (int i = 0; i < names.size(); ++i)
@@ -61,27 +63,38 @@ class MethodParameters
             void* param = type != 0 ? QMetaType::create(type) : NULL;
 
             m_names.append(names[i]);
-            m_parameters.append(param);
             m_types.append(type);
         }
     }
 
     ~MethodParameters()
     {
-        for (int i = 0; i < m_parameters.size(); ++i)
-            if (m_parameters.data()[i])
-                QMetaType::destroy(m_types.data()[i], m_parameters.data()[i]);
     }
 
     QVariant Invoke(QObject *Object, TorcHTTPRequest *Request)
     {
+        // this may be called by multiple threads simultaneously, so we need to create our own paramaters instance.
+        // N.B. QMetaObject::invokeMethod only supports up to 10 arguments (plus a return value)
+        void* parameters[11];
+        memset(parameters, 0, 11 * sizeof(void*));
+
+        int size = qMin(11, m_types.size());
+        for (int i = 0; i < size; ++i)
+            parameters[i] = QMetaType::create(m_types[i]);
+
         QMap<QString,QString> queries = Request->Queries();
-        for (int i = 1; i < m_names.size(); ++i)
-            SetValue(m_parameters[i], queries.value(m_names[i]), m_types[i]);
+        for (int i = 1; i < size; ++i)
+            SetValue(parameters[i], queries.value(m_names[i]), m_types[i]);
 
-        Object->qt_metacall(QMetaObject::InvokeMetaMethod, m_index, m_parameters.data());
+        Object->qt_metacall(QMetaObject::InvokeMetaMethod, m_index, parameters);
 
-        return QVariant(m_types[0], m_parameters[0]);
+        QVariant result(m_types[0], parameters[0]);
+
+        for (int i = 0; i < size; ++i)
+            if (parameters[i])
+                QMetaType::destroy(m_types.data()[i], parameters[i]);
+
+        return result;
     }
 
     void SetValue(void* Pointer, const QString &Value, int Type)
@@ -133,7 +146,6 @@ class MethodParameters
 
     int                 m_index;
     QVector<QByteArray> m_names;
-    QVector<void*>      m_parameters;
     QVector<int>        m_types;
     int                 m_allowedRequestTypes;
 };
