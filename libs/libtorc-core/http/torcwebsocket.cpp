@@ -256,7 +256,7 @@ bool TorcWebSocket::ProcessUpgradeRequest(TorcHTTPConnection *Connection, TorcHT
 
     int version = Request->Headers()->value("Sec-WebSocket-Version").toInt();
 
-    if (valid && version != Version13)
+    if (valid && version != Version13 && version != Version8)
     {
         error = "Unsupported WebSocket version";
         versionerror = true;
@@ -287,7 +287,7 @@ bool TorcWebSocket::ProcessUpgradeRequest(TorcHTTPConnection *Connection, TorcHT
         Request->SetStatus(HTTP_BadRequest);
 
         if (versionerror)
-            Request->SetResponseHeader("Sec-WebSocket-Version", "13");
+            Request->SetResponseHeader("Sec-WebSocket-Version", "8,13");
 
         return false;
     }
