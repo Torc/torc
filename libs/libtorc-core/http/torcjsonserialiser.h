@@ -22,17 +22,7 @@ class TorcJSONSerialiser : public TorcSerialiser
     void             End                (void);
 
   private:
-    void             JSONfromVariant    (const QVariant &Value);
-    void             JSONfromList       (const QVariantList &Value);
-    void             JSONfromStringList (const QStringList &Value);
-    void             JSONfromMap        (const QVariantMap &Value);
-    void             JSONfromHash       (const QVariantHash &Value);
-    QString          Encode             (const QString &String);
-
-  private:
     bool             m_javaScriptType;
-    QTextStream     *m_textStream;
-    bool             m_needComma;
 };
 
 #endif // TORCJSONSERIALISER_H
