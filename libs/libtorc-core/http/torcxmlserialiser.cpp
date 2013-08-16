@@ -133,13 +133,8 @@ void TorcXMLSerialiser::MapToXML(const QString &Name, const QVariantMap &Value)
     QVariantMap::const_iterator it = Value.begin();
     for ( ; it != Value.end(); ++it)
     {
-        m_xmlStream->writeStartElement(name);
-        m_xmlStream->writeStartElement("Key");
-        m_xmlStream->writeCharacters(it.key());
-        m_xmlStream->writeEndElement();
-        m_xmlStream->writeStartElement("Value");
+        m_xmlStream->writeStartElement(it.key());
         VariantToXML(name, it.value());
-        m_xmlStream->writeEndElement();
         m_xmlStream->writeEndElement();
     }
 }
@@ -151,13 +146,8 @@ void TorcXMLSerialiser::HashToXML(const QString &Name, const QVariantHash &Value
     QVariantHash::const_iterator it = Value.begin();
     for ( ; it != Value.end(); ++it)
     {
-        m_xmlStream->writeStartElement(name);
-        m_xmlStream->writeStartElement("Key");
-        m_xmlStream->writeCharacters(it.key());
-        m_xmlStream->writeEndElement();
-        m_xmlStream->writeStartElement("Value");
+        m_xmlStream->writeStartElement(it.key());
         VariantToXML(name, it.value());
-        m_xmlStream->writeEndElement();
         m_xmlStream->writeEndElement();
     }
 }
