@@ -37,6 +37,11 @@ TorcHTTPServiceTest::TorcHTTPServiceTest()
 {
 }
 
+///\brief Returns a void.
+void TorcHTTPServiceTest::GetVoid(void)
+{
+}
+
 ///\brief Returns the given Integer.
 int TorcHTTPServiceTest::EchoInt(int Value)
 {
@@ -111,6 +116,12 @@ QVariantHash TorcHTTPServiceTest::GetUnsupportedHash(void)
 void* TorcHTTPServiceTest::GetUnsupportedPointer(void)
 {
     return NULL;
+}
+
+///\brief This function should be rejected at startup
+void TorcHTTPServiceTest::GetUnsupportedParameter(QStringList Unsupported)
+{
+    (void)Unsupported;
 }
 
 /*! \class TorcServiceTestObject

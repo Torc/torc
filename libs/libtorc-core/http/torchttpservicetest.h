@@ -24,6 +24,7 @@ class TorcHTTPServiceTest : public QObject, public TorcHTTPService
     TorcHTTPServiceTest();
 
   public slots:
+    void                GetVoid                (void);
     int                 EchoInt                (int  Value);
     bool                EchoBool               (bool Value);
     float               EchoFloat              (float Value);
@@ -36,6 +37,8 @@ class TorcHTTPServiceTest : public QObject, public TorcHTTPService
 
     QVariantHash        GetUnsupportedHash     (void);
     void*               GetUnsupportedPointer  (void);
+
+    void                GetUnsupportedParameter (QStringList Unsupported);
 };
 
 #endif // TORCHTTPSERVICETEST_H
