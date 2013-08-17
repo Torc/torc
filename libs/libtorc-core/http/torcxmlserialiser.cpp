@@ -57,17 +57,9 @@ void TorcXMLSerialiser::End(void)
 
 void TorcXMLSerialiser::AddProperty(const QString &Name, const QVariant &Value)
 {
-    QString name = ContentName(Name);
-    m_xmlStream->writeStartElement(name);
-    VariantToXML(name, Value);
+    m_xmlStream->writeStartElement(Name);
+    VariantToXML(Name, Value);
     m_xmlStream->writeEndElement();
-}
-
-QString TorcXMLSerialiser::ContentName(const QString &Name)
-{
-    if (Name.startsWith("Q"))
-        return Name.mid(1);
-    return Name;
 }
 
 void TorcXMLSerialiser::VariantToXML(const QString &Name, const QVariant &Value)
@@ -127,13 +119,11 @@ void TorcXMLSerialiser::StringListToXML(const QString &Name, const QStringList &
 
 void TorcXMLSerialiser::MapToXML(const QString &Name, const QVariantMap &Value)
 {
-    QString name = ContentName(Name);
-
     QVariantMap::const_iterator it = Value.begin();
     for ( ; it != Value.end(); ++it)
     {
         m_xmlStream->writeStartElement(it.key());
-        VariantToXML(name, it.value());
+        VariantToXML(Name, it.value());
         m_xmlStream->writeEndElement();
     }
 }
