@@ -47,7 +47,7 @@ class MethodParameters
         // the return type/value is first
         int returntype = QMetaType::type(Method.typeName());
         m_types.append(returntype > 0 ? returntype : 0);
-        m_names.append("");
+        m_names.append(Method.name());
 
         QList<QByteArray> names = Method.parameterNames();
         QList<QByteArray> types = Method.parameterTypes();
@@ -73,14 +73,23 @@ class MethodParameters
         // N.B. QMetaObject::invokeMethod only supports up to 10 arguments (plus a return value)
         void* parameters[11];
         memset(parameters, 0, 11 * sizeof(void*));
-
-        int size = qMin(11, m_types.size());
-        for (int i = 0; i < size; ++i)
-            parameters[i] = QMetaType::create(m_types[i]);
-
         QMap<QString,QString> queries = Request->Queries();
-        for (int i = 1; i < size; ++i)
-            SetValue(parameters[i], queries.value(m_names[i]), m_types[i]);
+        int size = qMin(11, m_types.size());
+
+        // check parameter count
+        if (queries.size() != size - 1)
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' expects %2 parameters, sent %3")
+                .arg(m_names[0].data()).arg(size - 1).arg(queries.size()));
+            return QVariant();
+        }
+
+        for (int i = 0; i < size; ++i)
+        {
+            parameters[i] = QMetaType::create(m_types[i]);
+            if (i)
+                SetValue(parameters[i], queries.value(m_names[i]), m_types[i]);
+        }
 
         Object->qt_metacall(QMetaObject::InvokeMetaMethod, m_index, parameters);
 
@@ -163,6 +172,7 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
     {
         // this list is probably incomplete
         initialised = true;
+        unsupportedreturntypes << QMetaType::UnknownType;
         unsupportedreturntypes << QMetaType::VoidStar << QMetaType::QObjectStar << QMetaType::QVariantHash;
         unsupportedreturntypes << QMetaType::QRect << QMetaType::QRectF << QMetaType::QSize << QMetaType::QSizeF << QMetaType::QLine << QMetaType::QLineF << QMetaType::QPoint << QMetaType::QPointF;
     }
@@ -295,6 +305,15 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
 
         QString type;
         QVariant result = (*it)->Invoke(m_parent, Request, type);
+
+        // check for invocation errors
+        if (result.type() == QVariant::Invalid)
+        {
+            Request->SetStatus(HTTP_BadRequest);
+            Request->SetResponseType(HTTPResponseDefault);
+            return;
+        }
+
         Request->SetStatus(HTTP_OK);
         TorcSerialiser *serialiser = Request->GetSerialiser();
         Request->SetResponseType(serialiser->ResponseType());
