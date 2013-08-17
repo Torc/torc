@@ -77,7 +77,10 @@ class MethodParameters
         QList<QByteArray> types = Method.parameterTypes();
 
         if (names.size() > 10)
-            LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' takes more than 10 parameters - this WILL fail").arg(Method.name().data()));
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' takes more than 10 parameters - ignoring").arg(Method.name().data()));
+            return;
+        }
 
         // add type/value for each method parameter
         for (int i = 0; i < names.size(); ++i)
