@@ -84,17 +84,29 @@ class MethodParameters
             return QVariant();
         }
 
+        // populate parameters from query and ensure each parameter is listed
+        QMap<QString,QString>::iterator it;
         for (int i = 0; i < size; ++i)
         {
             parameters[i] = QMetaType::create(m_types[i]);
             if (i)
-                SetValue(parameters[i], queries.value(m_names[i]), m_types[i]);
+            {
+                it = queries.find(m_names[i]);
+                if (it == queries.end())
+                {
+                    LOG(VB_GENERAL, LOG_ERR, QString("Parameter '%1' for method '%2' is missing")
+                        .arg(m_names[i].data()).arg(m_names[0].data()));
+                    return QVariant();
+                }
+                SetValue(parameters[i], it.value(), m_types[i]);
+            }
         }
 
         Object->qt_metacall(QMetaObject::InvokeMetaMethod, m_index, parameters);
 
         QVariant result(m_types[0], parameters[0]);
 
+        // free allocated parameters
         for (int i = 0; i < size; ++i)
             if (parameters[i])
                 QMetaType::destroy(m_types.data()[i], parameters[i]);
