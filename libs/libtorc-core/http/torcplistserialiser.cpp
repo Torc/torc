@@ -64,7 +64,6 @@ void TorcPListSerialiser::PListFromVariant(const QString &Name, const QVariant &
         case QMetaType::QVariantList: PListFromList(Name, Value.toList());             break;
         case QMetaType::QStringList:  PListFromStringList(Name, Value.toStringList()); break;
         case QMetaType::QVariantMap:  PListFromMap(Name, Value.toMap());               break;
-        case QMetaType::QVariantHash: PListFromHash(Name, Value.toHash());             break;
         case QMetaType::QDateTime:
         {
             if (Value.toDateTime().isValid())
@@ -173,18 +172,6 @@ void TorcPListSerialiser::PListFromMap(const QString &Name, const QVariantMap &V
     m_xmlStream->writeStartElement("dict");
 
     QVariantMap::const_iterator it = Value.begin();
-    for ( ; it != Value.end(); ++it)
-        PListFromVariant(it.key(), it.value());
-
-    m_xmlStream->writeEndElement();
-}
-
-void TorcPListSerialiser::PListFromHash(const QString &Name, const QVariantHash &Value)
-{
-    m_xmlStream->writeTextElement("key", Name);
-    m_xmlStream->writeStartElement("dict");
-
-    QVariantHash::const_iterator it = Value.begin();
     for ( ; it != Value.end(); ++it)
         PListFromVariant(it.key(), it.value());
 

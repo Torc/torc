@@ -25,7 +25,6 @@ class TorcXMLSerialiser : public TorcSerialiser
     void                     ListToXML       (const QString &Name, const QVariantList &Value);
     void                     StringListToXML (const QString &Name, const QStringList &Value);
     void                     MapToXML        (const QString &Name, const QVariantMap &Value);
-    void                     HashToXML       (const QString &Name, const QVariantHash &Value);
     QString                  ContentName     (const QString &Name);
 
   protected:

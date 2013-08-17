@@ -21,7 +21,6 @@ class TorcPListSerialiser : public TorcXMLSerialiser
     void             PListFromList       (const QString &Name, const QVariantList &Value);
     void             PListFromStringList (const QString &Name, const QStringList &Value);
     void             PListFromMap        (const QString &Name, const QVariantMap &Value);
-    void             PListFromHash       (const QString &Name, const QVariantHash &Value);
 };
 
 #endif // TORCPLISTSERIALISER_H

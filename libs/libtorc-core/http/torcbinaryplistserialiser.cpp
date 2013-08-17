@@ -216,7 +216,6 @@ quint64 TorcBinaryPListSerialiser::BinaryFromVariant(const QString &Name, const 
         case QMetaType::QVariantList: return BinaryFromArray(Name, Value.toList());
         case QMetaType::QStringList:  return BinaryFromStringList(Name, Value.toStringList());
         case QMetaType::QVariantMap:  return BinaryFromMap(Name, Value.toMap());
-        case QMetaType::QVariantHash: return BinaryFromHash(Name, Value.toHash());
         case QMetaType::Bool:
         {
             START_OBJECT
@@ -363,31 +362,6 @@ quint64 TorcBinaryPListSerialiser::BinaryFromMap(const QString &Name, const QVar
     m_content->append(references);
 
     QVariantMap::const_iterator it = Value.begin();
-    for ( ; it != Value.end(); ++it)
-        WriteReference(BinaryFromQString(it.key()), m_referenceSize, (quint8*)m_content->data(), offset);
-
-    it = Value.begin();
-    for ( ; it != Value.end(); ++it)
-        WriteReference(BinaryFromVariant(it.key(), it.value()), m_referenceSize, (quint8*)m_content->data(), offset);
-
-    return result;
-}
-
-quint64 TorcBinaryPListSerialiser::BinaryFromHash(const QString &Name, const QVariantHash &Value)
-{
-    quint64 result = m_objectOffsets.size();
-    START_OBJECT
-
-    int size = Value.size();
-    m_content->append((quint8)(0xd0 | (size < 0xf ? size : 0xf)));
-    if (size > 0xe)
-        BinaryFromUInt(size);
-
-    quint64 offset = m_content->size();
-    QByteArray references(size * 2 * m_referenceSize, 0);
-    m_content->append(references);
-
-    QVariantHash::const_iterator it = Value.begin();
     for ( ; it != Value.end(); ++it)
         WriteReference(BinaryFromQString(it.key()), m_referenceSize, (quint8*)m_content->data(), offset);
 

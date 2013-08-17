@@ -26,7 +26,6 @@ class TorcBinaryPListSerialiser : public TorcSerialiser
     quint64          BinaryFromStringList (const QString &Name, const QStringList &Value);
     quint64          BinaryFromArray      (const QString &Name, const QVariantList &Value);
     quint64          BinaryFromMap        (const QString &Name, const QVariantMap &Value);
-    quint64          BinaryFromHash       (const QString &Name, const QVariantHash &Value);
     quint64          BinaryFromQString    (const QString &Value);
     void             BinaryFromUInt       (quint64 Value);
     void             CountObjects         (quint64 &Count, const QVariant &Value);

@@ -77,7 +77,6 @@ void TorcXMLSerialiser::VariantToXML(const QString &Name, const QVariant &Value)
         case QMetaType::QVariantList: ListToXML(Name, Value.toList());             return;
         case QMetaType::QStringList:  StringListToXML(Name, Value.toStringList()); return;
         case QMetaType::QVariantMap:  MapToXML(Name, Value.toMap());               return;
-        case QMetaType::QVariantHash: HashToXML(Name, Value.toHash());             return;
         case QMetaType::QDateTime:
         {
             QDateTime datetime(Value.toDateTime());
@@ -131,19 +130,6 @@ void TorcXMLSerialiser::MapToXML(const QString &Name, const QVariantMap &Value)
     QString name = ContentName(Name);
 
     QVariantMap::const_iterator it = Value.begin();
-    for ( ; it != Value.end(); ++it)
-    {
-        m_xmlStream->writeStartElement(it.key());
-        VariantToXML(name, it.value());
-        m_xmlStream->writeEndElement();
-    }
-}
-
-void TorcXMLSerialiser::HashToXML(const QString &Name, const QVariantHash &Value)
-{
-    QString name = ContentName(Name);
-
-    QVariantHash::const_iterator it = Value.begin();
     for ( ; it != Value.end(); ++it)
     {
         m_xmlStream->writeStartElement(it.key());
