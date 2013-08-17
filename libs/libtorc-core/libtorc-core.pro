@@ -114,6 +114,10 @@ SOURCES += http/torcbinaryplistserialiser.cpp
 SOURCES += upnp/torcupnp.cpp
 SOURCES += upnp/torcssdp.cpp
 
+# TODO make this part of a debug build
+HEADERS += http/torchttpservicetest.h
+SOURCES += http/torchttpservicetest.cpp
+
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files  = torclogging.h
 inc.files += torclocalcontext.h
