@@ -46,8 +46,6 @@ class MethodParameters
     {
         // the return type/value is first
         int returntype = QMetaType::type(Method.typeName());
-        void* param    = returntype > 0 ? QMetaType::create(returntype) : NULL;
-
         m_types.append(returntype > 0 ? returntype : 0);
         m_names.append("");
 
@@ -60,11 +58,8 @@ class MethodParameters
         // add type/value for each method parameter
         for (int i = 0; i < names.size(); ++i)
         {
-            int type    = QMetaType::type(types[i]);
-            void* param = type != 0 ? QMetaType::create(type) : NULL;
-
             m_names.append(names[i]);
-            m_types.append(type);
+            m_types.append(QMetaType::type(types[i]));
         }
     }
 
@@ -192,7 +187,7 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
                     if (info.startsWith("methods="))
                         customallowed = TorcHTTPRequest::StringToAllowed(info.mid(8));
                     else if (info.startsWith("type="))
-                         returntype = info.mid(5);
+                        returntype = info.mid(5);
                 }
             }
 
@@ -200,7 +195,7 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
             int allowed = HTTPOptions;
             if (customallowed != HTTPUnknownType)
             {
-                allowed += customallowed;
+                allowed |= customallowed;
             }
             else if (name.startsWith("Get", Qt::CaseInsensitive))
             {
