@@ -154,6 +154,19 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
     m_parent(Parent),
     m_metaObject(MetaObject)
 {
+    // statically initialise the list of unsupported return types (either non-serialisable (QHash)
+    // or nonsensical (pointer types)
+    static QList<int> unsupportedreturntypes;
+    static bool initialised = false;
+
+    if (!initialised)
+    {
+        // this list is probably incomplete
+        initialised = true;
+        unsupportedreturntypes << QMetaType::VoidStar << QMetaType::QObjectStar << QMetaType::QVariantHash;
+        unsupportedreturntypes << QMetaType::QRect << QMetaType::QRectF << QMetaType::QSize << QMetaType::QSizeF << QMetaType::QLine << QMetaType::QLineF << QMetaType::QPoint << QMetaType::QPointF;
+    }
+
     QStringList blacklist = Blacklist.split(",");
 
     // analyse available methods
@@ -170,6 +183,14 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
             // discard unwanted slots
             if (name == "deleteLater" || blacklist.contains(name))
                 continue;
+
+            // discard slots with an unsupported return type
+            if (unsupportedreturntypes.contains(QMetaType::type(method.typeName())))
+            {
+                LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' has unsupported return type ('%2')")
+                    .arg(method.name().data()).arg(method.typeName()));
+                continue;
+            }
 
             // any Q_CLASSINFO for this method?
             // current 'schema' allows specification of allowed HTTP methods (PUT, GET etc)
