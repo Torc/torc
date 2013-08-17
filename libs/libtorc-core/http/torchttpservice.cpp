@@ -40,12 +40,36 @@ class MethodParameters
 {
   public:
     MethodParameters(int Index, const QMetaMethod &Method, int AllowedRequestTypes, const QString &ReturnType)
-      : m_index(Index),
+      : m_valid(false),
+        m_index(Index),
         m_allowedRequestTypes(AllowedRequestTypes),
         m_returnType(ReturnType)
     {
+        // statically initialise the list of unsupported types (either non-serialisable (QHash)
+        // or nonsensical (pointer types)
+        static QList<int> unsupportedtypes;
+        static bool initialised = false;
+
+        if (!initialised)
+        {
+            // this list is probably incomplete
+            initialised = true;
+            unsupportedtypes << QMetaType::UnknownType;
+            unsupportedtypes << QMetaType::VoidStar << QMetaType::QObjectStar << QMetaType::QVariantHash;
+            unsupportedtypes << QMetaType::QRect << QMetaType::QRectF << QMetaType::QSize << QMetaType::QSizeF << QMetaType::QLine << QMetaType::QLineF << QMetaType::QPoint << QMetaType::QPointF;
+        }
+
         // the return type/value is first
         int returntype = QMetaType::type(Method.typeName());
+
+        // discard slots with an unsupported return type
+        if (unsupportedtypes.contains(returntype))
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' has unsupported return type ('%2')")
+                .arg(Method.name().data()).arg(Method.typeName()));
+            return;
+        }
+
         m_types.append(returntype > 0 ? returntype : 0);
         m_names.append(Method.name());
 
@@ -61,6 +85,8 @@ class MethodParameters
             m_names.append(names[i]);
             m_types.append(QMetaType::type(types[i]));
         }
+
+        m_valid = true;
     }
 
     ~MethodParameters()
@@ -162,6 +188,7 @@ class MethodParameters
         return false;
     }
 
+    bool                m_valid;
     int                 m_index;
     QVector<QByteArray> m_names;
     QVector<int>        m_types;
@@ -175,20 +202,6 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
     m_parent(Parent),
     m_metaObject(MetaObject)
 {
-    // statically initialise the list of unsupported return types (either non-serialisable (QHash)
-    // or nonsensical (pointer types)
-    static QList<int> unsupportedreturntypes;
-    static bool initialised = false;
-
-    if (!initialised)
-    {
-        // this list is probably incomplete
-        initialised = true;
-        unsupportedreturntypes << QMetaType::UnknownType;
-        unsupportedreturntypes << QMetaType::VoidStar << QMetaType::QObjectStar << QMetaType::QVariantHash;
-        unsupportedreturntypes << QMetaType::QRect << QMetaType::QRectF << QMetaType::QSize << QMetaType::QSizeF << QMetaType::QLine << QMetaType::QLineF << QMetaType::QPoint << QMetaType::QPointF;
-    }
-
     QStringList blacklist = Blacklist.split(",");
 
     // analyse available methods
@@ -205,14 +218,6 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
             // discard unwanted slots
             if (name == "deleteLater" || blacklist.contains(name))
                 continue;
-
-            // discard slots with an unsupported return type
-            if (unsupportedreturntypes.contains(QMetaType::type(method.typeName())))
-            {
-                LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' has unsupported return type ('%2')")
-                    .arg(method.name().data()).arg(method.typeName()));
-                continue;
-            }
 
             // any Q_CLASSINFO for this method?
             // current 'schema' allows specification of allowed HTTP methods (PUT, GET etc)
@@ -255,7 +260,12 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
                 continue;
             }
 
-            m_methods.insert(name, new MethodParameters(i, method, allowed, returntype));
+            MethodParameters *parameters = new MethodParameters(i, method, allowed, returntype);
+
+            if (parameters->m_valid)
+                m_methods.insert(name, parameters);
+            else
+                delete parameters;
         }
     }
 
