@@ -11,23 +11,37 @@
 
 // Torc
 #include "torcmediaexport.h"
+#include "http/torchttpservice.h"
 #include "torcmedia.h"
 
 class TorcMediaDirectory;
 
-class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher
+class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher, public TorcHTTPService
 {
     Q_OBJECT
+    Q_CLASSINFO("AddPath",            "methods=PUT")
+    Q_CLASSINFO("RemovePath",         "methods=PUT")
+    Q_CLASSINFO("GetConfiguredPaths", "type=paths")
 
   public:
     TorcMediaSourceDirectory();
     virtual ~TorcMediaSourceDirectory();
 
+    Q_PROPERTY(QStringList configuredPaths READ GetConfiguredPaths NOTIFY configuredPathsChanged)
+    Q_PROPERTY(int         version         READ GetVersion         NOTIFY versionChanged)
+
   public slots:
     void            AddPath            (const QString &Path, bool Recursive);
     void            RemovePath         (const QString &Path);
+    QStringList     GetConfiguredPaths (void);
+    int             GetVersion         (void);
+
+  signals:
+    void            versionChanged     (void);
+    void            configuredPathsChanged (void);
 
   protected slots:
+    void            IncrementVersion   (void);
     void            DirectoryChanged   (const QString &Path);
     void            StartMonitoring    (void);
     void            StopMonitoring     (void);
@@ -45,7 +59,9 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher
     void            AddDirectories     (const QString &Path, QStringList &Found);
 
   private:
-    QStringList     m_configuredPaths;
+    int             version;
+    QAtomicInt      realVersion;
+    QStringList     configuredPaths;
 
     bool            m_enabled;
     int             m_timerId;
@@ -65,6 +81,7 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher
     QStringList     m_removedPaths;
     QStringList     m_updatedPaths;
 
+    QMutex         *m_configuredPathsLock;
     QMutex         *m_addedPathsLock;
     QMutex         *m_removedPathsLock;
     QMutex         *m_updatedPathsLock;

@@ -46,7 +46,7 @@
  * subdirectories. So if we want to monitor sub-directories as well (i.e. recursively),
  * we need to explicitly watch each individual sub-directory.
  *
- * m_configuredPaths contains a definitive set of paths that have been requested
+ * configuredPaths contains a definitive set of paths that have been requested
  * by the user and should match the settings database. Updates should be made
  * using AddPath and RemovePath.
  *
@@ -61,6 +61,7 @@
  * \todo Actually use the identified media files.
  * \todo Directories retrieved from settings are all assumed to be recursive.
  * \todo Configurable media extensions.
+ * \todo Retrieve media list via HTTP
 */
 
 class TorcMediaDirectory
@@ -78,10 +79,14 @@ class TorcMediaDirectory
 
 TorcMediaSourceDirectory::TorcMediaSourceDirectory()
   : QFileSystemWatcher(),
+    TorcHTTPService(this, "/files", tr("Files"), TorcMediaSourceDirectory::staticMetaObject),
+    version(1),
+    realVersion(1),
     m_enabled(false),
     m_timerId(0),
     m_fileFilters(QDir::NoDotAndDotDot | QDir::Files | QDir::Readable),
     m_directoryFilters(QDir::NoDotAndDotDot | QDir::AllDirs | QDir::Readable),
+    m_configuredPathsLock(new QMutex()),
     m_addedPathsLock(new QMutex()),
     m_removedPathsLock(new QMutex()),
     m_updatedPathsLock(new QMutex())
@@ -105,10 +110,10 @@ TorcMediaSourceDirectory::TorcMediaSourceDirectory()
     {
         path = path.trimmed();
         if (!path.isEmpty())
-            m_configuredPaths << path;
+            configuredPaths << path;
     }
 
-    //m_configuredPaths << "/Users/mark/Dropbox/";
+    configuredPaths << "/Users/mark/Dropbox/";
 
     // connect up the dots
     connect(this, SIGNAL(directoryChanged(QString)), this, SLOT(DirectoryChanged(QString)));
@@ -130,6 +135,7 @@ TorcMediaSourceDirectory::~TorcMediaSourceDirectory()
 
     StopMonitoring();
 
+    delete m_configuredPathsLock;
     delete m_addedPathsLock;
     delete m_removedPathsLock;
     delete m_updatedPathsLock;
@@ -145,6 +151,23 @@ void TorcMediaSourceDirectory::RemovePath(const QString &Path)
 {
     QMutexLocker locker(m_removedPathsLock);
     m_removedPaths << Path.trimmed();
+}
+
+QStringList TorcMediaSourceDirectory::GetConfiguredPaths(void)
+{
+    QMutexLocker locker(m_configuredPathsLock);
+    return configuredPaths;
+}
+
+int TorcMediaSourceDirectory::GetVersion(void)
+{
+    return realVersion.fetchAndAddOrdered(0);
+}
+
+void TorcMediaSourceDirectory::IncrementVersion(void)
+{
+    realVersion.ref();
+    emit versionChanged();
 }
 
 void TorcMediaSourceDirectory::DirectoryChanged(const QString &Path)
@@ -232,8 +255,7 @@ void TorcMediaSourceDirectory::timerEvent(QTimerEvent *Event)
             path.replace(RECURSIVE_PATH, "");
         }
 
-        if (!m_configuredPaths.contains(path))
-            addtoconfigured << path;
+        addtoconfigured << path;
 
         if (m_enabled && !m_monitoredPaths.contains(path))
         {
@@ -246,21 +268,30 @@ void TorcMediaSourceDirectory::timerEvent(QTimerEvent *Event)
     }
 
     // update settings
-    bool changed = false;
-    foreach (QString path, removedpaths)
-        if (m_configuredPaths.removeAll(path))
-            changed = true;
-
-    foreach (QString path, addtoconfigured)
     {
-        m_configuredPaths << path;
-        changed = true;
-    }
+        QMutexLocker locker(m_configuredPathsLock);
 
-    if (changed)
-    {
-        m_configuredPaths.removeDuplicates();
-        gLocalContext->SetSetting(LOCAL_DIRECTORIES, m_configuredPaths.join(","));
+        bool changed = false;
+
+        foreach (QString path, removedpaths)
+            if (configuredPaths.removeAll(path))
+                changed = true;
+
+        foreach (QString path, addtoconfigured)
+        {
+            if (!configuredPaths.contains(path))
+            {
+                configuredPaths << path;
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            configuredPaths.removeDuplicates();
+            gLocalContext->SetSetting(LOCAL_DIRECTORIES, configuredPaths.join(","));
+            emit configuredPathsChanged();
+        }
     }
 
     // refresh existing paths (and newly added)
@@ -386,6 +417,9 @@ void TorcMediaSourceDirectory::timerEvent(QTimerEvent *Event)
             TorcEvent *event = new TorcEvent(Torc::MediaRemoved, data);
             QCoreApplication::postEvent(gTorcMediaMaster, event);
         }
+
+        if (!notifynew.isEmpty() || !notifyold.isEmpty())
+            IncrementVersion();
     }
 }
 
@@ -397,7 +431,11 @@ void TorcMediaSourceDirectory::StartMonitoring(void)
     m_enabled = true;
 
     // start monitoring each configured directory
-    foreach (QString path, m_configuredPaths)
+    m_configuredPathsLock->lock();
+    QStringList paths(configuredPaths);
+    m_configuredPathsLock->unlock();
+
+    foreach (QString path, paths)
     {
         addPath(path);
         m_monitoredPaths.insert(path, new TorcMediaDirectory(true));
@@ -406,7 +444,7 @@ void TorcMediaSourceDirectory::StartMonitoring(void)
 
     // force refresh
     m_updatedPathsLock->lock();
-    m_updatedPaths << m_configuredPaths;
+    m_updatedPaths << paths;
     m_updatedPathsLock->unlock();
 }
 
@@ -493,12 +531,17 @@ void TorcMediaSourceDirectory::RemovePaths(QStringList &Paths)
             RemoveItem(leftover);
     }
 
-    if (!notifyold.isEmpty() && gTorcMediaMaster)
+    if (!notifyold.isEmpty())
     {
-        QVariantMap data;
-        data.insert("files", notifyold);
-        TorcEvent *event = new TorcEvent(Torc::MediaRemoved, data);
-        QCoreApplication::postEvent(gTorcMediaMaster, event);
+        if (gTorcMediaMaster)
+        {
+            QVariantMap data;
+            data.insert("files", notifyold);
+            TorcEvent *event = new TorcEvent(Torc::MediaRemoved, data);
+            QCoreApplication::postEvent(gTorcMediaMaster, event);
+        }
+
+        IncrementVersion();
     }
 }
 
