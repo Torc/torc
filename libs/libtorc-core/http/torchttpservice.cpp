@@ -110,8 +110,16 @@ class MethodParameters
     {
     }
 
-    QVariant Invoke(QObject *Object, TorcHTTPRequest *Request, QString &ReturnType)
+    /*! \brief Call the stored method with the arguments passed in via Request.
+     *
+     * \note Invoke is not thread safe and any method exposed using this class MUST ensure thread safety.
+    */
+    QVariant Invoke(QObject *Object, TorcHTTPRequest *Request, QString &ReturnType, bool &VoidResult)
     {
+        // we cannot create a QVariant that is void and an invalid QVariant signals an error state,
+        // so flag directly
+        VoidResult = m_types[0] == QMetaType::Void;
+
         // this may be called by multiple threads simultaneously, so we need to create our own paramaters instance.
         // N.B. QMetaObject::invokeMethod only supports up to 10 arguments (plus a return value)
         void* parameters[11];
@@ -147,7 +155,7 @@ class MethodParameters
 
         Object->qt_metacall(QMetaObject::InvokeMetaMethod, m_index, parameters);
 
-        QVariant result(m_types[0], parameters[0]);
+        QVariant result = m_types[0] == QMetaType::Void ? QVariant() : QVariant(m_types[0], parameters[0]);
 
         // free allocated parameters
         for (int i = 0; i < size; ++i)
@@ -343,21 +351,31 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
         }
 
         QString type;
-        QVariant result = (*it)->Invoke(m_parent, Request, type);
+        bool    voidresult;
+        QVariant result = (*it)->Invoke(m_parent, Request, type, voidresult);
 
-        // check for invocation errors
-        if (result.type() == QVariant::Invalid)
+        // is there a result
+        if (!voidresult)
         {
-            Request->SetStatus(HTTP_BadRequest);
-            Request->SetResponseType(HTTPResponseDefault);
-            return;
+            // check for invocation errors
+            if (result.type() == QVariant::Invalid)
+            {
+                Request->SetStatus(HTTP_BadRequest);
+                Request->SetResponseType(HTTPResponseDefault);
+                return;
+            }
+
+            TorcSerialiser *serialiser = Request->GetSerialiser();
+            Request->SetResponseType(serialiser->ResponseType());
+            Request->SetResponseContent(serialiser->Serialise(result, type));
+            delete serialiser;
+        }
+        else
+        {
+            Request->SetResponseType(HTTPResponseNone);
         }
 
         Request->SetStatus(HTTP_OK);
-        TorcSerialiser *serialiser = Request->GetSerialiser();
-        Request->SetResponseType(serialiser->ResponseType());
-        Request->SetResponseContent(serialiser->Serialise(result, type));
-        delete serialiser;
     }
 }
 
