@@ -30,6 +30,7 @@ class TORC_CORE_PUBLIC TorcHTTPService : public TorcHTTPHandler
 
   private:
     QObject                        *m_parent;
+    QString                         m_version;
     QMetaObject                     m_metaObject;
     QMap<QString,MethodParameters*> m_methods;
 };

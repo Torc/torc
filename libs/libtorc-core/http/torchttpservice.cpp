@@ -224,9 +224,17 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
                                  const QMetaObject &MetaObject, const QString &Blacklist)
   : TorcHTTPHandler(SERVICES_DIRECTORY + Signature, Name),
     m_parent(Parent),
+    m_version("Unknown"),
     m_metaObject(MetaObject)
 {
     QStringList blacklist = Blacklist.split(",");
+
+    // determine version
+    int index = MetaObject.indexOfClassInfo("Version");
+    if (index > -1)
+        m_version = MetaObject.classInfo(index).value();
+    else
+        LOG(VB_GENERAL, LOG_WARNING, QString("Service '%1' is missing version information").arg(Name));
 
     // analyse available methods
     for (int i = 0; i < m_metaObject.methodCount(); ++i)
@@ -308,7 +316,10 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
     QString method = Request->GetMethod();
     HTTPRequestType type = Request->GetHTTPRequestType();
 
-    if (method.compare("help", Qt::CaseInsensitive) == 0)
+    bool helprequest    = method.compare("help", Qt::CaseInsensitive) == 0;
+    bool versionrequest = method.compare("getversion", Qt::CaseInsensitive) == 0;
+
+    if (helprequest || versionrequest)
     {
         if (type == HTTPOptions)
         {
@@ -325,7 +336,19 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
             return;
         }
 
-        UserHelp(Server, Request, Connection);
+        if (helprequest)
+        {
+            UserHelp(Server, Request, Connection);
+        }
+        else
+        {
+            Request->SetStatus(HTTP_OK);
+            TorcSerialiser *serialiser = Request->GetSerialiser();
+            Request->SetResponseType(serialiser->ResponseType());
+            Request->SetResponseContent(serialiser->Serialise(m_version, "version"));
+            delete serialiser;
+        }
+
         return;
     }
 
