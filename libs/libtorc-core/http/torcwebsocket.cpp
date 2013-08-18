@@ -72,8 +72,7 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
     m_bufferedPayload(NULL),
     m_bufferedPayloadOpCode(OpContinuation),
     m_closeReceived(false),
-    m_closeSent(false),
-    m_closeTimerStarted(false)
+    m_closeSent(false)
 {
     if (Request->GetMethod().startsWith(QStringLiteral("echo"), Qt::CaseInsensitive))
     {
@@ -365,7 +364,6 @@ void TorcWebSocket::Start(void)
 
     if (m_socket)
     {
-        connect(m_socket, SIGNAL(bytesWritten(qint64)), this, SLOT(BytesWritten(qint64)));
         connect(m_socket, SIGNAL(readyRead()),          this, SLOT(ReadyRead()));
 
         if (m_parent)
@@ -679,17 +677,12 @@ void TorcWebSocket::CloseSocket(void)
     if (m_socket)
     {
         m_socket->disconnectFromHost();
+        if (m_socket->state() != QAbstractSocket::UnconnectedState && !m_socket->waitForDisconnected(1000))
+            LOG(VB_GENERAL, LOG_WARNING, "WebSocket not successfully disconnected before closing");
         m_socket->close();
         m_socket->deleteLater();
         m_socket = NULL;
     }
-}
-
-void TorcWebSocket::BytesWritten(qint64 Bytes)
-{
-    // close the socket once the closing handshake is complete
-    if (m_closeReceived && m_socket && !m_socket->bytesToWrite())
-        CloseSocket();
 }
 
 /*! \brief Compose and send a properly formatted websocket frame.
@@ -865,6 +858,7 @@ void TorcWebSocket::HandleCloseRequest(QByteArray &Close)
         // echo back the payload and close request
         SendFrame(OpClose, Close);
         m_closeSent = true;
+        CloseSocket();
     }
 }
 
@@ -878,26 +872,7 @@ void TorcWebSocket::InitiateClose(CloseCode Close, const QString &Reason, bool E
         payload.append(Reason.toUtf8());
         SendFrame(OpClose, payload);
         m_closeSent = true;
-
-        if (ExitImmediately)
-        {
-            // start a single shot timer to close the socket if the closing handshake does
-            // not complete as expected and the socket is not closed
-            if (!m_closeTimerStarted)
-            {
-                QTimer::singleShot(2000, this, SLOT(CloseSocket()));
-                m_closeTimerStarted = true;
-            }
-        }
-        else
-        {
-            // allow a little time for OpClose to be sent and received, otherwise the socket
-            // will be closed immediately when we're shutting down normally, without actually
-            // sending anything.
-            int count = 0;
-            while (count++ < 100 && m_socket && m_socket->bytesToWrite() > 0)
-                QThread::usleep(10000);
-        }
+        CloseSocket();
     }
 }
 

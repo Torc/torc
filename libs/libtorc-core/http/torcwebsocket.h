@@ -81,7 +81,6 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     void            Start                 (void);
     void            ReadyRead             (void);
     void            CloseSocket           (void);
-    void            BytesWritten          (qint64 Bytes);
 
   private:
     void            SendFrame             (OpCode Code, QByteArray &Payload);
@@ -121,7 +120,6 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
 
     bool             m_closeReceived;
     bool             m_closeSent;
-    bool             m_closeTimerStarted;
 };
 
 class TORC_CORE_PUBLIC TorcWebSocketThread : public TorcThread
