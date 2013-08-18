@@ -87,7 +87,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     void            HandlePing            (QByteArray &Payload);
     void            HandlePong            (QByteArray &Payload);
     void            HandleCloseRequest    (QByteArray &Close);
-    void            InitiateClose         (CloseCode Close, const QString &Reason, bool ExitImmediately = true);
+    void            InitiateClose         (CloseCode Close, const QString &Reason);
 
   private:
     enum ReadState

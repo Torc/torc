@@ -83,7 +83,7 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
 
 TorcWebSocket::~TorcWebSocket()
 {
-    InitiateClose(CloseGoingAway, QString("WebSocket exiting normally"), false);
+    InitiateClose(CloseGoingAway, QString("WebSocket exiting normally"));
 
     CloseSocket();
 
@@ -862,7 +862,7 @@ void TorcWebSocket::HandleCloseRequest(QByteArray &Close)
     }
 }
 
-void TorcWebSocket::InitiateClose(CloseCode Close, const QString &Reason, bool ExitImmediately /*= true*/)
+void TorcWebSocket::InitiateClose(CloseCode Close, const QString &Reason)
 {
     if (!m_closeSent)
     {
