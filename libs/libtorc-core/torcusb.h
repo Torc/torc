@@ -83,6 +83,7 @@ class TorcUSBPriv;
 class TORC_CORE_PUBLIC TorcUSB : public QObject, public TorcHTTPService
 {
     Q_OBJECT
+    Q_CLASSINFO("Version",    "1.0.0")
     Q_CLASSINFO("GetDevices", "type=devices")
 
   public:

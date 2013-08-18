@@ -19,6 +19,7 @@ class TorcMediaDirectory;
 class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher, public TorcHTTPService
 {
     Q_OBJECT
+    Q_CLASSINFO("Version",            "1.0.0")
     Q_CLASSINFO("AddPath",            "methods=PUT")
     Q_CLASSINFO("RemovePath",         "methods=PUT")
     Q_CLASSINFO("GetConfiguredPaths", "type=paths")

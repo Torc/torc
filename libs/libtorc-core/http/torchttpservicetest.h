@@ -13,6 +13,7 @@
 class TorcHTTPServiceTest : public QObject, public TorcHTTPService
 {
     Q_OBJECT
+    Q_CLASSINFO("Version",              "1.0.0")
     Q_CLASSINFO("EchoInt",              "methods=GET&HEAD")
     Q_CLASSINFO("EchoBool",             "methods=GET&HEAD")
     Q_CLASSINFO("EchoFloat",            "methods=GET&HEAD")

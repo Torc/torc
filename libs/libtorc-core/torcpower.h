@@ -60,7 +60,7 @@ class TORC_CORE_PUBLIC PowerFactory
 class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
 {
     Q_OBJECT
-
+    Q_CLASSINFO("Version",   "1.0.0")
     Q_CLASSINFO("Shutdown",  "methods=PUT")
     Q_CLASSINFO("Suspend",   "methods=PUT")
     Q_CLASSINFO("Hibernate", "methods=PUT")
