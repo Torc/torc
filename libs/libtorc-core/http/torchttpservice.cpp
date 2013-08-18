@@ -116,10 +116,6 @@ class MethodParameters
     */
     QVariant Invoke(QObject *Object, TorcHTTPRequest *Request, QString &ReturnType, bool &VoidResult)
     {
-        // we cannot create a QVariant that is void and an invalid QVariant signals an error state,
-        // so flag directly
-        VoidResult = m_types[0] == QMetaType::Void;
-
         // this may be called by multiple threads simultaneously, so we need to create our own paramaters instance.
         // N.B. QMetaObject::invokeMethod only supports up to 10 arguments (plus a return value)
         void* parameters[11];
@@ -155,6 +151,9 @@ class MethodParameters
 
         Object->qt_metacall(QMetaObject::InvokeMetaMethod, m_index, parameters);
 
+        // we cannot create a QVariant that is void and an invalid QVariant signals an error state,
+        // so flag directly
+        VoidResult      = m_types[0] == QMetaType::Void;
         QVariant result = m_types[0] == QMetaType::Void ? QVariant() : QVariant(m_types[0], parameters[0]);
 
         // free allocated parameters
