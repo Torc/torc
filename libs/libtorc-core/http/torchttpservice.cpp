@@ -413,54 +413,48 @@ void TorcHTTPService::UserHelp(TorcHTTPServer *Server, TorcHTTPRequest *Request,
     stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName() << "</a> ";
     stream << "<a href='" << SERVICES_DIRECTORY << "/'>" << QObject::tr("Services") << "</a> " << m_name << "</h1>";
 
-    if (m_methods.isEmpty())
-    {
-        stream << "<h3>" << QObject::tr("This service has no publicly available methods") << "</h3>";
-    }
-    else
-    {
-        stream << "<h3>" << QObject::tr("Method list for ") << m_signature << "</h3>";
+    stream << "<h3>" << QObject::tr("Method list for ") << m_signature << " (Version: " << m_version << ")</h3>";
+    stream << "QString GetVersion() (HEAD,GET,OPTIONS)<br>";
 
-        int count   = 0;
+    int count   = 0;
 
-        QMap<QString,MethodParameters*>::const_iterator it = m_methods.begin();
-        QMap<QString,MethodParameters*>::const_iterator example = it;
-        for ( ; it != m_methods.end(); ++it)
+    QMap<QString,MethodParameters*>::const_iterator it = m_methods.begin();
+    QMap<QString,MethodParameters*>::const_iterator example = it;
+    for ( ; it != m_methods.end(); ++it)
+    {
+        MethodParameters *params = it.value();
+        int size = params->m_types.size();
+        if (size > count)
         {
-            MethodParameters *params = it.value();
-            int size = params->m_types.size();
-            if (size > count)
-            {
-                example = it;
-                count = size;
-            }
-
-            QString method = QString("%1 %2(").arg(QMetaType::typeName(params->m_types[0])).arg(it.key());
-
-            bool first = true;
-            for (int i = 1; i < size; ++i)
-            {
-                if (!first)
-                    method += ", ";
-                method += QString("%1 %2").arg(QMetaType::typeName(params->m_types[i])).arg(params->m_names[i].data());
-                first = false;
-            }
-
-            stream << method << ") (" << TorcHTTPRequest::AllowedToString(params->m_allowedRequestTypes) << ")<br>";
+            example = it;
+            count = size;
         }
 
-        QString url = Connection->GetSocket() ? QString("http://") + Connection->GetSocket()->localAddress().toString()
-                                                + ":" + QString::number(Connection->GetSocket()->localPort()) : QObject::tr("Error");
-        QString usage = url + m_signature + example.key();
+        QString method = QString("%1 %2(").arg(QMetaType::typeName(params->m_types[0])).arg(it.key());
 
-        if (example.value()->m_types.size() > 1)
+        bool first = true;
+        for (int i = 1; i < size; ++i)
         {
-            usage += "?";
-            for (int i = 1; i < example.value()->m_types.size(); ++i)
-                usage += QString("%1%2=Value%3").arg(i == 1 ? "" : "&").arg(example.value()->m_names[i].data()).arg(i);
+            if (!first)
+                method += ", ";
+            method += QString("%1 %2").arg(QMetaType::typeName(params->m_types[i])).arg(params->m_names[i].data());
+            first = false;
         }
-        stream << "<p><h3>" << QObject::tr("Example usage:") << "</h3><p>" << usage;
+
+        stream << method << ") (" << TorcHTTPRequest::AllowedToString(params->m_allowedRequestTypes) << ")<br>";
     }
+
+    QString url = Connection->GetSocket() ? QString("http://") + Connection->GetSocket()->localAddress().toString()
+                                            + ":" + QString::number(Connection->GetSocket()->localPort()) : QObject::tr("Error");
+    QString usage = url + m_signature + example.key();
+
+    if (example.value()->m_types.size() > 1)
+    {
+        usage += "?";
+        for (int i = 1; i < example.value()->m_types.size(); ++i)
+            usage += QString("%1%2=Value%3").arg(i == 1 ? "" : "&").arg(example.value()->m_names[i].data()).arg(i);
+    }
+    stream << "<p><h3>" << QObject::tr("Example usage:") << "</h3><p>" << usage;
 
     stream << "</body></html>";
     stream.flush();
