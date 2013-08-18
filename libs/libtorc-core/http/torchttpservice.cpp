@@ -48,6 +48,7 @@ class MethodParameters
         // statically initialise the list of unsupported types (either non-serialisable (QHash)
         // or nonsensical (pointer types)
         static QList<int> unsupportedtypes;
+        static QList<int> unsupportedparameters;
         static bool initialised = false;
 
         if (!initialised)
@@ -57,6 +58,9 @@ class MethodParameters
             unsupportedtypes << QMetaType::UnknownType;
             unsupportedtypes << QMetaType::VoidStar << QMetaType::QObjectStar << QMetaType::QVariantHash;
             unsupportedtypes << QMetaType::QRect << QMetaType::QRectF << QMetaType::QSize << QMetaType::QSizeF << QMetaType::QLine << QMetaType::QLineF << QMetaType::QPoint << QMetaType::QPointF;
+
+            unsupportedparameters << unsupportedtypes;
+            unsupportedparameters << QMetaType::QVariantMap << QMetaType::QStringList << QMetaType::QVariantList;
         }
 
         // the return type/value is first
@@ -65,7 +69,7 @@ class MethodParameters
         // discard slots with an unsupported return type
         if (unsupportedtypes.contains(returntype))
         {
-            LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' has unsupported return type ('%2')")
+            LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' has unsupported return type '%2'")
                 .arg(Method.name().data()).arg(Method.typeName()));
             return;
         }
@@ -85,8 +89,18 @@ class MethodParameters
         // add type/value for each method parameter
         for (int i = 0; i < names.size(); ++i)
         {
+            int type = QMetaType::type(types[i]);
+
+            // discard slots that use unsupported parameter types
+            if (unsupportedparameters.contains(type))
+            {
+                LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' has unsupported parameter type '%2'")
+                    .arg(Method.name().data()).arg(types[i].data()));
+                return;
+            }
+
             m_names.append(names[i]);
-            m_types.append(QMetaType::type(types[i]));
+            m_types.append(type);
         }
 
         m_valid = true;
