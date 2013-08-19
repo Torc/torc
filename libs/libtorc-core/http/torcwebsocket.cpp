@@ -24,6 +24,7 @@
 #include <QUrl>
 #include <QTimer>
 #include <QtEndian>
+#include <QTextStream>
 #include <QCryptographicHash>
 
 // Torc
@@ -48,14 +49,19 @@
  *       request a connection using 'echo' as the method (e.g. 'http://your-ip-address:your-port/echo').
  *
  * \todo Add actual protocol handling (raw, JSON, JSON-RPC, XML, XML-RPC, PLIST, PLIST-RPC)
- * \todo Client side socket
  * \todo Limit frame size for reading
  * \todo Fix testsuite partial failures (fail fast on invalid UTF-8)
+ * \todo Add timeout for response to upgrade request
+ * \todo Fix deletion handling when there is no parent thread
 */
 
 TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpSocket *Socket)
   : QObject(),
     m_parent(Parent),
+    m_handShaking(false),
+    m_upgradeResponseReader(NULL),
+    m_address(QString()),
+    m_port(0),
     m_upgradeRequest(Request),
     m_socket(Socket),
     m_abort(0),
@@ -81,16 +87,45 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
     }
 }
 
+TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16 Port)
+  : QObject(),
+    m_parent(Parent),
+    m_handShaking(true),
+    m_upgradeResponseReader(new TorcHTTPReader()),
+    m_address(Address),
+    m_port(Port),
+    m_upgradeRequest(NULL),
+    m_socket(NULL),
+    m_abort(0),
+    m_serverSide(false),
+    m_readState(ReadHeader),
+    m_echoTest(false),
+    m_frameFinalFragment(false),
+    m_frameOpCode(OpContinuation),
+    m_frameMasked(false),
+    m_framePayloadLength(0),
+    m_frameMask(QByteArray(4, 0)),
+    m_framePayload(QByteArray()),
+    m_framePayloadReadPosition(0),
+    m_bufferedPayload(NULL),
+    m_bufferedPayloadOpCode(OpContinuation),
+    m_closeReceived(false),
+    m_closeSent(false)
+{
+}
+
 TorcWebSocket::~TorcWebSocket()
 {
     InitiateClose(CloseGoingAway, QString("WebSocket exiting normally"));
 
     CloseSocket();
 
+    delete m_upgradeResponseReader;
     delete m_upgradeRequest;
     delete m_bufferedPayload;
-    m_upgradeRequest  = NULL;
-    m_bufferedPayload = NULL;
+    m_upgradeResponseReader = NULL;
+    m_upgradeRequest        = NULL;
+    m_bufferedPayload       = NULL;
 
     LOG(VB_GENERAL, LOG_INFO, "WebSocket dtor");
 }
@@ -134,7 +169,7 @@ bool TorcWebSocket::ProcessUpgradeRequest(TorcHTTPConnection *Connection, TorcHT
 
     if (valid && Request->GetPath().isEmpty())
     {
-        error = "nvalid Request-URI";
+        error = "invalid Request-URI";
         valid = false;
     }
 
@@ -352,25 +387,42 @@ QString TorcWebSocket::CloseCodeToString(CloseCode Code)
 ///\brief Initialise the websocket once its parent thread is ready.
 void TorcWebSocket::Start(void)
 {
-    if (!m_upgradeRequest || !m_socket)
+    // server side:)
+    if (m_serverSide)
     {
-        LOG(VB_GENERAL, LOG_ERR, "Cannot start Websocket");
+        if (m_upgradeRequest && m_socket)
+        {
+            LOG(VB_GENERAL, LOG_INFO, "WebSocket thread started");
+
+            connect(m_socket, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
+            connect(m_socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(Error(QAbstractSocket::SocketError)));
+            if (m_parent)
+                connect(m_socket, SIGNAL(disconnected()), m_parent->GetQThread(), SLOT(quit()));
+
+            m_upgradeRequest->Respond(m_socket, &m_abort);
+            return;
+        }
+    }
+    else
+    {
+        // guard against inappropriate usage
+        delete m_socket;
+
+        m_socket = new QTcpSocket();
+        connect(m_socket, SIGNAL(connected()), this, SLOT(Connected()));
+        connect(m_socket, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
+        connect(m_socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(Error(QAbstractSocket::SocketError)));
         if (m_parent)
-            m_parent->quit();
+            connect(m_socket, SIGNAL(disconnected()), m_parent->GetQThread(), SLOT(quit()));
+
+        m_socket->connectToHost(m_address, m_port);
         return;
     }
 
-    LOG(VB_GENERAL, LOG_INFO, "WebSocket thread started");
-
-    if (m_socket)
-    {
-        connect(m_socket, SIGNAL(readyRead()),          this, SLOT(ReadyRead()));
-
-        if (m_parent)
-            connect(m_socket, SIGNAL(disconnected()), m_parent->GetQThread(), SLOT(quit()));
-    }
-
-    m_upgradeRequest->Respond(m_socket, &m_abort);
+    // failed
+    LOG(VB_GENERAL, LOG_ERR, "Failed to start Websocket");
+    if (m_parent)
+        m_parent->quit();
 }
 
 /*! \brief Process incoming data
@@ -382,292 +434,373 @@ void TorcWebSocket::ReadyRead(void)
 {
     while (m_socket && (m_socket->bytesAvailable() || (m_readState == ReadPayload && m_framePayloadLength == 0)) && !m_abort)
     {
-        switch (m_readState)
+        if (m_handShaking)
         {
-            case ReadHeader:
+            // read response (which is the only raw HTTP we should see)
+            if (!m_upgradeResponseReader->Read(m_socket, &m_abort))
             {
-                // we need at least 2 bytes to start reading
-                if (m_socket->bytesAvailable() < 2)
-                    return;
-
-                char header[2];
-                if (m_socket->read(header, 2) != 2)
-                {
-                    InitiateClose(CloseUnexpectedError, QString("Read error"));
-                    return;
-                }
-
-                m_frameFinalFragment = (header[0] & 0x80) != 0;
-                m_frameOpCode        = static_cast<OpCode>(header[0] & 0x0F);
-                m_frameMasked        = (header[1] & 0x80) != 0;
-                quint8 length        = (header[1] & 0x7F);
-                bool reservedbits    = (header[0] & 0x70) != 0;
-
-                // validate the header against current state and specification
-                CloseCode error = CloseNormal;
-                QString reason;
-
-                // invalid use of reserved bits
-                if (reservedbits)
-                {
-                    reason = QString("Invalid use of reserved bits");
-                    error = CloseProtocolError;
-                }
-
-                // control frames can only have payloads of up to 125 bytes
-                else if ((m_frameOpCode & 0x8) && length > 125)
-                {
-                    reason = QString("Control frame payload too large");
-                    error = CloseProtocolError;
-
-                    // need to acknowledge when an OpClose is received
-                    if (OpClose == m_frameOpCode)
-                        m_closeReceived = true;
-                }
-
-                // if this is a server, clients must be sending masked frames and vice versa
-                else if (m_serverSide != m_frameMasked)
-                {
-                    reason = QString("Masking error");
-                    error = CloseProtocolError;
-                }
-
-                // we should never receive a reserved opcode
-                else if (m_frameOpCode != OpText && m_frameOpCode != OpBinary && m_frameOpCode != OpContinuation &&
-                    m_frameOpCode != OpPing && m_frameOpCode != OpPong   && m_frameOpCode != OpClose)
-                {
-                    reason = QString("Invalid use of reserved opcode");
-                    error = CloseProtocolError;
-                }
-
-                // control frames cannot be fragmented
-                else if (!m_frameFinalFragment && (m_frameOpCode == OpPing || m_frameOpCode == OpPong || m_frameOpCode == OpClose))
-                {
-                    reason = QString("Fragmented control frame");
-                    error = CloseProtocolError;
-                }
-
-                // a continuation frame must have an opening frame
-                else if (!m_bufferedPayload && m_frameOpCode == OpContinuation)
-                {
-                    reason = QString("Fragmentation error");
-                    error = CloseProtocolError;
-                }
-
-                // only continuation frames or control frames are expected once in the middle of a frame
-                else if (m_bufferedPayload && !(m_frameOpCode == OpContinuation || m_frameOpCode == OpPing || m_frameOpCode == OpPong || m_frameOpCode == OpClose))
-                {
-                    reason = QString("Fragmentation error");
-                    error = CloseProtocolError;
-                }
-
-                if (error != CloseNormal)
-                {
-                    LOG(VB_GENERAL, LOG_ERR, QString("Read error: %1 (%2)").arg(CloseCodeToString(error)).arg(reason));
-                    InitiateClose(error, reason);
-                    return;
-                }
-
-                if (126 == length)
-                {
-                    m_readState = Read16BitLength;
-                    break;
-                }
-
-                if (127 == length)
-                {
-                    m_readState = Read64BitLength;
-                    break;
-                }
-
-                m_framePayloadLength = length;
-                m_readState          = m_frameMasked ? ReadMask : ReadPayload;
+                LOG(VB_GENERAL, LOG_ERR, "Error reading upgrade response");
+                CloseSocket();
+                return;
             }
-            break;
 
-            case Read16BitLength:
+            // response complete
+            if (!m_upgradeResponseReader->m_ready)
+                continue;
+
+            // parse the response
+            TorcHTTPRequest request(m_upgradeResponseReader->m_method, m_upgradeResponseReader->m_headers, m_upgradeResponseReader->m_content);
+            m_upgradeResponseReader->m_headers = NULL;
+            m_upgradeResponseReader->m_content = NULL;
+
+            bool valid = true;
+            QString error;
+
+            // is it a response
+            if (valid && request.GetHTTPType() != HTTPResponse)
             {
-                if (m_socket->bytesAvailable() < 2)
-                    return;
-
-                uchar length[2];
-
-                if (m_socket->read(reinterpret_cast<char *>(length), 2) != 2)
-                {
-                    InitiateClose(CloseUnexpectedError, QString("Read error"));
-                    return;
-                }
-
-                m_framePayloadLength = qFromBigEndian<quint16>(reinterpret_cast<const uchar *>(length));
-                m_readState          = m_frameMasked ? ReadMask : ReadPayload;
+                valid = false;
+                error = QString("Response is not an HTTP response");
             }
-            break;
 
-            case Read64BitLength:
+            // is it switching protocols
+            if (valid && request.GetHTTPStatus() != HTTP_SwitchingProtocols)
             {
-                if (m_socket->bytesAvailable() < 8)
-                    return;
-
-                uchar length[8];
-                if (m_socket->read(reinterpret_cast<char *>(length), 8) != 8)
-                {
-                    InitiateClose(CloseUnexpectedError, QString("Read error"));
-                    return;
-                }
-
-                m_framePayloadLength = qFromBigEndian<quint64>(length) & ~(1LL << 63);
-                m_readState          = m_frameMasked ? ReadMask : ReadPayload;
+                valid = false;
+                error = QString("Expected '%1' - got '%2'").arg(TorcHTTPRequest::StatusToString(HTTP_SwitchingProtocols))
+                        .arg(TorcHTTPRequest::StatusToString(request.GetHTTPStatus()));
             }
-            break;
 
-            case ReadMask:
+            // does it contain the correct headers
+            if (valid && !(request.Headers()->contains("Upgrade") && request.Headers()->contains("Connection") &&
+                           request.Headers()->contains("Sec-WebSocket-Accept")))
             {
-                if (m_socket->bytesAvailable() < 4)
-                    return;
-
-                if (m_socket->read(m_frameMask.data(), 4) != 4)
-                {
-                    InitiateClose(CloseUnexpectedError, QString("Read error"));
-                    return;
-                }
-
-                m_readState = ReadPayload;
+                valid = false;
+                error = QString("Response is missing required headers");
             }
-            break;
 
-            case ReadPayload:
+            // correct header contents
+            if (valid)
             {
-                // allocate the payload buffer if needed
-                if (m_framePayloadReadPosition == 0)
-                    m_framePayload = QByteArray(m_framePayloadLength, 0);
+                QString upgrade    = request.Headers()->value("Upgrade").trimmed();
+                QString connection = request.Headers()->value("Connection").trimmed();
+                QString accept     = request.Headers()->value("Sec-WebSocket-Accept").trimmed();
 
-                qint64 needed = m_framePayloadLength - m_framePayloadReadPosition;
-
-                // payload length may be zero
-                if (needed > 0)
+                if (!upgrade.contains("websocket", Qt::CaseInsensitive) || !connection.contains("upgrade", Qt::CaseInsensitive))
                 {
-                    qint64 read = qMin(m_socket->bytesAvailable(), needed);
+                    valid = false;
+                    error = QString("Unexpected header content");
+                }
+                else
+                {
+                    if (!accept.contains(m_challengeResponse, Qt::CaseSensitive))
+                    {
+                        valid = false;
+                        error = QString("Incorrect Sec-WebSocket-Accept response");
+                    }
+                }
+            }
 
-                    if (m_socket->read(m_framePayload.data() + m_framePayloadReadPosition, read) != read)
+            if (!valid)
+            {
+                LOG(VB_GENERAL, LOG_ERR, error);
+                CloseSocket();
+                return;
+            }
+
+            LOG(VB_GENERAL, LOG_INFO, "Received expected upgrade response - switching to frame protocol");
+            m_handShaking = false;
+
+        }
+        else
+        {
+            switch (m_readState)
+            {
+                case ReadHeader:
+                {
+                    // we need at least 2 bytes to start reading
+                    if (m_socket->bytesAvailable() < 2)
+                        return;
+
+                    char header[2];
+                    if (m_socket->read(header, 2) != 2)
                     {
                         InitiateClose(CloseUnexpectedError, QString("Read error"));
                         return;
                     }
 
-                    m_framePayloadReadPosition += read;
-                }
+                    m_frameFinalFragment = (header[0] & 0x80) != 0;
+                    m_frameOpCode        = static_cast<OpCode>(header[0] & 0x0F);
+                    m_frameMasked        = (header[1] & 0x80) != 0;
+                    quint8 length        = (header[1] & 0x7F);
+                    bool reservedbits    = (header[0] & 0x70) != 0;
 
-                // finished
-                if (m_framePayloadReadPosition == m_framePayloadLength)
-                {
-                    LOG(VB_NETWORK, LOG_DEBUG, QString("Frame, Final: %1 OpCode: '%2' Masked: %3 Length: %4")
-                        .arg(m_frameFinalFragment).arg(OpCodeToString(m_frameOpCode)).arg(m_frameMasked).arg(m_framePayloadLength));
+                    // validate the header against current state and specification
+                    CloseCode error = CloseNormal;
+                    QString reason;
 
-                    // unmask payload
-                    if (m_frameMasked)
-                        for (int i = 0; i < m_framePayload.size(); ++i)
-                            m_framePayload[i] = (m_framePayload[i] ^ m_frameMask[i % 4]);
-
-                    // start buffering fragmented payloads
-                    if (!m_frameFinalFragment && (m_frameOpCode == OpText || m_frameOpCode == OpBinary))
+                    // invalid use of reserved bits
+                    if (reservedbits)
                     {
-                        // header checks should prevent this
-                        if (m_bufferedPayload)
+                        reason = QString("Invalid use of reserved bits");
+                        error = CloseProtocolError;
+                    }
+
+                    // control frames can only have payloads of up to 125 bytes
+                    else if ((m_frameOpCode & 0x8) && length > 125)
+                    {
+                        reason = QString("Control frame payload too large");
+                        error = CloseProtocolError;
+
+                        // need to acknowledge when an OpClose is received
+                        if (OpClose == m_frameOpCode)
+                            m_closeReceived = true;
+                    }
+
+                    // if this is a server, clients must be sending masked frames and vice versa
+                    else if (m_serverSide != m_frameMasked)
+                    {
+                        reason = QString("Masking error");
+                        error = CloseProtocolError;
+                    }
+
+                    // we should never receive a reserved opcode
+                    else if (m_frameOpCode != OpText && m_frameOpCode != OpBinary && m_frameOpCode != OpContinuation &&
+                        m_frameOpCode != OpPing && m_frameOpCode != OpPong   && m_frameOpCode != OpClose)
+                    {
+                        reason = QString("Invalid use of reserved opcode");
+                        error = CloseProtocolError;
+                    }
+
+                    // control frames cannot be fragmented
+                    else if (!m_frameFinalFragment && (m_frameOpCode == OpPing || m_frameOpCode == OpPong || m_frameOpCode == OpClose))
+                    {
+                        reason = QString("Fragmented control frame");
+                        error = CloseProtocolError;
+                    }
+
+                    // a continuation frame must have an opening frame
+                    else if (!m_bufferedPayload && m_frameOpCode == OpContinuation)
+                    {
+                        reason = QString("Fragmentation error");
+                        error = CloseProtocolError;
+                    }
+
+                    // only continuation frames or control frames are expected once in the middle of a frame
+                    else if (m_bufferedPayload && !(m_frameOpCode == OpContinuation || m_frameOpCode == OpPing || m_frameOpCode == OpPong || m_frameOpCode == OpClose))
+                    {
+                        reason = QString("Fragmentation error");
+                        error = CloseProtocolError;
+                    }
+
+                    if (error != CloseNormal)
+                    {
+                        LOG(VB_GENERAL, LOG_ERR, QString("Read error: %1 (%2)").arg(CloseCodeToString(error)).arg(reason));
+                        InitiateClose(error, reason);
+                        return;
+                    }
+
+                    if (126 == length)
+                    {
+                        m_readState = Read16BitLength;
+                        break;
+                    }
+
+                    if (127 == length)
+                    {
+                        m_readState = Read64BitLength;
+                        break;
+                    }
+
+                    m_framePayloadLength = length;
+                    m_readState          = m_frameMasked ? ReadMask : ReadPayload;
+                }
+                break;
+
+                case Read16BitLength:
+                {
+                    if (m_socket->bytesAvailable() < 2)
+                        return;
+
+                    uchar length[2];
+
+                    if (m_socket->read(reinterpret_cast<char *>(length), 2) != 2)
+                    {
+                        InitiateClose(CloseUnexpectedError, QString("Read error"));
+                        return;
+                    }
+
+                    m_framePayloadLength = qFromBigEndian<quint16>(reinterpret_cast<const uchar *>(length));
+                    m_readState          = m_frameMasked ? ReadMask : ReadPayload;
+                }
+                break;
+
+                case Read64BitLength:
+                {
+                    if (m_socket->bytesAvailable() < 8)
+                        return;
+
+                    uchar length[8];
+                    if (m_socket->read(reinterpret_cast<char *>(length), 8) != 8)
+                    {
+                        InitiateClose(CloseUnexpectedError, QString("Read error"));
+                        return;
+                    }
+
+                    m_framePayloadLength = qFromBigEndian<quint64>(length) & ~(1LL << 63);
+                    m_readState          = m_frameMasked ? ReadMask : ReadPayload;
+                }
+                break;
+
+                case ReadMask:
+                {
+                    if (m_socket->bytesAvailable() < 4)
+                        return;
+
+                    if (m_socket->read(m_frameMask.data(), 4) != 4)
+                    {
+                        InitiateClose(CloseUnexpectedError, QString("Read error"));
+                        return;
+                    }
+
+                    m_readState = ReadPayload;
+                }
+                break;
+
+                case ReadPayload:
+                {
+                    // allocate the payload buffer if needed
+                    if (m_framePayloadReadPosition == 0)
+                        m_framePayload = QByteArray(m_framePayloadLength, 0);
+
+                    qint64 needed = m_framePayloadLength - m_framePayloadReadPosition;
+
+                    // payload length may be zero
+                    if (needed > 0)
+                    {
+                        qint64 read = qMin(m_socket->bytesAvailable(), needed);
+
+                        if (m_socket->read(m_framePayload.data() + m_framePayloadReadPosition, read) != read)
                         {
-                            delete m_bufferedPayload;
-                            LOG(VB_GENERAL, LOG_WARNING, "Already have payload buffer - deleting");
+                            InitiateClose(CloseUnexpectedError, QString("Read error"));
+                            return;
                         }
 
-                        m_bufferedPayload = new QByteArray(m_framePayload);
-                        m_bufferedPayloadOpCode = m_frameOpCode;
-                    }
-                    else if (m_frameOpCode == OpContinuation)
-                    {
-                        if (m_bufferedPayload)
-                            m_bufferedPayload->append(m_framePayload);
-                        else
-                            LOG(VB_GENERAL, LOG_ERR, "Continuation frame but no buffered payload");
+                        m_framePayloadReadPosition += read;
                     }
 
                     // finished
-                    if (m_frameFinalFragment)
+                    if (m_framePayloadReadPosition == m_framePayloadLength)
                     {
-                        if (m_frameOpCode == OpPong)
-                        {
-                            HandlePong(m_framePayload);
-                        }
-                        else if (m_frameOpCode == OpPing)
-                        {
-                            HandlePing(m_framePayload);
-                        }
-                        else if (m_frameOpCode == OpClose)
-                        {
-                            HandleCloseRequest(m_framePayload);
-                        }
-                        else
-                        {
-                            bool invalidtext = false;
+                        LOG(VB_NETWORK, LOG_DEBUG, QString("Frame, Final: %1 OpCode: '%2' Masked: %3 Length: %4")
+                            .arg(m_frameFinalFragment).arg(OpCodeToString(m_frameOpCode)).arg(m_frameMasked).arg(m_framePayloadLength));
 
-                            // validate and debug UTF8 text
-                            if (!m_bufferedPayload && m_frameOpCode == OpText && !m_framePayload.isEmpty())
+                        // unmask payload
+                        if (m_frameMasked)
+                            for (int i = 0; i < m_framePayload.size(); ++i)
+                                m_framePayload[i] = (m_framePayload[i] ^ m_frameMask[i % 4]);
+
+                        // start buffering fragmented payloads
+                        if (!m_frameFinalFragment && (m_frameOpCode == OpText || m_frameOpCode == OpBinary))
+                        {
+                            // header checks should prevent this
+                            if (m_bufferedPayload)
                             {
-                                if (!utf8::is_valid(m_framePayload.data(), m_framePayload.data() + m_framePayload.size()))
-                                {
-                                    LOG(VB_GENERAL, LOG_ERR, "Invalid UTF8");
-                                    invalidtext = true;
-                                }
-                                else
-                                {
-                                    LOG(VB_NETWORK, LOG_DEBUG, QString("'%1'").arg(QString::fromUtf8(m_framePayload)));
-                                }
-                            }
-                            else if (m_bufferedPayload && m_bufferedPayloadOpCode == OpText)
-                            {
-                                if (!utf8::is_valid(m_bufferedPayload->data(), m_bufferedPayload->data() + m_bufferedPayload->size()))
-                                {
-                                    LOG(VB_GENERAL, LOG_ERR, "Invalid UTF8");
-                                    invalidtext = true;
-                                }
-                                else
-                                {
-                                    LOG(VB_NETWORK, LOG_DEBUG, QString("'%1'").arg(QString::fromUtf8(*m_bufferedPayload)));
-                                }
+                                delete m_bufferedPayload;
+                                LOG(VB_GENERAL, LOG_WARNING, "Already have payload buffer - deleting");
                             }
 
-                            if (invalidtext)
+                            m_bufferedPayload = new QByteArray(m_framePayload);
+                            m_bufferedPayloadOpCode = m_frameOpCode;
+                        }
+                        else if (m_frameOpCode == OpContinuation)
+                        {
+                            if (m_bufferedPayload)
+                                m_bufferedPayload->append(m_framePayload);
+                            else
+                                LOG(VB_GENERAL, LOG_ERR, "Continuation frame but no buffered payload");
+                        }
+
+                        // finished
+                        if (m_frameFinalFragment)
+                        {
+                            if (m_frameOpCode == OpPong)
                             {
-                                InitiateClose(CloseInconsistentData, "Invalid UTF-8 text");
+                                HandlePong(m_framePayload);
+                            }
+                            else if (m_frameOpCode == OpPing)
+                            {
+                                HandlePing(m_framePayload);
+                            }
+                            else if (m_frameOpCode == OpClose)
+                            {
+                                HandleCloseRequest(m_framePayload);
                             }
                             else
                             {
-                                // echo test for AutoBahn test suite
-                                if (m_echoTest)
+                                bool invalidtext = false;
+
+                                // validate and debug UTF8 text
+                                if (!m_bufferedPayload && m_frameOpCode == OpText && !m_framePayload.isEmpty())
                                 {
-                                    SendFrame(m_bufferedPayload ? m_bufferedPayloadOpCode : m_frameOpCode,
-                                              m_bufferedPayload ? *m_bufferedPayload : m_framePayload);
+                                    if (!utf8::is_valid(m_framePayload.data(), m_framePayload.data() + m_framePayload.size()))
+                                    {
+                                        LOG(VB_GENERAL, LOG_ERR, "Invalid UTF8");
+                                        invalidtext = true;
+                                    }
+                                    else
+                                    {
+                                        LOG(VB_NETWORK, LOG_DEBUG, QString("'%1'").arg(QString::fromUtf8(m_framePayload)));
+                                    }
+                                }
+                                else if (m_bufferedPayload && m_bufferedPayloadOpCode == OpText)
+                                {
+                                    if (!utf8::is_valid(m_bufferedPayload->data(), m_bufferedPayload->data() + m_bufferedPayload->size()))
+                                    {
+                                        LOG(VB_GENERAL, LOG_ERR, "Invalid UTF8");
+                                        invalidtext = true;
+                                    }
+                                    else
+                                    {
+                                        LOG(VB_NETWORK, LOG_DEBUG, QString("'%1'").arg(QString::fromUtf8(*m_bufferedPayload)));
+                                    }
                                 }
 
-                                // TODO actually do something with real data
-                            }
-                            delete m_bufferedPayload;
-                            m_bufferedPayload = NULL;
-                        }
-                    }
+                                if (invalidtext)
+                                {
+                                    InitiateClose(CloseInconsistentData, "Invalid UTF-8 text");
+                                }
+                                else
+                                {
+                                    // echo test for AutoBahn test suite
+                                    if (m_echoTest)
+                                    {
+                                        SendFrame(m_bufferedPayload ? m_bufferedPayloadOpCode : m_frameOpCode,
+                                                  m_bufferedPayload ? *m_bufferedPayload : m_framePayload);
+                                    }
 
-                    // reset frame and readstate
-                    m_readState = ReadHeader;
-                    m_framePayload = QByteArray();
-                    m_framePayloadReadPosition = 0;
-                    m_framePayloadLength = 0;
+                                    // TODO actually do something with real data
+                                }
+                                delete m_bufferedPayload;
+                                m_bufferedPayload = NULL;
+                            }
+                        }
+
+                        // reset frame and readstate
+                        m_readState = ReadHeader;
+                        m_framePayload = QByteArray();
+                        m_framePayloadReadPosition = 0;
+                        m_framePayloadLength = 0;
+                    }
+                    else if (m_framePayload.size() > m_framePayloadLength)
+                    {
+                        // this shouldn't happen
+                        InitiateClose(CloseUnexpectedError, QString("Read error"));
+                        return;
+                    }
                 }
-                else if (m_framePayload.size() > m_framePayloadLength)
-                {
-                    // this shouldn't happen
-                    InitiateClose(CloseUnexpectedError, QString("Read error"));
-                    return;
-                }
+                break;
             }
-            break;
         }
     }
 }
@@ -685,12 +818,64 @@ void TorcWebSocket::CloseSocket(void)
     }
 }
 
+void TorcWebSocket::Connected(void)
+{
+    if (!m_socket)
+        return;
+
+    LOG(VB_GENERAL, LOG_INFO, QString("Connected to '%1'").arg(m_address));
+
+    QByteArray *upgrade = new QByteArray();
+    QTextStream stream(upgrade);
+
+    QByteArray nonce;
+    for (int i = 0; i < 16; ++i)
+        nonce.append(qrand() % 0x100);
+    nonce = nonce.toBase64();
+
+    // store the expected response for later comparison
+    QString key = QString(nonce.data()) + QLatin1String("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+    m_challengeResponse = QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toBase64();
+
+    stream << "GET / HTTP/1.1\r\n";
+    stream << "User-Agent: " << TorcHTTPServer::PlatformName() << "\r\n";
+    stream << "Host: " << m_address << ":" << QString::number(m_port) << "\r\n";
+    stream << "Upgrade: WebSocket\r\n";
+    stream << "Connection: Upgrade\r\n";
+    stream << "Sec-WebSocket-Version: 13\r\n";
+    stream << "Sec-WebSocket-Key: " << nonce.data() << "\r\n";
+    stream << "\r\n";
+    stream.flush();
+
+    if (m_socket->write(upgrade->data(), upgrade->size()) != upgrade->size())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Unexpected write error");
+        CloseSocket();
+        return;
+    }
+
+    LOG(VB_GENERAL, LOG_INFO, QString("Data...\r\n%1").arg(upgrade->data()));
+}
+
+void TorcWebSocket::Error(QAbstractSocket::SocketError SocketError)
+{
+    if (m_socket)
+        LOG(VB_GENERAL, LOG_ERR, QString("WebSocket error: %1 ('%2')").arg(m_socket->error()).arg(m_socket->errorString()));
+}
+
 /*! \brief Compose and send a properly formatted websocket frame.
  *
  * \note If this is a client side socket, Payload will be masked in place.
 */
 void TorcWebSocket::SendFrame(OpCode Code, QByteArray &Payload)
 {
+    // guard against programmer error
+    if (m_handShaking)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Trying to send frame before handshake completed");
+        return;
+    }
+
     // don't send if OpClose has already been sent or OpClose received and
     // we're sending anything other than the echoed OpClose
     if (m_closeSent || (m_closeReceived && Code != OpClose))

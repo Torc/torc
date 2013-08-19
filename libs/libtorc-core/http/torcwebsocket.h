@@ -4,6 +4,7 @@
 // Qt
 #include <QTcpSocket>
 #include <QObject>
+#include <QUrl>
 
 // Torc
 #include "torccoreexport.h"
@@ -11,6 +12,7 @@
 
 class TorcHTTPConnection;
 class TorcHTTPRequest;
+class TorcHTTPReader;
 
 class TORC_CORE_PUBLIC TorcWebSocket : public QObject
 {
@@ -71,16 +73,21 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
 
   public:
     TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpSocket *Socket);
+    TorcWebSocket(TorcThread *Parent, const QString &Address, quint16 Port);
     ~TorcWebSocket();
 
     static bool     ProcessUpgradeRequest (TorcHTTPConnection *Connection, TorcHTTPRequest *Request, QTcpSocket *Socket);
     static QString  OpCodeToString        (OpCode Code);
     static QString  CloseCodeToString     (CloseCode Code);
 
-  protected slots:
+  public slots:
     void            Start                 (void);
+
+  protected slots:
     void            ReadyRead             (void);
     void            CloseSocket           (void);
+    void            Connected             (void);
+    void            Error                 (QAbstractSocket::SocketError);
 
   private:
     void            SendFrame             (OpCode Code, QByteArray &Payload);
@@ -100,6 +107,11 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     };
 
     TorcThread      *m_parent;
+    bool             m_handShaking;
+    TorcHTTPReader  *m_upgradeResponseReader;
+    QString          m_challengeResponse;
+    QString          m_address;
+    quint16          m_port;
     TorcHTTPRequest *m_upgradeRequest;
     QTcpSocket      *m_socket;
     int              m_abort;
