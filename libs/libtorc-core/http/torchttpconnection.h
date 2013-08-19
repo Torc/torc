@@ -13,6 +13,27 @@
 
 class TorcHTTPRequest;
 
+class TORC_CORE_PUBLIC TorcHTTPReader
+{
+  public:
+    TorcHTTPReader();
+   ~TorcHTTPReader();
+
+    void                   Reset    (void);
+    bool                   Read     (QTcpSocket *Socket, int *Abort);
+
+    bool                   m_ready;
+    bool                   m_requestStarted;
+    bool                   m_headersComplete;
+    int                    m_headersRead;
+    quint64                m_contentLength;
+    quint64                m_contentReceived;
+    QString                m_method;
+    QByteArray            *m_content;
+    QMap<QString,QString> *m_headers;
+
+};
+
 class TORC_CORE_PUBLIC TorcHTTPConnection : public QRunnable
 {
   public:
