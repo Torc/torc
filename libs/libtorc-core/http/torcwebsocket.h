@@ -80,6 +80,9 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     static QString  OpCodeToString        (OpCode Code);
     static QString  CloseCodeToString     (CloseCode Code);
 
+  signals:
+    void            ConnectionEstablished (void);
+
   public slots:
     void            Start                 (void);
 

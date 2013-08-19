@@ -508,6 +508,7 @@ void TorcWebSocket::ReadyRead(void)
 
             LOG(VB_GENERAL, LOG_INFO, "Received expected upgrade response - switching to frame protocol");
             m_handShaking = false;
+            emit ConnectionEstablished();
         }
         else
         {
@@ -851,7 +852,7 @@ void TorcWebSocket::Connected(void)
         return;
     }
 
-    LOG(VB_GENERAL, LOG_INFO, QString("Data...\r\n%1").arg(upgrade->data()));
+    LOG(VB_NETWORK, LOG_DEBUG, QString("Data...\r\n%1").arg(upgrade->data()));
 }
 
 void TorcWebSocket::Error(QAbstractSocket::SocketError SocketError)
