@@ -82,6 +82,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
   public:
     static HTTPRequestType RequestTypeFromString    (const QString &Type);
     static HTTPProtocol    ProtocolFromString       (const QString &Protocol);
+    static HTTPStatus      StatusFromString         (const QString &Status);
     static QString         ProtocolToString         (HTTPProtocol Protocol);
     static QString         StatusToString           (HTTPStatus   Status);
     static QString         ResponseTypeToString     (HTTPResponseType Response);
@@ -102,6 +103,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     void                   SetResponseFile          (QFile *File);
     void                   SetResponseHeader        (const QString &Header, const QString &Value);
     void                   SetAllowed               (int Allowed);
+    HTTPStatus             GetHTTPStatus            (void);
     HTTPType               GetHTTPType              (void);
     HTTPRequestType        GetHTTPRequestType       (void);
     HTTPProtocol           GetHTTPProtocol          (void);

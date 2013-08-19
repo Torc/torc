@@ -84,45 +84,58 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
     {
         item = items.takeFirst();
 
-        if (item == "HTTP/")
+        // response of type 'HTTP/1.1 200 OK'
+        if (item.startsWith("HTTP"))
         {
             m_type = HTTPResponse;
+
+            // HTTP/1.1
+            m_protocol = ProtocolFromString(item.trimmed());
+
+            // 200 OK
+            if (!items.isEmpty())
+                m_responseStatus = StatusFromString(items.takeFirst().trimmed());
         }
+        // request of type 'GET /method HTTP/1.1'
         else
         {
             m_type = HTTPRequest;
-            m_requestType = RequestTypeFromString(item);
-        }
-    }
 
-    if (!items.isEmpty())
-    {
-        QUrl url  = QUrl::fromEncoded(items.takeFirst().toUtf8());
-        m_path    = url.path();
-        m_fullUrl = url.toString();
+            // GET
+            m_requestType = RequestTypeFromString(item.trimmed());
 
-        int index = m_path.lastIndexOf("/");
-        if (index > -1)
-        {
-            m_method = m_path.mid(index + 1).trimmed();
-            m_path   = m_path.left(index + 1).trimmed();
-        }
-
-        if (url.hasQuery())
-        {
-            QStringList pairs = url.query().split('&');
-            foreach (QString pair, pairs)
+            if (!items.isEmpty())
             {
-                int index = pair.indexOf('=');
-                QString key = pair.left(index);
-                QString val = pair.mid(index + 1);
-                m_queries.insert(key, val);
+                // /method
+                QUrl url  = QUrl::fromEncoded(items.takeFirst().toUtf8());
+                m_path    = url.path();
+                m_fullUrl = url.toString();
+
+                int index = m_path.lastIndexOf("/");
+                if (index > -1)
+                {
+                    m_method = m_path.mid(index + 1).trimmed();
+                    m_path   = m_path.left(index + 1).trimmed();
+                }
+
+                if (url.hasQuery())
+                {
+                    QStringList pairs = url.query().split('&');
+                    foreach (QString pair, pairs)
+                    {
+                        int index = pair.indexOf('=');
+                        QString key = pair.left(index);
+                        QString val = pair.mid(index + 1);
+                        m_queries.insert(key, val);
+                    }
+                }
             }
+
+            // HTTP/1.1
+            if (!items.isEmpty())
+                m_protocol = ProtocolFromString(items.takeFirst());
         }
     }
-
-    if (!items.isEmpty())
-        m_protocol = ProtocolFromString(items.takeFirst());
 
     if (m_protocol > HTTPOneDotZero)
         m_connection = HTTPConnectionKeepAlive;
@@ -197,6 +210,11 @@ void TorcHTTPRequest::SetResponseHeader(const QString &Header, const QString &Va
 void TorcHTTPRequest::SetAllowed(int Allowed)
 {
     m_allowed = Allowed;
+}
+
+HTTPStatus TorcHTTPRequest::GetHTTPStatus(void)
+{
+    return m_responseStatus;
 }
 
 HTTPType TorcHTTPRequest::GetHTTPType(void)
@@ -524,6 +542,23 @@ HTTPProtocol TorcHTTPRequest::ProtocolFromString(const QString &Protocol)
     }
 
     return HTTPUnknownProtocol;
+}
+
+HTTPStatus TorcHTTPRequest::StatusFromString(const QString &Status)
+{
+    if (Status.startsWith("200")) return HTTP_OK;
+    if (Status.startsWith("101")) return HTTP_SwitchingProtocols;
+    if (Status.startsWith("206")) return HTTP_PartialContent;
+    if (Status.startsWith("301")) return HTTP_MovedPermanently;
+    //if (Status.startsWith("400")) return HTTP_BadRequest;
+    if (Status.startsWith("401")) return HTTP_Unauthorized;
+    if (Status.startsWith("402")) return HTTP_Forbidden;
+    if (Status.startsWith("404")) return HTTP_NotFound;
+    if (Status.startsWith("405")) return HTTP_MethodNotAllowed;
+    if (Status.startsWith("416")) return HTTP_RequestedRangeNotSatisfiable;
+    if (Status.startsWith("500")) return HTTP_InternalServerError;
+
+    return HTTP_BadRequest;
 }
 
 QString TorcHTTPRequest::ProtocolToString(HTTPProtocol Protocol)
