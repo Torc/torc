@@ -28,7 +28,8 @@
 /*! \class TorcHTTPReader
  *  \brief A convenience class to read HTTP requests from a QTcpSocket
  *
- * \note Both m_content and m_headers MAY be transferred to new parents for processing. Handle with care.
+ * \note Both m_content and m_headers MAY be transferred to new parents for processing. It is the new owner's
+ *       responsibility to clear the these objects (set to NULL) and then later delete the data.
 */
 TorcHTTPReader::TorcHTTPReader()
   : m_ready(false),
@@ -240,11 +241,7 @@ void TorcHTTPConnection::run(void)
             LOG(VB_GENERAL, LOG_WARNING, QString("%1 unread bytes from %2").arg(m_socket->bytesAvailable()).arg(peeraddress));
 
         // have headers and content - process request
-        TorcHTTPRequest *request = new TorcHTTPRequest(reader->m_method, reader->m_headers, reader->m_content);
-
-        // request will take ownerhsip of headers and content
-        reader->m_headers = NULL;
-        reader->m_content = NULL;
+        TorcHTTPRequest *request = new TorcHTTPRequest(reader);
 
         if (request->GetHTTPType() == HTTPResponse)
         {

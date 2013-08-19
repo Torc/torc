@@ -40,6 +40,7 @@
 #include "torcxmlserialiser.h"
 #include "torcplistserialiser.h"
 #include "torcbinaryplistserialiser.h"
+#include "torchttpconnection.h"
 #include "torchttprequest.h"
 
 #ifdef __linux__
@@ -63,6 +64,34 @@
 
 QRegExp gRegExp = QRegExp("[ \r\n][ \r\n]*");
 
+TorcHTTPRequest::TorcHTTPRequest(TorcHTTPReader *Reader)
+  : m_type(HTTPRequest),
+    m_requestType(HTTPUnknownType),
+    m_protocol(HTTPUnknownProtocol),
+    m_connection(HTTPConnectionClose),
+    m_headers(NULL),
+    m_content(NULL),
+    m_allowed(0),
+    m_responseType(HTTPResponseUnknown),
+    m_responseStatus(HTTP_NotFound),
+    m_responseContent(NULL),
+    m_responseFile(NULL),
+    m_responseHeaders(NULL)
+{
+    if (Reader)
+    {
+        m_headers = Reader->m_headers;
+        m_content = Reader->m_content;
+        Reader->m_headers = NULL;
+        Reader->m_content = NULL;
+        Initialise(Reader->m_method);
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_ERR, "NULL Reader");
+    }
+}
+
 TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *Headers, QByteArray *Content)
   : m_type(HTTPRequest),
     m_requestType(HTTPUnknownType),
@@ -76,6 +105,11 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
     m_responseContent(NULL),
     m_responseFile(NULL),
     m_responseHeaders(NULL)
+{
+    Initialise(Method);
+}
+
+void TorcHTTPRequest::Initialise(const QString &Method)
 {
     QStringList items = Method.split(gRegExp, QString::SkipEmptyParts);
     QString item;

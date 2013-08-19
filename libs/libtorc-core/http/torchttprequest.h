@@ -9,6 +9,7 @@
 // Torc
 #include "torccoreexport.h"
 
+class TorcHTTPReader;
 class TorcSerialiser;
 class QTcpSocket;
 class QFile;
@@ -93,6 +94,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     static QString         RangeToString            (const QPair<quint64,quint64> &Range, qint64 Size);
 
   public:
+    TorcHTTPRequest(TorcHTTPReader *Reader);
     TorcHTTPRequest(const QString &Method, QMap<QString,QString> *Headers, QByteArray *Content);
     ~TorcHTTPRequest();
 
@@ -115,6 +117,9 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     void                   Respond                  (QTcpSocket *Socket, int* Abort);
     void                   Redirected               (const QString &Redirected);
     TorcSerialiser*        GetSerialiser            (void);
+
+  protected:
+    void                   Initialise               (const QString &Method);
 
   protected:
     QString                m_fullUrl;

@@ -449,9 +449,7 @@ void TorcWebSocket::ReadyRead(void)
                 continue;
 
             // parse the response
-            TorcHTTPRequest request(m_upgradeResponseReader->m_method, m_upgradeResponseReader->m_headers, m_upgradeResponseReader->m_content);
-            m_upgradeResponseReader->m_headers = NULL;
-            m_upgradeResponseReader->m_content = NULL;
+            TorcHTTPRequest request(m_upgradeResponseReader);
 
             bool valid = true;
             QString error;
@@ -510,7 +508,6 @@ void TorcWebSocket::ReadyRead(void)
 
             LOG(VB_GENERAL, LOG_INFO, "Received expected upgrade response - switching to frame protocol");
             m_handShaking = false;
-
         }
         else
         {
