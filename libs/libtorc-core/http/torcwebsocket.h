@@ -138,6 +138,7 @@ class TORC_CORE_PUBLIC TorcWebSocketThread : public TorcThread
 {
   public:
     TorcWebSocketThread(TorcHTTPRequest *Request, QTcpSocket *Socket);
+    TorcWebSocketThread(const QString &Address, quint16 Port);
     ~TorcWebSocketThread();
 
     TorcWebSocket*      Socket   (void);

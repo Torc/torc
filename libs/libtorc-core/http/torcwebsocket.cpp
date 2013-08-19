@@ -1064,6 +1064,12 @@ TorcWebSocketThread::TorcWebSocketThread(TorcHTTPRequest *Request, QTcpSocket *S
 {
 }
 
+TorcWebSocketThread::TorcWebSocketThread(const QString &Address, quint16 Port)
+  : TorcThread("websocket"),
+    m_webSocket(new TorcWebSocket(this, Address, Port))
+{
+}
+
 TorcWebSocketThread::~TorcWebSocketThread()
 {
     delete m_webSocket;
