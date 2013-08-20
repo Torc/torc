@@ -28,6 +28,7 @@
 #include <QReadWriteLock>
 #include <QSqlDatabase>
 #include <QThreadPool>
+#include <QDateTime>
 #include <QMutex>
 #include <QUuid>
 #include <QDir>
@@ -49,6 +50,7 @@
 TorcLocalContext *gLocalContext = NULL;
 QMutex*            gAVCodecLock = new QMutex(QMutex::Recursive);
 TorcSetting       *gRootSetting = NULL;
+qint64             gStartTime   = QDateTime::currentMSecsSinceEpoch();
 
 static void ExitHandler(int Sig)
 {
@@ -355,6 +357,11 @@ void TorcLocalContext::SendMessage(int Type, int Destination, int Timeout,
     gLocalContext->Notify(event);
 }
 
+/*! \class TorcLocalContext
+ *  \brief TorcLocalContext is the core Torc object.
+ *
+ * \todo Add priority generation based on role and maybe user setting.
+*/
 TorcLocalContext::TorcLocalContext(TorcCommandLine* CommandLine, Torc::ApplicationFlags ApplicationFlags)
   : QObject(),
     m_priv(new TorcLocalContextPriv(ApplicationFlags))
@@ -508,6 +515,16 @@ QString TorcLocalContext::GetUuid(void)
 TorcSetting* TorcLocalContext::GetRootSetting(void)
 {
     return gRootSetting;
+}
+
+qint64 TorcLocalContext::GetStartTime(void)
+{
+    return gStartTime;
+}
+
+int TorcLocalContext::GetPriority(void)
+{
+    return 0;
 }
 
 bool TorcLocalContext::FlagIsSet(Torc::ApplicationFlag Flag)

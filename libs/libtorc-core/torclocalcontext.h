@@ -235,6 +235,8 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     Q_INVOKABLE   QObject*   GetUIObject   (void);
     Q_INVOKABLE   QString    GetUuid       (void);
     Q_INVOKABLE   TorcSetting* GetRootSetting (void);
+    Q_INVOKABLE   qint64     GetStartTime  (void);
+    Q_INVOKABLE   int        GetPriority   (void);
 
     QLocale::Language        GetLanguage   (void);
     void                     SetUIObject   (QObject* UI);
