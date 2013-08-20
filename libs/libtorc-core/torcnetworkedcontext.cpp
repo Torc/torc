@@ -301,10 +301,12 @@ bool TorcNetworkedContext::event(QEvent *Event)
                         uuid != gLocalContext->GetUuid().toLatin1())
                     {
                         QByteArray name       = event->Data().value("name").toByteArray();
-                        QString version       = event->Data().value("apiversion").toString();
-                        qint64 starttime      = event->Data().value("starttime").toULongLong();
-                        int priority          = event->Data().value("priority").toInt();
                         QStringList addresses = event->Data().value("addresses").toStringList();
+                        QByteArray txtrecords = event->Data().value("txtrecords").toByteArray();
+                        QMap<QByteArray,QByteArray> map = TorcBonjour::TxtRecordToMap(txtrecords);
+                        QString version       = QString(map.value("apiversion"));
+                        qint64 starttime      = map.value("starttime").toULongLong();
+                        int priority          = map.value("priority").toInt();
 
                         int position = m_discoveredServices.size();
                         beginInsertRows(QModelIndex(), position, position);
@@ -314,13 +316,13 @@ bool TorcNetworkedContext::event(QEvent *Event)
 
                         m_serviceList.append(uuid);
 
+                        LOG(VB_GENERAL, LOG_INFO, QString("New Torc peer '%1'").arg(name.data()));
+
                         // try and connect - the txt records should have given us everything we need to know
                         service->SetAPIVersion(version);
                         service->SetPriority(priority);
                         service->SetStartTime(starttime);
                         service->Connect();
-
-                        LOG(VB_GENERAL, LOG_INFO, QString("New Torc peer %1").arg(name.data()));
                     }
                     else if (event->GetEvent() == Torc::ServiceWentAway && m_serviceList.contains(uuid))
                     {
