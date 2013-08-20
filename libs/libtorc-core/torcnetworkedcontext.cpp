@@ -28,20 +28,87 @@
 #include "torchttpserver.h"
 #include "upnp/torcupnp.h"
 #include "upnp/torcssdp.h"
+#include "torcwebsocket.h"
 #include "torcnetworkedcontext.h"
 
 TorcNetworkedContext *gNetworkedContext = NULL;
 
+/*! \class TorcNetworkService
+ *  \brief Encapsulates information on a discovered Torc peer.
+ *
+ * \todo Interrogate peer for priority etc if not discovered via Bonjour
+*/
 TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QStringList &Addresses)
   : m_name(Name),
     m_uuid(UUID),
     m_port(Port),
     m_uiAddress(QString()),
-    m_addresses(Addresses)
+    m_addresses(Addresses),
+    m_startTime(0),
+    m_priority(-1),
+    m_apiVersion(QString("unknown")),
+    m_major(0),
+    m_minor(0),
+    m_revision(0),
+    m_webSocketThread(NULL)
 {
     QString port = QString::number(m_port);
     foreach (QString address, Addresses)
         m_uiAddress += address + ":" + port + " ";
+}
+
+TorcNetworkService::~TorcNetworkService()
+{
+    if (m_webSocketThread)
+    {
+        m_webSocketThread->quit();
+        m_webSocketThread->wait();
+        delete m_webSocketThread;
+        m_webSocketThread = NULL;
+    }
+}
+
+/*! \brief Establish a WebSocket connection to the peer if necessary.
+ *
+ * A connection is only established if we have the necessary details (address, API version, priority,
+ * start time etc) and this application should act as the client.
+ *
+ * A client has a lower priority or later start time in the event of matching priorities.
+*/
+void TorcNetworkService::Connect(void)
+{
+    // connect to the peer
+    if (m_addresses.isEmpty() || m_startTime == 0 || m_apiVersion == "unknown" || m_priority < 0)
+    {
+        LOG(VB_GENERAL, LOG_ERR, QString("Unable to connect to %1 - insufficient information").arg(m_uiAddress));
+        return;
+    }
+
+    // lower priority peers should initiate the connection
+    if (m_priority < gLocalContext->GetPriority())
+    {
+        LOG(VB_GENERAL, LOG_INFO, QString("Not connecting to %1 - we have higher priority").arg(m_uiAddress));
+        return;
+    }
+
+    // matching priority, longer running app acts as the server
+    // yes - the start times could be the same...
+    if (m_priority == gLocalContext->GetPriority() && m_startTime > gLocalContext->GetStartTime())
+    {
+        LOG(VB_GENERAL, LOG_INFO, QString("Not connecting to %1 - we started earlier").arg(m_uiAddress));
+        return;
+    }
+
+    LOG(VB_GENERAL, LOG_INFO, QString("Trying to connect to %1").arg(m_uiAddress));
+
+    m_webSocketThread = new TorcWebSocketThread(m_addresses[0], m_port);
+    m_webSocketThread->Socket()->moveToThread(m_webSocketThread->GetQThread());
+
+    connect(m_webSocketThread->GetQThread(), SIGNAL(started()),   m_webSocketThread->Socket(), SLOT(Start()));
+    connect(m_webSocketThread->GetQThread(), SIGNAL(finished()),  this, SLOT(Disconnected()));
+    connect(m_webSocketThread->Socket(),     SIGNAL(ConnectionEstablished()), this, SLOT(Connected()));
+
+    m_webSocketThread->start();
 }
 
 QString TorcNetworkService::GetName(void)
@@ -64,9 +131,70 @@ QString TorcNetworkService::GetAddress(void)
     return m_uiAddress;
 }
 
+qint64 TorcNetworkService::GetStartTime(void)
+{
+    return m_startTime;
+}
+
+int TorcNetworkService::GetPriority(void)
+{
+    return m_priority;
+}
+
+QString TorcNetworkService::GetAPIVersion(void)
+{
+    return m_apiVersion;
+}
+
+void TorcNetworkService::Connected(void)
+{
+    TorcWebSocket *socket = static_cast<TorcWebSocket*>(sender());
+    if (m_webSocketThread && m_webSocketThread->Socket() == socket)
+    {
+        LOG(VB_GENERAL, LOG_INFO, QString("Connection established with %1").arg(m_uiAddress));
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Unknown WebSocket connected...");
+    }
+}
+
+void TorcNetworkService::Disconnected(void)
+{
+    QThread *thread = static_cast<QThread*>(sender());
+    if (m_webSocketThread && m_webSocketThread->GetQThread() == thread)
+    {
+        LOG(VB_GENERAL, LOG_INFO, QString("Connection with %1 closed").arg(m_uiAddress));
+        m_webSocketThread->quit();
+        m_webSocketThread->wait();
+        delete m_webSocketThread;
+        m_webSocketThread = NULL;
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Unknown WebSocket disconnected...");
+    }
+}
+
 QStringList TorcNetworkService::GetAddresses(void)
 {
     return m_addresses;
+}
+
+
+void TorcNetworkService::SetStartTime(qint64 StartTime)
+{
+    m_startTime = StartTime;
+}
+
+void TorcNetworkService::SetPriority(int Priority)
+{
+    m_priority = Priority;
+}
+
+void TorcNetworkService::SetAPIVersion(const QString &Version)
+{
+    m_apiVersion = Version;
 }
 
 TorcNetworkedContext::TorcNetworkedContext()
@@ -110,14 +238,14 @@ TorcNetworkedContext::~TorcNetworkedContext()
     // stoplistening
     gLocalContext->RemoveObserver(this);
 
+    // cancel upnp search
+    TorcSSDP::CancelSearch(TORC_ROOT_UPNP_DEVICE, this);
+
 #if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
     // stop browsing for torc._tcp
     if (m_bonjourBrowserReference)
         TorcBonjour::Instance()->Deregister(m_bonjourBrowserReference);
     m_bonjourBrowserReference = 0;
-
-    // cancel upnp search
-    TorcSSDP::CancelSearch(TORC_ROOT_UPNP_DEVICE, this);
 
     // N.B. We delete the global instance here
     TorcBonjour::TearDown();
@@ -167,19 +295,30 @@ bool TorcNetworkedContext::event(QEvent *Event)
 
                 if (records.contains("uuid"))
                 {
-                    QByteArray uuid = records.value("uuid");
-                    QByteArray name = event->Data().value("name").toByteArray();
+                    QByteArray uuid  = records.value("uuid");
 
                     if (event->GetEvent() == Torc::ServiceDiscovered && !m_serviceList.contains(uuid) &&
                         uuid != gLocalContext->GetUuid().toLatin1())
                     {
+                        QByteArray name       = event->Data().value("name").toByteArray();
+                        QString version       = event->Data().value("apiversion").toString();
+                        qint64 starttime      = event->Data().value("starttime").toULongLong();
+                        int priority          = event->Data().value("priority").toInt();
                         QStringList addresses = event->Data().value("addresses").toStringList();
 
                         int position = m_discoveredServices.size();
                         beginInsertRows(QModelIndex(), position, position);
-                        m_discoveredServices.append(new TorcNetworkService(name, uuid, event->Data().value("port").toInt(), addresses));
+                        TorcNetworkService *service = new TorcNetworkService(name, uuid, event->Data().value("port").toInt(), addresses);
+                        m_discoveredServices.append(service);
                         endInsertRows();
+
                         m_serviceList.append(uuid);
+
+                        // try and connect - the txt records should have given us everything we need to know
+                        service->SetAPIVersion(version);
+                        service->SetPriority(priority);
+                        service->SetStartTime(starttime);
+                        service->Connect();
 
                         LOG(VB_GENERAL, LOG_INFO, QString("New Torc peer %1").arg(name.data()));
                     }
