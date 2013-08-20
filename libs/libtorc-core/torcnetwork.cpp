@@ -332,7 +332,7 @@ void TorcNetwork::CancelSafe(TorcNetworkRequest *Request)
     if (m_reverseRequests.contains(Request))
     {
         QNetworkReply* reply = m_reverseRequests.value(Request);
-        LOG(VB_NETWORK, LOG_INFO, QString("Canceling '%1'").arg(reply->request().url().toString()));
+        LOG(VB_NETWORK, LOG_INFO, QString("Cancelling '%1'").arg(reply->request().url().toString()));
         reply->abort();
         reply->deleteLater();
         Request->DownRef();
