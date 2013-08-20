@@ -308,9 +308,15 @@ bool TorcNetworkedContext::event(QEvent *Event)
                         qint64 starttime      = map.value("starttime").toULongLong();
                         int priority          = map.value("priority").toInt();
 
+                        // create the new peer
+                        TorcNetworkService *service = new TorcNetworkService(name, uuid, event->Data().value("port").toInt(), addresses);
+                        service->SetAPIVersion(version);
+                        service->SetPriority(priority);
+                        service->SetStartTime(starttime);
+
+                        // and insert into the list model
                         int position = m_discoveredServices.size();
                         beginInsertRows(QModelIndex(), position, position);
-                        TorcNetworkService *service = new TorcNetworkService(name, uuid, event->Data().value("port").toInt(), addresses);
                         m_discoveredServices.append(service);
                         endInsertRows();
 
@@ -319,9 +325,6 @@ bool TorcNetworkedContext::event(QEvent *Event)
                         LOG(VB_GENERAL, LOG_INFO, QString("New Torc peer '%1'").arg(name.data()));
 
                         // try and connect - the txt records should have given us everything we need to know
-                        service->SetAPIVersion(version);
-                        service->SetPriority(priority);
-                        service->SetStartTime(starttime);
                         service->Connect();
                     }
                     else if (event->GetEvent() == Torc::ServiceWentAway && m_serviceList.contains(uuid))
