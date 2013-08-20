@@ -354,7 +354,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
 
     response << TorcHTTPRequest::ProtocolToString(m_protocol) << " " << TorcHTTPRequest::StatusToString(m_responseStatus) << "\r\n";
     response << "Date: " << QDateTime::currentDateTimeUtc().toString("d MMM yyyy hh:mm:ss 'GMT'") << "\r\n";
-    response << "Server: " << TorcHTTPServer::PlatformName() << ", Torc " << TORC_SOURCE_VERSION << "\r\n";
+    response << "Server: " << TorcHTTPServer::PlatformName() << "\r\n";
     response << "Connection: " << TorcHTTPRequest::ConnectionToString(m_connection) << "\r\n";
     response << "Accept-Ranges: bytes\r\n";
 

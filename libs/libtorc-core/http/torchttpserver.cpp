@@ -26,6 +26,7 @@
 #include <QCoreApplication>
 
 // Torc
+#include "version.h"
 #include "torccompat.h"
 #include "torclocalcontext.h"
 #include "torclogging.h"
@@ -182,12 +183,13 @@ TorcHTTPServer::TorcHTTPServer()
     if (!initialised)
     {
         initialised = true;
+        gPlatform = QString("%1, Version: %2 ").arg(QCoreApplication::applicationName()).arg(TORC_SOURCE_VERSION);
 #ifdef Q_OS_WIN
-        gPlatform = QString("Windows %1.%2").arg(LOBYTE(LOWORD(GetVersion()))).arg(HIBYTE(LOWORD(GetVersion())));
+        gPlatform += QString("(Windows %1.%2)").arg(LOBYTE(LOWORD(GetVersion()))).arg(HIBYTE(LOWORD(GetVersion())));
 #else
         struct utsname info;
         uname(&info);
-        gPlatform = QString("%1 %2").arg(info.sysname).arg(info.release);
+        gPlatform += QString("(%1 %2)").arg(info.sysname).arg(info.release);
 #endif
     }
 
