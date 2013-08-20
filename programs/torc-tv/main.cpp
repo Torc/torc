@@ -23,6 +23,8 @@ int main(int argc, char *argv[])
 {
     // create the application, name it and name the main thread
     QGuiApplication app(argc, argv);
+    // the 'torc-' prefix is used for identification purposes elsewhere, don't change it
+    QCoreApplication::setApplicationName("torc-tv");
     QThread::currentThread()->setObjectName(TORC_MAIN_THREAD);
 
     int ret = GENERIC_EXIT_OK;

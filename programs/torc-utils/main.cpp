@@ -13,7 +13,8 @@
 int main(int argc, char **argv)
 {
     new QCoreApplication(argc, argv);
-    QCoreApplication::setApplicationName(QObject::tr("torc-utils"));
+    // the 'torc-' prefix is used for identification purposes elsewhere, don't change it
+    QCoreApplication::setApplicationName("torc-utils");
     QThread::currentThread()->setObjectName(TORC_MAIN_THREAD);
 
     int ret = GENERIC_EXIT_OK;
