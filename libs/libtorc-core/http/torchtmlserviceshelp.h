@@ -21,12 +21,14 @@ class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public QObject, public TorcHTTPSer
     Q_CLASSINFO("GetStartTime",   "type=starttime")
     Q_CLASSINFO("GetPriority",    "type=priority")
     Q_CLASSINFO("GetUuid",        "type=uuid")
+    Q_CLASSINFO("GetDetails",     "type=details")
 
   public:
     TorcHTMLServicesHelp(TorcHTTPServer *Server);
     void ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection* Connection);
 
   public slots:
+    QVariantMap GetDetails     (void);
     QVariantMap GetServiceList (void);
     qint64      GetStartTime   (void);
     int         GetPriority    (void);

@@ -22,6 +22,8 @@
 
 // Qt
 #include <QCoreApplication>
+#include <QMetaObject>
+#include <QMetaMethod>
 #include <QObject>
 
 // Torc
@@ -85,6 +87,26 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPServer* Server, TorcHTTPRe
     Request->SetStatus(HTTP_OK);
     Request->SetResponseType(HTTPResponseHTML);
     Request->SetResponseContent(result);
+}
+
+/*! \brief Return complete application information.
+ *
+ * This acts as a convenience method for peers to retrieve pertinant application
+ * information with one remote call.
+*/
+QVariantMap TorcHTMLServicesHelp::GetDetails(void)
+{
+    // NB keys here match those of the relevant stand alone methods. Take care not to break them.
+    QVariantMap results;
+
+    int index = TorcHTMLServicesHelp::staticMetaObject.indexOfClassInfo("Version");
+    results.insert("version",   index > -1 ? TorcHTMLServicesHelp::staticMetaObject.classInfo(index).value() : "unknown");
+    results.insert("services",  GetServiceList());
+    results.insert("starttime", GetStartTime());
+    results.insert("priority",  GetPriority());
+    results.insert("uuid",      GetUuid());
+
+    return results;
 }
 
 QVariantMap TorcHTMLServicesHelp::GetServiceList(void)
