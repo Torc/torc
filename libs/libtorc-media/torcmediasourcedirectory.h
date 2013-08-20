@@ -29,13 +29,13 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher, pu
     virtual ~TorcMediaSourceDirectory();
 
     Q_PROPERTY(QStringList configuredPaths READ GetConfiguredPaths NOTIFY configuredPathsChanged)
-    Q_PROPERTY(int         version         READ GetVersion         NOTIFY versionChanged)
+    Q_PROPERTY(int         version         READ GetMediaVersion    NOTIFY versionChanged)
 
   public slots:
     void            AddPath            (const QString &Path, bool Recursive);
     void            RemovePath         (const QString &Path);
     QStringList     GetConfiguredPaths (void);
-    int             GetVersion         (void);
+    int             GetMediaVersion         (void);
 
   signals:
     void            versionChanged     (void);

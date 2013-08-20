@@ -159,7 +159,7 @@ QStringList TorcMediaSourceDirectory::GetConfiguredPaths(void)
     return configuredPaths;
 }
 
-int TorcMediaSourceDirectory::GetVersion(void)
+int TorcMediaSourceDirectory::GetMediaVersion(void)
 {
     return realVersion.fetchAndAddOrdered(0);
 }
