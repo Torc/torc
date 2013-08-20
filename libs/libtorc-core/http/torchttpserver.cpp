@@ -295,8 +295,15 @@ bool TorcHTTPServer::Open(void)
     // advertise service if not already doing so
     if (!m_httpBonjourReference || !m_torcBonjourReference)
     {
+        // add the 'root' apiversion, as would be returned by '/services/GetVersion'
+        int index = TorcHTMLServicesHelp::staticMetaObject.indexOfClassInfo("Version");
+
         QMap<QByteArray,QByteArray> map;
         map.insert("uuid", gLocalContext->GetUuid().toLatin1());
+        map.insert("apiversion", (index > -1) ? TorcHTMLServicesHelp::staticMetaObject.classInfo(index).value() : "unknown");
+        map.insert("priority",   QByteArray::number(gLocalContext->GetPriority()));
+        map.insert("starttime",  QByteArray::number(gLocalContext->GetStartTime()));
+
         QByteArray name(QCoreApplication::applicationName().toLatin1());
         name.append(" on ");
         name.append(QHostInfo::localHostName());
