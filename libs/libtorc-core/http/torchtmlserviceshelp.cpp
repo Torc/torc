@@ -25,6 +25,7 @@
 #include <QObject>
 
 // Torc
+#include "torclocalcontext.h"
 #include "torchttpserver.h"
 #include "torchttprequest.h"
 #include "torchttpservice.h"
@@ -96,4 +97,19 @@ QVariantMap TorcHTMLServicesHelp::GetServiceList(void)
         results.insert(it.value(), QVariant(it.key()));
 
     return results;
+}
+
+qint64 TorcHTMLServicesHelp::GetStartTime(void)
+{
+    return gLocalContext->GetStartTime();
+}
+
+int TorcHTMLServicesHelp::GetPriority(void)
+{
+    return gLocalContext->GetPriority();
+}
+
+QString TorcHTMLServicesHelp::GetUuid(void)
+{
+    return gLocalContext->GetUuid();
 }
