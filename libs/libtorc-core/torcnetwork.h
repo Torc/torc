@@ -12,6 +12,8 @@
 #include "torctimer.h"
 #include "torcnetworkrequest.h"
 
+#define NETWORK_TIMEOUT 20000
+
 #define DEFAULT_MAC_ADDRESS QString("00:00:00:00:00:00")
 #define DEFAULT_STREAMED_BUFFER_SIZE (1024 * 1024 * 10)
 #define DEFAULT_STREAMED_READ_SIZE   (32768)
