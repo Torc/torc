@@ -335,6 +335,11 @@ QString TorcNetworkRequest::GetContentType(void)
     return m_contentType;
 }
 
+QByteArray& TorcNetworkRequest::GetBuffer(void)
+{
+    return m_buffer;
+}
+
 QByteArray TorcNetworkRequest::ReadAll(int Timeout)
 {
     if (m_bufferSize)
