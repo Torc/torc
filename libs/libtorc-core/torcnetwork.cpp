@@ -109,6 +109,37 @@ void TorcNetwork::Poke(TorcNetworkRequest *Request)
         QMetaObject::invokeMethod(gNetwork, "PokeSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request));
 }
 
+/*! \brief Queue an asynchronous HTTP request.
+ *
+ * This is a method for Parent objects that are QObject subclasses residing in a full QThread.
+ * The parent must implement a RequestReady(TorcNetworkRequest*) public slot, which will be invoked
+ * once the download is complete. There is no need to cancel the request unless it is no longer required.
+*/
+bool TorcNetwork::GetAsynchronous(TorcNetworkRequest *Request, QObject *Parent)
+{
+    if (!Request || !Parent)
+        return false;
+
+    if (Request->m_bufferSize)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Cannot queue asynchronous request for streamed buffer");
+        return false;
+    }
+
+    if (Parent->metaObject()->indexOfMethod(QMetaObject::normalizedSignature("RequestReady(TorcNetworkRequest*)")) < 0)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Request's parent does not have RequestReady method");
+        return false;
+    }
+
+    QMutexLocker locker(gNetworkLock);
+
+    if (gNetwork->IsOnline() && gNetwork->IsAllowedOutbound())
+        return QMetaObject::invokeMethod(gNetwork, "GetAsynchronousSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request), Q_ARG(QObject*, Parent));
+
+    return false;
+}
+
 void TorcNetwork::Setup(bool Create)
 {
     QMutexLocker locker(gNetworkLock);
@@ -338,6 +369,16 @@ void TorcNetwork::CancelSafe(TorcNetworkRequest *Request)
         Request->DownRef();
         m_reverseRequests.remove(Request);
         m_requests.remove(reply);
+
+        if (m_asynchronousRequests.contains(Request))
+        {
+            QObject *parent = m_asynchronousRequests.value(Request);
+            m_asynchronousRequests.remove(Request);
+
+            if (!QMetaObject::invokeMethod(parent, "RequestReady", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request)))
+                LOG(VB_GENERAL, LOG_ERR, "Error sending RequestReady");
+        }
+
         return;
     }
 }
@@ -346,6 +387,24 @@ void TorcNetwork::PokeSafe(TorcNetworkRequest *Request)
 {
     if (m_reverseRequests.contains(Request))
         Request->Write(m_reverseRequests.value(Request));
+}
+
+void TorcNetwork::GetAsynchronousSafe(TorcNetworkRequest *Request, QObject *Parent)
+{
+    if (!Request || !Parent)
+        return;
+
+    if (m_asynchronousRequests.contains(Request))
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Asynchronous request is already queued - ignoring");
+        return;
+    }
+
+    if (m_online)
+    {
+        m_asynchronousRequests.insert(Request, Parent);
+        GetSafe(Request);
+    }
 }
 
 void TorcNetwork::ConfigurationAdded(const QNetworkConfiguration &Config)
@@ -514,6 +573,10 @@ void TorcNetwork::Finished(void)
         }
 
         request->m_replyFinished = true;
+
+        // we need to manage async requests
+        if (m_asynchronousRequests.contains(request))
+            CancelSafe(request);
     }
 }
 
@@ -550,16 +613,12 @@ void TorcNetwork::DownloadProgress(qint64 Received, qint64 Total)
 
 void TorcNetwork::CloseConnections(void)
 {
-    QMap<QNetworkReply*,TorcNetworkRequest*>::iterator it = m_requests.begin();
-    for ( ; it != m_requests.end(); ++it)
-    {
-        it.key()->abort();
-        it.key()->deleteLater();
-        it.value()->DownRef();
-    }
+    while (!m_requests.isEmpty())
+        CancelSafe(m_requests.end().value());
 
     m_requests.clear();
     m_reverseRequests.clear();
+    m_asynchronousRequests.clear();
 }
 
 void TorcNetwork::UpdateConfiguration(bool Creating)

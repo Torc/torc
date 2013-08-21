@@ -44,6 +44,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static bool Get                 (TorcNetworkRequest* Request);
     static void Cancel              (TorcNetworkRequest* Request);
     static void Poke                (TorcNetworkRequest* Request);
+    static bool GetAsynchronous     (TorcNetworkRequest* Request, QObject *Parent);
 
   protected slots:
     // QNetworkConfigurationManager
@@ -66,6 +67,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     void    GetSafe                 (TorcNetworkRequest* Request);
     void    CancelSafe              (TorcNetworkRequest* Request);
     void    PokeSafe                (TorcNetworkRequest* Request);
+    void    GetAsynchronousSafe     (TorcNetworkRequest* Request, QObject *Parent);
 
   public:
     virtual ~TorcNetwork();
@@ -100,6 +102,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
 
     QMap<QNetworkReply*,TorcNetworkRequest*> m_requests;
     QMap<TorcNetworkRequest*,QNetworkReply*> m_reverseRequests;
+    QMap<TorcNetworkRequest*,QObject*>       m_asynchronousRequests;
 };
 
 extern TORC_CORE_PUBLIC TorcNetwork *gNetwork;
