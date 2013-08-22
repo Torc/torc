@@ -44,6 +44,7 @@ class TorcNetworkService : public QObject
     void            RequestReady    (TorcNetworkRequest *Request);
 
   public:
+    void            SetHost         (const QString &Host);
     void            SetStartTime    (qint64 StartTime);
     void            SetPriority     (int    Priority);
     void            SetAPIVersion   (const QString &Version);
@@ -55,11 +56,13 @@ class TorcNetworkService : public QObject
     QString         m_name;
     QString         m_uuid;
     int             m_port;
+    QString         m_host;
     QString         m_uiAddress;
     QStringList     m_addresses;
     qint64          m_startTime;
     int             m_priority;
     QString         m_apiVersion;
+    int             m_preferredAddress;
 
     int                   m_abort;
     TorcNetworkRequest   *m_getPeerDetails;
