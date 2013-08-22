@@ -53,6 +53,7 @@ class TorcNetworkService : public QObject
     void            ScheduleRetry   (void);
 
   private:
+    QString         m_debugString;
     QString         m_name;
     QString         m_uuid;
     int             m_port;

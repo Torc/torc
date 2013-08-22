@@ -37,7 +37,6 @@ TorcNetworkedContext *gNetworkedContext = NULL;
 /*! \class TorcNetworkService
  *  \brief Encapsulates information on a discovered Torc peer.
  *
- * \todo Fix m_uiAddress use in debugging
  * \todo Interrogate TorcNetwork for client initiated WebSocket (and vice versa)
  * \todo Should retries be limited? If support is added for manually specified peers (e.g. remote) and that
  *       peer is offline, need a better approach.
@@ -67,6 +66,8 @@ TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID,
             m_preferredAddress = i;
         m_uiAddress += m_addresses[i] + ":" + port + " ";
     }
+
+    m_debugString = m_addresses[m_preferredAddress] + ":" + port;
 }
 
 TorcNetworkService::~TorcNetworkService()
@@ -146,7 +147,7 @@ void TorcNetworkService::Connect(void)
     // lower priority peers should initiate the connection
     if (m_priority < gLocalContext->GetPriority())
     {
-        LOG(VB_GENERAL, LOG_INFO, QString("Not connecting to %1 - we have higher priority").arg(m_uiAddress));
+        LOG(VB_GENERAL, LOG_INFO, QString("Not connecting to %1 - we have higher priority").arg(m_debugString));
         return;
     }
 
@@ -154,11 +155,11 @@ void TorcNetworkService::Connect(void)
     // yes - the start times could be the same...
     if (m_priority == gLocalContext->GetPriority() && m_startTime > gLocalContext->GetStartTime())
     {
-        LOG(VB_GENERAL, LOG_INFO, QString("Not connecting to %1 - we started earlier").arg(m_uiAddress));
+        LOG(VB_GENERAL, LOG_INFO, QString("Not connecting to %1 - we started earlier").arg(m_debugString));
         return;
     }
 
-    LOG(VB_GENERAL, LOG_INFO, QString("Trying to connect to %1").arg(m_uiAddress));
+    LOG(VB_GENERAL, LOG_INFO, QString("Trying to connect to %1").arg(m_debugString));
 
     m_webSocketThread = new TorcWebSocketThread(host, m_port);
     m_webSocketThread->Socket()->moveToThread(m_webSocketThread->GetQThread());
@@ -210,7 +211,7 @@ void TorcNetworkService::Connected(void)
     TorcWebSocket *socket = static_cast<TorcWebSocket*>(sender());
     if (m_webSocketThread && m_webSocketThread->Socket() == socket)
     {
-        LOG(VB_GENERAL, LOG_INFO, QString("Connection established with %1").arg(m_uiAddress));
+        LOG(VB_GENERAL, LOG_INFO, QString("Connection established with %1").arg(m_debugString));
     }
     else
     {
@@ -223,7 +224,7 @@ void TorcNetworkService::Disconnected(void)
     QThread *thread = static_cast<QThread*>(sender());
     if (m_webSocketThread && m_webSocketThread->GetQThread() == thread)
     {
-        LOG(VB_GENERAL, LOG_INFO, QString("Connection with %1 closed").arg(m_uiAddress));
+        LOG(VB_GENERAL, LOG_INFO, QString("Connection with %1 closed").arg(m_debugString));
         m_webSocketThread->quit();
         m_webSocketThread->wait();
         delete m_webSocketThread;
@@ -306,6 +307,7 @@ QStringList TorcNetworkService::GetAddresses(void)
 void TorcNetworkService::SetHost(const QString &Host)
 {
     m_host = Host;
+    m_debugString = m_host + ":" + QString::number(m_port);
 }
 
 void TorcNetworkService::SetStartTime(qint64 StartTime)
