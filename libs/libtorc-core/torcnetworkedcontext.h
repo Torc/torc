@@ -9,6 +9,7 @@
 #include "torccoreexport.h"
 #include "torclocalcontext.h"
 
+class TorcNetworkRequest;
 class TorcWebSocketThread;
 
 class TorcNetworkService : public QObject
@@ -37,14 +38,18 @@ class TorcNetworkService : public QObject
     int             GetPriority     (void);
     QString         GetAPIVersion   (void);
 
+    void            Connect         (void);
     void            Connected       (void);
     void            Disconnected    (void);
+    void            RequestReady    (TorcNetworkRequest *Request);
 
   public:
-    void            Connect         (void);
     void            SetStartTime    (qint64 StartTime);
     void            SetPriority     (int    Priority);
     void            SetAPIVersion   (const QString &Version);
+
+  private:
+    void            ScheduleRetry   (void);
 
   private:
     QString         m_name;
@@ -55,11 +60,12 @@ class TorcNetworkService : public QObject
     qint64          m_startTime;
     int             m_priority;
     QString         m_apiVersion;
-    int             m_major;
-    int             m_minor;
-    int             m_revision;
 
+    int                   m_abort;
+    TorcNetworkRequest   *m_getPeerDetails;
     TorcWebSocketThread  *m_webSocketThread;
+    bool                  m_retryScheduled;
+    int                   m_retryInterval;
 };
 
 Q_DECLARE_METATYPE(TorcNetworkService*);

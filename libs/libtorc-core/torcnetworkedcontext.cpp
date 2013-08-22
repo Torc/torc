@@ -29,6 +29,7 @@
 #include "upnp/torcupnp.h"
 #include "upnp/torcssdp.h"
 #include "torcwebsocket.h"
+#include "torcnetworkrequest.h"
 #include "torcnetworkedcontext.h"
 
 TorcNetworkedContext *gNetworkedContext = NULL;
@@ -36,7 +37,11 @@ TorcNetworkedContext *gNetworkedContext = NULL;
 /*! \class TorcNetworkService
  *  \brief Encapsulates information on a discovered Torc peer.
  *
- * \todo Interrogate peer for priority etc if not discovered via Bonjour
+ * \todo Workaround Qt IPv6 link-local address problem in QUrl
+ * \todo Fix m_uiAddress use in debugging
+ * \todo Interrogate TorcNetwork for client initiated WebSocket (and vice versa)
+ * \todo Should retries be limited? If support is added for manually specified peers (e.g. remote) and that
+ *       peer is offline, need a better approach.
 */
 TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QStringList &Addresses)
   : m_name(Name),
@@ -47,10 +52,11 @@ TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID,
     m_startTime(0),
     m_priority(-1),
     m_apiVersion(QString("unknown")),
-    m_major(0),
-    m_minor(0),
-    m_revision(0),
-    m_webSocketThread(NULL)
+    m_abort(0),
+    m_getPeerDetails(NULL),
+    m_webSocketThread(NULL),
+    m_retryScheduled(false),
+    m_retryInterval(10000)
 {
     QString port = QString::number(m_port);
     foreach (QString address, Addresses)
@@ -59,6 +65,17 @@ TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID,
 
 TorcNetworkService::~TorcNetworkService()
 {
+    // cancel any outstanding requests
+    m_abort = 1;
+
+    if (m_getPeerDetails)
+    {
+        TorcNetwork::Cancel(m_getPeerDetails);
+        m_getPeerDetails->DownRef();
+        m_getPeerDetails = NULL;
+    }
+
+    // delete websocket
     if (m_webSocketThread)
     {
         m_webSocketThread->quit();
@@ -71,16 +88,49 @@ TorcNetworkService::~TorcNetworkService()
 /*! \brief Establish a WebSocket connection to the peer if necessary.
  *
  * A connection is only established if we have the necessary details (address, API version, priority,
- * start time etc) and this application should act as the client.
+ * start time etc) and this application should act as the client. If we have an address and port only
+ * (e.g. as provided by an SSDP search response), then perform an HTTP query for the peer details.
  *
  * A client has a lower priority or later start time in the event of matching priorities.
 */
 void TorcNetworkService::Connect(void)
 {
-    // connect to the peer
-    if (m_addresses.isEmpty() || m_startTime == 0 || m_apiVersion == "unknown" || m_priority < 0)
+    // clear retry flag
+    m_retryScheduled = false;
+
+    // already connected
+    if (m_webSocketThread)
     {
-        LOG(VB_GENERAL, LOG_ERR, QString("Unable to connect to %1 - insufficient information").arg(m_uiAddress));
+        LOG(VB_GENERAL, LOG_ERR, "Already connected to peer - ignoring Connect call");
+        return;
+    }
+
+    // connect to the peer
+    if (m_addresses.isEmpty())
+        return;
+
+    // details not available, ask the peer
+    if (m_startTime == 0 || m_apiVersion == "unknown" || m_priority < 0)
+    {
+        if (m_getPeerDetails)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Details query already running - ignoring");
+            return;
+        }
+
+        LOG(VB_GENERAL, LOG_INFO, "Querying peer details");
+
+        QUrl url(m_addresses[0]);
+        url.setPort(m_port);
+        url.setScheme("http");
+        url.setPath("/services/GetDetails");
+
+        QNetworkRequest networkrequest(url);
+        networkrequest.setRawHeader("Accept", "application/json");
+
+        m_getPeerDetails = new TorcNetworkRequest(networkrequest, QNetworkAccessManager::GetOperation, 0, &m_abort);
+        TorcNetwork::GetAsynchronous(m_getPeerDetails, this);
+
         return;
     }
 
@@ -169,10 +219,73 @@ void TorcNetworkService::Disconnected(void)
         m_webSocketThread->wait();
         delete m_webSocketThread;
         m_webSocketThread = NULL;
+
+        // try and reconnect. If this is a discovered service, the socket was probably closed
+        // deliberately and this object is about to be deleted anyway.
+        ScheduleRetry();
     }
     else
     {
         LOG(VB_GENERAL, LOG_ERR, "Unknown WebSocket disconnected...");
+    }
+}
+
+void TorcNetworkService::RequestReady(TorcNetworkRequest *Request)
+{
+    if (m_getPeerDetails && (Request == m_getPeerDetails))
+    {
+        QJsonDocument jsonresult = QJsonDocument::fromJson(Request->GetBuffer());
+        m_getPeerDetails->DownRef();
+        m_getPeerDetails = NULL;
+
+        if (!jsonresult.isNull() && jsonresult.isObject())
+        {
+            QJsonObject object = jsonresult.object();
+
+            if (object.contains("details"))
+            {
+                QJsonObject details     = object["details"].toObject();
+                QJsonValueRef priority  = details["priority"];
+                QJsonValueRef starttime = details["starttime"];
+                QJsonValueRef version   = details["version"];
+
+                if (!priority.isNull() && !starttime.isNull() && !version.isNull())
+                {
+                    m_apiVersion = version.toString();
+                    m_priority   = (int)priority.toDouble();
+                    m_startTime  = (qint64)starttime.toDouble();
+
+                    Connect();
+                    return;
+                }
+                else
+                {
+                    LOG(VB_GENERAL, LOG_ERR, "Failed to retrieve peer information");
+                }
+            }
+            else
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Failed to find 'details' in peer response");
+            }
+        }
+        else
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Error parsing API return - expecting JSON object");
+        }
+
+        LOG(VB_GENERAL, LOG_ERR, QString("Response:\r\n%1").arg(jsonresult.toJson().data()));
+
+        // try again...
+        ScheduleRetry();
+    }
+}
+
+void TorcNetworkService::ScheduleRetry(void)
+{
+    if (!m_retryScheduled)
+    {
+        QTimer::singleShot(m_retryInterval, this, SLOT(Connect()));
+        m_retryScheduled = true;
     }
 }
 
