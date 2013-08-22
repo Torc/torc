@@ -787,6 +787,7 @@ class TorcBonjourPriv
                         data.insert("port", (*it).m_port);
                         data.insert("addresses", addresses);
                         data.insert("txtrecords", (*it).m_txt);
+                        data.insert("host", (*it).m_host.data());
                         TorcEvent event(Torc::ServiceDiscovered, data);
                         gLocalContext->Notify(event);
                     }
