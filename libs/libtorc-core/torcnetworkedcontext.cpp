@@ -37,9 +37,10 @@ TorcNetworkedContext *gNetworkedContext = NULL;
 /*! \class TorcNetworkService
  *  \brief Encapsulates information on a discovered Torc peer.
  *
- * \todo Interrogate TorcNetwork for client initiated WebSocket (and vice versa)
+ * \todo TorcNetworkService properties are marked as constant, hence changes will not be propagated to list model.
  * \todo Should retries be limited? If support is added for manually specified peers (e.g. remote) and that
  *       peer is offline, need a better approach.
+ * \todo Add JSON-RPC call in QueryPeerDetails when ready
 */
 TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QStringList &Addresses)
   : m_name(Name),
@@ -49,7 +50,7 @@ TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID,
     m_addresses(Addresses),
     m_startTime(0),
     m_priority(-1),
-    m_apiVersion(QString("unknown")),
+    m_apiVersion(QString()),
     m_preferredAddress(0),
     m_abort(0),
     m_getPeerDetails(NULL),
@@ -105,42 +106,29 @@ void TorcNetworkService::Connect(void)
     // clear retry flag
     m_retryScheduled = false;
 
+    // sanity check
+    if (m_addresses.isEmpty())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "No valid peer addresses");
+        return;
+    }
+
+    // do we have details for this peer
+    // 3 current possibilities:
+    //  - the result of Bonjour browser - we wil have all the details from the txt records and can create a WebSocket if needed.
+    //  - the result of SSDP discovery - we will have no details, so perform HTTP query and then create WebSocket if needed.
+    //  - an incoming client peer WebSocket - we will have no details, so peform RPC call over WebSocket to retrieve details.
+
+    if (m_startTime == 0 || m_apiVersion.isEmpty() || m_priority < 0)
+    {
+        QueryPeerDetails();
+        return;
+    }
+
     // already connected
     if (m_webSocketThread)
     {
         LOG(VB_GENERAL, LOG_ERR, "Already connected to peer - ignoring Connect call");
-        return;
-    }
-
-    // connect to the peer
-    if (m_addresses.isEmpty())
-        return;
-
-    // use the host if available, otherwise the preferred address (IPV4 over IPv6)
-    QString host = m_host.isEmpty() ? m_addresses[m_preferredAddress] : m_host;
-
-    // details not available, ask the peer
-    if (m_startTime == 0 || m_apiVersion == "unknown" || m_priority < 0)
-    {
-        if (m_getPeerDetails)
-        {
-            LOG(VB_GENERAL, LOG_ERR, "Details query already running - ignoring");
-            return;
-        }
-
-        LOG(VB_GENERAL, LOG_INFO, "Querying peer details");
-
-        QUrl url(host);
-        url.setPort(m_port);
-        url.setScheme("http");
-        url.setPath("/services/GetDetails");
-
-        QNetworkRequest networkrequest(url);
-        networkrequest.setRawHeader("Accept", "application/json");
-
-        m_getPeerDetails = new TorcNetworkRequest(networkrequest, QNetworkAccessManager::GetOperation, 0, &m_abort);
-        TorcNetwork::GetAsynchronous(m_getPeerDetails, this);
-
         return;
     }
 
@@ -158,6 +146,9 @@ void TorcNetworkService::Connect(void)
         LOG(VB_GENERAL, LOG_INFO, QString("Not connecting to %1 - we started earlier").arg(m_debugString));
         return;
     }
+
+    // use the host if available, otherwise the preferred address (IPV4 over IPv6)
+    QString host = m_host.isEmpty() ? m_addresses[m_preferredAddress] : m_host;
 
     LOG(VB_GENERAL, LOG_INFO, QString("Trying to connect to %1").arg(m_debugString));
 
@@ -297,6 +288,64 @@ void TorcNetworkService::ScheduleRetry(void)
         QTimer::singleShot(m_retryInterval, this, SLOT(Connect()));
         m_retryScheduled = true;
     }
+}
+
+void TorcNetworkService::QueryPeerDetails(void)
+{
+    // this is a private method only called from Connect. No need to validate m_addresses or current details.
+
+    // use the host if available, otherwise the preferred address (IPV4 over IPv6)
+    QString host = m_host.isEmpty() ? m_addresses[m_preferredAddress] : m_host;
+
+    if (!m_webSocketThread)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Querying peer details over HTTP");
+
+        QUrl url(host);
+        url.setPort(m_port);
+        url.setScheme("http");
+        url.setPath("/services/GetDetails");
+
+        QNetworkRequest networkrequest(url);
+        networkrequest.setRawHeader("Accept", "application/json");
+
+        m_getPeerDetails = new TorcNetworkRequest(networkrequest, QNetworkAccessManager::GetOperation, 0, &m_abort);
+        TorcNetwork::GetAsynchronous(m_getPeerDetails, this);
+
+        return;
+    }
+
+    // perform JSON-RPC call over socket
+    // TODO
+}
+
+void TorcNetworkService::CreateSocket(TorcHTTPRequest *Request, QTcpSocket *Socket)
+{
+    if (!Request || !Socket)
+        return;
+
+    // guard against incorrect use
+    if (m_webSocketThread)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Already have websocket - deleting new request");
+        delete Request;
+        Socket->disconnectFromHost();
+        Socket->waitForDisconnected();
+        Socket->close();
+        Socket->deleteLater();
+        return;
+    }
+
+    // create the socket
+    m_webSocketThread = new TorcWebSocketThread(Request, Socket);
+    Socket->moveToThread(m_webSocketThread->GetQThread());
+    m_webSocketThread->Socket()->moveToThread(m_webSocketThread->GetQThread());
+
+    connect(m_webSocketThread->GetQThread(), SIGNAL(started()),  m_webSocketThread->Socket(), SLOT(Start()));
+    connect(m_webSocketThread->GetQThread(), SIGNAL(finished()), this,                        SLOT(Disconnected()));
+    connect(m_webSocketThread->Socket(),     SIGNAL(ConnectionEstablished()), this,           SLOT(Connected()));
+
+    m_webSocketThread->start();
 }
 
 QStringList TorcNetworkService::GetAddresses(void)
@@ -488,6 +537,71 @@ bool TorcNetworkedContext::event(QEvent *Event)
     }
 
     return false;
+}
+
+/*! \brief Respond to a valid WebSocket upgrade request and schedule creation of a WebSocket on the give QTcpSocket
+ *
+ * \sa TorcWebSocket
+ * \sa TorcHTTPServer::UpgradeSocket
+*/
+void TorcNetworkedContext::UpgradeSocket(TorcHTTPRequest *Request, QTcpSocket *Socket)
+{
+    if (!Request || !Socket)
+        return;
+
+    // 'push' the socket into the correct thread
+    Socket->moveToThread(this->thread());
+
+    // and create the WebSocket in the correct thread
+    QMetaObject::invokeMethod(this, "HandleUpgrade", Qt::AutoConnection, Q_ARG(TorcHTTPRequest*, Request), Q_ARG(QTcpSocket*, Socket));
+}
+
+void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *Socket)
+{
+    if (!Request || !Socket)
+        return;
+
+    QString uuid = Request->Headers()->value("Torc-UUID").trimmed();
+    TorcNetworkService *service = NULL;
+
+    if (!uuid.isEmpty() && m_serviceList.contains(uuid))
+    {
+        for (int i = 0; i < m_discoveredServices.size(); ++i)
+        {
+            if (m_discoveredServices[i]->GetUuid() == uuid)
+            {
+                service = m_discoveredServices[i];
+                LOG(VB_GENERAL, LOG_INFO, QString("Received WebSocket for known peer ('%1')").arg(service->GetName()));
+                break;
+            }
+        }
+    }
+    else if (!uuid.isEmpty())
+    {
+        QString name;
+        QString agent = Request->Headers()->value("User-Agent").trimmed();
+        int index = agent.indexOf(',');
+        if (index > -1)
+            name = agent.left(index);
+
+        LOG(VB_GENERAL, LOG_INFO, QString("Received WebSocket for new peer ('%1')").arg(name));
+        QStringList address;
+        address.append(Socket->peerAddress().toString());
+        service = new TorcNetworkService(name, uuid, Socket->peerPort(), address);
+    }
+
+    if (!service)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to fulfill upgrade request - deleting");
+        delete Request;
+        Socket->disconnectFromHost();
+        Socket->waitForDisconnected();
+        Socket->close();
+        Socket->deleteLater();
+    }
+
+    // create the socket
+    service->CreateSocket(Request, Socket);
 }
 
 static class TorcNetworkedContextObject : public TorcAdminObject

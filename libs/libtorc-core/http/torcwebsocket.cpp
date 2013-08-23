@@ -29,6 +29,7 @@
 
 // Torc
 #include "torclogging.h"
+#include "torcnetworkedcontext.h"
 #include "torchttpconnection.h"
 #include "torchttprequest.h"
 #include "torcwebsocket.h"
@@ -338,7 +339,13 @@ bool TorcWebSocket::ProcessUpgradeRequest(TorcHTTPConnection *Connection, TorcHT
     Request->SetResponseHeader("Upgrade", "websocket");
     Request->SetResponseHeader("Sec-WebSocket-Accept", nonce);
 
-    TorcHTTPServer::UpgradeSocket(Request, Socket);
+    // if this is a Torc peer connecting, we want TorcNetworkedContext to handle this
+    // socket, otherwise pass to TorcHTTPServer.
+    // NB TorcNetworkedContext starts before TorcHTTPServer so we can assume gNetworkedService should be valid
+    if (Request->Headers()->contains("Torc-UUID") && gNetworkedContext)
+        gNetworkedContext->UpgradeSocket(Request, Socket);
+    else
+        TorcHTTPServer::UpgradeSocket(Request, Socket);
 
     return true;
 }
@@ -400,6 +407,7 @@ void TorcWebSocket::Start(void)
                 connect(m_socket, SIGNAL(disconnected()), m_parent->GetQThread(), SLOT(quit()));
 
             m_upgradeRequest->Respond(m_socket, &m_abort);
+            emit ConnectionEstablished();
             return;
         }
     }
@@ -842,6 +850,7 @@ void TorcWebSocket::Connected(void)
     stream << "Connection: Upgrade\r\n";
     stream << "Sec-WebSocket-Version: 13\r\n";
     stream << "Sec-WebSocket-Key: " << nonce.data() << "\r\n";
+    stream << "Torc-UUID:" << gLocalContext->GetUuid() << "\r\n";
     stream << "\r\n";
     stream.flush();
 

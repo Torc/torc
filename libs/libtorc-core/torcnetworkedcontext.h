@@ -11,6 +11,8 @@
 
 class TorcNetworkRequest;
 class TorcWebSocketThread;
+class TorcHTTPRequest;
+class QTcpSocket;
 
 class TorcNetworkService : public QObject
 {
@@ -48,9 +50,11 @@ class TorcNetworkService : public QObject
     void            SetStartTime    (qint64 StartTime);
     void            SetPriority     (int    Priority);
     void            SetAPIVersion   (const QString &Version);
+    void            CreateSocket    (TorcHTTPRequest *Request, QTcpSocket *Socket);
 
   private:
     void            ScheduleRetry   (void);
+    void            QueryPeerDetails (void);
 
   private:
     QString         m_debugString;
@@ -85,6 +89,12 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public T
     QVariant                   data          (const QModelIndex &Index, int Role) const;
     QHash<int,QByteArray>      roleNames     (void) const;
     int                        rowCount      (const QModelIndex &Parent = QModelIndex()) const;
+
+    // TorcWebSocket
+    void                       UpgradeSocket (TorcHTTPRequest *Request, QTcpSocket *Socket);
+
+  protected slots:
+    void                       HandleUpgrade (TorcHTTPRequest *Request, QTcpSocket *Socket);
 
   protected:
     TorcNetworkedContext();
