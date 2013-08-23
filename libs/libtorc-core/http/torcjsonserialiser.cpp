@@ -53,7 +53,12 @@ void TorcJSONSerialiser::AddProperty(const QString &Name, const QVariant &Value)
 {
     QVariantMap map;
     map.insert(Name, Value);
+
+#if QT_VERSION >= 0x050100
     m_content = new QByteArray(QJsonDocument::fromVariant(map).toJson(QJsonDocument::Compact));
+#else
+    m_content = new QByteArray(QJsonDocument::fromVariant(map).toJson());
+#endif
 }
 
 void TorcJSONSerialiser::End(void)
