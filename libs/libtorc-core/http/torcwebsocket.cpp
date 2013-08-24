@@ -391,6 +391,32 @@ QString TorcWebSocket::CloseCodeToString(CloseCode Code)
     return QString("Unknown");
 }
 
+///\brief Convert SubProtocols to HTTP readable string.
+QString TorcWebSocket::SubProtocolsToString(WSSubProtocols Protocols)
+{
+    QStringList list;
+
+    if (Protocols.testFlag(SubProtocolJSONRPC))        list.append(QLatin1String("torc.json-rpc"));
+    if (Protocols.testFlag(SubProtocolXMLRPC))         list.append(QLatin1String("torc.xml-rpc"));
+    if (Protocols.testFlag(SubProtocolPLISTRPC))       list.append(QLatin1String("torc.plist-rpc"));
+    if (Protocols.testFlag(SubProtocolBINARYPLISTRPC)) list.append(QLatin1String("torc.x-plist-rpc"));
+
+    return list.join(",");
+}
+
+///\brief Parse supported WSSubProtocols from Protocols
+TorcWebSocket::WSSubProtocols TorcWebSocket::SubProtocolsFromString(const QString &Protocols)
+{
+    WSSubProtocols protocols = SubProtocolNone;
+
+    if (Protocols.contains(QLatin1String("torc.json-rpc")))    protocols |= SubProtocolJSONRPC;
+    if (Protocols.contains(QLatin1String("torc.xml-rpc")))     protocols |= SubProtocolXMLRPC;
+    if (Protocols.contains(QLatin1String("torc.plist-rpc")))   protocols |= SubProtocolPLISTRPC;
+    if (Protocols.contains(QLatin1String("torc.x-plist-rpc"))) protocols |= SubProtocolBINARYPLISTRPC;
+
+    return protocols;
+}
+
 ///\brief Initialise the websocket once its parent thread is ready.
 void TorcWebSocket::Start(void)
 {

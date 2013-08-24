@@ -20,6 +20,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     Q_ENUMS(WSVersion)
     Q_ENUMS(OpCode)
     Q_ENUMS(CloseCode)
+    Q_FLAGS(WSSubProtocol)
 
   public:
     enum WSVersion
@@ -33,6 +34,17 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
         Version8       = 8,
         Version13      = 13
     };
+
+    enum WSSubProtocol
+    {
+        SubProtocolNone           = (0 << 0),
+        SubProtocolJSONRPC        = (1 << 0),
+        SubProtocolXMLRPC         = (1 << 1),
+        SubProtocolPLISTRPC       = (1 << 2),
+        SubProtocolBINARYPLISTRPC = (1 << 3)
+    };
+
+    Q_DECLARE_FLAGS(WSSubProtocols, WSSubProtocol);
 
     enum OpCode
     {
@@ -79,6 +91,8 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     static bool     ProcessUpgradeRequest (TorcHTTPConnection *Connection, TorcHTTPRequest *Request, QTcpSocket *Socket);
     static QString  OpCodeToString        (OpCode Code);
     static QString  CloseCodeToString     (CloseCode Code);
+    static QString  SubProtocolsToString  (WSSubProtocols Protocols);
+    static WSSubProtocols SubProtocolsFromString (const QString &Protocols);
 
   signals:
     void            ConnectionEstablished (void);
@@ -136,6 +150,8 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     bool             m_closeReceived;
     bool             m_closeSent;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(TorcWebSocket::WSSubProtocols);
 
 class TORC_CORE_PUBLIC TorcWebSocketThread : public TorcThread
 {
