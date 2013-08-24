@@ -99,7 +99,7 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
         LOG(VB_GENERAL, LOG_INFO, QString("WebSocket using %1 subprotocol").arg(SubProtocolsToString(m_subProtocol)));
 }
 
-TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16 Port)
+TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16 Port, WSSubProtocol Protocol)
   : QObject(),
     m_parent(Parent),
     m_handShaking(true),
@@ -112,7 +112,7 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16
     m_serverSide(false),
     m_readState(ReadHeader),
     m_echoTest(false),
-    m_subProtocol(SubProtocolJSONRPC),
+    m_subProtocol(Protocol),
     m_frameFinalFragment(false),
     m_frameOpCode(OpContinuation),
     m_frameMasked(false),
@@ -1172,9 +1172,9 @@ TorcWebSocketThread::TorcWebSocketThread(TorcHTTPRequest *Request, QTcpSocket *S
 {
 }
 
-TorcWebSocketThread::TorcWebSocketThread(const QString &Address, quint16 Port)
+TorcWebSocketThread::TorcWebSocketThread(const QString &Address, quint16 Port, TorcWebSocket::WSSubProtocol Protocol)
   : TorcThread("websocket"),
-    m_webSocket(new TorcWebSocket(this, Address, Port))
+    m_webSocket(new TorcWebSocket(this, Address, Port, Protocol))
 {
 }
 
