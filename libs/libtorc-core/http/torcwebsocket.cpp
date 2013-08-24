@@ -1082,7 +1082,7 @@ void TorcWebSocket::HandleCloseRequest(QByteArray &Close)
 
 void TorcWebSocket::InitiateClose(CloseCode Close, const QString &Reason)
 {
-    if (!m_closeSent)
+    if (!m_closeSent && !m_handShaking)
     {
         QByteArray payload;
         payload.append((Close >> 8) & 0xff);
