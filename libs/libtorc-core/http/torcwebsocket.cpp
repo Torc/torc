@@ -404,17 +404,36 @@ QString TorcWebSocket::SubProtocolsToString(WSSubProtocols Protocols)
     return list.join(",");
 }
 
-///\brief Parse supported WSSubProtocols from Protocols
+///\brief Parse supported WSSubProtocols from Protocols.
 TorcWebSocket::WSSubProtocols TorcWebSocket::SubProtocolsFromString(const QString &Protocols)
 {
     WSSubProtocols protocols = SubProtocolNone;
 
-    if (Protocols.contains(QLatin1String("torc.json-rpc")))    protocols |= SubProtocolJSONRPC;
-    if (Protocols.contains(QLatin1String("torc.xml-rpc")))     protocols |= SubProtocolXMLRPC;
-    if (Protocols.contains(QLatin1String("torc.plist-rpc")))   protocols |= SubProtocolPLISTRPC;
-    if (Protocols.contains(QLatin1String("torc.x-plist-rpc"))) protocols |= SubProtocolBINARYPLISTRPC;
+    if (Protocols.contains(QLatin1String("torc.json-rpc"),    Qt::CaseInsensitive)) protocols |= SubProtocolJSONRPC;
+    if (Protocols.contains(QLatin1String("torc.xml-rpc"),     Qt::CaseInsensitive)) protocols |= SubProtocolXMLRPC;
+    if (Protocols.contains(QLatin1String("torc.plist-rpc"),   Qt::CaseInsensitive)) protocols |= SubProtocolPLISTRPC;
+    if (Protocols.contains(QLatin1String("torc.x-plist-rpc"), Qt::CaseInsensitive)) protocols |= SubProtocolBINARYPLISTRPC;
 
     return protocols;
+}
+
+///\brief Parse a prioritised list of supported WebSocket sub-protocols.
+QList<TorcWebSocket::WSSubProtocol> TorcWebSocket::SubProtocolsFromPrioritisedString(const QString &Protocols)
+{
+    QList<WSSubProtocol> results;
+
+    QStringList protocols = Protocols.split(",");
+    for (int i = 0; i < protocols.size(); ++i)
+    {
+        QString protocol = protocols[i].trimmed();
+
+        if      (!QString::compare(protocol, QLatin1String("torc.json-rpc"),    Qt::CaseInsensitive)) results.append(SubProtocolJSONRPC);
+        else if (!QString::compare(protocol, QLatin1String("torc.xml-rpc"),     Qt::CaseInsensitive)) results.append(SubProtocolXMLRPC);
+        else if (!QString::compare(protocol, QLatin1String("torc.plist-rpc"),   Qt::CaseInsensitive)) results.append(SubProtocolPLISTRPC);
+        else if (!QString::compare(protocol, QLatin1String("torc.x-plist-rpc"), Qt::CaseInsensitive)) results.append(SubProtocolBINARYPLISTRPC);
+    }
+
+    return results;
 }
 
 ///\brief Initialise the websocket once its parent thread is ready.

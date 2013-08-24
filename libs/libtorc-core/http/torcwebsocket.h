@@ -93,6 +93,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     static QString  CloseCodeToString     (CloseCode Code);
     static QString  SubProtocolsToString  (WSSubProtocols Protocols);
     static WSSubProtocols SubProtocolsFromString (const QString &Protocols);
+    static QList<WSSubProtocol> SubProtocolsFromPrioritisedString (const QString &Protocols);
 
   signals:
     void            ConnectionEstablished (void);
