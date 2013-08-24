@@ -536,7 +536,7 @@ bool TorcNetworkedContext::event(QEvent *Event)
         }
     }
 
-    return false;
+    return QAbstractListModel::event(Event);
 }
 
 /*! \brief Respond to a valid WebSocket upgrade request and schedule creation of a WebSocket on the give QTcpSocket
@@ -549,11 +549,18 @@ void TorcNetworkedContext::UpgradeSocket(TorcHTTPRequest *Request, QTcpSocket *S
     if (!Request || !Socket)
         return;
 
+    if (!gNetworkedContext)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Upgrade request but no TorcNetworkedContext singleton");
+        return;
+    }
+
     // 'push' the socket into the correct thread
-    Socket->moveToThread(this->thread());
+    Socket->moveToThread(gNetworkedContext->thread());
 
     // and create the WebSocket in the correct thread
-    QMetaObject::invokeMethod(this, "HandleUpgrade", Qt::AutoConnection, Q_ARG(TorcHTTPRequest*, Request), Q_ARG(QTcpSocket*, Socket));
+    if (!QMetaObject::invokeMethod(gNetworkedContext, "HandleUpgrade", Q_ARG(TorcHTTPRequest*, Request), Q_ARG(QTcpSocket*, Socket)))
+        LOG(VB_GENERAL, LOG_INFO, "Failed to invoke HandleUpgrade");
 }
 
 void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *Socket)
@@ -588,6 +595,8 @@ void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *S
         QStringList address;
         address.append(Socket->peerAddress().toString());
         service = new TorcNetworkService(name, uuid, Socket->peerPort(), address);
+        m_serviceList.append(uuid);
+        m_discoveredServices.append(service);
     }
 
     if (!service)

@@ -91,7 +91,7 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public T
     int                        rowCount      (const QModelIndex &Parent = QModelIndex()) const;
 
     // TorcWebSocket
-    void                       UpgradeSocket (TorcHTTPRequest *Request, QTcpSocket *Socket);
+    static void                UpgradeSocket (TorcHTTPRequest *Request, QTcpSocket *Socket);
 
   protected slots:
     void                       HandleUpgrade (TorcHTTPRequest *Request, QTcpSocket *Socket);

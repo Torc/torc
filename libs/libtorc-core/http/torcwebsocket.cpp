@@ -342,8 +342,8 @@ bool TorcWebSocket::ProcessUpgradeRequest(TorcHTTPConnection *Connection, TorcHT
     // if this is a Torc peer connecting, we want TorcNetworkedContext to handle this
     // socket, otherwise pass to TorcHTTPServer.
     // NB TorcNetworkedContext starts before TorcHTTPServer so we can assume gNetworkedService should be valid
-    if (Request->Headers()->contains("Torc-UUID") && gNetworkedContext)
-        gNetworkedContext->UpgradeSocket(Request, Socket);
+    if (Request->Headers()->contains("Torc-UUID"))
+        TorcNetworkedContext::UpgradeSocket(Request, Socket);
     else
         TorcHTTPServer::UpgradeSocket(Request, Socket);
 
