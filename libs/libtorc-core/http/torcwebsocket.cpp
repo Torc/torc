@@ -69,6 +69,7 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
     m_serverSide(true),
     m_readState(ReadHeader),
     m_echoTest(false),
+    m_subProtocol(SubProtocolNone),
     m_frameFinalFragment(false),
     m_frameOpCode(OpContinuation),
     m_frameMasked(false),
@@ -86,6 +87,16 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
         m_echoTest = true;
         LOG(VB_GENERAL, LOG_INFO, "Enabling WebSocket echo for testing");
     }
+
+    if (Request->Headers()->contains("Sec-WebSocket-Protocol"))
+    {
+        QList<WSSubProtocol> protocols = SubProtocolsFromPrioritisedString(Request->Headers()->value("Sec-WebSocket-Protocol"));
+        if (!protocols.isEmpty())
+            m_subProtocol = protocols.first();
+    }
+
+    if (m_subProtocol != SubProtocolNone)
+        LOG(VB_GENERAL, LOG_INFO, QString("WebSocket using %1 subprotocol").arg(SubProtocolsToString(m_subProtocol)));
 }
 
 TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16 Port)
@@ -101,6 +112,7 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16
     m_serverSide(false),
     m_readState(ReadHeader),
     m_echoTest(false),
+    m_subProtocol(SubProtocolJSONRPC),
     m_frameFinalFragment(false),
     m_frameOpCode(OpContinuation),
     m_frameMasked(false),
@@ -113,6 +125,8 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16
     m_closeReceived(false),
     m_closeSent(false)
 {
+    if (m_subProtocol != SubProtocolNone)
+        LOG(VB_GENERAL, LOG_INFO, QString("WebSocket using %1 subprotocol").arg(SubProtocolsToString(m_subProtocol)));
 }
 
 TorcWebSocket::~TorcWebSocket()
@@ -140,6 +154,7 @@ bool TorcWebSocket::ProcessUpgradeRequest(TorcHTTPConnection *Connection, TorcHT
     bool valid = true;
     bool versionerror = false;
     QString error;
+    WSSubProtocol protocol = SubProtocolNone;
 
     /* Excerpt from RFC 6455
 
@@ -312,7 +327,9 @@ bool TorcWebSocket::ProcessUpgradeRequest(TorcHTTPConnection *Connection, TorcHT
 
     if (Request->Headers()->contains("Sec-WebSocket-Protocol"))
     {
-
+        QList<WSSubProtocol> protocols = SubProtocolsFromPrioritisedString(Request->Headers()->value("Sec-WebSocket-Protocol"));
+        if (!protocols.isEmpty())
+            protocol = protocols.first();
     }
 
     if (!valid)
@@ -338,6 +355,8 @@ bool TorcWebSocket::ProcessUpgradeRequest(TorcHTTPConnection *Connection, TorcHT
     Request->SetConnection(HTTPConnectionUpgrade);
     Request->SetResponseHeader("Upgrade", "websocket");
     Request->SetResponseHeader("Sec-WebSocket-Accept", nonce);
+    if (!protocol == SubProtocolNone)
+        Request->SetResponseHeader("Sec-WebSocket-Protocol", SubProtocolsToString(protocol));
 
     // if this is a Torc peer connecting, we want TorcNetworkedContext to handle this
     // socket, otherwise pass to TorcHTTPServer.
@@ -536,6 +555,7 @@ void TorcWebSocket::ReadyRead(void)
                 QString upgrade    = request.Headers()->value("Upgrade").trimmed();
                 QString connection = request.Headers()->value("Connection").trimmed();
                 QString accept     = request.Headers()->value("Sec-WebSocket-Accept").trimmed();
+                QString protocols  = request.Headers()->value("Sec-WebSocket-Protocol").trimmed();
 
                 if (!upgrade.contains("websocket", Qt::CaseInsensitive) || !connection.contains("upgrade", Qt::CaseInsensitive))
                 {
@@ -548,6 +568,28 @@ void TorcWebSocket::ReadyRead(void)
                     {
                         valid = false;
                         error = QString("Incorrect Sec-WebSocket-Accept response");
+                    }
+                }
+
+                // ensure the correct subprotocol (if any) has been agreed
+                if (valid)
+                {
+                    if (m_subProtocol == SubProtocolNone)
+                    {
+                        if (!protocols.isEmpty())
+                        {
+                            valid = false;
+                            error = QString("Unexpected subprotocol");
+                        }
+                    }
+                    else
+                    {
+                        WSSubProtocols subprotocols = SubProtocolsFromString(protocols);
+                        if ((subprotocols | m_subProtocol) != m_subProtocol)
+                        {
+                            valid = false;
+                            error = QString("Unexpected subprotocol");
+                        }
                     }
                 }
             }
@@ -642,6 +684,15 @@ void TorcWebSocket::ReadyRead(void)
                     {
                         reason = QString("Fragmentation error");
                         error = CloseProtocolError;
+                    }
+
+                    // binary plists need binary frames and every other subprotocol expects text frames
+                    else if ((!m_echoTest && m_subProtocol != SubProtocolNone) &&
+                             ((m_frameOpCode == OpText   && m_subProtocol == SubProtocolBINARYPLISTRPC) ||
+                              (m_frameOpCode == OpBinary && m_subProtocol != SubProtocolBINARYPLISTRPC)))
+                    {
+                        reason = QString("Received incorrect frame type for subprotocol");
+                        error  = CloseUnsupportedDataType;
                     }
 
                     if (error != CloseNormal)
@@ -896,6 +947,8 @@ void TorcWebSocket::Connected(void)
     stream << "Sec-WebSocket-Version: 13\r\n";
     stream << "Sec-WebSocket-Key: " << nonce.data() << "\r\n";
     stream << "Torc-UUID:" << gLocalContext->GetUuid() << "\r\n";
+    if (m_subProtocol != SubProtocolNone)
+        stream << "Sec-WebSocket-Protocol: " << SubProtocolsToString(m_subProtocol) << "\r\n";
     stream << "\r\n";
     stream.flush();
 

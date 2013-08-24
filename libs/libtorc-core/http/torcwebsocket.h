@@ -92,7 +92,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     static QString  OpCodeToString        (OpCode Code);
     static QString  CloseCodeToString     (CloseCode Code);
     static QString  SubProtocolsToString  (WSSubProtocols Protocols);
-    static WSSubProtocols SubProtocolsFromString (const QString &Protocols);
+    static WSSubProtocols       SubProtocolsFromString            (const QString &Protocols);
     static QList<WSSubProtocol> SubProtocolsFromPrioritisedString (const QString &Protocols);
 
   signals:
@@ -137,6 +137,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     ReadState        m_readState;
     bool             m_echoTest;
 
+    WSSubProtocol    m_subProtocol;
     bool             m_frameFinalFragment;
     OpCode           m_frameOpCode;
     bool             m_frameMasked;
