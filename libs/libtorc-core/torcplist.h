@@ -11,7 +11,7 @@
 class TORC_CORE_PUBLIC TorcPList
 {
   public:
-    TorcPList       (const QByteArray Data);
+    TorcPList       (const QByteArray &Data);
 
     QVariant        GetValue           (const QString &Key);
     QString         ToString           (void);
