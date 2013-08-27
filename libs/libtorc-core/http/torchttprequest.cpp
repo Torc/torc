@@ -286,7 +286,7 @@ QMap<QString,QString>* TorcHTTPRequest::Headers(void)
     return m_headers;
 }
 
-QMap<QString,QString> TorcHTTPRequest::Queries(void)
+const QMap<QString,QString>& TorcHTTPRequest::Queries(void)
 {
     return m_queries;
 }

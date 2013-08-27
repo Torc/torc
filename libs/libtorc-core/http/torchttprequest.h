@@ -113,7 +113,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     QString                GetPath                  (void);
     QString                GetMethod                (void);
     QMap<QString,QString>* Headers                  (void);
-    QMap<QString,QString>  Queries                  (void);
+    const QMap<QString,QString>& Queries            (void);
     void                   Respond                  (QTcpSocket *Socket, int* Abort);
     void                   Redirected               (const QString &Redirected);
     TorcSerialiser*        GetSerialiser            (void);

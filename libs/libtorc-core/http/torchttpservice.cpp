@@ -110,36 +110,35 @@ class MethodParameters
     {
     }
 
-    /*! \brief Call the stored method with the arguments passed in via Request.
+    /*! \brief Call the stored method with the arguments passed in via Queries.
      *
      * \note Invoke is not thread safe and any method exposed using this class MUST ensure thread safety.
     */
-    QVariant Invoke(QObject *Object, TorcHTTPRequest *Request, QString &ReturnType, bool &VoidResult)
+    QVariant Invoke(QObject *Object, const QMap<QString,QString> &Queries, QString &ReturnType, bool &VoidResult)
     {
         // this may be called by multiple threads simultaneously, so we need to create our own paramaters instance.
         // N.B. QMetaObject::invokeMethod only supports up to 10 arguments (plus a return value)
         void* parameters[11];
         memset(parameters, 0, 11 * sizeof(void*));
-        QMap<QString,QString> queries = Request->Queries();
         int size = qMin(11, m_types.size());
 
         // check parameter count
-        if (queries.size() != size - 1)
+        if (Queries.size() != size - 1)
         {
             LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' expects %2 parameters, sent %3")
-                .arg(m_names[0].data()).arg(size - 1).arg(queries.size()));
+                .arg(m_names[0].data()).arg(size - 1).arg(Queries.size()));
             return QVariant();
         }
 
         // populate parameters from query and ensure each parameter is listed
-        QMap<QString,QString>::iterator it;
+        QMap<QString,QString>::const_iterator it;
         for (int i = 0; i < size; ++i)
         {
             parameters[i] = QMetaType::create(m_types[i]);
             if (i)
             {
-                it = queries.find(m_names[i]);
-                if (it == queries.end())
+                it = Queries.constFind(m_names[i]);
+                if (it == Queries.end())
                 {
                     LOG(VB_GENERAL, LOG_ERR, QString("Parameter '%1' for method '%2' is missing")
                         .arg(m_names[i].data()).arg(m_names[0].data()));
@@ -374,7 +373,7 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
 
         QString type;
         bool    voidresult;
-        QVariant result = (*it)->Invoke(m_parent, Request, type, voidresult);
+        QVariant result = (*it)->Invoke(m_parent, Request->Queries(), type, voidresult);
 
         // is there a result
         if (!voidresult)
