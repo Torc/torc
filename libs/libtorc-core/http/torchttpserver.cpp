@@ -112,6 +112,43 @@ void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPReque
     }
 }
 
+/*! \brief Process an incoming RPC request.
+ *
+ * Remote procedure calls are only allowed for 'service' directories and will be ignored
+ * for anything else (e.g. attempts to retrieve static content and other files).
+ *
+ * \note The structure of responses is largely consistent with the JSON-RPC 2.0 specification. As such,
+ * successful requests will have a 'result' entry and failed requests will have an 'error' field with
+ * an error code and error message.
+*/
+QVariantMap TorcHTTPServer::HandleRequest(const QString &Method, const QVariant &Parameters)
+{
+    QMutexLocker locker(gHandlersLock);
+
+    QString path = "/";
+    int index = Method.lastIndexOf("/");
+    if (index > -1)
+        path = Method.left(index + 1).trimmed();
+
+    // ensure this is a services call
+    if (path.startsWith(gServicesDirectory))
+    {
+        // NB no recursive path handling here
+        QMap<QString,TorcHTTPHandler*>::const_iterator it = gHandlers.find(path);
+        if (it != gHandlers.end())
+            return (*it)->ProcessRequest(Method, Parameters);
+    }
+
+    LOG(VB_GENERAL, LOG_ERR, "Method not found in services");
+
+    QVariantMap result;
+    QVariantMap error;
+    error.insert("code", -32601);
+    error.insert("message", "Method not found");
+    result.insert("error", error);
+    return result;
+}
+
 QMap<QString,QString> TorcHTTPServer::GetServiceHandlers(void)
 {
     QMutexLocker locker(gHandlersLock);
