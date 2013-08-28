@@ -13,6 +13,7 @@
 class TorcHTTPConnection;
 class TorcHTTPRequest;
 class TorcHTTPReader;
+class TorcRPCRequest;
 
 class TORC_CORE_PUBLIC TorcWebSocket : public QObject
 {
@@ -97,15 +98,27 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
 
   signals:
     void            ConnectionEstablished (void);
+    void            NewRequest            (TorcRPCRequest *Request);
+    void            RequestCancelled      (TorcRPCRequest *Request);
 
   public slots:
     void            Start                 (void);
+
+  public:
+    void            RemoteRequest         (TorcRPCRequest *Request);
+    void            CancelRequest         (TorcRPCRequest *Request, int Wait = 1000 /*ms*/);
+    void            WaitForNotifications  (void);
 
   protected slots:
     void            ReadyRead             (void);
     void            CloseSocket           (void);
     void            Connected             (void);
     void            Error                 (QAbstractSocket::SocketError);
+    void            HandleRemoteRequest   (TorcRPCRequest *Request);
+    void            HandleCancelRequest   (TorcRPCRequest *Request);
+
+  protected:
+    bool            event                 (QEvent *Event);
 
   private:
     void            SendFrame             (OpCode Code, QByteArray &Payload);
@@ -113,6 +126,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     void            HandlePong            (QByteArray &Payload);
     void            HandleCloseRequest    (QByteArray &Close);
     void            InitiateClose         (CloseCode Close, const QString &Reason);
+    void            ProcessPayload        (const QByteArray &Payload);
 
   private:
     enum ReadState
@@ -151,6 +165,11 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
 
     bool             m_closeReceived;
     bool             m_closeSent;
+
+    int              m_currentRequestID;
+    QMap<int,TorcRPCRequest*> m_currentRequests;
+    QMap<int,int>    m_requestTimers;
+    QAtomicInt       m_outstandingNotifications;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(TorcWebSocket::WSSubProtocols);

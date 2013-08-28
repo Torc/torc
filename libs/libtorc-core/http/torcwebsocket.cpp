@@ -25,6 +25,7 @@
 #include <QTimer>
 #include <QtEndian>
 #include <QTextStream>
+#include <QJsonDocument>
 #include <QCryptographicHash>
 
 // Torc
@@ -32,6 +33,7 @@
 #include "torcnetworkedcontext.h"
 #include "torchttpconnection.h"
 #include "torchttprequest.h"
+#include "torcrpcrequest.h"
 #include "torcwebsocket.h"
 
 // utf8
@@ -49,11 +51,11 @@
  * \note To test using the Autobahn python test suite, configure the suite to
  *       request a connection using 'echo' as the method (e.g. 'http://your-ip-address:your-port/echo').
  *
- * \todo Add actual protocol handling (raw, JSON, JSON-RPC, XML, XML-RPC, PLIST, PLIST-RPC)
  * \todo Limit frame size for reading
  * \todo Fix testsuite partial failures (fail fast on invalid UTF-8)
  * \todo Add timeout for response to upgrade request
  * \todo Fix deletion handling when there is no parent thread
+ * \todo Add support for batched RPC calls
 */
 
 TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpSocket *Socket)
@@ -80,7 +82,8 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
     m_bufferedPayload(NULL),
     m_bufferedPayloadOpCode(OpContinuation),
     m_closeReceived(false),
-    m_closeSent(false)
+    m_closeSent(false),
+    m_currentRequestID(1)
 {
     if (Request->GetMethod().startsWith(QStringLiteral("echo"), Qt::CaseInsensitive))
     {
@@ -123,7 +126,8 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16
     m_bufferedPayload(NULL),
     m_bufferedPayloadOpCode(OpContinuation),
     m_closeReceived(false),
-    m_closeSent(false)
+    m_closeSent(false),
+    m_currentRequestID(1)
 {
     if (m_subProtocol != SubProtocolNone)
         LOG(VB_GENERAL, LOG_INFO, QString("WebSocket using %1 subprotocol").arg(SubProtocolsToString(m_subProtocol)));
@@ -131,6 +135,17 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16
 
 TorcWebSocket::~TorcWebSocket()
 {
+    // cancel any outstanding requests
+    if (!m_currentRequests.isEmpty())
+    {
+        // clients should be cancelling requests before closing the connection, so this
+        // may represent a leak
+        LOG(VB_GENERAL, LOG_WARNING, QString("%1 outstanding RPC requests").arg(m_currentRequests.size()));
+
+        while (!m_currentRequests.isEmpty())
+            HandleCancelRequest(m_currentRequests.begin().value());
+    }
+
     InitiateClose(CloseGoingAway, QString("WebSocket exiting normally"));
 
     CloseSocket();
@@ -458,6 +473,10 @@ QList<TorcWebSocket::WSSubProtocol> TorcWebSocket::SubProtocolsFromPrioritisedSt
 ///\brief Initialise the websocket once its parent thread is ready.
 void TorcWebSocket::Start(void)
 {
+    // connect up remote requests
+    connect(this, SIGNAL(NewRequest(TorcRPCRequest*)),       this, SLOT(HandleRemoteRequest(TorcRPCRequest*)));
+    connect(this, SIGNAL(RequestCancelled(TorcRPCRequest*)), this, SLOT(HandleCancelRequest(TorcRPCRequest*)));
+
     // server side:)
     if (m_serverSide)
     {
@@ -495,6 +514,147 @@ void TorcWebSocket::Start(void)
     LOG(VB_GENERAL, LOG_ERR, "Failed to start Websocket");
     if (m_parent)
         m_parent->quit();
+}
+
+/*! \brief Initiate a Remote Procedure Call.
+*/
+void TorcWebSocket::RemoteRequest(TorcRPCRequest *Request)
+{
+    if (Request)
+    {
+        if (Request->GetParent())
+            Request->UpRef(); // NB
+        else
+            m_outstandingNotifications.ref();
+
+        emit NewRequest(Request);
+    }
+}
+
+/*! \brief Cancel a Remote Procedure Call.
+ *
+ * Under normal operation, there is usually no need to cancel a call. When a parent exits
+ * before a call is completed however, HandleCancelRequest may not be invoked before
+ * the parent deletes the thread. In this case it is highly likely the Request will leak.
+ * Hence we default to waiting for a short period to allow the call to complete.
+ *
+ * \note We assume the request will only ever be referenced by its owner and by TorcWebSocket.
+*/
+void TorcWebSocket::CancelRequest(TorcRPCRequest *Request, int Wait /*= 1000 ms*/)
+{
+    if (Request && Request->GetParent())
+    {
+        Request->AddState(TorcRPCRequest::Cancelled);
+        emit RequestCancelled(Request);
+
+        if (Wait > 0)
+        {
+            int count = 0;
+            while (Request->IsShared() && (count++ < Wait))
+                QThread::msleep(1);
+
+            if (Request->IsShared())
+                LOG(VB_GENERAL, LOG_ERR, "Request is still shared after cancellation");
+        }
+    }
+}
+
+/*! \brief Block until all outstanding notifications have been processed.
+ *
+ * Notifications have no owner (but are tracked internally by TorcWebSocket) and hence
+ * we need to wait for queued notifications to be processed in HandleRemoteRequest to avoid
+ * potentially leaking TorcRPCRequest's when closing the connection.
+ *
+ * \note This method must be called from another thread.
+*/
+void TorcWebSocket::WaitForNotifications(void)
+{
+    if (QThread::currentThread() == this->thread())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "WaitForNotifications called from the wrong thread. Ignoring");
+        return;
+    }
+
+    // wait a maximum of 1000ms
+    int count = 0;
+    while (count++ < 1000 && m_outstandingNotifications.fetchAndAddOrdered(0))
+        QThread::msleep(1);
+
+    if (m_outstandingNotifications.fetchAndAddOrdered(0))
+        LOG(VB_GENERAL, LOG_ERR, "Outstanding notifications even after waiting 1000ms");
+}
+
+/*! \brief Thread safe Remote Procedure Call implementation.
+*/
+void TorcWebSocket::HandleRemoteRequest(TorcRPCRequest *Request)
+{
+    if (!Request)
+        return;
+
+    // guard against a request that is immediately cancelled
+    if (Request->GetState() & TorcRPCRequest::Cancelled)
+    {
+        // NB a notification cannot be cancelled
+        Request->DownRef();
+    }
+    else
+    {
+        if (Request->GetParent())
+        {
+            int id = m_currentRequestID++;
+            while (m_currentRequests.contains(id))
+                id = m_currentRequestID++;
+
+            Request->SetID(id);
+            m_currentRequests.insert(id, Request);
+
+            // start a timer for this request
+            m_requestTimers.insert(startTimer(10000), id);
+
+            // keep id's at sane values
+            if (m_currentRequestID > 100000)
+                m_currentRequestID = 1;
+        }
+
+        Request->AddState(TorcRPCRequest::RequestSent);
+
+        if (m_subProtocol == SubProtocolNone)
+            LOG(VB_GENERAL, LOG_ERR, "No protocol specified for remote procedure call");
+        else
+            SendFrame(m_subProtocol == SubProtocolBINARYPLISTRPC ? OpBinary : OpText, Request->SerialiseRequest(m_subProtocol));
+    }
+
+    // notifications are fire and forget, so downref immediately
+    if (!Request->GetParent())
+    {
+        m_outstandingNotifications.deref();
+        Request->DownRef();
+    }
+}
+
+/*! \brief Thread safe cancellation of Remote Procedure Call.
+*/
+void TorcWebSocket::HandleCancelRequest(TorcRPCRequest *Request)
+{
+    if (Request && Request->GetID() > -1)
+    {
+        int id = Request->GetID();
+        if (m_currentRequests.contains(id))
+        {
+            // cancel the timer
+            int timer = m_requestTimers.key(id);
+            killTimer(timer);
+            m_requestTimers.remove(timer);
+
+            // cancel the request
+            m_currentRequests.remove(id);
+            Request->DownRef();
+        }
+        else
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Cannot cancel unknown RPC request");
+        }
+    }
 }
 
 /*! \brief Process incoming data
@@ -880,8 +1040,10 @@ void TorcWebSocket::ReadyRead(void)
                                         SendFrame(m_bufferedPayload ? m_bufferedPayloadOpCode : m_frameOpCode,
                                                   m_bufferedPayload ? *m_bufferedPayload : m_framePayload);
                                     }
-
-                                    // TODO actually do something with real data
+                                    else
+                                    {
+                                        ProcessPayload(m_bufferedPayload ? *m_bufferedPayload : m_framePayload);
+                                    }
                                 }
                                 delete m_bufferedPayload;
                                 m_bufferedPayload = NULL;
@@ -966,6 +1128,43 @@ void TorcWebSocket::Error(QAbstractSocket::SocketError SocketError)
 {
     if (m_socket)
         LOG(VB_GENERAL, LOG_ERR, QString("WebSocket error: %1 ('%2')").arg(m_socket->error()).arg(m_socket->errorString()));
+}
+
+bool TorcWebSocket::event(QEvent *Event)
+{
+    if (Event->type() == QEvent::Timer)
+    {
+        QTimerEvent *event = static_cast<QTimerEvent*>(Event);
+        if (event)
+        {
+            int timerid = event->timerId();
+
+            if (m_requestTimers.contains(timerid))
+            {
+                // remove the timer
+                int requestid = m_requestTimers.value(timerid);
+                killTimer(timerid);
+                m_requestTimers.remove(timerid);
+
+                // handle the timeout
+                if (m_currentRequests.contains(requestid))
+                {
+                    TorcRPCRequest *request = m_currentRequests.value(requestid);
+                    request->AddState(TorcRPCRequest::TimedOut);
+                    LOG(VB_GENERAL, LOG_WARNING, QString("'%1' request timed out").arg(request->GetMethod()));
+
+                    request->NotifyParent();
+
+                    m_currentRequests.remove(requestid);
+                    request->DownRef();
+                }
+
+                return true;
+            }
+        }
+    }
+
+    return QObject::event(Event);
 }
 
 /*! \brief Compose and send a properly formatted websocket frame.
@@ -1163,6 +1362,78 @@ void TorcWebSocket::InitiateClose(CloseCode Close, const QString &Reason)
         SendFrame(OpClose, payload);
         m_closeSent = true;
         CloseSocket();
+    }
+}
+
+void TorcWebSocket::ProcessPayload(const QByteArray &Payload)
+{
+    if (m_subProtocol == SubProtocolNone)
+        return;
+
+    QVariant payload = TorcRPCRequest::ParsePayload(m_subProtocol, Payload);
+
+    // single request/response
+    if (payload.type() == QVariant::Map)
+    {
+        QVariantMap request = payload.toMap();
+
+        // retrieve the id if present, taking care to handle the NULL id case for errors
+        int  id        = (request.contains("id") && !request["id"].isNull()) ? request["id"].toInt() : -1;
+        bool isrequest = request.contains("method");
+        bool isresult  = request.contains("result");
+        bool iserror   = request.contains("error");
+
+        if ((int)isrequest + (int)isresult + (int)iserror != 1)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Ambiguous RPC request/response");
+            return;
+        }
+
+        if (isrequest)
+        {
+            QVariantMap result = TorcHTTPServer::HandleRequest(request["method"].toString(), request["params"]);
+
+            // not a notification, response expected
+            if (id > -1)
+            {
+                // result should contain either 'result' or 'error', we need to insert id and the serialiser
+                // will handle anything format specific.
+                result.insert("id", id);
+                QByteArray data = TorcRPCRequest::SerialiseResponse(m_subProtocol, result);
+                SendFrame(m_subProtocol == SubProtocolBINARYPLISTRPC ? OpBinary : OpText, data);
+            }
+        }
+        else if (isresult || iserror)
+        {
+            // check id
+            if (id < 0)
+            {
+                LOG(VB_GENERAL, LOG_ERR, QString("Received %1 with no id").arg(isresult ? "result" : "error"));
+                return;
+            }
+
+            if (m_currentRequests.contains(id))
+            {
+                TorcRPCRequest *requestor = m_currentRequests.value(id);
+                requestor->AddState(TorcRPCRequest::ReplyReceived);
+
+                if (iserror)
+                    requestor->AddState(TorcRPCRequest::Errored);
+                else
+                    requestor->SetReply(request.value("result"));
+                requestor->NotifyParent();
+                m_currentRequests.remove(id);
+                requestor->DownRef();
+            }
+            else
+            {
+                LOG(VB_GENERAL, LOG_ERR, QString("Received %1 for unknown request id").arg(isresult ? "result" : "error"));
+            }
+        }
+    }
+    // batched request/response
+    else if (payload.type() == QVariant::List)
+    {
     }
 }
 
