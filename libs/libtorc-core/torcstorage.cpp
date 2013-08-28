@@ -94,7 +94,7 @@ bool TorcStorage::DiskIsMounted(const QString &Disk)
 
 TorcStorage::TorcStorage()
   : QObject(),
-    TorcHTTPService(this, "/storage", tr("Storage"), TorcStorage::staticMetaObject),
+    TorcHTTPService(this, "storage", tr("Storage"), TorcStorage::staticMetaObject),
     m_disksLock(new QMutex(QMutex::Recursive)),
     m_priv(NULL)
 {

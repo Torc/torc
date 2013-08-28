@@ -35,7 +35,7 @@
 
 AudioPlayer::AudioPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : TorcPlayer(Parent, PlaybackFlags, DecodeFlags),
-    TorcHTTPService(this, "/player", tr("Player"), AudioPlayer::staticMetaObject, BLACKLIST),
+    TorcHTTPService(this, "player", tr("Player"), AudioPlayer::staticMetaObject, BLACKLIST),
     m_audioWrapper(new AudioWrapper(this))
 {
     setObjectName("Player");

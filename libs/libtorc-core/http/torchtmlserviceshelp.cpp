@@ -34,20 +34,19 @@
 #include "torchtmlserviceshelp.h"
 
 TorcHTMLServicesHelp::TorcHTMLServicesHelp(TorcHTTPServer *Server)
-  : TorcHTTPService(this, "", tr("Services"), TorcHTMLServicesHelp::staticMetaObject),
-    m_server(Server)
+  : TorcHTTPService(this, "", tr("Services"), TorcHTMLServicesHelp::staticMetaObject)
 {
 }
 
-void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPServer* Server, TorcHTTPRequest *Request, TorcHTTPConnection* Connection)
+void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection* Connection)
 {
-    if (!Request || !Server)
+    if (!Request)
         return;
 
     // handle own service
     if (!Request->GetMethod().isEmpty())
     {
-        TorcHTTPService::ProcessHTTPRequest(Server, Request, Connection);
+        TorcHTTPService::ProcessHTTPRequest(Request, Connection);
         return;
     }
 
@@ -64,7 +63,7 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPServer* Server, TorcHTTPRe
     QByteArray *result = new QByteArray();
     QTextStream stream(result);
 
-    QMap<QString,QString> services = Server->GetServiceHandlers();
+    QMap<QString,QString> services = TorcHTTPServer::GetServiceHandlers();
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
     stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName();
@@ -113,7 +112,7 @@ QVariantMap TorcHTMLServicesHelp::GetServiceList(void)
 {
     QVariantMap results;
 
-    QMap<QString,QString> services =  m_server->GetServiceHandlers();
+    QMap<QString,QString> services = TorcHTTPServer::GetServiceHandlers();
     QMap<QString,QString>::const_iterator it = services.begin();
     for ( ; it != services.end(); ++it)
         results.insert(it.value(), QVariant(it.key()));

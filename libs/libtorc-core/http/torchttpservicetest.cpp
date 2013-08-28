@@ -33,7 +33,7 @@
 */
 TorcHTTPServiceTest::TorcHTTPServiceTest()
   : QObject(),
-    TorcHTTPService(this, "/test", tr("Test"), TorcHTTPServiceTest::staticMetaObject)
+    TorcHTTPService(this, "test", tr("Test"), TorcHTTPServiceTest::staticMetaObject)
 {
 }
 

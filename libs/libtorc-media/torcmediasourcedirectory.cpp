@@ -79,7 +79,7 @@ class TorcMediaDirectory
 
 TorcMediaSourceDirectory::TorcMediaSourceDirectory()
   : QFileSystemWatcher(),
-    TorcHTTPService(this, "/files", tr("Files"), TorcMediaSourceDirectory::staticMetaObject),
+    TorcHTTPService(this, "files", tr("Files"), TorcMediaSourceDirectory::staticMetaObject),
     version(1),
     realVersion(1),
     m_enabled(false),

@@ -184,7 +184,7 @@ TorcUSBDeviceHandler* TorcUSBDeviceHandler::GetNextHandler(void)
 
 TorcUSB::TorcUSB()
   : QObject(NULL),
-    TorcHTTPService(this, "/usb", tr("USB"), TorcUSB::staticMetaObject),
+    TorcHTTPService(this, "usb", tr("USB"), TorcUSB::staticMetaObject),
     m_priv(NULL),
     m_managedDevicesLock(new QMutex())
 {

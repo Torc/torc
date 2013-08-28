@@ -41,7 +41,7 @@ TorcHTMLStaticContent::TorcHTMLStaticContent()
     m_recursive = true;
 }
 
-void TorcHTMLStaticContent::ProcessHTTPRequest(TorcHTTPServer*, TorcHTTPRequest *Request, TorcHTTPConnection*)
+void TorcHTMLStaticContent::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection*)
 {
     if (!Request)
         return;

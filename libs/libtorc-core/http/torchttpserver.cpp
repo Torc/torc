@@ -47,50 +47,83 @@
 #include <sys/utsname.h>
 #endif
 
-/*! \class TorcHTTPServer
- *  \brief An HTTP server.
- *
- * TorcHTTPServer listens for incoming TCP connections. The default port is 4840
- * though any available port may be used if the default is unavailable. New
- * connections are passed to instances of TorcHTTPConnection.
- *
- * TorcHTTPServer maintains a list of TorcHTTPHandlers that will process valid
- * incoming HTTP requests. Register new handlers with RegisterHandler and remove
- * them with DeregisterHandler.
- *
- * \sa TorcHTTPRequest
- * \sa TorcHTTPHandler
- * \sa TorcHTTPConnection
-*/
-
-TorcHTTPServer* TorcHTTPServer::gWebServer = NULL;
-QMutex*         TorcHTTPServer::gWebServerLock = new QMutex(QMutex::Recursive);
-QString         TorcHTTPServer::gPlatform = QString("");
+QMap<QString,TorcHTTPHandler*> gHandlers;
+QMutex*                        gHandlersLock = new QMutex(QMutex::Recursive);
+QString                        gServicesDirectory(SERVICES_DIRECTORY);
 
 void TorcHTTPServer::RegisterHandler(TorcHTTPHandler *Handler)
 {
-    QMutexLocker locker(gWebServerLock);
+    if (!Handler)
+        return;
 
-    static QList<TorcHTTPHandler*> handlerqueue;
+    QMutexLocker locker(gHandlersLock);
 
-    if (gWebServer)
+    QString signature = Handler->Signature();
+    if (gHandlers.contains(signature))
     {
-        while (!handlerqueue.isEmpty())
-            gWebServer->AddHandler(handlerqueue.takeFirst());
-        gWebServer->AddHandler(Handler);
+        LOG(VB_GENERAL, LOG_ERR, QString("Handler '%1' for '%2' already registered - ignoring").arg(Handler->Name()).arg(signature));
     }
-    else
+    else if (!signature.isEmpty())
     {
-        handlerqueue.append(Handler);
+        LOG(VB_GENERAL, LOG_DEBUG, QString("Added handler '%1' for %2").arg(Handler->Name()).arg(signature));
+        gHandlers.insert(signature, Handler);
     }
 }
 
 void TorcHTTPServer::DeregisterHandler(TorcHTTPHandler *Handler)
 {
-    QMutexLocker locker(gWebServerLock);
+    if (!Handler)
+        return;
 
-    if (gWebServer)
-        gWebServer->RemoveHandler(Handler);
+    QMutexLocker locker(gHandlersLock);
+
+    QMap<QString,TorcHTTPHandler*>::iterator it = gHandlers.find(Handler->Signature());
+    if (it != gHandlers.end())
+        gHandlers.erase(it);
+}
+
+void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPRequest *Request)
+{
+    if (Request && Connection)
+    {
+        QMutexLocker locker(gHandlersLock);
+
+        QString path = Request->GetPath();
+
+        QMap<QString,TorcHTTPHandler*>::const_iterator it = gHandlers.find(path);
+        if (it != gHandlers.end())
+        {
+            // direct path match
+            (*it)->ProcessHTTPRequest(Request, Connection);
+        }
+        else
+        {
+            // fully recursive handler
+            it = gHandlers.begin();
+            for ( ; it != gHandlers.end(); ++it)
+            {
+                if ((*it)->GetRecursive() && path.startsWith(it.key()))
+                {
+                    (*it)->ProcessHTTPRequest(Request, Connection);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+QMap<QString,QString> TorcHTTPServer::GetServiceHandlers(void)
+{
+    QMutexLocker locker(gHandlersLock);
+
+    QMap<QString,QString> result;
+
+    QMap<QString,TorcHTTPHandler*>::const_iterator it = gHandlers.begin();
+    for ( ; it != gHandlers.end(); ++it)
+        if (it.key().startsWith(gServicesDirectory))
+            result.insert(it.key(), it.value()->Name());
+
+    return result;
 }
 
 void TorcHTTPServer::UpgradeSocket(TorcHTTPRequest *Request, QTcpSocket *Socket)
@@ -136,6 +169,28 @@ QString TorcHTTPServer::PlatformName(void)
     return gPlatform;
 }
 
+/*! \class TorcHTTPServer
+ *  \brief An HTTP server.
+ *
+ * TorcHTTPServer listens for incoming TCP connections. The default port is 4840
+ * though any available port may be used if the default is unavailable. New
+ * connections are passed to instances of TorcHTTPConnection.
+ *
+ * Register new content handlers with RegisterHandler and remove
+ * them with DeregisterHandler. These can then be used with the static
+ * HandleRequest methods.
+ *
+ * \sa TorcHTTPRequest
+ * \sa TorcHTTPHandler
+ * \sa TorcHTTPConnection
+ *
+ * \todo Fix potential socket and request leak in UpgradeSocket.
+*/
+
+TorcHTTPServer* TorcHTTPServer::gWebServer = NULL;
+QMutex*         TorcHTTPServer::gWebServerLock = new QMutex(QMutex::Recursive);
+QString         TorcHTTPServer::gPlatform = QString("");
+
 TorcHTTPServer::TorcHTTPServer()
   : QTcpServer(),
     m_enabled(NULL),
@@ -143,19 +198,11 @@ TorcHTTPServer::TorcHTTPServer()
     m_defaultHandler(NULL),
     m_servicesHelpHandler(NULL),
     m_staticContent(NULL),
-    m_servicesDirectory(SERVICES_DIRECTORY),
     m_abort(0),
-    m_handlersLock(new QMutex(QMutex::Recursive)),
-    m_newHandlersLock(new QMutex(QMutex::Recursive)),
-    m_oldHandlersLock(new QMutex(QMutex::Recursive)),
     m_httpBonjourReference(0),
     m_torcBonjourReference(0),
     m_webSocketsLock(new QMutex(QMutex::Recursive))
 {
-    // ensure service directory is valid
-    if (!m_servicesDirectory.endsWith("/"))
-        m_servicesDirectory += "/";
-
     // create main setting
     TorcSetting *parent = gRootSetting->FindChild(SETTING_NETWORKALLOWEDINBOUND, true);
     if (parent)
@@ -195,14 +242,14 @@ TorcHTTPServer::TorcHTTPServer()
 
     // add the default top level handler
     m_defaultHandler = new TorcHTMLHandler("", QCoreApplication::applicationName());
-    AddHandler(m_defaultHandler);
+    RegisterHandler(m_defaultHandler);
 
     // services help
     m_servicesHelpHandler = new TorcHTMLServicesHelp(this);
 
     // static files
     m_staticContent = new TorcHTMLStaticContent();
-    AddHandler(m_staticContent);
+    RegisterHandler(m_staticContent);
 
     // set thread pool max size
     m_connectionPool.setMaxThreadCount(50);
@@ -235,9 +282,6 @@ TorcHTTPServer::~TorcHTTPServer()
         m_enabled = NULL;
     }
 
-    delete m_handlersLock;
-    delete m_newHandlersLock;
-    delete m_oldHandlersLock;
     delete m_webSocketsLock;
 }
 
@@ -350,6 +394,7 @@ void TorcHTTPServer::Close(void)
         {
             LOG(VB_GENERAL, LOG_INFO, "Closing outstanding websocket");
             TorcWebSocketThread* thread = m_webSockets.takeLast();
+            thread->Socket()->WaitForNotifications();
             thread->GetQThread()->disconnect();
             thread->quit();
             thread->wait();
@@ -361,37 +406,6 @@ void TorcHTTPServer::Close(void)
     close();
 
     LOG(VB_GENERAL, LOG_INFO, "Webserver closed");
-}
-
-void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPRequest *Request)
-{
-    if (Request && Connection)
-    {
-        m_handlersLock->lock();
-        QString path = Request->GetPath();
-
-        QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.find(path);
-        if (it != m_handlers.end())
-        {
-            // direct path match
-            (*it)->ProcessHTTPRequest(this, Request, Connection);
-        }
-        else
-        {
-            // fully recursive handler
-            it = m_handlers.begin();
-            for ( ; it != m_handlers.end(); ++it)
-            {
-                if ((*it)->GetRecursive() && path.startsWith(it.key()))
-                {
-                    (*it)->ProcessHTTPRequest(this, Request, Connection);
-                    break;
-                }
-            }
-        }
-
-        m_handlersLock->unlock();
-    }
 }
 
 bool TorcHTTPServer::event(QEvent *Event)
@@ -412,46 +426,6 @@ bool TorcHTTPServer::event(QEvent *Event)
 void TorcHTTPServer::incomingConnection(qintptr SocketDescriptor)
 {
     m_connectionPool.start(new TorcHTTPConnection(this, SocketDescriptor, &m_abort), 0);
-}
-
-QMap<QString,QString> TorcHTTPServer::GetServiceHandlers(void)
-{
-    QMap<QString,QString> result;
-
-    m_handlersLock->lock();
-    QMap<QString,TorcHTTPHandler*>::const_iterator it = m_handlers.begin();
-    for ( ; it != m_handlers.end(); ++it)
-        if (it.key().startsWith(m_servicesDirectory))
-            result.insert(it.key(), it.value()->Name());
-    m_handlersLock->unlock();
-
-    return result;
-}
-
-void TorcHTTPServer::AddHandler(TorcHTTPHandler *Handler)
-{
-    if (!Handler)
-        return;
-
-    {
-        QMutexLocker locker(m_newHandlersLock);
-        m_newHandlers.append(Handler);
-    }
-
-    emit HandlersChanged();
-}
-
-void TorcHTTPServer::RemoveHandler(TorcHTTPHandler *Handler)
-{
-    if (!Handler)
-        return;
-
-    {
-        QMutexLocker locker(m_oldHandlersLock);
-        m_oldHandlers.append(Handler);
-    }
-
-    emit HandlersChanged();
 }
 
 void TorcHTTPServer::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *Socket)
@@ -494,55 +468,6 @@ void TorcHTTPServer::WebSocketClosed(void)
                 LOG(VB_NETWORK, LOG_INFO, "WebSocket thread deleted");
 
                 break;
-            }
-        }
-    }
-}
-
-void TorcHTTPServer::UpdateHandlers(void)
-{
-    QList<TorcHTTPHandler*> newhandlers;
-    QList<TorcHTTPHandler*> oldhandlers;
-
-    {
-        QMutexLocker locker(m_newHandlersLock);
-        newhandlers = m_newHandlers;
-        m_newHandlers.clear();
-    }
-
-    {
-        QMutexLocker locker(m_oldHandlersLock);
-        oldhandlers = m_oldHandlers;
-        m_oldHandlers.clear();
-    }
-
-    {
-        QMutexLocker locker(m_handlersLock);
-
-        foreach (TorcHTTPHandler *handler, newhandlers)
-        {
-            QString signature = handler->Signature();
-            if (m_handlers.contains(signature))
-            {
-                LOG(VB_GENERAL, LOG_ERR, QString("Handler '%1' for '%2' already registered - ignoring").arg(handler->Name()).arg(signature));
-            }
-            else if (!signature.isEmpty())
-            {
-                LOG(VB_GENERAL, LOG_DEBUG, QString("Added handler '%1' for %2").arg(handler->Name()).arg(signature));
-                m_handlers.insert(signature, handler);
-            }
-        }
-
-        foreach (TorcHTTPHandler *handler, oldhandlers)
-        {
-            QMap<QString,TorcHTTPHandler*>::iterator it = m_handlers.begin();
-            for ( ; it != m_handlers.end(); ++it)
-            {
-                if (it.value() == handler)
-                {
-                    m_handlers.erase(it);
-                    break;
-                }
             }
         }
     }

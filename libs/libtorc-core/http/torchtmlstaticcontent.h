@@ -9,7 +9,7 @@ class TorcHTMLStaticContent : public TorcHTTPHandler
   public:
     TorcHTMLStaticContent();
 
-    void ProcessHTTPRequest (TorcHTTPServer*, TorcHTTPRequest *Request, TorcHTTPConnection*);
+    void ProcessHTTPRequest (TorcHTTPRequest *Request, TorcHTTPConnection*);
 };
 
 #endif // TORCHTMLSTATICCONTENT_H

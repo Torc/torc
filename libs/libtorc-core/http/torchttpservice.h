@@ -14,7 +14,7 @@ class TorcHTTPServer;
 class TorcHTTPConnection;
 class MethodParameters;
 
-#define SERVICES_DIRECTORY QString("/services")
+#define SERVICES_DIRECTORY QString("/services/")
 
 class TORC_CORE_PUBLIC TorcHTTPService : public TorcHTTPHandler
 {
@@ -23,10 +23,10 @@ class TORC_CORE_PUBLIC TorcHTTPService : public TorcHTTPHandler
                     const QMetaObject &MetaObject, const QString &Blacklist = QString(""));
     virtual ~TorcHTTPService();
 
-    virtual void ProcessHTTPRequest    (TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
+    virtual void ProcessHTTPRequest    (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
 
   protected:
-    void         UserHelp              (TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
+    void         UserHelp              (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
 
   private:
     QObject                        *m_parent;

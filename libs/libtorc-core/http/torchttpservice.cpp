@@ -310,7 +310,7 @@ TorcHTTPService::~TorcHTTPService()
     qDeleteAll(m_methods);
 }
 
-void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
+void TorcHTTPService::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
 {
     QString method = Request->GetMethod();
     HTTPRequestType type = Request->GetHTTPRequestType();
@@ -337,7 +337,7 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
 
         if (helprequest)
         {
-            UserHelp(Server, Request, Connection);
+            UserHelp(Request, Connection);
         }
         else
         {
@@ -400,9 +400,9 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest
     }
 }
 
-void TorcHTTPService::UserHelp(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
+void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
 {
-    if (!Request || !Server)
+    if (!Request)
         return;
 
     QByteArray *result = new QByteArray();
@@ -410,7 +410,7 @@ void TorcHTTPService::UserHelp(TorcHTTPServer *Server, TorcHTTPRequest *Request,
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
     stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName() << "</a> ";
-    stream << "<a href='" << SERVICES_DIRECTORY << "/'>" << QObject::tr("Services") << "</a> " << m_name << "</h1>";
+    stream << "<a href='" << SERVICES_DIRECTORY << "'>" << QObject::tr("Services") << "</a> " << m_name << "</h1>";
 
     stream << "<h3>" << QObject::tr("Method list for ") << m_signature << " (Version: " << m_version << ")</h3>";
     stream << "QString GetVersion() (HEAD,GET,OPTIONS)<br>";

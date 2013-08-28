@@ -25,7 +25,7 @@ class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public QObject, public TorcHTTPSer
 
   public:
     TorcHTMLServicesHelp(TorcHTTPServer *Server);
-    void ProcessHTTPRequest(TorcHTTPServer *Server, TorcHTTPRequest *Request, TorcHTTPConnection* Connection);
+    void ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection* Connection);
 
   public slots:
     QVariantMap GetDetails     (void);
@@ -33,9 +33,6 @@ class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public QObject, public TorcHTTPSer
     qint64      GetStartTime   (void);
     int         GetPriority    (void);
     QString     GetUuid        (void);
-
-  private:
-    TorcHTTPServer *m_server;
 };
 
 #endif // TORCHTMLSERVICESHELP_H

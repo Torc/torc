@@ -20,7 +20,7 @@ class TORC_CORE_PUBLIC TorcHTTPHandler
     QString          Signature          (void);
     bool             GetRecursive       (void);
     QString          Name               (void);
-    virtual void     ProcessHTTPRequest (TorcHTTPServer* Server, TorcHTTPRequest *Request, TorcHTTPConnection *Connection) = 0;
+    virtual void     ProcessHTTPRequest (TorcHTTPRequest *Request, TorcHTTPConnection *Connection) = 0;
 
   protected:
     QString          m_signature;

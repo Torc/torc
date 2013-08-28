@@ -45,7 +45,7 @@ TorcHTMLHandler::TorcHTMLHandler(const QString &Path, const QString &Name)
 {
 }
 
-void TorcHTMLHandler::ProcessHTTPRequest(TorcHTTPServer*, TorcHTTPRequest *Request, TorcHTTPConnection*)
+void TorcHTMLHandler::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection*)
 {
     if (!Request)
         return;
@@ -70,7 +70,7 @@ void TorcHTMLHandler::ProcessHTTPRequest(TorcHTTPServer*, TorcHTTPRequest *Reque
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
     stream << "<body><h1>" << QCoreApplication::applicationName() << "</h1>";
-    stream << "<p><a href='" << SERVICES_DIRECTORY << "/'>" << QObject::tr("Services") << "</a>";
+    stream << "<p><a href='" << SERVICES_DIRECTORY << "'>" << QObject::tr("Services") << "</a>";
     stream << "</body></html>";
 
     Request->SetResponseContent(result);

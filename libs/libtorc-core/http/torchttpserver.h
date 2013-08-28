@@ -27,23 +27,26 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     friend class TorcHTTPServerObject;
 
   public:
+    // Content/service handlers
     static void    RegisterHandler    (TorcHTTPHandler *Handler);
     static void    DeregisterHandler  (TorcHTTPHandler *Handler);
+    static void    HandleRequest      (TorcHTTPConnection *Connection, TorcHTTPRequest *Request);
+    static QMap<QString,QString>
+                   GetServiceHandlers (void);
+
+    // WebSockets
     static void    UpgradeSocket      (TorcHTTPRequest *Request, QTcpSocket *Socket);
+
+    // server status
     static int     GetPort            (void);
     static bool    IsListening        (void);
     static QString PlatformName       (void);
 
   public:
     virtual       ~TorcHTTPServer     ();
-    QMap<QString,QString> GetServiceHandlers (void);
-    void           HandleRequest      (TorcHTTPConnection *Connection, TorcHTTPRequest *Request);
-
-  signals:
-    void           HandlersChanged    (void);
 
   protected slots:
-    void           UpdateHandlers     (void);
+    // WebSockets
     void           HandleUpgrade      (TorcHTTPRequest *Request, QTcpSocket *Socket);
     void           WebSocketClosed    (void);
 
@@ -53,8 +56,6 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     bool           event              (QEvent *Event);
     bool           Open               (void);
     void           Close              (void);
-    void           AddHandler         (TorcHTTPHandler *Handler);
-    void           RemoveHandler      (TorcHTTPHandler *Handler);
 
   protected:
     static TorcHTTPServer*            gWebServer;
@@ -70,17 +71,9 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     TorcHTMLHandler                  *m_defaultHandler;
     TorcHTMLServicesHelp             *m_servicesHelpHandler;
     TorcHTMLStaticContent            *m_staticContent;
-    QString                           m_servicesDirectory;
 
     QThreadPool                       m_connectionPool;
     int                               m_abort;
-
-    QMap<QString,TorcHTTPHandler*>    m_handlers;
-    QMutex*                           m_handlersLock;
-    QList<TorcHTTPHandler*>           m_newHandlers;
-    QMutex*                           m_newHandlersLock;
-    QList<TorcHTTPHandler*>           m_oldHandlers;
-    QMutex*                           m_oldHandlersLock;
 
     quint32                           m_httpBonjourReference;
     quint32                           m_torcBonjourReference;
