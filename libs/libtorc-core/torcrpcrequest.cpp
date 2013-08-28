@@ -33,7 +33,8 @@
  * \sa TorcWebSocket
  *
  * \todo Add serialisation of protocols other than JSON-RPC.
- * \todo Processing of results.
+ * \todo Add parsing of protocols other than JSON-RPC.
+ * \todo Review memory consumption/performance.
 */
 
 /*! \brief Creates an RPC request owned by the given Parent.
@@ -47,8 +48,14 @@ TorcRPCRequest::TorcRPCRequest(const QString &Method, QObject *Parent)
   : m_state(None),
     m_id(-1),
     m_method(Method),
-    m_parent(Parent)
+    m_parent(Parent),
+    m_validParent(true)
 {
+    if (m_parent->metaObject()->indexOfMethod(QMetaObject::normalizedSignature("RequestReady(TorcRPCRequest*)")) < 0)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Request's parent does not have RequestReady method - request WILL fail");
+        m_validParent = false;
+    }
 }
 
 /*! \brief Creates a notification request for which no response is expected.
@@ -67,8 +74,35 @@ TorcRPCRequest::~TorcRPCRequest()
 {
 }
 
+///\brief Parse the contents of Payload, assuming data consistent with Protocol.
+QVariant TorcRPCRequest::ParsePayload(TorcWebSocket::WSSubProtocol Protocol, const QByteArray &Payload)
+{
+    if (Protocol == TorcWebSocket::SubProtocolJSONRPC)
+    {
+        QJsonDocument doc = QJsonDocument::fromJson(Payload);
+        if (!doc.isNull())
+        {
+            LOG(VB_GENERAL, LOG_INFO, Payload);
+            return doc.toVariant();
+        }
+
+        LOG(VB_GENERAL, LOG_ERR, "Error parsing response to JSON-RPC");
+    }
+
+    return QVariant();
+}
+
+///\brief Signal to the parent that the request is ready (but may be errored).
+void TorcRPCRequest::NotifyParent(void)
+{
+    if (!m_parent || !m_validParent || m_state & Cancelled)
+        return;
+
+    QMetaObject::invokeMethod(m_parent, "RequestReady", Q_ARG(TorcRPCRequest*, this));
+}
+
 ///\brief Serialise the request for the given protocol.
-QByteArray& TorcRPCRequest::Serialise(TorcWebSocket::WSSubProtocol Protocol)
+QByteArray& TorcRPCRequest::SerialiseRequest(TorcWebSocket::WSSubProtocol Protocol)
 {
     if (Protocol == TorcWebSocket::SubProtocolJSONRPC)
     {
@@ -91,12 +125,28 @@ QByteArray& TorcRPCRequest::Serialise(TorcWebSocket::WSSubProtocol Protocol)
         m_serialisedData = doc.toJson();
     }
 
-    LOG(VB_GENERAL, LOG_INFO, m_serialisedData);
+    LOG(VB_NETWORK, LOG_DEBUG, m_serialisedData);
 
     return m_serialisedData;
 }
 
-///\brief Progress the state for this request.
+///\brief Serialise the response for the given protocol
+QByteArray TorcRPCRequest::SerialiseResponse(TorcWebSocket::WSSubProtocol Protocol, QVariantMap &Response)
+{
+    if (Protocol == TorcWebSocket::SubProtocolJSONRPC)
+    {
+        Response.insert("jsonrpc", QString("2.0"));
+        QJsonDocument doc = QJsonDocument::fromVariant(Response);
+        return doc.toJson();
+    }
+
+    return QByteArray();
+}
+
+/*! \brief Progress the state for this request.
+ *
+ * \note Request state is incremental.
+*/
 void TorcRPCRequest::AddState(int State)
 {
     m_state |= State;
@@ -117,6 +167,11 @@ void TorcRPCRequest::AddParameter(const QString &Name, const QVariant &Value)
     m_parameters.append(QPair<QString,QVariant>(Name, Value));
 }
 
+void TorcRPCRequest::SetReply(const QVariant &Reply)
+{
+    m_reply = Reply;
+}
+
 int TorcRPCRequest::GetState(void)
 {
     return m_state;
@@ -135,6 +190,11 @@ QString TorcRPCRequest::GetMethod(void)
 QObject* TorcRPCRequest::GetParent(void)
 {
     return m_parent;
+}
+
+const QVariant& TorcRPCRequest::GetReply(void)
+{
+    return m_reply;
 }
 
 const QList<QPair<QString,QVariant> >& TorcRPCRequest::GetParameters(void)
