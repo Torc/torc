@@ -219,6 +219,11 @@ class MethodParameters
     QString             m_returnType;
 };
 
+/*! \class TorcHTTPService
+ *
+ * \todo Support for ordered (non-named) parameters via RPC
+ * \todo Support for complex parameter types via RPC (e.g. array etc)
+*/
 TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, const QString &Name,
                                  const QMetaObject &MetaObject, const QString &Blacklist)
   : TorcHTTPHandler(SERVICES_DIRECTORY + Signature, Name),
@@ -398,6 +403,89 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConne
 
         Request->SetStatus(HTTP_OK);
     }
+}
+
+QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVariant &Parameters)
+{
+    QString method;
+    int index = Method.lastIndexOf("/");
+    if (index > -1)
+        method = Method.mid(index + 1).trimmed();
+
+    if (!method.isEmpty())
+    {
+        // implicit 'GetVersion' method
+        if (method.compare("getversion", Qt::CaseInsensitive) == 0)
+        {
+            QVariantMap result;
+            QVariantMap version;
+            version.insert("version", m_version);
+            result.insert("result", version);
+            return result;
+        }
+
+        // find the correct method to invoke
+        QMap<QString,MethodParameters*>::iterator it = m_methods.find(method);
+        if (it != m_methods.end())
+        {
+            // invoke it
+
+            // convert the parameters
+            QMap<QString,QString> params;
+            if (Parameters.type() == QVariant::Map)
+            {
+                QVariantMap map = Parameters.toMap();
+                QVariantMap::iterator it = map.begin();
+                for ( ; it != map.end(); ++it)
+                    params.insert(it.key(), it.value().toString());
+            }
+            else if (Parameters.type() == QVariant::List)
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Ordered parameters not yet supported");
+            }
+            else
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Unknown parameter variant");
+            }
+
+            QString type;
+            bool    voidresult;
+            QVariant results = (*it)->Invoke(m_parent, params, type, voidresult);
+
+            // check result
+            if (!voidresult)
+            {
+                // check for invocation errors
+                if (results.type() != QVariant::Invalid)
+                {
+                    QVariantMap result;
+                    result.insert("result", results);
+                    return result;
+                }
+
+                QVariantMap result;
+                QVariantMap error;
+                error.insert("code", -32602);
+                error.insert("message", "Invalid params");
+                result.insert("error", error);
+                return result;
+            }
+
+            // JSON-RPC 2.0 specification makes no mention of void/null return types
+            QVariantMap result;
+            result.insert("result", "null");
+            return result;
+        }
+    }
+
+    LOG(VB_GENERAL, LOG_ERR, QString("'%1' service has no '%2' method").arg(m_signature).arg(method));
+
+    QVariantMap result;
+    QVariantMap error;
+    error.insert("code", -32601);
+    error.insert("message", "Method not found");
+    result.insert("error", error);
+    return result;
 }
 
 void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
