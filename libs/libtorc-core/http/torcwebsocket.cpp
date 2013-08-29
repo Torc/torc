@@ -97,9 +97,6 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
         if (!protocols.isEmpty())
             m_subProtocol = protocols.first();
     }
-
-    if (m_subProtocol != SubProtocolNone)
-        LOG(VB_GENERAL, LOG_INFO, QString("WebSocket using %1 subprotocol").arg(SubProtocolsToString(m_subProtocol)));
 }
 
 TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16 Port, WSSubProtocol Protocol)
@@ -129,8 +126,6 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16
     m_closeSent(false),
     m_currentRequestID(1)
 {
-    if (m_subProtocol != SubProtocolNone)
-        LOG(VB_GENERAL, LOG_INFO, QString("WebSocket using %1 subprotocol").arg(SubProtocolsToString(m_subProtocol)));
 }
 
 TorcWebSocket::~TorcWebSocket()
@@ -490,6 +485,11 @@ void TorcWebSocket::Start(void)
                 connect(m_socket, SIGNAL(disconnected()), m_parent->GetQThread(), SLOT(quit()));
 
             m_upgradeRequest->Respond(m_socket, &m_abort);
+
+            LOG(VB_GENERAL, LOG_INFO, QString("Server WebSocket connected to '%1' (Subprotocol: %2)")
+                    .arg(m_socket->peerAddress().toString() + ":" + QString::number(m_socket->peerPort()))
+                    .arg(SubProtocolsToString(m_subProtocol)));
+
             emit ConnectionEstablished();
             return;
         }
@@ -761,7 +761,7 @@ void TorcWebSocket::ReadyRead(void)
                 return;
             }
 
-            LOG(VB_GENERAL, LOG_INFO, "Received expected upgrade response - switching to frame protocol");
+            LOG(VB_GENERAL, LOG_INFO, "Received valid upgrade response - switching to frame protocol");
             m_handShaking = false;
             emit ConnectionEstablished();
         }
@@ -1087,8 +1087,6 @@ void TorcWebSocket::Connected(void)
     if (!m_socket)
         return;
 
-    LOG(VB_GENERAL, LOG_INFO, QString("Connected to '%1'").arg(m_address));
-
     QByteArray *upgrade = new QByteArray();
     QTextStream stream(upgrade);
 
@@ -1120,6 +1118,9 @@ void TorcWebSocket::Connected(void)
         CloseSocket();
         return;
     }
+
+    LOG(VB_GENERAL, LOG_INFO, QString("Client WebSocket connected to '%1' (SubProtocol: %2)")
+        .arg(m_address + ":" + QString::number(m_port)).arg(SubProtocolsToString(m_subProtocol)));
 
     LOG(VB_NETWORK, LOG_DEBUG, QString("Data...\r\n%1").arg(upgrade->data()));
 }
