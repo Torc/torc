@@ -1439,13 +1439,13 @@ void TorcWebSocket::ProcessPayload(const QByteArray &Payload)
 }
 
 TorcWebSocketThread::TorcWebSocketThread(TorcHTTPRequest *Request, QTcpSocket *Socket)
-  : TorcThread("websocket"),
+  : TorcThread("WebSocket"),
     m_webSocket(new TorcWebSocket(this, Request, Socket))
 {
 }
 
 TorcWebSocketThread::TorcWebSocketThread(const QString &Address, quint16 Port, TorcWebSocket::WSSubProtocol Protocol)
-  : TorcThread("websocket"),
+  : TorcThread("WebSocket"),
     m_webSocket(new TorcWebSocket(this, Address, Port, Protocol))
 {
 }
