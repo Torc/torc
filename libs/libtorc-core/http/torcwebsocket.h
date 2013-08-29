@@ -39,10 +39,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     enum WSSubProtocol
     {
         SubProtocolNone           = (0 << 0),
-        SubProtocolJSONRPC        = (1 << 0),
-        SubProtocolXMLRPC         = (1 << 1),
-        SubProtocolPLISTRPC       = (1 << 2),
-        SubProtocolBINARYPLISTRPC = (1 << 3)
+        SubProtocolJSONRPC        = (1 << 0)
     };
 
     Q_DECLARE_FLAGS(WSSubProtocols, WSSubProtocol);
@@ -121,6 +118,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     bool            event                 (QEvent *Event);
 
   private:
+    OpCode          OpCodeForSubProtocol  (WSSubProtocol Protocol);
     void            SendFrame             (OpCode Code, QByteArray &Payload);
     void            HandlePing            (QByteArray &Payload);
     void            HandlePong            (QByteArray &Payload);

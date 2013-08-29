@@ -426,9 +426,6 @@ QString TorcWebSocket::SubProtocolsToString(WSSubProtocols Protocols)
     QStringList list;
 
     if (Protocols.testFlag(SubProtocolJSONRPC))        list.append(QLatin1String("torc.json-rpc"));
-    if (Protocols.testFlag(SubProtocolXMLRPC))         list.append(QLatin1String("torc.xml-rpc"));
-    if (Protocols.testFlag(SubProtocolPLISTRPC))       list.append(QLatin1String("torc.plist-rpc"));
-    if (Protocols.testFlag(SubProtocolBINARYPLISTRPC)) list.append(QLatin1String("torc.x-plist-rpc"));
 
     return list.join(",");
 }
@@ -439,9 +436,6 @@ TorcWebSocket::WSSubProtocols TorcWebSocket::SubProtocolsFromString(const QStrin
     WSSubProtocols protocols = SubProtocolNone;
 
     if (Protocols.contains(QLatin1String("torc.json-rpc"),    Qt::CaseInsensitive)) protocols |= SubProtocolJSONRPC;
-    if (Protocols.contains(QLatin1String("torc.xml-rpc"),     Qt::CaseInsensitive)) protocols |= SubProtocolXMLRPC;
-    if (Protocols.contains(QLatin1String("torc.plist-rpc"),   Qt::CaseInsensitive)) protocols |= SubProtocolPLISTRPC;
-    if (Protocols.contains(QLatin1String("torc.x-plist-rpc"), Qt::CaseInsensitive)) protocols |= SubProtocolBINARYPLISTRPC;
 
     return protocols;
 }
@@ -456,10 +450,7 @@ QList<TorcWebSocket::WSSubProtocol> TorcWebSocket::SubProtocolsFromPrioritisedSt
     {
         QString protocol = protocols[i].trimmed();
 
-        if      (!QString::compare(protocol, QLatin1String("torc.json-rpc"),    Qt::CaseInsensitive)) results.append(SubProtocolJSONRPC);
-        else if (!QString::compare(protocol, QLatin1String("torc.xml-rpc"),     Qt::CaseInsensitive)) results.append(SubProtocolXMLRPC);
-        else if (!QString::compare(protocol, QLatin1String("torc.plist-rpc"),   Qt::CaseInsensitive)) results.append(SubProtocolPLISTRPC);
-        else if (!QString::compare(protocol, QLatin1String("torc.x-plist-rpc"), Qt::CaseInsensitive)) results.append(SubProtocolBINARYPLISTRPC);
+        if (!QString::compare(protocol, QLatin1String("torc.json-rpc"), Qt::CaseInsensitive)) results.append(SubProtocolJSONRPC);
     }
 
     return results;
@@ -621,7 +612,7 @@ void TorcWebSocket::HandleRemoteRequest(TorcRPCRequest *Request)
         if (m_subProtocol == SubProtocolNone)
             LOG(VB_GENERAL, LOG_ERR, "No protocol specified for remote procedure call");
         else
-            SendFrame(m_subProtocol == SubProtocolBINARYPLISTRPC ? OpBinary : OpText, Request->SerialiseRequest(m_subProtocol));
+            SendFrame(OpCodeForSubProtocol(m_subProtocol), Request->SerialiseRequest(m_subProtocol));
     }
 
     // notifications are fire and forget, so downref immediately
@@ -846,10 +837,10 @@ void TorcWebSocket::ReadyRead(void)
                         error = CloseProtocolError;
                     }
 
-                    // binary plists need binary frames and every other subprotocol expects text frames
-                    else if ((!m_echoTest && m_subProtocol != SubProtocolNone) &&
-                             ((m_frameOpCode == OpText   && m_subProtocol == SubProtocolBINARYPLISTRPC) ||
-                              (m_frameOpCode == OpBinary && m_subProtocol != SubProtocolBINARYPLISTRPC)))
+                    // ensure OpCode matches that expected by SubProtocol
+                    else if ((m_echoTest && m_subProtocol != SubProtocolNone &&
+                             (m_frameOpCode == OpText || m_frameOpCode == OpBinary) &&
+                              m_frameOpCode != OpCodeForSubProtocol(m_subProtocol)))
                     {
                         reason = QString("Received incorrect frame type for subprotocol");
                         error  = CloseUnsupportedDataType;
@@ -1168,6 +1159,18 @@ bool TorcWebSocket::event(QEvent *Event)
     return QObject::event(Event);
 }
 
+TorcWebSocket::OpCode TorcWebSocket::OpCodeForSubProtocol(WSSubProtocol Protocol)
+{
+    switch (Protocol)
+    {
+        case SubProtocolNone:
+        case SubProtocolJSONRPC:
+            return OpText;
+    }
+
+    return OpText;
+}
+
 /*! \brief Compose and send a properly formatted websocket frame.
  *
  * \note If this is a client side socket, Payload will be masked in place.
@@ -1401,7 +1404,7 @@ void TorcWebSocket::ProcessPayload(const QByteArray &Payload)
                 // will handle anything format specific.
                 result.insert("id", id);
                 QByteArray data = TorcRPCRequest::SerialiseResponse(m_subProtocol, result);
-                SendFrame(m_subProtocol == SubProtocolBINARYPLISTRPC ? OpBinary : OpText, data);
+                SendFrame(OpCodeForSubProtocol(m_subProtocol), data);
             }
         }
         else if (isresult || iserror)
