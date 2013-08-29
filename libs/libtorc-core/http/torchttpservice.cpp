@@ -443,7 +443,7 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
             {
                 LOG(VB_GENERAL, LOG_ERR, "Ordered parameters not yet supported");
             }
-            else
+            else if (!Parameters.isNull())
             {
                 LOG(VB_GENERAL, LOG_ERR, "Unknown parameter variant");
             }
