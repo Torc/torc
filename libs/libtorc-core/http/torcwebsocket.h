@@ -118,7 +118,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     bool            event                 (QEvent *Event);
 
   private:
-    OpCode          OpCodeForSubProtocol  (WSSubProtocol Protocol);
+    OpCode          FormatForSubProtocol  (WSSubProtocol Protocol);
     void            SendFrame             (OpCode Code, QByteArray &Payload);
     void            HandlePing            (QByteArray &Payload);
     void            HandlePong            (QByteArray &Payload);
@@ -150,6 +150,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     bool             m_echoTest;
 
     WSSubProtocol    m_subProtocol;
+    OpCode           m_subProtocolFrameFormat;
     bool             m_frameFinalFragment;
     OpCode           m_frameOpCode;
     bool             m_frameMasked;

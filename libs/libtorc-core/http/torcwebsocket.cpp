@@ -48,6 +48,9 @@
  * \sa TorcHTTPRequest
  * \sa TorcHTTPConnection
  *
+ * \note SubProtocol support is currently limited to JSON-RPC. New subprotocols with mixed frame support
+ *       (Binary and Text) are not currently supported.
+ *
  * \note To test using the Autobahn python test suite, configure the suite to
  *       request a connection using 'echo' as the method (e.g. 'http://your-ip-address:your-port/echo').
  *
@@ -72,6 +75,7 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
     m_readState(ReadHeader),
     m_echoTest(false),
     m_subProtocol(SubProtocolNone),
+    m_subProtocolFrameFormat(OpText),
     m_frameFinalFragment(false),
     m_frameOpCode(OpContinuation),
     m_frameMasked(false),
@@ -95,7 +99,10 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
     {
         QList<WSSubProtocol> protocols = SubProtocolsFromPrioritisedString(Request->Headers()->value("Sec-WebSocket-Protocol"));
         if (!protocols.isEmpty())
+        {
             m_subProtocol = protocols.first();
+            m_subProtocolFrameFormat = FormatForSubProtocol(m_subProtocol);
+        }
     }
 }
 
@@ -113,6 +120,7 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16
     m_readState(ReadHeader),
     m_echoTest(false),
     m_subProtocol(Protocol),
+    m_subProtocolFrameFormat(FormatForSubProtocol(Protocol)),
     m_frameFinalFragment(false),
     m_frameOpCode(OpContinuation),
     m_frameMasked(false),
@@ -355,7 +363,7 @@ bool TorcWebSocket::ProcessUpgradeRequest(TorcHTTPConnection *Connection, TorcHT
     }
 
     // valid handshake so set response headers and transfer socket
-    LOG(VB_GENERAL, LOG_INFO, "Received valid websocket Upgrade request");
+    LOG(VB_GENERAL, LOG_DEBUG, "Received valid websocket Upgrade request");
 
     QString key = Request->Headers()->value("Sec-WebSocket-Key") + QLatin1String("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
     QString nonce = QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toBase64();
@@ -425,7 +433,7 @@ QString TorcWebSocket::SubProtocolsToString(WSSubProtocols Protocols)
 {
     QStringList list;
 
-    if (Protocols.testFlag(SubProtocolJSONRPC))        list.append(QLatin1String("torc.json-rpc"));
+    if (Protocols.testFlag(SubProtocolJSONRPC)) list.append(QLatin1String("torc.json-rpc"));
 
     return list.join(",");
 }
@@ -435,7 +443,7 @@ TorcWebSocket::WSSubProtocols TorcWebSocket::SubProtocolsFromString(const QStrin
 {
     WSSubProtocols protocols = SubProtocolNone;
 
-    if (Protocols.contains(QLatin1String("torc.json-rpc"),    Qt::CaseInsensitive)) protocols |= SubProtocolJSONRPC;
+    if (Protocols.contains(QLatin1String("torc.json-rpc"), Qt::CaseInsensitive)) protocols |= SubProtocolJSONRPC;
 
     return protocols;
 }
@@ -468,8 +476,6 @@ void TorcWebSocket::Start(void)
     {
         if (m_upgradeRequest && m_socket)
         {
-            LOG(VB_GENERAL, LOG_INFO, "WebSocket thread started");
-
             connect(m_socket, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
             connect(m_socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(Error(QAbstractSocket::SocketError)));
             if (m_parent)
@@ -612,14 +618,14 @@ void TorcWebSocket::HandleRemoteRequest(TorcRPCRequest *Request)
         if (m_subProtocol == SubProtocolNone)
             LOG(VB_GENERAL, LOG_ERR, "No protocol specified for remote procedure call");
         else
-            SendFrame(OpCodeForSubProtocol(m_subProtocol), Request->SerialiseRequest(m_subProtocol));
+            SendFrame(m_subProtocolFrameFormat, Request->SerialiseRequest(m_subProtocol));
     }
 
     // notifications are fire and forget, so downref immediately
     if (!Request->GetParent())
     {
-        m_outstandingNotifications.deref();
         Request->DownRef();
+        m_outstandingNotifications.deref();
     }
 }
 
@@ -838,9 +844,9 @@ void TorcWebSocket::ReadyRead(void)
                     }
 
                     // ensure OpCode matches that expected by SubProtocol
-                    else if ((m_echoTest && m_subProtocol != SubProtocolNone &&
+                    else if ((!m_echoTest && m_subProtocol != SubProtocolNone) &&
                              (m_frameOpCode == OpText || m_frameOpCode == OpBinary) &&
-                              m_frameOpCode != OpCodeForSubProtocol(m_subProtocol)))
+                              m_frameOpCode != m_subProtocolFrameFormat)
                     {
                         reason = QString("Received incorrect frame type for subprotocol");
                         error  = CloseUnsupportedDataType;
@@ -1159,11 +1165,12 @@ bool TorcWebSocket::event(QEvent *Event)
     return QObject::event(Event);
 }
 
-TorcWebSocket::OpCode TorcWebSocket::OpCodeForSubProtocol(WSSubProtocol Protocol)
+TorcWebSocket::OpCode TorcWebSocket::FormatForSubProtocol(WSSubProtocol Protocol)
 {
     switch (Protocol)
     {
         case SubProtocolNone:
+            return OpText;
         case SubProtocolJSONRPC:
             return OpText;
     }
