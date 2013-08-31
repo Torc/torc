@@ -1125,7 +1125,10 @@ void TorcWebSocket::Connected(void)
 void TorcWebSocket::Error(QAbstractSocket::SocketError SocketError)
 {
     if (m_socket)
+    {
         LOG(VB_GENERAL, LOG_ERR, QString("WebSocket error: %1 ('%2')").arg(m_socket->error()).arg(m_socket->errorString()));
+        CloseSocket();
+    }
 }
 
 bool TorcWebSocket::event(QEvent *Event)
@@ -1378,73 +1381,39 @@ void TorcWebSocket::InitiateClose(CloseCode Close, const QString &Reason)
 
 void TorcWebSocket::ProcessPayload(const QByteArray &Payload)
 {
-    if (m_subProtocol == SubProtocolNone)
-        return;
-
-    QVariant payload = TorcRPCRequest::ParsePayload(m_subProtocol, Payload);
-
-    // single request/response
-    if (payload.type() == QVariant::Map)
+    if (m_subProtocol == SubProtocolJSONRPC)
     {
-        QVariantMap request = payload.toMap();
+        // NB there is no method to support SENDING batched requests (hence
+        // we should only receive batched requests from 3rd parties) and hence there
+        // is no support for handling batched responses.
+        TorcRPCRequest *request = new TorcRPCRequest(m_subProtocol, Payload);
 
-        // retrieve the id if present, taking care to handle the NULL id case for errors
-        int  id        = (request.contains("id") && !request["id"].isNull()) ? request["id"].toInt() : -1;
-        bool isrequest = request.contains("method");
-        bool isresult  = request.contains("result");
-        bool iserror   = request.contains("error");
-
-        if ((int)isrequest + (int)isresult + (int)iserror != 1)
+        // if the request has data, we need to send it (it was a request!)
+        if (!request->GetData().isEmpty())
         {
-            LOG(VB_GENERAL, LOG_ERR, "Ambiguous RPC request/response");
-            return;
+            SendFrame(m_subProtocolFrameFormat, request->GetData());
         }
-
-        if (isrequest)
+        // if the request has an id, we need to process it
+        else if (request->GetID() > -1)
         {
-            QVariantMap result = TorcHTTPServer::HandleRequest(request["method"].toString(), request["params"]);
-
-            // not a notification, response expected
-            if (id > -1)
-            {
-                // result should contain either 'result' or 'error', we need to insert id and the serialiser
-                // will handle anything format specific.
-                result.insert("id", id);
-                QByteArray data = TorcRPCRequest::SerialiseResponse(m_subProtocol, result);
-                SendFrame(OpCodeForSubProtocol(m_subProtocol), data);
-            }
-        }
-        else if (isresult || iserror)
-        {
-            // check id
-            if (id < 0)
-            {
-                LOG(VB_GENERAL, LOG_ERR, QString("Received %1 with no id").arg(isresult ? "result" : "error"));
-                return;
-            }
-
+            int id = request->GetID();
             if (m_currentRequests.contains(id))
             {
                 TorcRPCRequest *requestor = m_currentRequests.value(id);
                 requestor->AddState(TorcRPCRequest::ReplyReceived);
 
-                if (iserror)
+                if (request->GetState() & TorcRPCRequest::Errored)
                     requestor->AddState(TorcRPCRequest::Errored);
                 else
-                    requestor->SetReply(request.value("result"));
+                    requestor->SetReply(request->GetReply());
+
                 requestor->NotifyParent();
                 m_currentRequests.remove(id);
                 requestor->DownRef();
             }
-            else
-            {
-                LOG(VB_GENERAL, LOG_ERR, QString("Received %1 for unknown request id").arg(isresult ? "result" : "error"));
-            }
         }
-    }
-    // batched request/response
-    else if (payload.type() == QVariant::List)
-    {
+
+        request->DownRef();
     }
 }
 

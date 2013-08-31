@@ -20,15 +20,14 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
         ReplyReceived = (1 << 1),
         Cancelled     = (1 << 2),
         TimedOut      = (1 << 3),
-        Errored       = (1 << 4)
+        Errored       = (1 << 4),
+        Result        = (1 << 5)
     };
 
   public:
     TorcRPCRequest(const QString &Method, QObject *Parent);
     TorcRPCRequest(const QString &Method);
-
-    static QVariant     ParsePayload           (TorcWebSocket::WSSubProtocol Protocol, const QByteArray &Payload);
-    static QByteArray   SerialiseResponse      (TorcWebSocket::WSSubProtocol Protocol, QVariantMap &Response);
+    TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByteArray &Data);
 
     void                NotifyParent           (void);
     QByteArray&         SerialiseRequest       (TorcWebSocket::WSSubProtocol Protocol);
@@ -45,6 +44,7 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
     const QVariant&     GetReply               (void);
     const QList<QPair<QString,QVariant> >&
                         GetParameters          (void);
+    QByteArray&         GetData                (void);
 
   private:
     ~TorcRPCRequest();

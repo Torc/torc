@@ -23,6 +23,7 @@
 
 // Torc
 #include "torclogging.h"
+#include "http/torchttpserver.h"
 #include "torcrpcrequest.h"
 
 /*! \class TorcRPCRequest
@@ -66,30 +67,120 @@ TorcRPCRequest::TorcRPCRequest(const QString &Method)
   : m_state(None),
     m_id(-1),
     m_method(Method),
-    m_parent(NULL)
+    m_parent(NULL),
+    m_validParent(false)
 {
+}
+
+/*! \brief Creates a request or response from the given raw data using the given protocol.
+ *
+*/
+TorcRPCRequest::TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByteArray &Data)
+  : m_state(None),
+    m_id(-1),
+    m_method(),
+    m_parent(NULL),
+    m_validParent(false)
+{
+    if (Protocol == TorcWebSocket::SubProtocolJSONRPC)
+    {
+        // parse the JSON
+        QJsonDocument doc = QJsonDocument::fromJson(Data);
+
+        if (doc.isNull())
+        {
+            // NB we are acting as both client and server, hence if we receive invalid JSON (that Qt cannot parse)
+            // we can only make a best efforts guess as to whether this was a request. Hence under
+            // certain circumstances, we may not send the appropriate error message or respond at all.
+            if (Data.contains("method"))
+            {
+                QJsonObject object;
+                QJsonObject error;
+                error.insert("code", -32700);
+                error.insert("message", QString("Parse error"));
+
+                object.insert("error",   error);
+                object.insert("jsonrpc", QString("2.0"));
+                object.insert("id",      QJsonValue());
+
+                m_serialisedData = QJsonDocument(object).toJson();
+
+                LOG(VB_GENERAL, LOG_INFO, m_serialisedData);
+            }
+
+            LOG(VB_GENERAL, LOG_ERR, "Error parsing JSON-RPC data");
+            AddState(Errored);
+            return;
+        }
+
+        LOG(VB_GENERAL, LOG_INFO, Data);
+
+        // single request, one JSON object
+        if (doc.isObject())
+        {
+            QJsonObject object = doc.object();
+
+            // determine whether this is a request of response
+            int  id        = (object.contains("id") && !object["id"].isNull()) ? (int)object["id"].toDouble() : -1;
+            bool isrequest = object.contains("method");
+            bool isresult  = object.contains("result");
+            bool iserror   = object.contains("error");
+
+            if ((int)isrequest + (int)isresult + (int)iserror != 1)
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Ambiguous RPC request/response");
+                AddState(Errored);
+                return;
+            }
+
+            if (isrequest)
+            {
+                QVariantMap result = TorcHTTPServer::HandleRequest(object["method"].toString(), object.value("params").toVariant());
+
+                // not a notification, response expected
+                if (id > -1)
+                {
+                    // result should contain either 'result' or 'error', we need to insert id and protocol identifier
+                    result.insert("jsonrpc", QString("2.0"));
+                    result.insert("id", id);
+                    m_serialisedData = QJsonDocument::fromVariant(result).toJson();
+                }
+                else if (object.contains("id"))
+                {
+                    LOG(VB_GENERAL, LOG_ERR, "Request contains invalid id");
+                }
+            }
+            else if (isresult)
+            {
+                m_reply = object.value("result").toVariant();
+                AddState(Result);
+                m_id = id;
+
+                if (m_id < 0)
+                {
+                    LOG(VB_GENERAL, LOG_ERR, "Received result with no id");
+                    AddState(Errored);
+                }
+            }
+            else if (iserror)
+            {
+                AddState(Errored);
+                AddState(Result);
+                m_id = id;
+
+                if (m_id < 0)
+                    LOG(VB_GENERAL, LOG_ERR, "Received error with no id");
+            }
+        }
+        else
+        {
+            // TODO batched requests
+        }
+    }
 }
 
 TorcRPCRequest::~TorcRPCRequest()
 {
-}
-
-///\brief Parse the contents of Payload, assuming data consistent with Protocol.
-QVariant TorcRPCRequest::ParsePayload(TorcWebSocket::WSSubProtocol Protocol, const QByteArray &Payload)
-{
-    if (Protocol == TorcWebSocket::SubProtocolJSONRPC)
-    {
-        QJsonDocument doc = QJsonDocument::fromJson(Payload);
-        if (!doc.isNull())
-        {
-            LOG(VB_GENERAL, LOG_INFO, Payload);
-            return doc.toVariant();
-        }
-
-        LOG(VB_GENERAL, LOG_ERR, "Error parsing response to JSON-RPC");
-    }
-
-    return QVariant();
 }
 
 ///\brief Signal to the parent that the request is ready (but may be errored).
@@ -128,19 +219,6 @@ QByteArray& TorcRPCRequest::SerialiseRequest(TorcWebSocket::WSSubProtocol Protoc
     LOG(VB_NETWORK, LOG_DEBUG, m_serialisedData);
 
     return m_serialisedData;
-}
-
-///\brief Serialise the response for the given protocol
-QByteArray TorcRPCRequest::SerialiseResponse(TorcWebSocket::WSSubProtocol Protocol, QVariantMap &Response)
-{
-    if (Protocol == TorcWebSocket::SubProtocolJSONRPC)
-    {
-        Response.insert("jsonrpc", QString("2.0"));
-        QJsonDocument doc = QJsonDocument::fromVariant(Response);
-        return doc.toJson();
-    }
-
-    return QByteArray();
 }
 
 /*! \brief Progress the state for this request.
@@ -200,4 +278,9 @@ const QVariant& TorcRPCRequest::GetReply(void)
 const QList<QPair<QString,QVariant> >& TorcRPCRequest::GetParameters(void)
 {
     return m_parameters;
+}
+
+QByteArray& TorcRPCRequest::GetData(void)
+{
+    return m_serialisedData;
 }
