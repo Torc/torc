@@ -1259,7 +1259,7 @@ void TorcWebSocket::SendFrame(OpCode Code, QByteArray &Payload)
             Payload[i] = Payload[i] ^ mask[i % 4];
     }
 
-    if (m_socket->write(frame) == frame.size())
+    if (m_socket && m_socket->write(frame) == frame.size())
     {
         if ((Payload.size() && m_socket->write(Payload) == Payload.size()) || !Payload.size())
         {
