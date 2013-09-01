@@ -18,6 +18,7 @@
 */
 
 // Qt
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonDocument>
 
@@ -172,9 +173,69 @@ TorcRPCRequest::TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByt
                     LOG(VB_GENERAL, LOG_ERR, "Received error with no id");
             }
         }
+        else if (doc.isArray())
+        {
+            QJsonObject error;
+            QJsonObject object;
+            object.insert("code",    -32600);
+            object.insert("message", QString("Invalid request"));
+            error.insert("error",    object);
+            error.insert("jsonrpc",  QString("2.0"));
+            error.insert("id",       QJsonValue());
+
+            // this must be a batched request
+            QJsonArray array = doc.array();
+
+            // an empty array is an error
+            if (array.isEmpty())
+            {
+                m_serialisedData = QJsonDocument(error).toJson();
+                LOG(VB_GENERAL, LOG_ERR, "Invalid request - empty array");
+                return;
+            }
+
+            // iterate over each member
+            QByteArray result;
+            result.append("[\r\n");
+            bool first = true;
+
+            QJsonArray::iterator it = array.begin();
+            for ( ; it != array.end(); ++it)
+            {
+                // must be an object
+                if (!(*it).isObject())
+                {
+                    LOG(VB_GENERAL, LOG_ERR, "Invalid request - not an object");
+                    result.append(QJsonDocument(error).toJson());
+                    continue;
+                }
+
+                // process this object
+                // NB Converting from Json back to raw data and back to Json is hopelessly inefficient
+                QByteArray data = QJsonDocument((*it).toObject()).toJson();
+                TorcRPCRequest *request = new TorcRPCRequest(Protocol, data);
+
+                if (!request->GetData().isEmpty())
+                {
+                    if (first)
+                        first = false;
+                    else
+                        result.append(",\r\n");
+                    result.append(request->GetData());
+                }
+
+                request->DownRef();
+            }
+
+            result.append("\r\n]");
+
+            // don't return an empty array
+            if (!first)
+                m_serialisedData = result;
+        }
         else
         {
-            // TODO batched requests
+            LOG(VB_GENERAL, LOG_ERR, "Unknown JsonDocument type");
         }
     }
 }
