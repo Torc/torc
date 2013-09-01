@@ -4,6 +4,7 @@
 // Qt
 #include <QList>
 #include <QVariant>
+#include <QJsonObject>
 
 // Torc
 #include "torccoreexport.h"
@@ -47,7 +48,10 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
     QByteArray&         GetData                (void);
 
   private:
+    TorcRPCRequest(const QJsonObject &Object);
     ~TorcRPCRequest();
+
+    void                ParseJSONObject        (const QJsonObject &Object);
 
     int                 m_state;
     int                 m_id;

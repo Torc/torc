@@ -19,7 +19,6 @@
 
 // Qt
 #include <QJsonArray>
-#include <QJsonObject>
 #include <QJsonDocument>
 
 // Torc
@@ -73,6 +72,18 @@ TorcRPCRequest::TorcRPCRequest(const QString &Method)
 {
 }
 
+/*! \brief Creates a request from the given QJsonObject
+*/
+TorcRPCRequest::TorcRPCRequest(const QJsonObject &Object)
+  : m_state(None),
+    m_id(-1),
+    m_method(),
+    m_parent(NULL),
+    m_validParent(false)
+{
+    ParseJSONObject(Object);
+}
+
 /*! \brief Creates a request or response from the given raw data using the given protocol.
  *
 */
@@ -120,58 +131,8 @@ TorcRPCRequest::TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByt
         if (doc.isObject())
         {
             QJsonObject object = doc.object();
-
-            // determine whether this is a request of response
-            int  id        = (object.contains("id") && !object["id"].isNull()) ? (int)object["id"].toDouble() : -1;
-            bool isrequest = object.contains("method");
-            bool isresult  = object.contains("result");
-            bool iserror   = object.contains("error");
-
-            if ((int)isrequest + (int)isresult + (int)iserror != 1)
-            {
-                LOG(VB_GENERAL, LOG_ERR, "Ambiguous RPC request/response");
-                AddState(Errored);
-                return;
-            }
-
-            if (isrequest)
-            {
-                QVariantMap result = TorcHTTPServer::HandleRequest(object["method"].toString(), object.value("params").toVariant());
-
-                // not a notification, response expected
-                if (id > -1)
-                {
-                    // result should contain either 'result' or 'error', we need to insert id and protocol identifier
-                    result.insert("jsonrpc", QString("2.0"));
-                    result.insert("id", id);
-                    m_serialisedData = QJsonDocument::fromVariant(result).toJson();
-                }
-                else if (object.contains("id"))
-                {
-                    LOG(VB_GENERAL, LOG_ERR, "Request contains invalid id");
-                }
-            }
-            else if (isresult)
-            {
-                m_reply = object.value("result").toVariant();
-                AddState(Result);
-                m_id = id;
-
-                if (m_id < 0)
-                {
-                    LOG(VB_GENERAL, LOG_ERR, "Received result with no id");
-                    AddState(Errored);
-                }
-            }
-            else if (iserror)
-            {
-                AddState(Errored);
-                AddState(Result);
-                m_id = id;
-
-                if (m_id < 0)
-                    LOG(VB_GENERAL, LOG_ERR, "Received error with no id");
-            }
+            ParseJSONObject(object);
+            return;
         }
         else if (doc.isArray())
         {
@@ -211,9 +172,7 @@ TorcRPCRequest::TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByt
                 }
 
                 // process this object
-                // NB Converting from Json back to raw data and back to Json is hopelessly inefficient
-                QByteArray data = QJsonDocument((*it).toObject()).toJson();
-                TorcRPCRequest *request = new TorcRPCRequest(Protocol, data);
+                TorcRPCRequest *request = new TorcRPCRequest((*it).toObject());
 
                 if (!request->GetData().isEmpty())
                 {
@@ -242,6 +201,61 @@ TorcRPCRequest::TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByt
 
 TorcRPCRequest::~TorcRPCRequest()
 {
+}
+
+void TorcRPCRequest::ParseJSONObject(const QJsonObject &Object)
+{
+    // determine whether this is a request of response
+    int  id        = (Object.contains("id") && !Object["id"].isNull()) ? (int)Object["id"].toDouble() : -1;
+    bool isrequest = Object.contains("method");
+    bool isresult  = Object.contains("result");
+    bool iserror   = Object.contains("error");
+
+    if ((int)isrequest + (int)isresult + (int)iserror != 1)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Ambiguous RPC request/response");
+        AddState(Errored);
+        return;
+    }
+
+    if (isrequest)
+    {
+        QVariantMap result = TorcHTTPServer::HandleRequest(Object["method"].toString(), Object.value("params").toVariant());
+
+        // not a notification, response expected
+        if (id > -1)
+        {
+            // result should contain either 'result' or 'error', we need to insert id and protocol identifier
+            result.insert("jsonrpc", QString("2.0"));
+            result.insert("id", id);
+            m_serialisedData = QJsonDocument::fromVariant(result).toJson();
+        }
+        else if (Object.contains("id"))
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Request contains invalid id");
+        }
+    }
+    else if (isresult)
+    {
+        m_reply = Object.value("result").toVariant();
+        AddState(Result);
+        m_id = id;
+
+        if (m_id < 0)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Received result with no id");
+            AddState(Errored);
+        }
+    }
+    else if (iserror)
+    {
+        AddState(Errored);
+        AddState(Result);
+        m_id = id;
+
+        if (m_id < 0)
+            LOG(VB_GENERAL, LOG_ERR, "Received error with no id");
+    }
 }
 
 ///\brief Signal to the parent that the request is ready (but may be errored).
