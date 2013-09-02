@@ -23,6 +23,7 @@
 #include "torcconfig.h"
 #include "torcexitcodes.h"
 #include "torccompat.h"
+#include "torcqthread.h"
 #include "torclogging.h"
 #include "torcloggingimp.h"
 
@@ -159,16 +160,16 @@ class LogItem
     char                message[LOGLINE_MAX+1];
 };
 
-class LoggingThread : public TorcThread
+class LoggingThread : public TorcQThread
 {
   public:
     LoggingThread();
    ~LoggingThread();
 
-    // TorcThread
+    // TorcQThread
     void run(void)
     {
-        RunProlog();
+        Initialise();
 
         gLogThreadFinished = false;
 
@@ -196,7 +197,15 @@ class LoggingThread : public TorcThread
 
         lock.unlock();
 
-        RunEpilog();
+        Deinitialise();
+    }
+
+    void Start(void)
+    {
+    }
+
+    void Finish(void)
+    {
     }
 
     void Stop(void)
@@ -513,8 +522,8 @@ int64_t GetThreadTid(LogItem *Item)
     return(tid);
 }
 
-LoggingThread::LoggingThread() :
-    TorcThread("Logger"),
+LoggingThread::LoggingThread()
+  : TorcQThread("Logger"),
     m_waitNotEmpty(new QWaitCondition()),
     m_waitEmpty(new QWaitCondition()),
     m_aborted(false)
@@ -530,6 +539,7 @@ LoggingThread::LoggingThread() :
 LoggingThread::~LoggingThread()
 {
     Stop();
+    quit();
     wait();
 
     delete m_waitNotEmpty;
@@ -648,6 +658,7 @@ void StopLogging(void)
     if (gLogThread)
     {
         gLogThread->Stop();
+        gLogThread->quit();
         gLogThread->wait();
     }
 

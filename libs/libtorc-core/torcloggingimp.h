@@ -1,9 +1,6 @@
 #ifndef TORCLOGGINGIMP_H
 #define TORCLOGGINGIMP_H
 
-// Torc
-#include "torcthread.h"
-
 #define LOGLINE_MAX (2048-120)
 
 class QFile;
