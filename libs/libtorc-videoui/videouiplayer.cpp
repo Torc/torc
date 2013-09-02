@@ -22,7 +22,7 @@
 
 // Torc
 #include "torcconfig.h"
-#include "torcthread.h"
+#include "torcqthread.h"
 #include "torcdecoder.h"
 #include "uiedid.h"
 #include "videoframe.h"
@@ -238,7 +238,7 @@ void VideoUIPlayer::Render(quint64 TimeNow)
 
 void VideoUIPlayer::Reset(void)
 {
-    if (TorcThread::IsMainThread())
+    if (TorcQThread::IsMainThread())
     {
         if (m_currentFrame)
             m_buffers.ReleaseFrameFromDisplaying(m_currentFrame, false);
