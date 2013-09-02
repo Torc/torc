@@ -29,7 +29,7 @@
 #include "torclocalcontext.h"
 #include "torclogging.h"
 #include "torcevent.h"
-#include "torcthread.h"
+#include "torcqthread.h"
 #include "torcadminthread.h"
 #include "torcusb.h"
 #include "uiedid.h"
@@ -813,24 +813,20 @@ void TorcCECDevice::Create(void)
         // necessary, otherwise trigger initiation straight away.
         gCECDevice = new TorcCECDevice();
 
-        QThread *adminthread = TorcThread::GetQThread(TORC_ADMIN_THREAD);
-
-        if (TorcThread::IsCurrentThread(adminthread))
+        if (TorcQThread::IsAdminThread())
             gCECDevice->Open();
         else
-            gCECDevice->moveToThread(adminthread);
+            gCECDevice->moveToThread(TorcQThread::GetAdminThread());
     }
 }
 
 void TorcCECDevice::Destroy(void)
 {
-    QThread *adminthread = TorcThread::GetQThread(TORC_ADMIN_THREAD);
-
     QMutexLocker locker(gCECDeviceLock);
 
     if (gCECDevice)
     {
-        if (TorcThread::IsCurrentThread(adminthread))
+        if (TorcQThread::IsAdminThread())
         {
             delete gCECDevice;
         }
