@@ -5,19 +5,19 @@
 #include <QList>
 
 // Torc
-#include "torcthread.h"
+#include "torcqthread.h"
 
 class QMutex;
 
-class TorcAdminThread : public TorcThread
+class TorcAdminThread : public TorcQThread
 {
 
   public:
     TorcAdminThread();
     virtual ~TorcAdminThread();
 
-  protected:
-    void run         (void);
+    void Start  (void);
+    void Finish (void);
 };
 
 #define TORC_ADMIN_CRIT_PRIORITY 200

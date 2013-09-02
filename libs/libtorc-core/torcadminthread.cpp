@@ -41,7 +41,7 @@
 */
 
 TorcAdminThread::TorcAdminThread()
-  : TorcThread(TORC_ADMIN_THREAD)
+  : TorcQThread(TORC_ADMIN_THREAD)
 {
 }
 
@@ -49,22 +49,18 @@ TorcAdminThread::~TorcAdminThread()
 {
 }
 
-void TorcAdminThread::run(void)
+void TorcAdminThread::Start(void)
 {
-    RunProlog();
     LOG(VB_GENERAL, LOG_INFO, "Admin thread starting");
 
     // create objects that will run in the admin thread
     TorcAdminObject::CreateObjects();
+}
 
-    // run the event loop
-    exec();
-
-    // destroy admin objects
+void TorcAdminThread::Finish(void)
+{
     TorcAdminObject::DestroyObjects();
-
     LOG(VB_GENERAL, LOG_INFO, "Admin thread stopping");
-    RunEpilog();
 }
 
 /*! \class TorcAdminObject
