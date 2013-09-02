@@ -20,35 +20,95 @@
 * USA.
 */
 
+// Qt
+#include <QTimer>
+
 // Torc
 #include "torclogging.h"
 #include "torccocoa.h"
+#include "torcqthread.h"
 #include "torcadminthread.h"
 #include "torcrunlooposx.h"
 
 CFRunLoopRef gAdminRunLoop = 0;
+bool         gAdminRunLoopRunning = true;
 
-/*! \brief A simple thread class encapsulating a CFRunLoop
+/*! \class TorcOSXCallbackThread
+ *  \brief TorcQThread subclass to run a CFRunLoop
  *
  *  A CFRunLoop is only run by default in the main thread and a QThread
  *  generally cannot be created to run both a QEventLoop and CFRunLoop.
- *  TorcRunLoopOSX is a singleton thread that is created by TorcAdminThread for
+ *  TorcOSXCallbackThread is a singleton thread that is created by TorcRunLoopOSX for
  *  the purpose of receiving callbacks from OS X frameworks such as IOKit and
  *  DiskArbitration.
  *
  * \sa gAdminRunLoop
+ * \sa CallbackObject
+ * \sa TorcRunLoopOSX
  *
  *  \note This may be better implemented by combining QEventLoop::processEvents(QEventLoop::AllEvents, 10ms)
  *  and CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, false) in TorcAdminThread.
 */
 
-static class TorcRunLoopOSX : public TorcThread, public TorcAdminObject
+TorcOSXCallbackThread::TorcOSXCallbackThread()
+  : TorcQThread("OSXRunLoop"),
+    m_object(NULL)
+{
+}
+
+TorcOSXCallbackThread::~TorcOSXCallbackThread()
+{
+    delete m_object;
+}
+
+void TorcOSXCallbackThread::Start(void)
+{
+    LOG(VB_GENERAL, LOG_INFO, "OSX callback thread starting");
+    gAdminRunLoop = CFRunLoopGetCurrent();
+    m_object = new CallbackObject();
+}
+
+void TorcOSXCallbackThread::Finish(void)
+{
+    delete m_object;
+    m_object = NULL;
+    gAdminRunLoop = 0;
+    LOG(VB_GENERAL, LOG_INFO, "OSX callback thread stopping");
+}
+
+/*! \class CallbackObject
+ *  \brief A simple class encapusulating a single timer to start the CFRunLoop
+*/
+CallbackObject::CallbackObject()
+{
+    // schedule the run loop to start
+    if (gAdminRunLoopRunning)
+        QTimer::singleShot(10, this, SLOT(Run()));
+}
+
+void CallbackObject::Run(void)
+{
+    // start the run loop
+    if (gAdminRunLoopRunning)
+        CFRunLoopRun();
+
+    // if it exits, schedule it to start again
+    if (gAdminRunLoopRunning)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Restarting callback CFRunLoop");
+        QTimer::singleShot(20, this, SLOT(Run()));
+    }
+}
+
+/*! \class TorcRunLoopOSX
+ *  \brief A TorcAdminObject to instanciate the TorcOSXCallbackThread singleton.
+*/
+static class TorcRunLoopOSX : public TorcAdminObject
 {
   public:
     TorcRunLoopOSX()
-      : TorcThread("OSXRunLoop"),
-        TorcAdminObject(TORC_ADMIN_CRIT_PRIORITY),
-        m_stop(false)
+      : TorcAdminObject(TORC_ADMIN_CRIT_PRIORITY),
+        m_thread(NULL)
     {
     }
 
@@ -57,55 +117,40 @@ static class TorcRunLoopOSX : public TorcThread, public TorcAdminObject
         Destroy();
     }
 
-    void Stop(void)
-    {
-        if (gAdminRunLoop)
-            CFRunLoopStop(gAdminRunLoop);
-        m_stop = true;
-        quit();
-    }
-
     void Create(void)
     {
-        start();
+        Destroy();
+
+        gAdminRunLoopRunning = true;
+        m_thread = new TorcOSXCallbackThread();
+        m_thread->start();
 
         int count = 0;
-        while (count++ < 10 && !gAdminRunLoop)
-            TorcThread::msleep(count < 2 ? 10 : 100);
+        while (count++ < 10 && !m_thread->isRunning())
+            QThread::msleep(count < 2 ? 10 : 100);
 
-        if (!gAdminRunLoop)
+        if (!m_thread->isRunning())
             LOG(VB_GENERAL, LOG_WARNING, "OS X callback thread not started yet!");
     }
 
     void Destroy(void)
     {
-        Stop();
-        wait();
-    }
+        gAdminRunLoopRunning = false;
 
-  protected:
-    void run(void)
-    {
-        RunProlog();
-        LOG(VB_GENERAL, LOG_INFO, "OSX callback thread starting");
+        if (gAdminRunLoop)
+            CFRunLoopStop(gAdminRunLoop);
 
-        gAdminRunLoop = CFRunLoopGetCurrent();
-
-        // run the loop
-        while (!m_stop)
+        if (m_thread)
         {
-            TorcThread::msleep(20);
-            CFRunLoopRun();
+            m_thread->quit();
+            m_thread->wait();
         }
 
-        gAdminRunLoop = 0;
-
-        LOG(VB_GENERAL, LOG_INFO, "OSX callback thread stopping");
-        RunEpilog();
+        delete m_thread;
+        m_thread = NULL;
     }
 
   private:
-    bool            m_stop;
-
+    TorcOSXCallbackThread *m_thread;
 } TorcRunLoopOSX;
 

@@ -6,6 +6,36 @@
 
 // Torc
 #include "torccoreexport.h"
+#include "torcqthread.h"
+
+class CallbackObject : public QObject
+{
+    Q_OBJECT
+
+  public:
+    CallbackObject();
+
+  public slots:
+    void Run (void);
+};
+
+class TorcOSXCallbackThread : public TorcQThread
+{
+    friend class TorcRunLoopOSX;
+
+    Q_OBJECT
+
+  protected:
+    TorcOSXCallbackThread();
+    ~TorcOSXCallbackThread();
+
+  protected:
+    void Start      (void);
+    void Finish     (void);
+
+  private:
+    CallbackObject *m_object;
+};
 
 /*! \brief A reference to the global administration CFRunLoop.
  *
