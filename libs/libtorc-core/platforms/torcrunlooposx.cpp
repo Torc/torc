@@ -92,12 +92,10 @@ void CallbackObject::Run(void)
     if (gAdminRunLoopRunning)
         CFRunLoopRun();
 
-    // if it exits, schedule it to start again
+    // if it exits, schedule it to start again. This usually means there is nothing
+    // setup using a callback, so don't wast cycles and wait a while before restarting.
     if (gAdminRunLoopRunning)
-    {
-        LOG(VB_GENERAL, LOG_INFO, "Restarting callback CFRunLoop");
-        QTimer::singleShot(20, this, SLOT(Run()));
-    }
+        QTimer::singleShot(100, this, SLOT(Run()));
 }
 
 /*! \class TorcRunLoopOSX
