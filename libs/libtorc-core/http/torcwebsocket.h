@@ -8,7 +8,7 @@
 
 // Torc
 #include "torccoreexport.h"
-#include "torcthread.h"
+#include "torcqthread.h"
 
 class TorcHTTPConnection;
 class TorcHTTPRequest;
@@ -82,8 +82,8 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     };
 
   public:
-    TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpSocket *Socket);
-    TorcWebSocket(TorcThread *Parent, const QString &Address, quint16 Port, WSSubProtocol Protocol = SubProtocolJSONRPC);
+    TorcWebSocket(TorcQThread *Parent, TorcHTTPRequest *Request, QTcpSocket *Socket);
+    TorcWebSocket(TorcQThread *Parent, const QString &Address, quint16 Port, WSSubProtocol Protocol = SubProtocolJSONRPC);
     ~TorcWebSocket();
 
     static bool     ProcessUpgradeRequest (TorcHTTPConnection *Connection, TorcHTTPRequest *Request, QTcpSocket *Socket);
@@ -136,7 +136,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
         ReadPayload
     };
 
-    TorcThread      *m_parent;
+    TorcQThread     *m_parent;
     bool             m_handShaking;
     TorcHTTPReader  *m_upgradeResponseReader;
     QString          m_challengeResponse;
@@ -173,7 +173,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(TorcWebSocket::WSSubProtocols);
 
-class TORC_CORE_PUBLIC TorcWebSocketThread : public TorcThread
+class TORC_CORE_PUBLIC TorcWebSocketThread : public TorcQThread
 {
   public:
     TorcWebSocketThread(TorcHTTPRequest *Request, QTcpSocket *Socket);
@@ -181,6 +181,9 @@ class TORC_CORE_PUBLIC TorcWebSocketThread : public TorcThread
     ~TorcWebSocketThread();
 
     TorcWebSocket*      Socket   (void);
+
+    void                Start    (void);
+    void                Finish   (void);
 
   private:
     TorcWebSocket      *m_webSocket;

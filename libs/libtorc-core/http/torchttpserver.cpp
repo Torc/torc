@@ -260,9 +260,7 @@ TorcHTTPServer::TorcHTTPServer()
     // port setting - this could become a user editable setting
     m_port = new TorcSetting(NULL, TORC_CORE + "WebServerPort", QString(), TorcSetting::Integer, true, QVariant((int)4840));
 
-    // listen for new handlers
-    connect(this, SIGNAL(HandlersChanged()), this, SLOT(UpdateHandlers()));
-
+    // initialise platform name
     static bool initialised = false;
     if (!initialised)
     {
@@ -432,7 +430,7 @@ void TorcHTTPServer::Close(void)
             LOG(VB_GENERAL, LOG_INFO, "Closing outstanding websocket");
             TorcWebSocketThread* thread = m_webSockets.takeLast();
             thread->Socket()->WaitForNotifications();
-            thread->GetQThread()->disconnect();
+            thread->disconnect();
             thread->quit();
             thread->wait();
             delete thread;
@@ -473,11 +471,8 @@ void TorcHTTPServer::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *Socket)
     QMutexLocker locker(m_webSocketsLock);
 
     TorcWebSocketThread *thread = new TorcWebSocketThread(Request, Socket);
-    Socket->moveToThread(thread->GetQThread());
-    thread->Socket()->moveToThread(thread->GetQThread());
-
-    connect(thread->GetQThread(), SIGNAL(started()),  thread->Socket(), SLOT(Start()));
-    connect(thread->GetQThread(), SIGNAL(finished()), this, SLOT(WebSocketClosed()));
+    Socket->moveToThread(thread);
+    connect(thread, SIGNAL(Finished()), this, SLOT(WebSocketClosed()));
 
     thread->start();
 
@@ -494,7 +489,7 @@ void TorcHTTPServer::WebSocketClosed(void)
 
         for (int i = 0; i < m_webSockets.size(); ++i)
         {
-            if (m_webSockets[i]->GetQThread() == thread)
+            if (m_webSockets[i] == thread)
             {
                 TorcWebSocketThread *ws = m_webSockets.takeAt(i);
 

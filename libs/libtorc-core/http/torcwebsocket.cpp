@@ -61,7 +61,7 @@
  * \todo Add support for batched RPC calls
 */
 
-TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpSocket *Socket)
+TorcWebSocket::TorcWebSocket(TorcQThread *Parent, TorcHTTPRequest *Request, QTcpSocket *Socket)
   : QObject(),
     m_parent(Parent),
     m_handShaking(false),
@@ -106,7 +106,7 @@ TorcWebSocket::TorcWebSocket(TorcThread *Parent, TorcHTTPRequest *Request, QTcpS
     }
 }
 
-TorcWebSocket::TorcWebSocket(TorcThread *Parent, const QString &Address, quint16 Port, WSSubProtocol Protocol)
+TorcWebSocket::TorcWebSocket(TorcQThread *Parent, const QString &Address, quint16 Port, WSSubProtocol Protocol)
   : QObject(),
     m_parent(Parent),
     m_handShaking(true),
@@ -479,7 +479,7 @@ void TorcWebSocket::Start(void)
             connect(m_socket, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
             connect(m_socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(Error(QAbstractSocket::SocketError)));
             if (m_parent)
-                connect(m_socket, SIGNAL(disconnected()), m_parent->GetQThread(), SLOT(quit()));
+                connect(m_socket, SIGNAL(disconnected()), m_parent, SLOT(quit()));
 
             m_upgradeRequest->Respond(m_socket, &m_abort);
 
@@ -501,7 +501,7 @@ void TorcWebSocket::Start(void)
         connect(m_socket, SIGNAL(readyRead()), this, SLOT(ReadyRead()));
         connect(m_socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(Error(QAbstractSocket::SocketError)));
         if (m_parent)
-            connect(m_socket, SIGNAL(disconnected()), m_parent->GetQThread(), SLOT(quit()));
+            connect(m_socket, SIGNAL(disconnected()), m_parent, SLOT(quit()));
 
         m_socket->connectToHost(m_address, m_port);
         return;
@@ -1418,21 +1418,34 @@ void TorcWebSocket::ProcessPayload(const QByteArray &Payload)
 }
 
 TorcWebSocketThread::TorcWebSocketThread(TorcHTTPRequest *Request, QTcpSocket *Socket)
-  : TorcThread("WebSocket"),
+  : TorcQThread("WebSocket"),
     m_webSocket(new TorcWebSocket(this, Request, Socket))
 {
+    m_webSocket->moveToThread(this);
 }
 
 TorcWebSocketThread::TorcWebSocketThread(const QString &Address, quint16 Port, TorcWebSocket::WSSubProtocol Protocol)
-  : TorcThread("WebSocket"),
+  : TorcQThread("WebSocket"),
     m_webSocket(new TorcWebSocket(this, Address, Port, Protocol))
 {
+    m_webSocket->moveToThread(this);
 }
 
 TorcWebSocketThread::~TorcWebSocketThread()
 {
-    delete m_webSocket;
     LOG(VB_GENERAL, LOG_INFO, "WebSocketThread dtor");
+
+    delete m_webSocket;
+    m_webSocket = NULL;
+}
+
+void TorcWebSocketThread::Start(void)
+{
+    m_webSocket->Start();
+}
+
+void TorcWebSocketThread::Finish(void)
+{
 }
 
 TorcWebSocket* TorcWebSocketThread::Socket(void)

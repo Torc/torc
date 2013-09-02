@@ -9,6 +9,7 @@
 #include "torccoreexport.h"
 #include "torclocalcontext.h"
 
+class TorcRPCRequest;
 class TorcNetworkRequest;
 class TorcWebSocketThread;
 class TorcHTTPRequest;
@@ -44,6 +45,7 @@ class TorcNetworkService : public QObject
     void            Connected       (void);
     void            Disconnected    (void);
     void            RequestReady    (TorcNetworkRequest *Request);
+    void            RequestReady    (TorcRPCRequest     *Request);
 
   public:
     void            SetHost         (const QString &Host);
@@ -70,6 +72,7 @@ class TorcNetworkService : public QObject
     int             m_preferredAddress;
 
     int                   m_abort;
+    TorcRPCRequest       *m_getPeerDetailsRPC;
     TorcNetworkRequest   *m_getPeerDetails;
     TorcWebSocketThread  *m_webSocketThread;
     bool                  m_retryScheduled;

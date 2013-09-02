@@ -29,6 +29,7 @@
 #include "upnp/torcupnp.h"
 #include "upnp/torcssdp.h"
 #include "torcwebsocket.h"
+#include "torcrpcrequest.h"
 #include "torcnetworkrequest.h"
 #include "torcnetworkedcontext.h"
 
@@ -40,7 +41,6 @@ TorcNetworkedContext *gNetworkedContext = NULL;
  * \todo TorcNetworkService properties are marked as constant, hence changes will not be propagated to list model.
  * \todo Should retries be limited? If support is added for manually specified peers (e.g. remote) and that
  *       peer is offline, need a better approach.
- * \todo Add JSON-RPC call in QueryPeerDetails when ready
 */
 TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QStringList &Addresses)
   : m_name(Name),
@@ -53,6 +53,7 @@ TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID,
     m_apiVersion(QString()),
     m_preferredAddress(0),
     m_abort(0),
+    m_getPeerDetailsRPC(NULL),
     m_getPeerDetails(NULL),
     m_webSocketThread(NULL),
     m_retryScheduled(false),
@@ -76,6 +77,13 @@ TorcNetworkService::~TorcNetworkService()
     // cancel any outstanding requests
     m_abort = 1;
 
+    if (m_getPeerDetailsRPC && m_webSocketThread)
+    {
+        m_webSocketThread->Socket()->CancelRequest(m_getPeerDetailsRPC);
+        m_getPeerDetailsRPC->DownRef();
+        m_getPeerDetailsRPC = NULL;
+    }
+
     if (m_getPeerDetails)
     {
         TorcNetwork::Cancel(m_getPeerDetails);
@@ -86,6 +94,7 @@ TorcNetworkService::~TorcNetworkService()
     // delete websocket
     if (m_webSocketThread)
     {
+        m_webSocketThread->Socket()->WaitForNotifications();
         m_webSocketThread->quit();
         m_webSocketThread->wait();
         delete m_webSocketThread;
@@ -127,10 +136,7 @@ void TorcNetworkService::Connect(void)
 
     // already connected
     if (m_webSocketThread)
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Already connected to peer - ignoring Connect call");
         return;
-    }
 
     // lower priority peers should initiate the connection
     if (m_priority < gLocalContext->GetPriority())
@@ -153,11 +159,8 @@ void TorcNetworkService::Connect(void)
     LOG(VB_GENERAL, LOG_INFO, QString("Trying to connect to %1").arg(m_debugString));
 
     m_webSocketThread = new TorcWebSocketThread(host, m_port);
-    m_webSocketThread->Socket()->moveToThread(m_webSocketThread->GetQThread());
-
-    connect(m_webSocketThread->GetQThread(), SIGNAL(started()),   m_webSocketThread->Socket(), SLOT(Start()));
-    connect(m_webSocketThread->GetQThread(), SIGNAL(finished()),  this, SLOT(Disconnected()));
-    connect(m_webSocketThread->Socket(),     SIGNAL(ConnectionEstablished()), this, SLOT(Connected()));
+    connect(m_webSocketThread,           SIGNAL(Finished()),              this, SLOT(Disconnected()));
+    connect(m_webSocketThread->Socket(), SIGNAL(ConnectionEstablished()), this, SLOT(Connected()));
 
     m_webSocketThread->start();
 }
@@ -203,6 +206,7 @@ void TorcNetworkService::Connected(void)
     if (m_webSocketThread && m_webSocketThread->Socket() == socket)
     {
         LOG(VB_GENERAL, LOG_INFO, QString("Connection established with %1").arg(m_debugString));
+        Connect();
     }
     else
     {
@@ -213,7 +217,7 @@ void TorcNetworkService::Connected(void)
 void TorcNetworkService::Disconnected(void)
 {
     QThread *thread = static_cast<QThread*>(sender());
-    if (m_webSocketThread && m_webSocketThread->GetQThread() == thread)
+    if (m_webSocketThread && m_webSocketThread == thread)
     {
         LOG(VB_GENERAL, LOG_INFO, QString("Connection with %1 closed").arg(m_debugString));
         m_webSocketThread->quit();
@@ -281,6 +285,83 @@ void TorcNetworkService::RequestReady(TorcNetworkRequest *Request)
     }
 }
 
+void TorcNetworkService::RequestReady(TorcRPCRequest *Request)
+{
+    if (!Request)
+        return;
+
+    if (Request == m_getPeerDetailsRPC)
+    {
+        bool success = false;
+        QString message;
+        int state = m_getPeerDetailsRPC->GetState();
+
+        if (state & TorcRPCRequest::TimedOut)
+        {
+            message = "Timed out";
+        }
+        else if (state & TorcRPCRequest::Cancelled)
+        {
+            message = "Cancelled";
+        }
+        else if (state & TorcRPCRequest::Errored)
+        {
+            QVariantMap map  = m_getPeerDetailsRPC->GetReply().toMap();
+            QVariant error = map["error"];
+            if (error.type() == QVariant::Map)
+            {
+                QVariantMap errors = error.toMap();
+                message = QString("'%1' (%2)").arg(errors.value("message").toString()).arg(errors.value("code").toInt());
+            }
+        }
+        else if (state & TorcRPCRequest::ReplyReceived)
+        {
+            if (m_getPeerDetailsRPC->GetReply().type() == QVariant::Map)
+            {
+                QVariantMap map = m_getPeerDetailsRPC->GetReply().toMap();
+                QVariant priority  = map["priority"];
+                QVariant starttime = map["starttime"];
+                QVariant version   = map["version"];
+
+                if (!priority.isNull() && !starttime.isNull() && !version.isNull())
+                {
+                    m_apiVersion = version.toString();
+                    m_priority   = (int)priority.toDouble();
+                    m_startTime  = (qint64)starttime.toDouble();
+                    success = true;
+                }
+                else
+                {
+                    message = "Incomplete details";
+                }
+            }
+            else
+            {
+                message = QString("Unexpected variant type %1").arg(m_getPeerDetailsRPC->GetReply().type());
+            }
+        }
+
+        if (!success)
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Call to '%1' failed (%2)").arg(m_getPeerDetailsRPC->GetMethod()).arg(message));
+            ScheduleRetry();
+        }
+
+        m_getPeerDetailsRPC->DownRef();
+        m_getPeerDetailsRPC = NULL;
+
+        if (success)
+        {
+            LOG(VB_GENERAL, LOG_INFO, "Reply received");
+            Connect();
+        }
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Unknown request ready");
+    }
+}
+
 void TorcNetworkService::ScheduleRetry(void)
 {
     if (!m_retryScheduled)
@@ -299,6 +380,12 @@ void TorcNetworkService::QueryPeerDetails(void)
 
     if (!m_webSocketThread)
     {
+        if (m_getPeerDetails)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Already running GetDetails HTTP request");
+            return;
+        }
+
         LOG(VB_GENERAL, LOG_INFO, "Querying peer details over HTTP");
 
         QUrl url(host);
@@ -316,7 +403,14 @@ void TorcNetworkService::QueryPeerDetails(void)
     }
 
     // perform JSON-RPC call over socket
-    // TODO
+    if (m_getPeerDetailsRPC)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Already running GetDetails RPC");
+        return;
+    }
+
+    m_getPeerDetailsRPC = new TorcRPCRequest("/services/GetDetails", this);
+    m_webSocketThread->Socket()->RemoteRequest(m_getPeerDetailsRPC);
 }
 
 void TorcNetworkService::CreateSocket(TorcHTTPRequest *Request, QTcpSocket *Socket)
@@ -338,12 +432,9 @@ void TorcNetworkService::CreateSocket(TorcHTTPRequest *Request, QTcpSocket *Sock
 
     // create the socket
     m_webSocketThread = new TorcWebSocketThread(Request, Socket);
-    Socket->moveToThread(m_webSocketThread->GetQThread());
-    m_webSocketThread->Socket()->moveToThread(m_webSocketThread->GetQThread());
-
-    connect(m_webSocketThread->GetQThread(), SIGNAL(started()),  m_webSocketThread->Socket(), SLOT(Start()));
-    connect(m_webSocketThread->GetQThread(), SIGNAL(finished()), this,                        SLOT(Disconnected()));
-    connect(m_webSocketThread->Socket(),     SIGNAL(ConnectionEstablished()), this,           SLOT(Connected()));
+    Socket->moveToThread(m_webSocketThread);
+    connect(m_webSocketThread,           SIGNAL(Finished()),              this, SLOT(Disconnected()));
+    connect(m_webSocketThread->Socket(), SIGNAL(ConnectionEstablished()), this, SLOT(Connected()));
 
     m_webSocketThread->start();
 }
@@ -619,6 +710,7 @@ static class TorcNetworkedContextObject : public TorcAdminObject
     TorcNetworkedContextObject()
       : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY + 1 /* start after network and before http server */)
     {
+        qRegisterMetaType<TorcRPCRequest*>();
     }
 
     ~TorcNetworkedContextObject()
