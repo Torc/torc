@@ -22,7 +22,7 @@
 
 // Torc
 #include "torclogging.h"
-#include "torcthread.h"
+#include "torcqthread.h"
 #include "torcadminthread.h"
 #include "torcmediamaster.h"
 #include "torcmediasource.h"
@@ -40,11 +40,10 @@
  * \sa TorcMediaThreadObject
 */
 
-class TorcMediaThread : public TorcThread
+class TorcMediaThread : public TorcQThread
 {
   public:
-    TorcMediaThread()
-      : TorcThread(TORC_MEDIA_THREAD)
+    TorcMediaThread() : TorcQThread(TORC_MEDIA_THREAD)
     {
     }
 
@@ -52,22 +51,16 @@ class TorcMediaThread : public TorcThread
     {
     }
 
-    void run(void)
+    void Start(void)
     {
-        RunProlog();
         LOG(VB_GENERAL, LOG_INFO, "Media thread starting");
-
-        // create objects that will run in the admin thread
         TorcMediaSource::CreateSources();
+    }
 
-        // run the event loop
-        exec();
-
-        // destroy admin objects
+    void Finish(void)
+    {
         TorcMediaSource::DestroySources();
-
         LOG(VB_GENERAL, LOG_INFO, "Media thread stopping");
-        RunEpilog();
     }
 };
 
