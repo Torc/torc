@@ -22,7 +22,6 @@
 
 // Torc
 #include "torccoreutils.h"
-#include "torcthread.h"
 #include "uitimer.h"
 
 UITimer::UITimer(qreal Interval)
