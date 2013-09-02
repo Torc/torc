@@ -30,7 +30,7 @@
 #include "torclogging.h"
 #include "torcadminthread.h"
 #include "torcnetwork.h"
-#include "torcthread.h"
+#include "torcqthread.h"
 #include "torcupnp.h"
 #include "torcssdp.h"
 
@@ -737,28 +737,23 @@ void TorcSSDP::Read(void)
     }
 }
 
-class TorcSSDPThread : public TorcThread
+class TorcSSDPThread : public TorcQThread
 {
   public:
-    TorcSSDPThread()
-      : TorcThread("SSDP")
+    TorcSSDPThread() : TorcQThread("SSDP")
     {
     }
 
-    void run(void)
+    void Start(void)
     {
-        RunProlog();
         LOG(VB_GENERAL, LOG_INFO, "SSDP thread starting");
-
         TorcSSDP::Create();
+    }
 
-        // run the event loop
-        exec();
-
+    void Finish(void)
+    {
         TorcSSDP::Create(true/*destroy*/);
-
         LOG(VB_GENERAL, LOG_INFO, "SSDP thread stopping");
-        RunEpilog();
     }
 };
 
