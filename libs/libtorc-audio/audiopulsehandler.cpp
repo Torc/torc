@@ -275,7 +275,7 @@ bool PulseHandler::SuspendInternal(bool Suspend)
         return false;
 
     // just in case it all goes pete tong
-    if (!TorcThread::IsCurrentThread(m_thread))
+    if (!(QThread::currentThread() == m_thread))
         LOG(VB_AUDIO, LOG_WARNING, "PulseHandler called from a different thread");
 
     QString action = Suspend ? "suspend" : "resume";
