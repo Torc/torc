@@ -36,6 +36,8 @@
  * (instead of 'started' and 'finished', as provided by QThread).
  *
  * \note Torc database access is restricted to full TorcQThreads and is disallowed from QRunnable subclasses.
+ *
+ * \todo Make run private again and enfore event driven loops for all classes.
 */
 TorcQThread::TorcQThread(const QString &Name)
   : QThread()

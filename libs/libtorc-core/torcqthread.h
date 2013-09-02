@@ -25,8 +25,6 @@ class TORC_CORE_PUBLIC TorcQThread : public QThread
 
   protected:
     virtual void    run              (void);
-
-  private:
     void            Initialise       (void);
     void            Deinitialise     (void);
 };
