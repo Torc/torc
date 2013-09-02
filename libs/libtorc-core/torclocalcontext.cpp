@@ -367,8 +367,10 @@ TorcLocalContext::TorcLocalContext(TorcCommandLine* CommandLine, Torc::Applicati
   : QObject(),
     m_priv(new TorcLocalContextPriv(ApplicationFlags))
 {
-    // Initialise TorcThread FIRST
-    TorcThread::Initialise();
+    // Initialise TorcQThread FIRST
+    TorcQThread::SetMainThread();
+    // NB this will be changed if a separate admin thread is started
+    TorcQThread::SetAdminThread();
 
     setObjectName("LocalContext");
 
