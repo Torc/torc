@@ -19,7 +19,6 @@ INCLUDEPATH += $$DEPENDPATH
 HEADERS += torccoreexport.h
 HEADERS += torclogging.h
 HEADERS += torcloggingdefs.h
-HEADERS += torcthread.h
 HEADERS += torcqthread.h
 HEADERS += torcloggingimp.h
 HEADERS += torcplist.h
@@ -72,7 +71,6 @@ HEADERS += upnp/torcssdp.h
 
 SOURCES += torcloggingimp.cpp
 SOURCES += torcplist.cpp
-SOURCES += torcthread.cpp
 SOURCES += torcqthread.cpp
 SOURCES += torclocalcontext.cpp
 SOURCES += torcnetworkedcontext.cpp
