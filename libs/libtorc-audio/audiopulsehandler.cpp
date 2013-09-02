@@ -6,7 +6,7 @@
 // Torc
 #include "torccoreutils.h"
 #include "torclogging.h"
-#include "torcthread.h"
+#include "torcqthread.h"
 #include "audiooutput.h"
 #include "audiopulsehandler.h"
 
