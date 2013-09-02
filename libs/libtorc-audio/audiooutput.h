@@ -9,7 +9,7 @@
 
 // Torc
 #include "torclocalcontext.h"
-#include "torcthread.h"
+#include "torcqthread.h"
 #include "torcaudioexport.h"
 #include "torccompat.h"
 #include "samplerate/samplerate.h"
@@ -42,7 +42,7 @@ class TORC_AUDIO_PUBLIC AudioDeviceConfig
     AudioOutputSettings m_settings;
 };
 
-class TORC_AUDIO_PUBLIC AudioOutput : public AudioVolume, public AudioOutputListeners, public TorcThread
+class TORC_AUDIO_PUBLIC AudioOutput : public TorcQThread, public AudioVolume, public AudioOutputListeners
 {
   public:
     enum
@@ -117,6 +117,8 @@ class TORC_AUDIO_PUBLIC AudioOutput : public AudioVolume, public AudioOutputList
     int                              GetAudioData           (unsigned char *Buffer, int BufferSize, bool FullBuffer, volatile uint *LocalRaud = NULL);
     int                              GetBaseAudBufTimeCode  (void) const;
     virtual void                     run                    (void);
+    void                             Start                  (void);
+    void                             Finish                 (void);
 
     virtual bool                     StartOutputThread      (void);
     virtual void                     StopOutputThread       (void);

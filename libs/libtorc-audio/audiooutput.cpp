@@ -140,9 +140,9 @@ QList<AudioDeviceConfig> AudioOutput::GetOutputList(void)
 }
 
 AudioOutput::AudioOutput(const AudioSettings &Settings, AudioWrapper *Parent)
-  : AudioVolume(),
+  : TorcQThread("Audio"),
+    AudioVolume(),
     AudioOutputListeners(),
-    TorcThread("Audio"),
     m_parent(Parent),
     m_configError(false),
     m_channels(-1),
@@ -1763,7 +1763,7 @@ int AudioOutput::GetAudioData(unsigned char *Buffer, int size, bool FullBuffer, 
 
 void AudioOutput::run(void)
 {
-    RunProlog();
+    Initialise();
     LOG(VB_GENERAL, LOG_INFO, QString("Starting audio thread"));
 
     {
@@ -1842,7 +1842,15 @@ void AudioOutput::run(void)
     }
 
     LOG(VB_GENERAL, LOG_INFO, QString("Stopping audio thread"));
-    RunEpilog();
+    Initialise();
+}
+
+void AudioOutput::Start(void)
+{
+}
+
+void AudioOutput::Finish(void)
+{
 }
 
 /**
