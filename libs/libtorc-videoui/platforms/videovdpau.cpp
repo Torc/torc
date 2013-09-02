@@ -25,7 +25,7 @@
 
 // Torc
 #include "torclogging.h"
-#include "torcthread.h"
+#include "torcqthread.h"
 #include "videodecoder.h"
 #include "videoplayer.h"
 #include "videoframe.h"
@@ -315,7 +315,7 @@ bool VideoVDPAU::CreateFullVDPAU(void)
     TorcReferenceLocker rlocker(this);
 
     // this must be completed in the main UI thread
-    if (!TorcThread::IsMainThread())
+    if (!TorcQThread::IsMainThread())
     {
         UIOpenGLWindow *window = static_cast<UIOpenGLWindow*>(gLocalContext->GetUIObject());
         if (window)
@@ -380,7 +380,7 @@ void VideoVDPAU::Wake(void)
 
 bool VideoVDPAU::Dereference(void)
 {
-    if (!IsShared() && !TorcThread::IsMainThread())
+    if (!IsShared() && !TorcQThread::IsMainThread())
     {
         // destroy from the UI/OpenGL thread. No need to wait for completion
         UIOpenGLWindow *window = static_cast<UIOpenGLWindow*>(gLocalContext->GetUIObject());
@@ -918,7 +918,7 @@ bool VideoVDPAU::HandlePreemption(void)
     if (m_preempted.fetchAndAddOrdered(0) < 1)
         return true;
 
-    if (!TorcThread::IsMainThread())
+    if (!TorcQThread::IsMainThread())
     {
         UIOpenGLWindow *window = static_cast<UIOpenGLWindow*>(gLocalContext->GetUIObject());
         if (window)
