@@ -37,7 +37,6 @@
 // Torc
 #include "torcevent.h"
 #include "torcloggingimp.h"
-#include "torcthread.h"
 #include "torclogging.h"
 #include "torcexitcodes.h"
 #include "torcsqlitedb.h"

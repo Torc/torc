@@ -27,7 +27,6 @@
 
 // Torc
 #include "torclocalcontext.h"
-#include "torcthread.h"
 #include "torccocoa.h"
 #include "torcrunlooposx.h"
 #include "torcpowerosx.h"
