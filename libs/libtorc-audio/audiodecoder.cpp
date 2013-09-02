@@ -30,7 +30,7 @@
 #include "torclocalcontext.h"
 #include "torclanguage.h"
 #include "torclogging.h"
-#include "torcthread.h"
+#include "torcqthread.h"
 #include "torctimer.h"
 #include "torcbuffer.h"
 #include "torcavutils.h"
@@ -304,11 +304,11 @@ class TorcPacketQueue
     QLinkedList<AVPacket*> m_queue;
 };
 
-class TorcDecoderThread : public TorcThread
+class TorcDecoderThread : public TorcQThread
 {
   public:
     TorcDecoderThread(AudioDecoder* Parent, const QString &Name, bool Queue = true)
-      : TorcThread(Name),
+      : TorcQThread(Name),
         m_parent(Parent),
         m_queue(Queue ? new TorcPacketQueue() : NULL),
         m_threadRunning(false),
@@ -374,11 +374,19 @@ class TorcDecoderThread : public TorcThread
 
     void run(void)
     {
+        Initialise();
         m_threadRunning = true;
-        RunProlog();
         RunFunction();
-        RunEpilog();
         m_threadRunning = false;
+        Deinitialise();
+    }
+
+    void Start(void)
+    {
+    }
+
+    void Finish(void)
+    {
     }
 
     virtual void RunFunction(void) = 0;
