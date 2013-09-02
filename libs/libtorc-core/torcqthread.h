@@ -7,7 +7,7 @@
 // Torc
 #include "torccoreexport.h"
 
-class TorcQThread : public QThread
+class TORC_CORE_PUBLIC TorcQThread : public QThread
 {
     Q_OBJECT
 
