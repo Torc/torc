@@ -39,6 +39,39 @@
  *
  * \todo Make run private again and enfore event driven loops for all classes.
 */
+
+static QThread *gMainThread  = NULL;
+static QThread *gAdminThread = NULL;
+
+void TorcQThread::SetMainThread(void)
+{
+    gMainThread = QThread::currentThread();
+}
+
+void TorcQThread::SetAdminThread(void)
+{
+    gAdminThread = QThread::currentThread();
+}
+
+bool TorcQThread::IsMainThread(void)
+{
+    if (gMainThread)
+        return QThread::currentThread() == gMainThread;
+    return QThread::currentThread()->objectName() == TORC_MAIN_THREAD;
+}
+
+bool TorcQThread::IsAdminThread(void)
+{
+    if (gAdminThread)
+        return QThread::currentThread() == gAdminThread;
+    return QThread::currentThread()->objectName() == TORC_ADMIN_THREAD;
+}
+
+QThread* TorcQThread::GetAdminThread(void)
+{
+    return gAdminThread;
+}
+
 TorcQThread::TorcQThread(const QString &Name)
   : QThread()
 {
