@@ -38,7 +38,7 @@
  * each thread that wishes to use the database. TorcDB (and its subclasses) will ask
  * for a connection each time the database is accessed and connections are cached on a per-thread
  * basis. The thread name (and pointer) is used for cache tracking and thus any thread must have
- * a name. This implicitly limits database access to a QThread or one its subclasses (e.g. TorcThread) and
+ * a name. This implicitly limits database access to a QThread or one its subclasses (e.g. TorcQThread) and
  * hence database access will not work from QRunnable's or other miscellaneous threads - this is by design
  * and is NOT a bug.
  *
@@ -106,7 +106,7 @@ class TorcDBPriv
 
         if (thread->objectName().isEmpty())
         {
-            LOG(VB_GENERAL, LOG_ERR, "Database access is only available from TorcThread");
+            LOG(VB_GENERAL, LOG_ERR, "Database access is only available from TorcQThread");
             return QString();
         }
 
