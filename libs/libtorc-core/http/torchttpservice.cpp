@@ -148,7 +148,8 @@ class MethodParameters
             }
         }
 
-        Object->qt_metacall(QMetaObject::InvokeMetaMethod, m_index, parameters);
+        if (Object->qt_metacall(QMetaObject::InvokeMetaMethod, m_index, parameters) > -1)
+            LOG(VB_GENERAL, LOG_ERR, "qt_metacall error");
 
         // we cannot create a QVariant that is void and an invalid QVariant signals an error state,
         // so flag directly
