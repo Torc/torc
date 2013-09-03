@@ -13,7 +13,6 @@ class TORC_CORE_PUBLIC TorcCoreUtils
   public:
     static QDateTime   DateTimeFromString    (const QString &String);
     static quint64     GetMicrosecondCount   (void);
-    static void        USleep                (int USecs);
     static QString     EnumsToScript         (const QMetaObject &MetaObject);
 };
 

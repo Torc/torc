@@ -76,24 +76,6 @@ quint64 TorcCoreUtils::GetMicrosecondCount(void)
     return 0;
 }
 
-/*! \fn    TorcCoreUtils::USleep
- *  \brief Sleep for the given number of microseconds.
- *
- * If microsecond accuracy is not available, the best available approximation
- * will be used.
-*/
-void TorcCoreUtils::USleep(int USecs)
-{
-#if HAVE_NANOSLEEP
-    struct timespec ts = { USecs / 1000000, USecs % 1000000 * 1000 };
-    while (nanosleep(&ts, &ts) < 0 && errno == EINTR) {}
-#elif HAVE_USLEEP
-    usleep(USecs);
-#elif HAVE_SLEEP
-    Sleep(USecs / 1000);
-#endif
-}
-
 /*! \brief Convert a QMetaEnum into a QString that can be passed to QScript.
  *
  * This function is used to pass the string representation of enumerations to a QScript

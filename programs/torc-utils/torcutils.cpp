@@ -19,7 +19,7 @@ int TorcUtils::Probe(const QString &URI)
                  decoder->GetState() == TorcDecoder::Paused ||
                  decoder->GetState() == TorcDecoder::Errored))
         {
-            TorcCoreUtils::USleep(50000);
+            QThread::usleep(50000);
         }
     }
 

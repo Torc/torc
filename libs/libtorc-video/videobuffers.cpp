@@ -20,6 +20,9 @@
 * USA.
 */
 
+// Qt
+#include <QThread>
+
 // Torc
 #include "torcconfig.h"
 #include "torccoreutils.h"
@@ -271,7 +274,7 @@ VideoFrame* VideoBuffers::GetFrameForDecoding(void)
         if (m_unused.isEmpty())
         {
             m_lock->unlock();
-            TorcCoreUtils::USleep(WAIT_FOR_UNUSED_RETRY);
+            QThread::usleep(WAIT_FOR_UNUSED_RETRY);
             continue;
         }
 
@@ -334,7 +337,7 @@ bool VideoBuffers::GetNextVideoTimeStamp(qint64 &TimeStamp, int WaitUSecs /*= 0*
         if (m_ready.isEmpty())
         {
             m_lock->unlock();
-            TorcCoreUtils::USleep(WAIT_FOR_READY_RETRY);
+            QThread::usleep(WAIT_FOR_READY_RETRY);
             continue;
         }
 
@@ -360,7 +363,7 @@ VideoFrame* VideoBuffers::GetFrameForDisplaying(int WaitUSecs /*= 0*/)
         if (m_ready.isEmpty())
         {
             m_lock->unlock();
-            TorcCoreUtils::USleep(WAIT_FOR_READY_RETRY);
+            QThread::usleep(WAIT_FOR_READY_RETRY);
             continue;
         }
 

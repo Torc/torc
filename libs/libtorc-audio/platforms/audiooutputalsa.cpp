@@ -609,7 +609,7 @@ void AudioOutputALSA::WriteAudio(unsigned char *Buffer, int Size)
             case -ESTRPIPE:
                 LOG(VB_AUDIO, LOG_INFO, "WriteAudio: device is suspended");
                 while ((err = snd_pcm_resume(m_pcmHandle)) == -EAGAIN)
-                    TorcCoreUtils::USleep(200);
+                    QThread::usleep(200);
 
                 if (err < 0)
                 {

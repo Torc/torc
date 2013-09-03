@@ -1142,7 +1142,7 @@ void AudioOutput::PauseUntilBuffered()
 void AudioOutput::Drain()
 {
     while (AudioReady() > m_fragmentSize)
-        TorcCoreUtils::USleep(1000);
+        QThread::usleep(1000);
 }
 
 /**
@@ -1814,7 +1814,7 @@ void AudioOutput::run(void)
                                       "have %1 want %2")
                               .arg(ready).arg(m_fragmentSize));
 
-                TorcCoreUtils::USleep(10000);
+                QThread::usleep(10000);
                 continue;
             }
 

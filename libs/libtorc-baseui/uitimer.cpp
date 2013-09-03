@@ -20,6 +20,9 @@
 * USA.
 */
 
+// Qt
+#include <QThread>
+
 // Torc
 #include "torccoreutils.h"
 #include "uitimer.h"
@@ -39,7 +42,7 @@ void UITimer::Wait(void)
 {
     qint64 remaining = m_nextEvent - TorcCoreUtils::GetMicrosecondCount();
     if (remaining > 0 && remaining < (m_interval * 4))
-        TorcCoreUtils::USleep(remaining);
+        QThread::usleep(remaining);
 }
 
 void UITimer::Reset(void)

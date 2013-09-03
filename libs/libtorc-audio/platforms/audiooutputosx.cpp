@@ -1340,7 +1340,7 @@ bool AudioOutputOSX::OpenDevice(void)
             if (result < 0)
             {
                 m_priv->CloseAnalog();
-                TorcCoreUtils::USleep(1000 * 1000);
+                QThread::usleep(1000 * 1000);
             }
         }
 
