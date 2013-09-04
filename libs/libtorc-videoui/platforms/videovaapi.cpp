@@ -22,6 +22,7 @@
 
 // Qt
 #include <QGLWidget>
+#include <QThread>
 #include <QMutex>
 #include <QLibrary>
 
@@ -199,7 +200,7 @@ VideoVAAPI* VideoVAAPI::GetVideoVAAPI(AVCodecContext *Context, bool OpenGL)
             {
                 if (videovaapi->IsErrored() || videovaapi->IsDeleting())
                     break;
-                usleep(50000);
+                QThread::usleep(50000);
             }
         }
     }
