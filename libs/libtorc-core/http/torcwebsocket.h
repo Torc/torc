@@ -184,6 +184,7 @@ class TORC_CORE_PUBLIC TorcWebSocketThread : public TorcQThread
 
     void                Start    (void);
     void                Finish   (void);
+    void                Shutdown (void);
 
   private:
     TorcWebSocket      *m_webSocket;

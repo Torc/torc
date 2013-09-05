@@ -1452,3 +1452,12 @@ TorcWebSocket* TorcWebSocketThread::Socket(void)
 {
     return m_webSocket;
 }
+
+void TorcWebSocketThread::Shutdown(void)
+{
+    if (m_webSocket)
+        m_webSocket->WaitForNotifications();
+    disconnect();
+    quit();
+    wait();
+}

@@ -429,10 +429,7 @@ void TorcHTTPServer::Close(void)
         {
             LOG(VB_GENERAL, LOG_INFO, "Closing outstanding websocket");
             TorcWebSocketThread* thread = m_webSockets.takeLast();
-            thread->Socket()->WaitForNotifications();
-            thread->disconnect();
-            thread->quit();
-            thread->wait();
+            thread->Shutdown();
             delete thread;
         }
     }

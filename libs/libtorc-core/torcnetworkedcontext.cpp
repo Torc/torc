@@ -94,9 +94,7 @@ TorcNetworkService::~TorcNetworkService()
     // delete websocket
     if (m_webSocketThread)
     {
-        m_webSocketThread->Socket()->WaitForNotifications();
-        m_webSocketThread->quit();
-        m_webSocketThread->wait();
+        m_webSocketThread->Shutdown();
         delete m_webSocketThread;
         m_webSocketThread = NULL;
     }
