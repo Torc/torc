@@ -463,6 +463,12 @@ void TorcNetworkService::SetAPIVersion(const QString &Version)
     m_apiVersion = Version;
 }
 
+/*! \class TorcNetworkedContext
+ *
+ * ![](../images/peer-decisiontree.svg) "Torc peer discovery and connection"
+ *
+ * \sa TorcNetworkService
+ */
 TorcNetworkedContext::TorcNetworkedContext()
   : QAbstractListModel(),
     TorcObservable(),

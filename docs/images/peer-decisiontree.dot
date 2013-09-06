@@ -1,0 +1,42 @@
+digraph G {
+    node [shape=rect];
+    rankdir="LR";
+
+    subgraph cluster_0 {
+        label     = "Source";
+        style     = filled;
+        fillcolor = "grey80";
+        "Bonjour/ZeroConf";
+        "UPnP/SSDP";
+        "HTTP Socket";
+    }
+
+    subgraph cluster_1 {
+        label     = "Result";
+        style     = filled;
+        fillcolor = "grey80";
+        "WebSocket ready";
+        "Do nothing";
+    }
+
+    "Bonjour/ZeroConf" -> "New peer?";
+    "UPnP/SSDP"        -> "New peer?";
+    "New peer?"        -> "Create peer" [label = "Yes"];
+    "New peer?"        -> "Do nothing" [label = "No"];
+    "Create peer"      -> "Enough details?"
+    "Enough details?"  -> "Lower priority?"  [label = "Yes"];
+    "Lower priority?"  -> "Create WebSocket";
+    "Create WebSocket" -> "WebSocket ready";
+    "Enough details?"  -> "HTTP call" [label = "No"];
+    "HTTP call"        -> "Lower priority?";
+    "Lower priority?"  -> "Do nothing";
+
+    "HTTP Socket"      -> "New peer? ";
+    "New peer? "       -> "Upgrade socket" [label = "No"];
+    "New peer? "       -> "Create peer " [label = "Yes"];
+    "Create peer "     -> "Upgrade socket";
+    "Upgrade socket"   -> "Enough details? ";
+    "Enough details? " -> "JSON-RPC call" [label = "No"];
+    "JSON-RPC call"    -> "WebSocket ready";
+    "Enough details? " -> "WebSocket ready" [label = "Yes"];
+}
