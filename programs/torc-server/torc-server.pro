@@ -4,7 +4,7 @@ include ( ../programs-libs.pro )
 
 TEMPLATE = app
 CONFIG += thread
-TARGET = torc-audioclient
+TARGET = torc-server
 target.path = $${PREFIX}/bin
 INSTALLS = target
 

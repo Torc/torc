@@ -14,7 +14,7 @@ int main(int argc, char **argv)
 {
     new QCoreApplication(argc, argv);
     // the 'torc-' prefix is used for identification purposes elsewhere, don't change it
-    QCoreApplication::setApplicationName("torc-audioclient");
+    QCoreApplication::setApplicationName("torc-server");
     QThread::currentThread()->setObjectName(TORC_MAIN_THREAD);
 
     int ret = GENERIC_EXIT_OK;
