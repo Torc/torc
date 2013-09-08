@@ -4,7 +4,7 @@
  * Torc is an open source, cross-platform media centre.
  *
  * \section programs Programs
- * There are currently 3 programs:
+ * There are currently 5 programs:
  *   - torc-server
  *     - A headless media server and player.
  *
