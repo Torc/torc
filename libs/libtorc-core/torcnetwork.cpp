@@ -86,7 +86,7 @@ bool TorcNetwork::Get(TorcNetworkRequest* Request)
 
     if (gNetwork->IsOnline() && IsAllowedOutbound())
     {
-        QMetaObject::invokeMethod(gNetwork, "GetSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request));
+        emit gNetwork->NewRequest(Request);
         return true;
     }
 
@@ -96,9 +96,8 @@ bool TorcNetwork::Get(TorcNetworkRequest* Request)
 void TorcNetwork::Cancel(TorcNetworkRequest *Request)
 {
     QMutexLocker locker(gNetworkLock);
-
     if (gNetwork)
-        QMetaObject::invokeMethod(gNetwork, "CancelSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request));
+        emit gNetwork->CancelRequest(Request);
 }
 
 void TorcNetwork::Poke(TorcNetworkRequest *Request)
@@ -106,7 +105,7 @@ void TorcNetwork::Poke(TorcNetworkRequest *Request)
     QMutexLocker locker(gNetworkLock);
 
     if (gNetwork)
-        QMetaObject::invokeMethod(gNetwork, "PokeSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request));
+        emit gNetwork->PokeRequest(Request);
 }
 
 /*! \brief Queue an asynchronous HTTP request.
@@ -135,7 +134,10 @@ bool TorcNetwork::GetAsynchronous(TorcNetworkRequest *Request, QObject *Parent)
     QMutexLocker locker(gNetworkLock);
 
     if (gNetwork->IsOnline() && gNetwork->IsAllowedOutbound())
-        return QMetaObject::invokeMethod(gNetwork, "GetAsynchronousSafe", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request), Q_ARG(QObject*, Parent));
+    {
+        emit gNetwork->NewAsyncRequest(Request, Parent);
+        return true;
+    }
 
     return false;
 }
@@ -226,6 +228,11 @@ TorcNetwork::TorcNetwork()
             this,      SLOT(OnlineStateChanged(bool)));
     connect(m_manager, SIGNAL(updateCompleted()),
             this,      SLOT(UpdateCompleted()));
+
+    connect(this, SIGNAL(NewRequest(TorcNetworkRequest*)),    this, SLOT(GetSafe(TorcNetworkRequest*)));
+    connect(this, SIGNAL(CancelRequest(TorcNetworkRequest*)), this, SLOT(CancelSafe(TorcNetworkRequest*)));
+    connect(this, SIGNAL(PokeRequest(TorcNetworkRequest*)),   this, SLOT(PokeSafe(TorcNetworkRequest*)));
+    connect(this, SIGNAL(NewAsyncRequest(TorcNetworkRequest*,QObject*)), this, SLOT(GetAsynchronousSafe(TorcNetworkRequest*,QObject*)));
 
     // hide the network group if there is nothing to change
     m_networkGroup->SetActive(gLocalContext->FlagIsSet(Torc::Network));

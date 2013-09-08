@@ -46,6 +46,12 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static void Poke                (TorcNetworkRequest* Request);
     static bool GetAsynchronous     (TorcNetworkRequest* Request, QObject *Parent);
 
+  signals:
+    void        NewRequest          (TorcNetworkRequest* Request);
+    void        CancelRequest       (TorcNetworkRequest* Request);
+    void        PokeRequest         (TorcNetworkRequest* Request);
+    void        NewAsyncRequest     (TorcNetworkRequest* Request, QObject *Parent);
+
   protected slots:
     // QNetworkConfigurationManager
     void    ConfigurationAdded      (const QNetworkConfiguration &Config);
