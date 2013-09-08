@@ -74,12 +74,12 @@ TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID,
 
 /*! \brief Destroy this service.
  *
- * \note When cancelling m_getPeerDetailsRPC, the call to TorcWebSocket::CancelRequest is blocking.
- *       Hence the request should always have been cancelled and downref'd when the call is complete.
- *       If the request happens to be processed while it is being cancelled, the request will no longer
- *       be valid for cancellation in the TorcWebSocket thread and if RequestReady is triggered in the
- *       TorcNetworkedContext thread (main thread), m_getPeerDetailsRPC will already have been released.
- *       This is because TorcWebSocket and TorcNetworkedContext process all of their updates in their own threads.
+ * \note When cancelling m_getPeerDetailsRPC, the call to TorcWebSocket::CancelRequest is blocking (to
+ *  avoid leaking the request). Hence the request should always have been cancelled and downref'd when
+ *  the call is complete. If the request happens to be processed while it is being cancelled, the request
+ *  will no longer be valid for cancellation in the TorcWebSocket thread and if RequestReady is triggered in the
+ *  TorcNetworkedContext thread (main thread), m_getPeerDetailsRPC will already have been released.
+ *  This is because TorcWebSocket and TorcNetworkedContext process all of their updates in their own threads.
  *
  * \todo Make the call to TorcNetwork::Cancel blocking, as for TorcWebSocket::CancelRequest.
 */
