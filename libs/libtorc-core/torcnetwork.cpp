@@ -617,8 +617,22 @@ void TorcNetwork::DownloadProgress(qint64 Received, qint64 Total)
         m_requests.value(reply)->DownloadProgress(Received, Total);
 }
 
+/*! \brief Cancel all current network requests.
+ *
+ * This method can be called when the TorcNetwork singleton is being destroyed, when network access has
+ * been disallowed or when the network is down. It is reasonable to expect outstanding requests in the latter 2
+ * cases but well behaved clients should have cancelled any requests in the first case. Hence we warn in this
+ * instance.
+ *
+ * \note Command line applications currently do not run an admin thread and call QCoreApplication::quit to
+ * close the application. In this specific case, the main event loop is no longer running when clients call
+ * TorcNetwork::Cancel, the CancelRequest signal is never sent/received and requests may still be outstanding.
+*/
 void TorcNetwork::CloseConnections(void)
 {
+    if (!m_requests.isEmpty())
+        LOG(VB_GENERAL, LOG_WARNING, QString("%1 outstanding network requests").arg(m_requests.size()));
+
     while (!m_requests.isEmpty())
         CancelSafe(*m_requests.begin());
 
