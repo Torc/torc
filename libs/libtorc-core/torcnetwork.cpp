@@ -369,24 +369,23 @@ void TorcNetwork::CancelSafe(TorcNetworkRequest *Request)
 {
     if (m_reverseRequests.contains(Request))
     {
-        QNetworkReply* reply = m_reverseRequests.value(Request);
+        QNetworkReply* reply = m_reverseRequests.take(Request);
+        m_requests.remove(reply);
         LOG(VB_NETWORK, LOG_INFO, QString("Cancelling '%1'").arg(reply->request().url().toString()));
         reply->abort();
         reply->deleteLater();
         Request->DownRef();
-        m_reverseRequests.remove(Request);
-        m_requests.remove(reply);
 
         if (m_asynchronousRequests.contains(Request))
         {
-            QObject *parent = m_asynchronousRequests.value(Request);
-            m_asynchronousRequests.remove(Request);
-
+            QObject *parent = m_asynchronousRequests.take(Request);
             if (!QMetaObject::invokeMethod(parent, "RequestReady", Qt::AutoConnection, Q_ARG(TorcNetworkRequest*, Request)))
                 LOG(VB_GENERAL, LOG_ERR, "Error sending RequestReady");
         }
-
-        return;
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Trying to cancel unknown network request");
     }
 }
 
@@ -621,7 +620,7 @@ void TorcNetwork::DownloadProgress(qint64 Received, qint64 Total)
 void TorcNetwork::CloseConnections(void)
 {
     while (!m_requests.isEmpty())
-        CancelSafe(m_requests.end().value());
+        CancelSafe(*m_requests.begin());
 
     m_requests.clear();
     m_reverseRequests.clear();
