@@ -49,14 +49,11 @@ TorcRPCRequest::TorcRPCRequest(const QString &Method, QObject *Parent)
   : m_state(None),
     m_id(-1),
     m_method(Method),
-    m_parent(Parent),
+    m_parent(NULL),
+    m_parentLock(new QMutex()),
     m_validParent(true)
 {
-    if (m_parent->metaObject()->indexOfMethod(QMetaObject::normalizedSignature("RequestReady(TorcRPCRequest*)")) < 0)
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Request's parent does not have RequestReady method - request WILL fail");
-        m_validParent = false;
-    }
+    SetParent(Parent);
 }
 
 /*! \brief Creates a notification request for which no response is expected.
@@ -68,6 +65,7 @@ TorcRPCRequest::TorcRPCRequest(const QString &Method)
     m_id(-1),
     m_method(Method),
     m_parent(NULL),
+    m_parentLock(new QMutex()),
     m_validParent(false)
 {
 }
@@ -79,6 +77,7 @@ TorcRPCRequest::TorcRPCRequest(const QJsonObject &Object)
     m_id(-1),
     m_method(),
     m_parent(NULL),
+    m_parentLock(new QMutex()),
     m_validParent(false)
 {
     ParseJSONObject(Object);
@@ -92,6 +91,7 @@ TorcRPCRequest::TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByt
     m_id(-1),
     m_method(),
     m_parent(NULL),
+    m_parentLock(new QMutex()),
     m_validParent(false)
 {
     if (Protocol == TorcWebSocket::SubProtocolJSONRPC)
@@ -201,6 +201,7 @@ TorcRPCRequest::TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByt
 
 TorcRPCRequest::~TorcRPCRequest()
 {
+    delete m_parentLock;
 }
 
 void TorcRPCRequest::ParseJSONObject(const QJsonObject &Object)
@@ -261,10 +262,36 @@ void TorcRPCRequest::ParseJSONObject(const QJsonObject &Object)
 ///\brief Signal to the parent that the request is ready (but may be errored).
 void TorcRPCRequest::NotifyParent(void)
 {
+    QMutexLocker locker(m_parentLock);
+
     if (!m_parent || !m_validParent || m_state & Cancelled)
         return;
 
     QMetaObject::invokeMethod(m_parent, "RequestReady", Q_ARG(TorcRPCRequest*, this));
+}
+
+/*! \brief Set the parent for the request
+ *
+ * Usually only used when a request is being cancelled by the parent and the parent
+ * is being deleted.
+*/
+void TorcRPCRequest::SetParent(QObject *Parent)
+{
+    QMutexLocker locker(m_parentLock);
+
+    m_parent = Parent;
+    m_validParent = m_parent != NULL;
+
+    if (m_parent && m_parent->metaObject()->indexOfMethod(QMetaObject::normalizedSignature("RequestReady(TorcRPCRequest*)")) < 0)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Request's parent does not have RequestReady method - request WILL fail");
+        m_validParent = false;
+    }
+}
+
+bool TorcRPCRequest::HasParent(void)
+{
+    return m_parent != NULL;
 }
 
 ///\brief Serialise the request for the given protocol.
@@ -338,11 +365,6 @@ int TorcRPCRequest::GetID(void)
 QString TorcRPCRequest::GetMethod(void)
 {
     return m_method;
-}
-
-QObject* TorcRPCRequest::GetParent(void)
-{
-    return m_parent;
 }
 
 const QVariant& TorcRPCRequest::GetReply(void)

@@ -31,6 +31,8 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
     TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByteArray &Data);
 
     void                NotifyParent           (void);
+    void                SetParent              (QObject *Parent);
+    bool                HasParent              (void);
     QByteArray&         SerialiseRequest       (TorcWebSocket::WSSubProtocol Protocol);
 
     void                AddState               (int State);
@@ -41,7 +43,6 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
     int                 GetState               (void);
     int                 GetID                  (void);
     QString             GetMethod              (void);
-    QObject*            GetParent              (void);
     const QVariant&     GetReply               (void);
     const QList<QPair<QString,QVariant> >&
                         GetParameters          (void);
@@ -57,6 +58,7 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
     int                 m_id;
     QString             m_method;
     QObject            *m_parent;
+    QMutex             *m_parentLock;
     bool                m_validParent;
     QList<QPair<QString,QVariant> > m_parameters;
     QByteArray          m_serialisedData;
