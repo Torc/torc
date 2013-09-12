@@ -429,7 +429,7 @@ void TorcNetworkService::QueryPeerDetails(void)
     }
 
     m_getPeerDetailsRPC = new TorcRPCRequest("/services/GetDetails", this);
-    m_webSocketThread->Socket()->RemoteRequest(m_getPeerDetailsRPC);
+    RemoteRequest(m_getPeerDetailsRPC);
 }
 
 void TorcNetworkService::CreateSocket(TorcHTTPRequest *Request, QTcpSocket *Socket)
@@ -457,6 +457,28 @@ void TorcNetworkService::CreateSocket(TorcHTTPRequest *Request, QTcpSocket *Sock
     connect(m_webSocketThread->Socket(), SIGNAL(ConnectionEstablished()), this, SLOT(Connected()));
 
     m_webSocketThread->start();
+}
+
+void TorcNetworkService::RemoteRequest(TorcRPCRequest *Request)
+{
+    if (!Request)
+        return;
+
+    if (m_webSocketThread && m_webSocketThread->Socket())
+        m_webSocketThread->Socket()->RemoteRequest(Request);
+    else
+        LOG(VB_GENERAL, LOG_ERR, "Cannot fulfill remote request - not connected");
+}
+
+void TorcNetworkService::CancelRequest(TorcRPCRequest *Request)
+{
+    if (!Request)
+        return;
+
+    if (m_webSocketThread && m_webSocketThread->Socket())
+        m_webSocketThread->Socket()->CancelRequest(Request);
+    else
+        LOG(VB_GENERAL, LOG_ERR, "Cannot cancel request - not connected");
 }
 
 QStringList TorcNetworkService::GetAddresses(void)
@@ -497,6 +519,11 @@ TorcNetworkedContext::TorcNetworkedContext()
 {
     // listen for events
     gLocalContext->AddObserver(this);
+
+    // connect signals
+    connect(this, SIGNAL(NewRequest(QString,TorcRPCRequest*)), this, SLOT(HandleNewRequest(QString,TorcRPCRequest*)));
+    connect(this, SIGNAL(RequestCancelled(QString,TorcRPCRequest*)), this, SLOT(HandleCancelRequest(QString,TorcRPCRequest*)));
+    connect(this, SIGNAL(UpgradeRequest(TorcHTTPRequest*,QTcpSocket*)), this, SLOT(HandleUpgrade(TorcHTTPRequest*,QTcpSocket*)));
 
 #if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
     // always create the global instance
@@ -691,8 +718,90 @@ void TorcNetworkedContext::UpgradeSocket(TorcHTTPRequest *Request, QTcpSocket *S
     Socket->moveToThread(gNetworkedContext->thread());
 
     // and create the WebSocket in the correct thread
-    if (!QMetaObject::invokeMethod(gNetworkedContext, "HandleUpgrade", Q_ARG(TorcHTTPRequest*, Request), Q_ARG(QTcpSocket*, Socket)))
-        LOG(VB_GENERAL, LOG_INFO, "Failed to invoke HandleUpgrade");
+    emit gNetworkedContext->UpgradeRequest(Request, Socket);
+}
+
+/// \brief Pass Request to the remote connection identified by UUID
+void TorcNetworkedContext::RemoteRequest(const QString &UUID, TorcRPCRequest *Request)
+{
+    if (!Request || UUID.isEmpty())
+        return;
+
+    if (!gNetworkedContext)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "RemoteRequest but no TorcNetworkedContext singleton");
+        return;
+    }
+
+    emit gNetworkedContext->NewRequest(UUID, Request);
+}
+
+/*! \brief Cancel Request associated with the connection identified by UUID
+ *
+ * See TorcWebSocket::CancelRequest for details on blocking.
+ *
+ * \sa TorcWebSocket::CancelRequest
+*/
+void TorcNetworkedContext::CancelRequest(const QString &UUID, TorcRPCRequest *Request, int Wait /*= 1000ms*/)
+{
+    if (!Request || UUID.isEmpty())
+        return;
+
+    if (!gNetworkedContext)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "CancelRequest but no TorcNetworkedContext singleton");
+        return;
+    }
+
+    if (Request && !Request->IsNotification())
+    {
+        Request->AddState(TorcRPCRequest::Cancelled);
+        emit gNetworkedContext->RequestCancelled(UUID, Request);
+
+        if (Wait > 0)
+        {
+            int count = 0;
+            while (Request->IsShared() && (count++ < Wait))
+                QThread::msleep(1);
+
+            if (Request->IsShared())
+                LOG(VB_GENERAL, LOG_ERR, "Request is still shared after cancellation");
+        }
+    }
+}
+
+void TorcNetworkedContext::HandleNewRequest(const QString &UUID, TorcRPCRequest *Request)
+{
+    if (!UUID.isEmpty() && m_serviceList.contains(UUID))
+    {
+        for (int i = 0; i < m_discoveredServices.size(); ++i)
+        {
+            if (m_discoveredServices[i]->GetUuid() == UUID)
+            {
+                m_discoveredServices[i]->RemoteRequest(Request);
+                return;
+            }
+        }
+    }
+
+    LOG(VB_GENERAL, LOG_WARNING, QString("Connection identified by '%1' unknown").arg(UUID));
+}
+
+void TorcNetworkedContext::HandleCancelRequest(const QString &UUID, TorcRPCRequest *Request)
+{
+    if (!UUID.isEmpty() && m_serviceList.contains(UUID))
+    {
+        for (int i = 0; i < m_discoveredServices.size(); ++i)
+        {
+            if (m_discoveredServices[i]->GetUuid() == UUID)
+            {
+                m_discoveredServices[i]->CancelRequest(Request);
+                return;
+            }
+        }
+    }
+
+    LOG(VB_GENERAL, LOG_WARNING, QString("Connection identified by '%1' unknown").arg(UUID));
 }
 
 void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *Socket)

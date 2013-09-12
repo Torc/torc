@@ -53,6 +53,8 @@ class TorcNetworkService : public QObject
     void            SetPriority     (int    Priority);
     void            SetAPIVersion   (const QString &Version);
     void            CreateSocket    (TorcHTTPRequest *Request, QTcpSocket *Socket);
+    void            RemoteRequest   (TorcRPCRequest *Request);
+    void            CancelRequest   (TorcRPCRequest *Request);
 
   private:
     void            ScheduleRetry   (void);
@@ -90,27 +92,35 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel
 
   public:
     // QAbstractListModel
-    QVariant                   data          (const QModelIndex &Index, int Role) const;
-    QHash<int,QByteArray>      roleNames     (void) const;
-    int                        rowCount      (const QModelIndex &Parent = QModelIndex()) const;
+    QVariant                   data                (const QModelIndex &Index, int Role) const;
+    QHash<int,QByteArray>      roleNames           (void) const;
+    int                        rowCount            (const QModelIndex &Parent = QModelIndex()) const;
 
     // TorcWebSocket
-    static void                UpgradeSocket (TorcHTTPRequest *Request, QTcpSocket *Socket);
+    static void                UpgradeSocket       (TorcHTTPRequest *Request, QTcpSocket *Socket);
+
+    static void                RemoteRequest       (const QString &UUID, TorcRPCRequest *Request);
+    static void                CancelRequest       (const QString &UUID, TorcRPCRequest *Request, int Wait = 1000);
 
   signals:
-    void                       PeerConnected    (QString Name, QString UUID);
-    void                       PeerDisconnected (QString Name, QString UUID);
+    void                       PeerConnected       (QString Name, QString UUID);
+    void                       PeerDisconnected    (QString Name, QString UUID);
+    void                       UpgradeRequest      (TorcHTTPRequest *Request, QTcpSocket *Socket);
+    void                       NewRequest          (const QString &UUID, TorcRPCRequest *Request);
+    void                       RequestCancelled    (const QString &UUID, TorcRPCRequest *Request);
 
   protected slots:
-    void                       HandleUpgrade (TorcHTTPRequest *Request, QTcpSocket *Socket);
+    void                       HandleUpgrade       (TorcHTTPRequest *Request, QTcpSocket *Socket);
+    void                       HandleNewRequest    (const QString &UUID, TorcRPCRequest *Request);
+    void                       HandleCancelRequest (const QString &UUID, TorcRPCRequest *Request);
 
   protected:
     TorcNetworkedContext();
     ~TorcNetworkedContext();
 
-    void                       Connected     (TorcNetworkService* Peer);
-    void                       Disconnected  (TorcNetworkService* Peer);
-    bool                       event         (QEvent* Event);
+    void                       Connected           (TorcNetworkService* Peer);
+    void                       Disconnected        (TorcNetworkService* Peer);
+    bool                       event               (QEvent* Event);
 
   private:
     QList<TorcNetworkService*> m_discoveredServices;
