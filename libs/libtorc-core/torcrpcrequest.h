@@ -33,7 +33,6 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
     bool                IsNotification         (void);
     void                NotifyParent           (void);
     void                SetParent              (QObject *Parent);
-    bool                HasParent              (void);
     QByteArray&         SerialiseRequest       (TorcWebSocket::WSSubProtocol Protocol);
 
     void                AddState               (int State);

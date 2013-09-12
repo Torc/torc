@@ -298,11 +298,6 @@ void TorcRPCRequest::SetParent(QObject *Parent)
     }
 }
 
-bool TorcRPCRequest::HasParent(void)
-{
-    return m_parent != NULL;
-}
-
 ///\brief Serialise the request for the given protocol.
 QByteArray& TorcRPCRequest::SerialiseRequest(TorcWebSocket::WSSubProtocol Protocol)
 {

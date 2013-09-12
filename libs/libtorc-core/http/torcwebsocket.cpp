@@ -519,10 +519,10 @@ void TorcWebSocket::RemoteRequest(TorcRPCRequest *Request)
 {
     if (Request)
     {
-        if (Request->HasParent())
-            Request->UpRef(); // NB
-        else
+        if (Request->IsNotification())
             m_outstandingNotifications.ref();
+        else
+            Request->UpRef(); // NB
 
         emit NewRequest(Request);
     }
@@ -539,7 +539,7 @@ void TorcWebSocket::RemoteRequest(TorcRPCRequest *Request)
 */
 void TorcWebSocket::CancelRequest(TorcRPCRequest *Request, int Wait /*= 1000 ms*/)
 {
-    if (Request && Request->HasParent())
+    if (Request && !Request->IsNotification())
     {
         Request->AddState(TorcRPCRequest::Cancelled);
         emit RequestCancelled(Request);
@@ -588,6 +588,8 @@ void TorcWebSocket::HandleRemoteRequest(TorcRPCRequest *Request)
     if (!Request)
         return;
 
+    bool notification = Request->IsNotification();
+
     // guard against a request that is immediately cancelled
     if (Request->GetState() & TorcRPCRequest::Cancelled)
     {
@@ -596,7 +598,7 @@ void TorcWebSocket::HandleRemoteRequest(TorcRPCRequest *Request)
     }
     else
     {
-        if (Request->HasParent())
+        if (!notification)
         {
             int id = m_currentRequestID++;
             while (m_currentRequests.contains(id))
@@ -622,7 +624,7 @@ void TorcWebSocket::HandleRemoteRequest(TorcRPCRequest *Request)
     }
 
     // notifications are fire and forget, so downref immediately
-    if (!Request->HasParent())
+    if (notification)
     {
         Request->DownRef();
         m_outstandingNotifications.deref();
