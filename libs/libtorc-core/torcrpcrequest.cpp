@@ -46,7 +46,8 @@
  * deleted.
 */
 TorcRPCRequest::TorcRPCRequest(const QString &Method, QObject *Parent)
-  : m_state(None),
+  : m_notification(false),
+    m_state(None),
     m_id(-1),
     m_method(Method),
     m_parent(NULL),
@@ -61,7 +62,8 @@ TorcRPCRequest::TorcRPCRequest(const QString &Method, QObject *Parent)
  * Notification requests are deleted after they have been sent.
 */
 TorcRPCRequest::TorcRPCRequest(const QString &Method)
-  : m_state(None),
+  : m_notification(true),
+    m_state(None),
     m_id(-1),
     m_method(Method),
     m_parent(NULL),
@@ -73,7 +75,8 @@ TorcRPCRequest::TorcRPCRequest(const QString &Method)
 /*! \brief Creates a request from the given QJsonObject
 */
 TorcRPCRequest::TorcRPCRequest(const QJsonObject &Object)
-  : m_state(None),
+  : m_notification(true),
+    m_state(None),
     m_id(-1),
     m_method(),
     m_parent(NULL),
@@ -87,7 +90,8 @@ TorcRPCRequest::TorcRPCRequest(const QJsonObject &Object)
  *
 */
 TorcRPCRequest::TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByteArray &Data)
-  : m_state(None),
+  : m_notification(true),
+    m_state(None),
     m_id(-1),
     m_method(),
     m_parent(NULL),
@@ -257,6 +261,11 @@ void TorcRPCRequest::ParseJSONObject(const QJsonObject &Object)
         if (m_id < 0)
             LOG(VB_GENERAL, LOG_ERR, "Received error with no id");
     }
+}
+
+bool TorcRPCRequest::IsNotification(void)
+{
+    return m_notification;
 }
 
 ///\brief Signal to the parent that the request is ready (but may be errored).
