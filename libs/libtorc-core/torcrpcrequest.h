@@ -3,6 +3,7 @@
 
 // Qt
 #include <QList>
+#include <QMutex>
 #include <QVariant>
 #include <QJsonObject>
 
