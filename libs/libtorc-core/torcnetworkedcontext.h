@@ -81,9 +81,10 @@ class TorcNetworkService : public QObject
 
 Q_DECLARE_METATYPE(TorcNetworkService*);
 
-class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public TorcObservable
+class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel
 {
     friend class TorcNetworkedContextObject;
+    friend class TorcNetworkService;
 
     Q_OBJECT
 
@@ -96,6 +97,10 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public T
     // TorcWebSocket
     static void                UpgradeSocket (TorcHTTPRequest *Request, QTcpSocket *Socket);
 
+  signals:
+    void                       PeerConnected    (QString Name, QString UUID);
+    void                       PeerDisconnected (QString Name, QString UUID);
+
   protected slots:
     void                       HandleUpgrade (TorcHTTPRequest *Request, QTcpSocket *Socket);
 
@@ -103,6 +108,8 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public T
     TorcNetworkedContext();
     ~TorcNetworkedContext();
 
+    void                       Connected     (TorcNetworkService* Peer);
+    void                       Disconnected  (TorcNetworkService* Peer);
     bool                       event         (QEvent* Event);
 
   private:

@@ -43,7 +43,8 @@ TorcNetworkedContext *gNetworkedContext = NULL;
  *       peer is offline, need a better approach.
 */
 TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QStringList &Addresses)
-  : m_name(Name),
+  : QObject(),
+    m_name(Name),
     m_uuid(UUID),
     m_port(Port),
     m_uiAddress(QString()),
@@ -145,7 +146,12 @@ void TorcNetworkService::Connect(void)
 
     // already connected
     if (m_webSocketThread)
+    {
+        // notify the parent that the connection is complete
+        if (gNetworkedContext)
+            gNetworkedContext->Connected(this);
         return;
+    }
 
     // lower priority peers should initiate the connection
     if (m_priority < gLocalContext->GetPriority())
@@ -237,6 +243,10 @@ void TorcNetworkService::Disconnected(void)
         // try and reconnect. If this is a discovered service, the socket was probably closed
         // deliberately and this object is about to be deleted anyway.
         ScheduleRetry();
+
+        // notify the parent
+        if (gNetworkedContext)
+            gNetworkedContext->Disconnected(this);
     }
     else
     {
@@ -433,7 +443,8 @@ void TorcNetworkService::CreateSocket(TorcHTTPRequest *Request, QTcpSocket *Sock
         LOG(VB_GENERAL, LOG_ERR, "Already have websocket - deleting new request");
         delete Request;
         Socket->disconnectFromHost();
-        Socket->waitForDisconnected();
+        if (Socket->state() != QAbstractSocket::UnconnectedState && !Socket->waitForDisconnected(1000))
+            LOG(VB_GENERAL, LOG_WARNING, "WebSocket not successfully disconnected before closing");
         Socket->close();
         Socket->deleteLater();
         return;
@@ -482,7 +493,6 @@ void TorcNetworkService::SetAPIVersion(const QString &Version)
  */
 TorcNetworkedContext::TorcNetworkedContext()
   : QAbstractListModel(),
-    TorcObservable(),
     m_bonjourBrowserReference(0)
 {
     // listen for events
@@ -561,6 +571,22 @@ QHash<int,QByteArray> TorcNetworkedContext::roleNames(void) const
 int TorcNetworkedContext::rowCount(const QModelIndex&) const
 {
     return m_discoveredServices.size();
+}
+
+void TorcNetworkedContext::Connected(TorcNetworkService *Peer)
+{
+    if (!Peer)
+        return;
+
+    emit PeerConnected(Peer->GetName(), Peer->GetUuid());
+}
+
+void TorcNetworkedContext::Disconnected(TorcNetworkService *Peer)
+{
+    if (!Peer)
+        return;
+
+    emit PeerDisconnected(Peer->GetName(), Peer->GetUuid());
 }
 
 bool TorcNetworkedContext::event(QEvent *Event)
@@ -710,7 +736,8 @@ void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *S
         LOG(VB_GENERAL, LOG_ERR, "Failed to fulfill upgrade request - deleting");
         delete Request;
         Socket->disconnectFromHost();
-        Socket->waitForDisconnected();
+        if (Socket->state() != QAbstractSocket::UnconnectedState && !Socket->waitForDisconnected(1000))
+            LOG(VB_GENERAL, LOG_WARNING, "WebSocket not successfully disconnected before closing");
         Socket->close();
         Socket->deleteLater();
     }
