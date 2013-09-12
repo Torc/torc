@@ -315,7 +315,7 @@ QByteArray& TorcRPCRequest::SerialiseRequest(TorcWebSocket::WSSubProtocol Protoc
             object.insert("params", params);
         }
 
-        if (m_parent && m_id > -1)
+        if (m_id > -1)
             object.insert("id", m_id);
 
         QJsonDocument doc(object);
