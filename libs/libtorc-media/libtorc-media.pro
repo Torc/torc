@@ -16,15 +16,8 @@ LIBS += -L../libtorc-core -ltorc-core-$$LIBVERSION
 
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 
-QT += sql
-
-# QSortFilterProxyModel is part of core in Qt 5 and gui in Qt 4.8
-greaterThan(QT_MAJOR_VERSION, 4) {
-    QT -= gui
-}
-else {
-    QT += gui
-}
+QT += sql network
+QT -= gui
 
 HEADERS += torcmedia.h
 HEADERS += torcmetadata.h
@@ -32,6 +25,7 @@ HEADERS += torcmediasource.h
 HEADERS += torcmediamaster.h
 HEADERS += torcmediamasterfilter.h
 HEADERS += torcmediasourcedirectory.h
+HEADERS += torcmediasourcepeer.h
 
 SOURCES += torcmedia.cpp
 SOURCES += torcmetadata.cpp
@@ -39,6 +33,7 @@ SOURCES += torcmediasource.cpp
 SOURCES += torcmediamaster.cpp
 SOURCES += torcmediamasterfilter.cpp
 SOURCES += torcmediasourcedirectory.cpp
+SOURCES += torcmediasourcepeer.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files  = torcmedia.h
