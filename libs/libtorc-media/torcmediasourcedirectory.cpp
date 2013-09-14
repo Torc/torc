@@ -80,8 +80,8 @@ class TorcMediaDirectory
 TorcMediaSourceDirectory::TorcMediaSourceDirectory()
   : QFileSystemWatcher(),
     TorcHTTPService(this, "files", tr("Files"), TorcMediaSourceDirectory::staticMetaObject),
-    version(1),
-    realVersion(1),
+    mediaVersion(1),
+    realMediaVersion(1),
     m_enabled(false),
     m_timerId(0),
     m_fileFilters(QDir::NoDotAndDotDot | QDir::Files | QDir::Readable),
@@ -161,13 +161,13 @@ QStringList TorcMediaSourceDirectory::GetConfiguredPaths(void)
 
 int TorcMediaSourceDirectory::GetMediaVersion(void)
 {
-    return realVersion.fetchAndAddOrdered(0);
+    return realMediaVersion.fetchAndAddOrdered(0);
 }
 
 void TorcMediaSourceDirectory::IncrementVersion(void)
 {
-    realVersion.ref();
-    emit versionChanged();
+    realMediaVersion.ref();
+    emit mediaVersionChanged();
 }
 
 void TorcMediaSourceDirectory::DirectoryChanged(const QString &Path)

@@ -29,39 +29,39 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher, pu
     virtual ~TorcMediaSourceDirectory();
 
     Q_PROPERTY(QStringList configuredPaths READ GetConfiguredPaths NOTIFY configuredPathsChanged)
-    Q_PROPERTY(int         version         READ GetMediaVersion    NOTIFY versionChanged)
+    Q_PROPERTY(int         mediaVersion    READ GetMediaVersion    NOTIFY mediaVersionChanged)
 
   public slots:
-    void            AddPath            (const QString &Path, bool Recursive);
-    void            RemovePath         (const QString &Path);
-    QStringList     GetConfiguredPaths (void);
+    void            AddPath                 (const QString &Path, bool Recursive);
+    void            RemovePath              (const QString &Path);
+    QStringList     GetConfiguredPaths      (void);
     int             GetMediaVersion         (void);
 
   signals:
-    void            versionChanged     (void);
-    void            configuredPathsChanged (void);
+    void            mediaVersionChanged     (void);
+    void            configuredPathsChanged  (void);
 
   protected slots:
-    void            IncrementVersion   (void);
-    void            DirectoryChanged   (const QString &Path);
-    void            StartMonitoring    (void);
-    void            StopMonitoring     (void);
+    void            IncrementVersion        (void);
+    void            DirectoryChanged        (const QString &Path);
+    void            StartMonitoring         (void);
+    void            StopMonitoring          (void);
 
   public:
-    TorcMedia::MediaType GuessFileType (const QString &Path);
+    TorcMedia::MediaType GuessFileType      (const QString &Path);
 
   protected:
-    void            customEvent        (QEvent *Event);
-    void            timerEvent         (QTimerEvent *Event);
+    void            customEvent             (QEvent *Event);
+    void            timerEvent              (QTimerEvent *Event);
 
   private:
-    void            RemovePaths        (QStringList &Paths);
-    void            RemoveItem         (const QString &Path);
-    void            AddDirectories     (const QString &Path, QStringList &Found);
+    void            RemovePaths             (QStringList &Paths);
+    void            RemoveItem              (const QString &Path);
+    void            AddDirectories          (const QString &Path, QStringList &Found);
 
   private:
-    int             version;
-    QAtomicInt      realVersion;
+    int             mediaVersion;
+    QAtomicInt      realMediaVersion;
     QStringList     configuredPaths;
 
     bool            m_enabled;
