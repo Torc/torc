@@ -89,12 +89,12 @@ TorcRPCRequest::TorcRPCRequest(const QJsonObject &Object)
 /*! \brief Creates a request or response from the given raw data using the given protocol.
  *
 */
-TorcRPCRequest::TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByteArray &Data)
+TorcRPCRequest::TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByteArray &Data, QObject *Parent)
   : m_notification(true),
     m_state(None),
     m_id(-1),
     m_method(),
-    m_parent(NULL),
+    m_parent(Parent),
     m_parentLock(new QMutex()),
     m_validParent(false)
 {
@@ -210,7 +210,7 @@ TorcRPCRequest::~TorcRPCRequest()
 
 void TorcRPCRequest::ParseJSONObject(const QJsonObject &Object)
 {
-    // determine whether this is a request of response
+    // determine whether this is a request or response
     int  id        = (Object.contains("id") && !Object["id"].isNull()) ? (int)Object["id"].toDouble() : -1;
     bool isrequest = Object.contains("method");
     bool isresult  = Object.contains("result");
@@ -225,19 +225,34 @@ void TorcRPCRequest::ParseJSONObject(const QJsonObject &Object)
 
     if (isrequest)
     {
-        QVariantMap result = TorcHTTPServer::HandleRequest(Object["method"].toString(), Object.value("params").toVariant());
-
-        // not a notification, response expected
-        if (id > -1)
+        QString method = Object["method"].toString();
+        // if this is a notification, check first whether it is a subscription 'event' that the parent is monitoring
+        bool handled = false;
+        if (id < 0)
         {
-            // result should contain either 'result' or 'error', we need to insert id and protocol identifier
-            result.insert("jsonrpc", QString("2.0"));
-            result.insert("id", id);
-            m_serialisedData = QJsonDocument::fromVariant(result).toJson();
+            if (!QMetaObject::invokeMethod(m_parent, "HandleNotification", Qt::DirectConnection,
+                                           Q_RETURN_ARG(bool, handled), Q_ARG(QString, method)))
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Failed to invoke 'HandleNotification' in request parent");
+            }
         }
-        else if (Object.contains("id"))
+
+        if (!handled)
         {
-            LOG(VB_GENERAL, LOG_ERR, "Request contains invalid id");
+            QVariantMap result = TorcHTTPServer::HandleRequest(method, Object.value("params").toVariant(), m_parent);
+
+            // not a notification, response expected
+            if (id > -1)
+            {
+                // result should contain either 'result' or 'error', we need to insert id and protocol identifier
+                result.insert("jsonrpc", QString("2.0"));
+                result.insert("id", id);
+                m_serialisedData = QJsonDocument::fromVariant(result).toJson();
+            }
+            else if (Object.contains("id"))
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Request contains invalid id");
+            }
         }
     }
     else if (isresult)
@@ -260,6 +275,8 @@ void TorcRPCRequest::ParseJSONObject(const QJsonObject &Object)
 
         if (m_id < 0)
             LOG(VB_GENERAL, LOG_ERR, "Received error with no id");
+        else
+            LOG(VB_GENERAL, LOG_ERR, "JSON-RPC error");
     }
 }
 
@@ -369,6 +386,11 @@ int TorcRPCRequest::GetID(void)
 QString TorcRPCRequest::GetMethod(void)
 {
     return m_method;
+}
+
+QObject* TorcRPCRequest::GetParent(void)
+{
+    return m_parent;
 }
 
 const QVariant& TorcRPCRequest::GetReply(void)

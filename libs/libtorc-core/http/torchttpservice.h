@@ -3,6 +3,7 @@
 
 // Qt
 #include <QMap>
+#include <QMutex>
 #include <QMetaObject>
 
 // Torc
@@ -24,7 +25,8 @@ class TORC_CORE_PUBLIC TorcHTTPService : public TorcHTTPHandler
     virtual ~TorcHTTPService();
 
     void         ProcessHTTPRequest    (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
-    QVariantMap  ProcessRequest        (const QString &Method, const QVariant &Parameters);
+    QVariantMap  ProcessRequest        (const QString &Method, const QVariant &Parameters, QObject *Connection);
+    QString      GetMethod             (int Index);
 
   protected:
     void         UserHelp              (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
@@ -34,6 +36,10 @@ class TORC_CORE_PUBLIC TorcHTTPService : public TorcHTTPHandler
     QString                         m_version;
     QMetaObject                     m_metaObject;
     QMap<QString,MethodParameters*> m_methods;
+    QMap<int,int>                   m_properties;
+    QList<QObject*>                 m_subscribers;
+    QMutex                         *m_subscriberLock;
 };
 
+Q_DECLARE_METATYPE(TorcHTTPService*);
 #endif // TORCSERVICE_H

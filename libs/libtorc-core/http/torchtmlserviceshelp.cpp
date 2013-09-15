@@ -78,7 +78,7 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTP
         stream << "<h3>" << QObject::tr("Available services") << "</h3>";
         QMap<QString,QString>::iterator it = services.begin();
         for ( ; it != services.end(); ++it)
-            stream << it.value() << " <a href='" << it.key() + "help" << "'>" << it.key() << "</a><br>";
+            stream << it.value() << " <a href='" << it.key() + "Help" << "'>" << it.key() << "</a><br>";
     }
 
     stream << "</body></html>";

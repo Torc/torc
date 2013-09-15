@@ -121,7 +121,7 @@ void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPReque
  * successful requests will have a 'result' entry and failed requests will have an 'error' field with
  * an error code and error message.
 */
-QVariantMap TorcHTTPServer::HandleRequest(const QString &Method, const QVariant &Parameters)
+QVariantMap TorcHTTPServer::HandleRequest(const QString &Method, const QVariant &Parameters, QObject *Connection)
 {
     QMutexLocker locker(gHandlersLock);
 
@@ -136,10 +136,10 @@ QVariantMap TorcHTTPServer::HandleRequest(const QString &Method, const QVariant 
         // NB no recursive path handling here
         QMap<QString,TorcHTTPHandler*>::const_iterator it = gHandlers.find(path);
         if (it != gHandlers.end())
-            return (*it)->ProcessRequest(Method, Parameters);
+            return (*it)->ProcessRequest(Method, Parameters, Connection);
     }
 
-    LOG(VB_GENERAL, LOG_ERR, "Method not found in services");
+    LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' not found in services").arg(Method));
 
     QVariantMap result;
     QVariantMap error;
@@ -509,6 +509,7 @@ class TorcHTTPServerObject : public TorcAdminObject
       : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY)
     {
         qRegisterMetaType<TorcHTTPRequest*>();
+        qRegisterMetaType<TorcHTTPService*>();
         qRegisterMetaType<QTcpSocket*>();
     }
 

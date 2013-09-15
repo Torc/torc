@@ -230,9 +230,12 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
   : TorcHTTPHandler(SERVICES_DIRECTORY + Signature, Name),
     m_parent(Parent),
     m_version("Unknown"),
-    m_metaObject(MetaObject)
+    m_metaObject(MetaObject),
+    m_subscriberLock(new QMutex(QMutex::Recursive))
 {
     QStringList blacklist = Blacklist.split(",");
+
+    m_parent->setObjectName(Name);
 
     // determine version
     int index = MetaObject.indexOfClassInfo("Version");
@@ -306,6 +309,18 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
         }
     }
 
+    // analyse properties
+    for (int i = m_metaObject.propertyOffset(); i < m_metaObject.propertyCount(); ++i)
+    {
+        QMetaProperty property = m_metaObject.property(i);
+
+        if (property.hasNotifySignal() && property.isReadable() && property.notifySignalIndex() > -1)
+        {
+            m_properties.insert(property.notifySignalIndex(), property.propertyIndex());
+            LOG(VB_GENERAL, LOG_DEBUG, QString("Adding property '%1' with signal index %2").arg(property.name()).arg(property.notifySignalIndex()));
+        }
+    }
+
     TorcHTTPServer::RegisterHandler(this);
 }
 
@@ -313,7 +328,25 @@ TorcHTTPService::~TorcHTTPService()
 {
     TorcHTTPServer::DeregisterHandler(this);
 
+    {
+        QMutexLocker locker(m_subscriberLock);
+
+        // there are currently no 'transient' or temporary services, so remote connections should
+        // all have been cleaned up before we get here. So warn if there are any still subscribed.
+        if (!m_subscribers.isEmpty())
+            LOG(VB_GENERAL, LOG_WARNING, QString("Service '%1' still has %2 subscribers").arg(m_signature).arg(m_subscribers.size()));
+
+        foreach (QObject *subscriber, m_subscribers)
+        {
+            int remove = subscriber->metaObject()->indexOfSlot(QMetaObject::normalizedSignature("SubscriptionRemoved(TorcHTTPService*)"));
+            if (remove > -1)
+                subscriber->metaObject()->method(remove).invoke(subscriber, Q_ARG(TorcHTTPService*, this));
+        }
+    }
+
     qDeleteAll(m_methods);
+
+    delete m_subscriberLock;
 }
 
 void TorcHTTPService::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
@@ -321,8 +354,8 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConne
     QString method = Request->GetMethod();
     HTTPRequestType type = Request->GetHTTPRequestType();
 
-    bool helprequest    = method.compare("help", Qt::CaseInsensitive) == 0;
-    bool versionrequest = method.compare("getversion", Qt::CaseInsensitive) == 0;
+    bool helprequest    = method.compare("Help") == 0;
+    bool versionrequest = method.compare("GetVersion") == 0;
 
     if (helprequest || versionrequest)
     {
@@ -406,25 +439,15 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConne
     }
 }
 
-QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVariant &Parameters)
+QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVariant &Parameters, QObject *Connection)
 {
     QString method;
     int index = Method.lastIndexOf("/");
     if (index > -1)
         method = Method.mid(index + 1).trimmed();
 
-    if (!method.isEmpty())
+    if (Connection && !method.isEmpty())
     {
-        // implicit 'GetVersion' method
-        if (method.compare("getversion", Qt::CaseInsensitive) == 0)
-        {
-            QVariantMap result;
-            QVariantMap version;
-            version.insert("version", m_version);
-            result.insert("result", version);
-            return result;
-        }
-
         // find the correct method to invoke
         QMap<QString,MethodParameters*>::iterator it = m_methods.find(method);
         if (it != m_methods.end())
@@ -477,6 +500,123 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
             result.insert("result", "null");
             return result;
         }
+
+        // implicit 'GetVersion' method
+        if (method.compare("GetVersion") == 0)
+        {
+            QVariantMap result;
+            QVariantMap version;
+            version.insert("version", m_version);
+            result.insert("result", version);
+            return result;
+        }
+        // implicit 'Subscribe' method
+        else if (method.compare("Subscribe") == 0)
+        {
+            // ensure the 'receiver' has all of the right slots
+            int add    = Connection->metaObject()->indexOfSignal(QMetaObject::normalizedSignature("SubscriptionAdded(TorcHTTPService*)"));
+            int change = Connection->metaObject()->indexOfSlot(QMetaObject::normalizedSignature("PropertyChanged()"));
+            if (add > -1 && change > -1 &&
+                Connection->metaObject()->indexOfSignal(QMetaObject::normalizedSignature("SubscriptionRemoved(TorcHTTPService*)")) > -1 &&
+                Connection->metaObject()->indexOfSlot(QMetaObject::normalizedSignature("AddSubscription(TorcHTTPService*)")) > -1 &&
+                Connection->metaObject()->indexOfSlot(QMetaObject::normalizedSignature("RemoveSubscription(TorcHTTPService*)")) > -1)
+            {
+                // this method is not thread-safe and is called from multiple threads so lock the subscribers
+                QMutexLocker locker(m_subscriberLock);
+
+                if (!m_subscribers.contains(Connection))
+                {
+                    LOG(VB_GENERAL, LOG_INFO, QString("New subscription for '%1'").arg(m_signature));
+                    m_subscribers.append(Connection);
+
+                    // tell the receiver it has a new subscription
+                    Connection->metaObject()->method(add).invoke(Connection, Q_ARG(TorcHTTPService*, this));
+
+                    // notify success and provide appropriate details about properties, notifications, get'ers etc
+                    QVariantMap result;
+                    QVariantMap details;
+                    QVariantList properties;
+                    QMap<int,int>::const_iterator it = m_properties.begin();
+                    for ( ; it != m_properties.end(); ++it)
+                    {
+                        // and connect property change notifications to the one slot
+                        // NB we use the parent's metaObject here - not the staticMetaObject (or m_metaObject)
+                        QObject::connect(m_parent, m_parent->metaObject()->method(it.key()), Connection, Connection->metaObject()->method(change));
+
+                        // NB for some reason, QMetaProperty doesn't provide the QMetaMethod for the set'ter or
+                        // get'ter - so infer the get'ers name.
+                        QVariantMap property;
+                        QString name = QString::fromLatin1(m_parent->metaObject()->property(it.value()).name());
+                        property.insert("name", name);
+                        property.insert("notification", QString::fromLatin1(m_parent->metaObject()->method(it.key()).name()));
+                        property.insert("get", QString("Get") + name.left(1).toUpper() + name.mid(1));
+
+                        properties.append(property);
+                    }
+
+                    details.insert("version", m_version);
+                    details.insert("properties", properties);
+                    result.insert("result", details);
+                    return result;
+                }
+                else
+                {
+                    LOG(VB_GENERAL, LOG_ERR, QString("Connection is already subscribed to '%1'").arg(m_signature));
+                }
+            }
+            else
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Subscription request for connection without correct methods");
+            }
+
+            QVariantMap result;
+            QVariantMap error;
+            error.insert("code", -32603);
+            error.insert("message", "Internal error");
+            result.insert("error", error);
+            return result;
+        }
+        // implicit 'Unsubscribe' method
+        else if (method.compare("Unsubscribe") == 0)
+        {
+            // ensure connection has correct slot
+            int remove = Connection->metaObject()->indexOfSignal(QMetaObject::normalizedSignature("SubscriptionRemoved(TorcHTTPService*)"));
+            if (remove > -1)
+            {
+                QMutexLocker locker(m_subscriberLock);
+
+                if (m_subscribers.contains(Connection))
+                {
+                    LOG(VB_GENERAL, LOG_INFO, QString("Removed subscription for '%1'").arg(m_signature));
+
+                    // disconnect all change signals
+                    m_parent->disconnect(Connection);
+
+                    m_subscribers.removeAll(Connection);
+
+                    // notify the receiver that the subscription has been cancelled
+                    Connection->metaObject()->method(remove).invoke(Connection, Q_ARG(TorcHTTPService*, this));
+
+                    // return success
+                    QVariantMap result;
+                    result.insert("result", 1);
+                    return result;
+                }
+
+                LOG(VB_GENERAL, LOG_ERR, QString("Connection is not subscribed to '%1'").arg(m_signature));
+            }
+            else
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Unsubscribe request for connection without correct methods");
+            }
+
+            QVariantMap result;
+            QVariantMap error;
+            error.insert("code", -32603);
+            error.insert("message", "Internal error");
+            result.insert("error", error);
+            return result;
+        }
     }
 
     LOG(VB_GENERAL, LOG_ERR, QString("'%1' service has no '%2' method").arg(m_signature).arg(method));
@@ -487,6 +627,14 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
     error.insert("message", "Method not found");
     result.insert("error", error);
     return result;
+}
+
+QString TorcHTTPService::GetMethod(int Index)
+{
+    if (Index > -1 && Index < m_parent->metaObject()->methodCount())
+        return QString::fromLatin1(m_parent->metaObject()->method(Index).name());
+
+    return QString();
 }
 
 void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Connection)

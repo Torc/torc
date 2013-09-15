@@ -29,7 +29,7 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
   public:
     TorcRPCRequest(const QString &Method, QObject *Parent);
     TorcRPCRequest(const QString &Method);
-    TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByteArray &Data);
+    TorcRPCRequest(TorcWebSocket::WSSubProtocol Protocol, const QByteArray &Data, QObject *Parent);
 
     bool                IsNotification         (void);
     void                NotifyParent           (void);
@@ -44,6 +44,7 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
     int                 GetState               (void);
     int                 GetID                  (void);
     QString             GetMethod              (void);
+    QObject*            GetParent              (void);
     const QVariant&     GetReply               (void);
     const QList<QPair<QString,QVariant> >&
                         GetParameters          (void);

@@ -149,6 +149,14 @@ TorcWebSocket::~TorcWebSocket()
             HandleCancelRequest(m_currentRequests.begin().value());
     }
 
+    // cancel subscriptions
+    foreach (TorcHTTPService *subscription, m_subscriptions)
+    {
+        // NB TorcWebSocketThread is exiting, the SubscriptionRemoved signal will never be delivered
+        QVariant parameters;
+        TorcHTTPServer::HandleRequest(subscription->Signature() + "unsubscribe", parameters, this);
+    }
+
     InitiateClose(CloseGoingAway, QString("WebSocket exiting normally"));
 
     CloseSocket();
@@ -471,6 +479,10 @@ void TorcWebSocket::Start(void)
     connect(this, SIGNAL(NewRequest(TorcRPCRequest*)),       this, SLOT(HandleRemoteRequest(TorcRPCRequest*)));
     connect(this, SIGNAL(RequestCancelled(TorcRPCRequest*)), this, SLOT(HandleCancelRequest(TorcRPCRequest*)));
 
+    // connect up subscriptions
+    connect(this, SIGNAL(SubscriptionAdded(TorcHTTPService*)),   this, SLOT(AddSubscription(TorcHTTPService*)));
+    connect(this, SIGNAL(SubscriptionRemoved(TorcHTTPService*)), this, SLOT(RemoveSubscription(TorcHTTPService*)));
+
     // server side:)
     if (m_serverSide)
     {
@@ -511,6 +523,69 @@ void TorcWebSocket::Start(void)
     LOG(VB_GENERAL, LOG_ERR, "Failed to start Websocket");
     if (m_parent)
         m_parent->quit();
+}
+
+///\brief Receives notifications when a property for a subscribed service has changed.
+void TorcWebSocket::PropertyChanged(void)
+{
+    TorcHTTPService *service = dynamic_cast<TorcHTTPService*>(sender());
+    if (m_subscriptions.contains(service) && senderSignalIndex() > -1)
+    {
+        QString signal = service->GetMethod(senderSignalIndex());
+        TorcRPCRequest *request = new TorcRPCRequest(service->Signature() + signal);
+        SendFrame(m_subProtocolFrameFormat, request->SerialiseRequest(m_subProtocol));
+    }
+}
+
+///\brief Register the signalling TorcHTTPService as a new subscription.
+void TorcWebSocket::AddSubscription(TorcHTTPService *Subscription)
+{
+    if (!Subscription)
+        return;
+
+    if (m_subscriptions.contains(Subscription))
+    {
+        LOG(VB_GENERAL, LOG_ERR, QString("Already have subscription for service '%1'").arg(Subscription->Signature()));
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_INFO, QString("Added subscription for service '%1'").arg(Subscription->Signature()));
+        m_subscriptions.append(Subscription);
+    }
+}
+
+///\brief Deregister TorcHTTPService subscription.
+void TorcWebSocket::RemoveSubscription(TorcHTTPService *Subscription)
+{
+    if (!Subscription)
+        return;
+
+    if (m_subscriptions.contains(Subscription))
+    {
+        LOG(VB_GENERAL, LOG_INFO, QString("Removed subscription for service '%1'").arg(Subscription->Signature()));
+        m_subscriptions.removeAll(Subscription);
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_ERR, QString("Cannot remove subscription for unknown service '%1'").arg(Subscription->Signature()));
+    }
+}
+
+bool TorcWebSocket::HandleNotification(const QString &Method)
+{
+    if (m_subscribers.contains(Method))
+    {
+        QMap<QString,QObject*>::const_iterator it = m_subscribers.find(Method);
+        while (it != m_subscribers.end() && it.key() == Method)
+        {
+            QMetaObject::invokeMethod(it.value(), "ServiceNotification", Q_ARG(QString, Method));
+            ++it;
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 /*! \brief Initiate a Remote Procedure Call.
@@ -1388,7 +1463,7 @@ void TorcWebSocket::ProcessPayload(const QByteArray &Payload)
         // NB there is no method to support SENDING batched requests (hence
         // we should only receive batched requests from 3rd parties) and hence there
         // is no support for handling batched responses.
-        TorcRPCRequest *request = new TorcRPCRequest(m_subProtocol, Payload);
+        TorcRPCRequest *request = new TorcRPCRequest(m_subProtocol, Payload, this);
 
         // if the request has data, we need to send it (it was a request!)
         if (!request->GetData().isEmpty())
@@ -1405,9 +1480,77 @@ void TorcWebSocket::ProcessPayload(const QByteArray &Payload)
                 requestor->AddState(TorcRPCRequest::ReplyReceived);
 
                 if (request->GetState() & TorcRPCRequest::Errored)
+                {
                     requestor->AddState(TorcRPCRequest::Errored);
+                }
                 else
+                {
+                    QString method = requestor->GetMethod();
+                    // is this a successful response to a subscription request?
+                    if (method.endsWith("/Subscribe"))
+                    {
+                        method.chop(9);
+                        QObject *parent = requestor->GetParent();
+
+                        if (parent->metaObject()->indexOfSlot(QMetaObject::normalizedSignature("ServiceNotification(QString)")) < 0)
+                        {
+                            LOG(VB_GENERAL, LOG_ERR, "Cannot monitor subscription to '%1' for object '%2' - no notification slot");
+                        }
+                        else if (request->GetReply().type() == QVariant::Map)
+                        {
+                            QVariantMap map = request->GetReply().toMap();
+                            if (map.contains("properties") && map.value("properties").type() == QVariant::List)
+                            {
+                                QVariantList properties = map.value("properties").toList();
+
+                                // add each notification/parent pair to the subscriber list
+                                QVariantList::const_iterator it = properties.begin();
+                                for ( ; it != properties.end(); ++it)
+                                {
+                                    if (it->type() == QVariant::Map)
+                                    {
+                                        QVariantMap property = it->toMap();
+                                        if (property.contains("notification"))
+                                        {
+                                            QString service = method + property.value("notification").toString();
+                                            if (m_subscribers.contains(service, parent))
+                                            {
+                                                LOG(VB_GENERAL, LOG_WARNING, QString("Object '%1' already has subscription to '%2'").arg(parent->objectName()).arg(service));
+                                            }
+                                            else
+                                            {
+                                                m_subscribers.insertMulti(service, parent);
+                                                LOG(VB_GENERAL, LOG_INFO, QString("Object '%1' subscribed to '%2'").arg(parent->objectName()).arg(service));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // or a successful unsubscribe?
+                    else if (method.endsWith("/Unsubscribe"))
+                    {
+                        method.chop(11);
+                        QObject *parent = requestor->GetParent();
+
+                        // iterate over our subscriber list and remove anything that starts with method and points to parent
+                        QStringList remove;
+
+                        QMap<QString,QObject*>::const_iterator it = m_subscribers.begin();
+                        for ( ; it != m_subscribers.end(); ++it)
+                            if (it.value() == parent && it.key().startsWith(method))
+                                remove.append(it.key());
+
+                        foreach (QString signature, remove)
+                        {
+                            LOG(VB_GENERAL, LOG_INFO, QString("Object '%1' unsubscribed from '%2'").arg(parent->objectName()).arg(signature));
+                            m_subscribers.remove(signature, parent);
+                        }
+                    }
+
                     requestor->SetReply(request->GetReply());
+                }
 
                 requestor->NotifyParent();
                 m_currentRequests.remove(id);

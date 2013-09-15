@@ -66,10 +66,11 @@ QString TorcHTTPHandler::Name(void)
     return m_name;
 }
 
-QVariantMap TorcHTTPHandler::ProcessRequest(const QString &Method, const QVariant &Parameters)
+QVariantMap TorcHTTPHandler::ProcessRequest(const QString &Method, const QVariant &Parameters, QObject *Connection)
 {
     (void)Method;
     (void)Parameters;
+    (void)Connection;
 
     return QVariantMap();
 }
