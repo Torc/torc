@@ -543,15 +543,35 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                         // NB we use the parent's metaObject here - not the staticMetaObject (or m_metaObject)
                         QObject::connect(m_parent, m_parent->metaObject()->method(it.key()), Connection, Connection->metaObject()->method(change));
 
-                        // NB for some reason, QMetaProperty doesn't provide the QMetaMethod for the set'ter or
-                        // get'ter - so infer the get'ers name.
-                        QVariantMap property;
-                        QString name = QString::fromLatin1(m_parent->metaObject()->property(it.value()).name());
-                        property.insert("name", name);
-                        property.insert("notification", QString::fromLatin1(m_parent->metaObject()->method(it.key()).name()));
-                        property.insert("get", QString("Get") + name.left(1).toUpper() + name.mid(1));
+                        // NB for some reason, QMetaProperty doesn't provide the QMetaMethod for the read and write
+                        // slots, so try to infer them (and check the result)
+                        QMetaProperty property = m_parent->metaObject()->property(it.value());
+                        QVariantMap map;
 
-                        properties.append(property);
+                        QString name = QString::fromLatin1(property.name());
+                        map.insert("name", name);
+                        map.insert("notification", QString::fromLatin1(m_parent->metaObject()->method(it.key()).name()));
+
+                        // a property is always readable
+                        QString read = QString("Get") + name.left(1).toUpper() + name.mid(1);
+
+                        if (m_parent->metaObject()->indexOfSlot(QMetaObject::normalizedSignature(QString(read + "()").toLatin1())) > -1)
+                            map.insert("read", read);
+                        else
+                            LOG(VB_GENERAL, LOG_ERR, QString("Failed to deduce 'read' slot for property '%1' in service '%2'").arg(name).arg(m_signature));
+
+                        // for writable properties, we need to infer the signature including the type
+                        if (property.isWritable())
+                        {
+                            QString write = QString("Set%1%2").arg(name.left(1).toUpper()).arg(name.mid(1));
+
+                            if (m_parent->metaObject()->indexOfSlot(QMetaObject::normalizedSignature(QString("%1(%2)").arg(write).arg(property.typeName()).toLatin1())) > -1)
+                                map.insert("write", write);
+                            else
+                                LOG(VB_GENERAL, LOG_ERR, QString("Failed to deduce 'write' slot for property '%1' in service '%2'").arg(name).arg(m_signature));
+                        }
+
+                        properties.append(map);
                     }
 
                     details.insert("version", m_version);
