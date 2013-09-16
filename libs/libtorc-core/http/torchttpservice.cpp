@@ -571,6 +571,9 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                                 LOG(VB_GENERAL, LOG_ERR, QString("Failed to deduce 'write' slot for property '%1' in service '%2'").arg(name).arg(m_signature));
                         }
 
+                        // and add the initial value
+                        map.insert("value", property.read(m_parent));
+
                         properties.append(map);
                     }
 
