@@ -154,7 +154,7 @@ TorcWebSocket::~TorcWebSocket()
     {
         // NB TorcWebSocketThread is exiting, the SubscriptionRemoved signal will never be delivered
         QVariant parameters;
-        TorcHTTPServer::HandleRequest(subscription->Signature() + "unsubscribe", parameters, this);
+        TorcHTTPServer::HandleRequest(subscription->Signature() + "Unsubscribe", parameters, this);
     }
 
     InitiateClose(CloseGoingAway, QString("WebSocket exiting normally"));
