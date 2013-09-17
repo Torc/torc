@@ -45,6 +45,7 @@
 
 #ifdef __linux__
 #include <sys/sendfile.h>
+#include <sys/errno.h>
 #endif
 
 /*! \class TorcHTTPRequest
@@ -57,8 +58,6 @@
  * \sa TorcHTTPHandler
  * \sa TorcHTTPConnection
  *
- * \todo Break out writes into 'small' chunks to facilitate abort handling.
- * \todo Add linux sendfile support with fallback to regular writes.
  * \todo Add support for multiple headers of the same type (e.g. Sec-WebSocket-Protocol).
 */
 
@@ -465,7 +464,36 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
                 m_responseFile->seek(offset);
 
 #ifdef __linux__
-// TODO add sendfile support with fallback to regular writes
+                if (size > sent)
+                {
+                    // sendfile64 accesses the socket directly, bypassing Qt's cache, so we must flush first
+                    Socket->flush();
+
+                    do
+                    {
+                        qint64 remaining = qMin(size - sent, (qint64)READ_CHUNK_SIZE);
+                        qint64 send = sendfile64(Socket->socketDescriptor(), m_responseFile->handle(), &offset, remaining);
+
+                        if (send < 0)
+                        {
+                            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                            {
+                                QThread::usleep(5000);
+                                continue;
+                            }
+
+                            LOG(VB_GENERAL, LOG_ERR, QString("Error sending data (%1)").arg(errno));
+                            break;
+                        }
+                        else
+                        {
+                            LOG(VB_NETWORK, LOG_DEBUG, QString("Sent %1 for %2").arg(send).arg(m_responseFile->handle()));
+                        }
+
+                        sent += send;
+                    }
+                    while ((sent < size) && !(*Abort));
+                }
 #endif
                 if (size > sent)
                 {
@@ -503,11 +531,42 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
             qint64 offset = m_ranges.isEmpty() ? 0 : m_ranges[0].first;
 
             m_responseFile->seek(offset);
+            bool failed = false;
 
 #ifdef __linux__
-// TODO add sendfile support with fallback to regular writes
+            if ((size > sent) && !(*Abort))
+            {
+                // sendfile64 accesses the socket directly, bypassing Qt's cache, so we must flush first
+                Socket->flush();
+
+                do
+                {
+                    qint64 remaining = qMin(size - sent, (qint64)READ_CHUNK_SIZE);
+                    qint64 send = sendfile64(Socket->socketDescriptor(), m_responseFile->handle(), &offset, remaining);
+
+                    if (send < 0)
+                    {
+                        if (errno == EAGAIN || errno == EWOULDBLOCK)
+                        {
+                            QThread::usleep(5000);
+                            continue;
+                        }
+
+                        LOG(VB_GENERAL, LOG_ERR, QString("Error sending data (%1)").arg(errno));
+                        failed = true;
+                        break;
+                    }
+                    else
+                    {
+                        LOG(VB_NETWORK, LOG_DEBUG, QString("Sent %1 for %2").arg(send).arg(m_responseFile->handle()));
+                    }
+
+                    sent += send;
+                }
+                while ((sent < size) && !(*Abort));
+            }
 #endif
-            if (size > sent)
+            if (!failed && (size > sent))
             {
                 QScopedPointer<QByteArray> buffer(new QByteArray(READ_CHUNK_SIZE, 0));
 
@@ -531,7 +590,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
 
                     sent += read;
                 }
-                while (sent < size);
+                while ((sent < size) && !(*Abort));
 
                 if (sent < size)
                     LOG(VB_GENERAL, LOG_ERR, QString("Failed to send all data for '%1'").arg(m_responseFile->fileName()));
