@@ -43,9 +43,11 @@
 #include "torchttpconnection.h"
 #include "torchttprequest.h"
 
-#ifdef __linux__
+#if defined(Q_OS_LINUX)
 #include <sys/sendfile.h>
 #include <sys/errno.h>
+#elif defined(Q_OS_MAC)
+#include <sys/socket.h>
 #endif
 
 /*! \class TorcHTTPRequest
@@ -461,9 +463,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
                 qint64 offset = (*it).first;
                 qint64 size   = (*it).second - offset + 1;
 
-                m_responseFile->seek(offset);
-
-#ifdef __linux__
+#if defined(Q_OS_LINUX)
                 if (size > sent)
                 {
                     // sendfile64 accesses the socket directly, bypassing Qt's cache, so we must flush first
@@ -494,9 +494,45 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
                     }
                     while ((sent < size) && !(*Abort));
                 }
-#endif
+#elif defined(Q_OS_MAC)
+                {
+                    if (size > sent)
+                    {
+                        // sendfile accesses the socket directly, bypassing Qt's cache, so we must flush first
+                        Socket->flush();
+
+                        off_t bytessent  = 0;
+                        off_t off        = offset;
+
+                        do
+                        {
+                            bytessent = qMin(size - sent, (qint64)READ_CHUNK_SIZE);
+                            if (sendfile(m_responseFile->handle(), Socket->socketDescriptor(), off, &bytessent, NULL, 0) < 0)
+                            {
+                                if (errno != EAGAIN)
+                                {
+                                    LOG(VB_GENERAL, LOG_ERR, QString("Error sending data (%1) %2").arg(errno).arg(strerror(errno)));
+                                    break;
+                                }
+
+                                QThread::usleep(5000);
+                            }
+                            else
+                            {
+                                LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 for %2").arg(bytessent).arg(m_responseFile->handle()));
+                            }
+
+                            sent += bytessent;
+                            off  += bytessent;
+                        }
+                        while ((sent < size) && !(*Abort));
+                    }
+                }
+#else
                 if (size > sent)
                 {
+                    m_responseFile->seek(offset);
+
                     do
                     {
                         qint64 remaining = qMin(size - sent, (qint64)READ_CHUNK_SIZE);
@@ -522,6 +558,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
                     if (sent < size)
                         LOG(VB_GENERAL, LOG_ERR, QString("Failed to send all data for '%1'").arg(m_responseFile->fileName()));
                 }
+#endif
             }
         }
         else
@@ -530,10 +567,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
             qint64 size = sendsize;
             qint64 offset = m_ranges.isEmpty() ? 0 : m_ranges[0].first;
 
-            m_responseFile->seek(offset);
-            bool failed = false;
-
-#ifdef __linux__
+#if defined(Q_OS_LINUX)
             if ((size > sent) && !(*Abort))
             {
                 // sendfile64 accesses the socket directly, bypassing Qt's cache, so we must flush first
@@ -553,7 +587,6 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
                         }
 
                         LOG(VB_GENERAL, LOG_ERR, QString("Error sending data (%1)").arg(errno));
-                        failed = true;
                         break;
                     }
                     else
@@ -565,9 +598,45 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
                 }
                 while ((sent < size) && !(*Abort));
             }
-#endif
-            if (!failed && (size > sent))
+#elif defined(Q_OS_MAC)
             {
+                if (size > sent)
+                {
+                    // sendfile accesses the socket directly, bypassing Qt's cache, so we must flush first
+                    Socket->flush();
+
+                    off_t bytessent  = 0;
+                    off_t off        = offset;
+
+                    do
+                    {
+                        bytessent = qMin(size - sent, (qint64)READ_CHUNK_SIZE);;
+
+                        if (sendfile(m_responseFile->handle(), Socket->socketDescriptor(), off, &bytessent, NULL, 0) < 0)
+                        {
+                            if (errno != EAGAIN)
+                            {
+                                LOG(VB_GENERAL, LOG_ERR, QString("Error sending data (%1) %2").arg(errno).arg(strerror(errno)));
+                                break;
+                            }
+
+                            QThread::usleep(5000);
+                        }
+                        else
+                        {
+                            LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 for %2").arg(bytessent).arg(m_responseFile->handle()));
+                        }
+
+                        sent += bytessent;
+                        off  += bytessent;
+                    }
+                    while ((sent < size) && !(*Abort));
+                }
+            }
+#else
+            if (size > sent)
+            {
+                m_responseFile->seek(offset);
                 QScopedPointer<QByteArray> buffer(new QByteArray(READ_CHUNK_SIZE, 0));
 
                 do
@@ -595,6 +664,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
                 if (sent < size)
                     LOG(VB_GENERAL, LOG_ERR, QString("Failed to send all data for '%1'").arg(m_responseFile->fileName()));
             }
+#endif
         }
 
         m_responseFile->close();
