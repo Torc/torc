@@ -1494,7 +1494,7 @@ void TorcWebSocket::ProcessPayload(const QByteArray &Payload)
 
                         if (parent->metaObject()->indexOfSlot(QMetaObject::normalizedSignature("ServiceNotification(QString)")) < 0)
                         {
-                            LOG(VB_GENERAL, LOG_ERR, "Cannot monitor subscription to '%1' for object '%2' - no notification slot");
+                            LOG(VB_GENERAL, LOG_ERR, QString("Cannot monitor subscription to '%1' for object '%2' - no notification slot").arg(method).arg(parent->objectName()));
                         }
                         else if (request->GetReply().type() == QVariant::Map)
                         {
