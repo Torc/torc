@@ -678,7 +678,8 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
     int count   = 0;
 
     QMap<QString,MethodParameters*>::const_iterator it = m_methods.begin();
-    QMap<QString,MethodParameters*>::const_iterator example = it;
+    QMap<QString,MethodParameters*>::const_iterator example = m_methods.end();
+
     for ( ; it != m_methods.end(); ++it)
     {
         MethodParameters *params = it.value();
@@ -705,15 +706,19 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
 
     QString url = Connection->GetSocket() ? QString("http://") + Connection->GetSocket()->localAddress().toString()
                                             + ":" + QString::number(Connection->GetSocket()->localPort()) : QObject::tr("Error");
-    QString usage = url + m_signature + example.key();
 
-    if (example.value()->m_types.size() > 1)
+    if (example != m_methods.end())
     {
-        usage += "?";
-        for (int i = 1; i < example.value()->m_types.size(); ++i)
-            usage += QString("%1%2=Value%3").arg(i == 1 ? "" : "&").arg(example.value()->m_names[i].data()).arg(i);
+        QString usage = url + m_signature + example.key();
+
+        if (example.value()->m_types.size() > 1)
+        {
+            usage += "?";
+            for (int i = 1; i < example.value()->m_types.size(); ++i)
+                usage += QString("%1%2=Value%3").arg(i == 1 ? "" : "&").arg(example.value()->m_names[i].data()).arg(i);
+        }
+        stream << "<p><h3>" << QObject::tr("Example usage:") << "</h3><p>" << usage;
     }
-    stream << "<p><h3>" << QObject::tr("Example usage:") << "</h3><p>" << usage;
 
     stream << "</body></html>";
     stream.flush();
