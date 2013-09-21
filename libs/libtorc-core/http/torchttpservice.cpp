@@ -329,22 +329,6 @@ TorcHTTPService::~TorcHTTPService()
 {
     TorcHTTPServer::DeregisterHandler(this);
 
-    {
-        QMutexLocker locker(m_subscriberLock);
-
-        // there are currently no 'transient' or temporary services, so remote connections should
-        // all have been cleaned up before we get here. So warn if there are any still subscribed.
-        if (!m_subscribers.isEmpty())
-            LOG(VB_GENERAL, LOG_WARNING, QString("Service '%1' still has %2 subscribers").arg(m_signature).arg(m_subscribers.size()));
-
-        foreach (QObject *subscriber, m_subscribers)
-        {
-            int remove = subscriber->metaObject()->indexOfSlot(QMetaObject::normalizedSignature("SubscriptionRemoved(TorcHTTPService*)"));
-            if (remove > -1)
-                subscriber->metaObject()->method(remove).invoke(subscriber, Q_ARG(TorcHTTPService*, this));
-        }
-    }
-
     qDeleteAll(m_methods);
 
     delete m_subscriberLock;
@@ -515,12 +499,8 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
         else if (method.compare("Subscribe") == 0)
         {
             // ensure the 'receiver' has all of the right slots
-            int add    = Connection->metaObject()->indexOfSignal(QMetaObject::normalizedSignature("SubscriptionAdded(TorcHTTPService*)"));
             int change = Connection->metaObject()->indexOfSlot(QMetaObject::normalizedSignature("PropertyChanged()"));
-            if (add > -1 && change > -1 &&
-                Connection->metaObject()->indexOfSignal(QMetaObject::normalizedSignature("SubscriptionRemoved(TorcHTTPService*)")) > -1 &&
-                Connection->metaObject()->indexOfSlot(QMetaObject::normalizedSignature("AddSubscription(TorcHTTPService*)")) > -1 &&
-                Connection->metaObject()->indexOfSlot(QMetaObject::normalizedSignature("RemoveSubscription(TorcHTTPService*)")) > -1)
+            if (change > -1)
             {
                 // this method is not thread-safe and is called from multiple threads so lock the subscribers
                 QMutexLocker locker(m_subscriberLock);
@@ -529,9 +509,6 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                 {
                     LOG(VB_GENERAL, LOG_INFO, QString("New subscription for '%1'").arg(m_signature));
                     m_subscribers.append(Connection);
-
-                    // tell the receiver it has a new subscription
-                    Connection->metaObject()->method(add).invoke(Connection, Q_ARG(TorcHTTPService*, this));
 
                     // notify success and provide appropriate details about properties, notifications, get'ers etc
                     QVariantMap result;
@@ -543,6 +520,9 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                         // and connect property change notifications to the one slot
                         // NB we use the parent's metaObject here - not the staticMetaObject (or m_metaObject)
                         connect(m_parent, m_parent->metaObject()->method(it.key()), Connection, Connection->metaObject()->method(change));
+
+                        // clean up subscriptions if the subscriber is deleted
+                        connect(Connection, SIGNAL(destroyed(QObject*)), this, SLOT(SubscriberDeleted(QObject*)));
 
                         // NB for some reason, QMetaProperty doesn't provide the QMetaMethod for the read and write
                         // slots, so try to infer them (and check the result)
@@ -603,36 +583,25 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
         // implicit 'Unsubscribe' method
         else if (method.compare("Unsubscribe") == 0)
         {
-            // ensure connection has correct slot
-            int remove = Connection->metaObject()->indexOfSignal(QMetaObject::normalizedSignature("SubscriptionRemoved(TorcHTTPService*)"));
-            if (remove > -1)
+            QMutexLocker locker(m_subscriberLock);
+
+            if (m_subscribers.contains(Connection))
             {
-                QMutexLocker locker(m_subscriberLock);
+                LOG(VB_GENERAL, LOG_INFO, QString("Removed subscription for '%1'").arg(m_signature));
 
-                if (m_subscribers.contains(Connection))
-                {
-                    LOG(VB_GENERAL, LOG_INFO, QString("Removed subscription for '%1'").arg(m_signature));
+                // disconnect all change signals
+                m_parent->disconnect(Connection);
 
-                    // disconnect all change signals
-                    m_parent->disconnect(Connection);
+                // remove the subscriber
+                m_subscribers.removeAll(Connection);
 
-                    m_subscribers.removeAll(Connection);
-
-                    // notify the receiver that the subscription has been cancelled
-                    Connection->metaObject()->method(remove).invoke(Connection, Q_ARG(TorcHTTPService*, this));
-
-                    // return success
-                    QVariantMap result;
-                    result.insert("result", 1);
-                    return result;
-                }
-
-                LOG(VB_GENERAL, LOG_ERR, QString("Connection is not subscribed to '%1'").arg(m_signature));
+                // return success
+                QVariantMap result;
+                result.insert("result", 1);
+                return result;
             }
-            else
-            {
-                LOG(VB_GENERAL, LOG_ERR, "Unsubscribe request for connection without correct methods");
-            }
+
+            LOG(VB_GENERAL, LOG_ERR, QString("Connection is not subscribed to '%1'").arg(m_signature));
 
             QVariantMap result;
             QVariantMap error;
@@ -659,6 +628,17 @@ QString TorcHTTPService::GetMethod(int Index)
         return QString::fromLatin1(m_parent->metaObject()->method(Index).name());
 
     return QString();
+}
+
+void TorcHTTPService::SubscriberDeleted(QObject *Subscriber)
+{
+    QMutexLocker locker(m_subscriberLock);
+
+    if (Subscriber && m_subscribers.contains(Subscriber))
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Subscriber deleted - cancelling subscription");
+        m_subscribers.removeAll(Subscriber);
+    }
 }
 
 void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Connection)

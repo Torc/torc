@@ -98,14 +98,10 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     void            ConnectionEstablished (void);
     void            NewRequest            (TorcRPCRequest *Request);
     void            RequestCancelled      (TorcRPCRequest *Request);
-    void            SubscriptionAdded     (TorcHTTPService *Subscription);
-    void            SubscriptionRemoved   (TorcHTTPService *Subscription);
 
   public slots:
     void            Start                 (void);
     void            PropertyChanged       (void);
-    void            AddSubscription       (TorcHTTPService *Subscription);
-    void            RemoveSubscription    (TorcHTTPService *Subscription);
     bool            HandleNotification    (const QString &Method);
 
   public:
@@ -177,7 +173,6 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     QMap<int,int>    m_requestTimers;
     QAtomicInt       m_outstandingNotifications;
 
-    QList<TorcHTTPService*>     m_subscriptions; // server side
     QMultiMap<QString,QObject*> m_subscribers;   // client side
 };
 

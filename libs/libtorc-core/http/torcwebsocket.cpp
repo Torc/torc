@@ -149,14 +149,6 @@ TorcWebSocket::~TorcWebSocket()
             HandleCancelRequest(m_currentRequests.begin().value());
     }
 
-    // cancel subscriptions
-    foreach (TorcHTTPService *subscription, m_subscriptions)
-    {
-        // NB TorcWebSocketThread is exiting, the SubscriptionRemoved signal will never be delivered
-        QVariant parameters;
-        TorcHTTPServer::HandleRequest(subscription->Signature() + "Unsubscribe", parameters, this);
-    }
-
     InitiateClose(CloseGoingAway, QString("WebSocket exiting normally"));
 
     CloseSocket();
@@ -479,10 +471,6 @@ void TorcWebSocket::Start(void)
     connect(this, SIGNAL(NewRequest(TorcRPCRequest*)),       this, SLOT(HandleRemoteRequest(TorcRPCRequest*)));
     connect(this, SIGNAL(RequestCancelled(TorcRPCRequest*)), this, SLOT(HandleCancelRequest(TorcRPCRequest*)));
 
-    // connect up subscriptions
-    connect(this, SIGNAL(SubscriptionAdded(TorcHTTPService*)),   this, SLOT(AddSubscription(TorcHTTPService*)));
-    connect(this, SIGNAL(SubscriptionRemoved(TorcHTTPService*)), this, SLOT(RemoveSubscription(TorcHTTPService*)));
-
     // server side:)
     if (m_serverSide)
     {
@@ -529,45 +517,11 @@ void TorcWebSocket::Start(void)
 void TorcWebSocket::PropertyChanged(void)
 {
     TorcHTTPService *service = dynamic_cast<TorcHTTPService*>(sender());
-    if (m_subscriptions.contains(service) && senderSignalIndex() > -1)
+    if (service && senderSignalIndex() > -1)
     {
         QString signal = service->GetMethod(senderSignalIndex());
         TorcRPCRequest *request = new TorcRPCRequest(service->Signature() + signal);
         SendFrame(m_subProtocolFrameFormat, request->SerialiseRequest(m_subProtocol));
-    }
-}
-
-///\brief Register the signalling TorcHTTPService as a new subscription.
-void TorcWebSocket::AddSubscription(TorcHTTPService *Subscription)
-{
-    if (!Subscription)
-        return;
-
-    if (m_subscriptions.contains(Subscription))
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("Already have subscription for service '%1'").arg(Subscription->Signature()));
-    }
-    else
-    {
-        LOG(VB_GENERAL, LOG_INFO, QString("Added subscription for service '%1'").arg(Subscription->Signature()));
-        m_subscriptions.append(Subscription);
-    }
-}
-
-///\brief Deregister TorcHTTPService subscription.
-void TorcWebSocket::RemoveSubscription(TorcHTTPService *Subscription)
-{
-    if (!Subscription)
-        return;
-
-    if (m_subscriptions.contains(Subscription))
-    {
-        LOG(VB_GENERAL, LOG_INFO, QString("Removed subscription for service '%1'").arg(Subscription->Signature()));
-        m_subscriptions.removeAll(Subscription);
-    }
-    else
-    {
-        LOG(VB_GENERAL, LOG_ERR, QString("Cannot remove subscription for unknown service '%1'").arg(Subscription->Signature()));
     }
 }
 
