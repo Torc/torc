@@ -29,7 +29,7 @@ class TorcStoragePriv : public QObject
     virtual bool ReallyEject (const QString &Disk) = 0;
 };
 
-class TORC_CORE_PUBLIC TorcStorage : public QObject, public TorcHTTPService
+class TORC_CORE_PUBLIC TorcStorage : public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",  "1.0.0")

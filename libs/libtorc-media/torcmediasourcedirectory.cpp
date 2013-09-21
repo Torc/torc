@@ -78,8 +78,7 @@ class TorcMediaDirectory
 };
 
 TorcMediaSourceDirectory::TorcMediaSourceDirectory()
-  : QFileSystemWatcher(),
-    TorcHTTPService(this, "files", tr("Files"), TorcMediaSourceDirectory::staticMetaObject),
+  : TorcHTTPService(this, "files", tr("Files"), TorcMediaSourceDirectory::staticMetaObject),
     mediaVersion(1),
     realMediaVersion(1),
     m_enabled(false),
@@ -116,7 +115,7 @@ TorcMediaSourceDirectory::TorcMediaSourceDirectory()
     configuredPaths << "/Users/mark/Dropbox/";
 
     // connect up the dots
-    connect(this, SIGNAL(directoryChanged(QString)), this, SLOT(DirectoryChanged(QString)));
+    connect(&m_watcher, SIGNAL(directoryChanged(QString)), this, SLOT(DirectoryChanged(QString)));
     gLocalContext->AddObserver(this);
 
     // start
@@ -162,6 +161,10 @@ QStringList TorcMediaSourceDirectory::GetConfiguredPaths(void)
 int TorcMediaSourceDirectory::GetMediaVersion(void)
 {
     return realMediaVersion.fetchAndAddOrdered(0);
+}
+
+void TorcMediaSourceDirectory::SetMediaVersion(int Version)
+{
 }
 
 void TorcMediaSourceDirectory::IncrementVersion(void)
@@ -262,7 +265,7 @@ void TorcMediaSourceDirectory::timerEvent(QTimerEvent *Event)
             m_monitoredPaths.insert(path, new TorcMediaDirectory(recursive));
 
             updatedpaths << path; // force a scan
-            addPath(path);
+            m_watcher.addPath(path);
             LOG(VB_GENERAL, LOG_INFO, QString("Started monitoring '%1' (Recursive: %2)").arg(path).arg(recursive));
         }
     }
@@ -346,7 +349,7 @@ void TorcMediaSourceDirectory::timerEvent(QTimerEvent *Event)
             {
                 LOG(VB_GENERAL, LOG_DEBUG, QString("Added directory '%1'").arg(newdirectory));
                 m_monitoredPaths.insert(newdirectory, new TorcMediaDirectory(true));
-                addPath(newdirectory);
+                m_watcher.addPath(newdirectory);
             }
 
             // new directories will be processed on the next call, which simplifies
@@ -437,7 +440,7 @@ void TorcMediaSourceDirectory::StartMonitoring(void)
 
     foreach (QString path, paths)
     {
-        addPath(path);
+        m_watcher.addPath(path);
         m_monitoredPaths.insert(path, new TorcMediaDirectory(true));
         LOG(VB_GENERAL, LOG_INFO, QString("Starting to monitor '%1' (Recursive: 1)").arg(path));
     }
@@ -464,10 +467,10 @@ void TorcMediaSourceDirectory::StopMonitoring(void)
     RemovePaths(paths);
 
     // check everthing is cleared
-    if (!directories().isEmpty())
+    if (!m_watcher.directories().isEmpty())
     {
-        LOG(VB_GENERAL, LOG_ERR, QString("Qt is still monitoring %1 directories - stopping").arg(directories().size()));
-        removePaths(directories());
+        LOG(VB_GENERAL, LOG_ERR, QString("Qt is still monitoring %1 directories - stopping").arg(m_watcher.directories().size()));
+        m_watcher.removePaths(m_watcher.directories());
     }
 
     if (!m_mediaItems.isEmpty())
@@ -512,7 +515,7 @@ void TorcMediaSourceDirectory::RemovePaths(QStringList &Paths)
         QStringList knownpaths = directory->m_knownFiles;
         delete directory;
         m_monitoredPaths.remove(path);
-        removePath(path);
+        m_watcher.removePath(path);
 
         LOG(VB_GENERAL, LOG_INFO, QString("Stopping monitoring '%1'").arg(path));
 

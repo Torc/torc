@@ -57,7 +57,7 @@ class TORC_CORE_PUBLIC PowerFactory
     PowerFactory*        nextPowerFactory;
 };
 
-class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
+class TORC_CORE_PUBLIC TorcPower : public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",   "1.0.0")

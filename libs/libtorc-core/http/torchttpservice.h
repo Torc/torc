@@ -17,8 +17,10 @@ class MethodParameters;
 
 #define SERVICES_DIRECTORY QString("/services/")
 
-class TORC_CORE_PUBLIC TorcHTTPService : public TorcHTTPHandler
+class TORC_CORE_PUBLIC TorcHTTPService : public QObject, public TorcHTTPHandler
 {
+    Q_OBJECT
+
   public:
     TorcHTTPService(QObject *Parent, const QString &Signature, const QString &Name,
                     const QMetaObject &MetaObject, const QString &Blacklist = QString(""));

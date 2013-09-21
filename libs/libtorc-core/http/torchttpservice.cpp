@@ -227,7 +227,8 @@ class MethodParameters
 */
 TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, const QString &Name,
                                  const QMetaObject &MetaObject, const QString &Blacklist)
-  : TorcHTTPHandler(SERVICES_DIRECTORY + Signature, Name),
+  : QObject(),
+    TorcHTTPHandler(SERVICES_DIRECTORY + Signature, Name),
     m_parent(Parent),
     m_version("Unknown"),
     m_metaObject(MetaObject),
@@ -541,7 +542,7 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                     {
                         // and connect property change notifications to the one slot
                         // NB we use the parent's metaObject here - not the staticMetaObject (or m_metaObject)
-                        QObject::connect(m_parent, m_parent->metaObject()->method(it.key()), Connection, Connection->metaObject()->method(change));
+                        connect(m_parent, m_parent->metaObject()->method(it.key()), Connection, Connection->metaObject()->method(change));
 
                         // NB for some reason, QMetaProperty doesn't provide the QMetaMethod for the read and write
                         // slots, so try to infer them (and check the result)
@@ -670,9 +671,9 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
     stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName() << "</a> ";
-    stream << "<a href='" << SERVICES_DIRECTORY << "'>" << QObject::tr("Services") << "</a> " << m_name << "</h1>";
+    stream << "<a href='" << SERVICES_DIRECTORY << "'>" << tr("Services") << "</a> " << m_name << "</h1>";
 
-    stream << "<h3>" << QObject::tr("Method list for ") << m_signature << " (Version: " << m_version << ")</h3>";
+    stream << "<h3>" << tr("Method list for ") << m_signature << " (Version: " << m_version << ")</h3>";
     stream << "QString GetVersion() (HEAD,GET,OPTIONS)<br>";
 
     int count   = 0;
@@ -705,7 +706,7 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
     }
 
     QString url = Connection->GetSocket() ? QString("http://") + Connection->GetSocket()->localAddress().toString()
-                                            + ":" + QString::number(Connection->GetSocket()->localPort()) : QObject::tr("Error");
+                                            + ":" + QString::number(Connection->GetSocket()->localPort()) : tr("Error");
 
     if (example != m_methods.end())
     {
@@ -717,7 +718,7 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
             for (int i = 1; i < example.value()->m_types.size(); ++i)
                 usage += QString("%1%2=Value%3").arg(i == 1 ? "" : "&").arg(example.value()->m_names[i].data()).arg(i);
         }
-        stream << "<p><h3>" << QObject::tr("Example usage:") << "</h3><p>" << usage;
+        stream << "<p><h3>" << tr("Example usage:") << "</h3><p>" << usage;
     }
 
     stream << "</body></html>";

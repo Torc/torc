@@ -73,10 +73,6 @@ UIOpenGLWindow* UIOpenGLWindow::Create(void)
     return new UIOpenGLWindow(format, kGLOpenGL2ES);
 }
 
-#define BLACKLIST QString("MainLoop,close,hide,lower,raise,repaint,setDisabled,setEnabled,setFocus,"\
-                          "setHidden,setShown,setStyleSheet,setVisible,setWindowModified,setWindowTitle,"\
-                          "show,showFullScreen,showMaximized,showMinimized,showNormal,update,updateGL,updateOverlayGL")
-
 UIOpenGLWindow::UIOpenGLWindow(const QGLFormat &Format, GLType Type)
   : QGLWidget(Format, NULL, NULL, Qt::Window | Qt::MSWindowsOwnDC),
     UIDisplay(this),
@@ -86,7 +82,6 @@ UIOpenGLWindow::UIOpenGLWindow(const QGLFormat &Format, GLType Type)
     UIOpenGLFence(),
     UIOpenGLFramebuffers(),
     UIPerformance(),
-    TorcHTTPService(this, "/gui", tr("GUI"), UIOpenGLWindow::staticMetaObject, BLACKLIST),
     m_timer(NULL),
     m_openGLType(Type),
     m_blend(false),

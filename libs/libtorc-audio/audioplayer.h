@@ -10,16 +10,9 @@
 
 class AudioWrapper;
 
-class AudioPlayer : public TorcPlayer, public TorcHTTPService
+class AudioPlayer : public TorcPlayer
 {
     Q_OBJECT
-    Q_CLASSINFO("Version",     "1.0.0")
-    Q_CLASSINFO("Play",        "methods=PUT")
-    Q_CLASSINFO("Pause",       "methods=PUT")
-    Q_CLASSINFO("Unpause",     "methods=PUT")
-    Q_CLASSINFO("TogglePause", "methods=PUT")
-    Q_CLASSINFO("Stop",        "methods=PUT")
-    Q_CLASSINFO("PlayMedia",   "methods=PUT")
 
   public:
     AudioPlayer(QObject* Parent, int PlaybackFlags, int DecodeFlags);

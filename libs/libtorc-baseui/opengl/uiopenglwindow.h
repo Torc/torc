@@ -52,8 +52,7 @@ class TORC_BASEUI_PUBLIC UIOpenGLWindow
     public UIOpenGLFence,
     public UIOpenGLFramebuffers,
     public UIPerformance,
-    public UIActions,
-    public TorcHTTPService
+    public UIActions
 {
     Q_OBJECT
 

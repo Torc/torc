@@ -13,7 +13,7 @@ class TorcHTTPServer;
 class TorcHTTPRequest;
 class TorcHTTPConnection;
 
-class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public QObject, public TorcHTTPService
+class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",        "1.0.0")

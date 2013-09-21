@@ -16,7 +16,7 @@
 
 class TorcMediaDirectory;
 
-class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher, public TorcHTTPService
+class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",            "1.0.0")
@@ -29,13 +29,14 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher, pu
     virtual ~TorcMediaSourceDirectory();
 
     Q_PROPERTY(QStringList configuredPaths READ GetConfiguredPaths NOTIFY configuredPathsChanged)
-    Q_PROPERTY(int         mediaVersion    READ GetMediaVersion    NOTIFY mediaVersionChanged)
+    Q_PROPERTY(int         mediaVersion    READ GetMediaVersion    WRITE SetMediaVersion NOTIFY mediaVersionChanged)
 
   public slots:
     void            AddPath                 (const QString &Path, bool Recursive);
     void            RemovePath              (const QString &Path);
     QStringList     GetConfiguredPaths      (void);
     int             GetMediaVersion         (void);
+    void            SetMediaVersion         (int Version);
 
   signals:
     void            mediaVersionChanged     (void);
@@ -60,6 +61,7 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QFileSystemWatcher, pu
     void            AddDirectories          (const QString &Path, QStringList &Found);
 
   private:
+    QFileSystemWatcher m_watcher;
     int             mediaVersion;
     QAtomicInt      realMediaVersion;
     QStringList     configuredPaths;

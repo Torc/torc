@@ -10,7 +10,7 @@
 // Torc
 #include "torchttpservice.h"
 
-class TorcHTTPServiceTest : public QObject, public TorcHTTPService
+class TorcHTTPServiceTest : public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",              "1.0.0")

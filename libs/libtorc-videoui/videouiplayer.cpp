@@ -64,11 +64,8 @@ void VideoUIPlayer::Initialise(void)
 #endif
 }
 
-#define BLACKLIST QString("SetPropertyAvailable,SetPropertyUnavailable,StartRefreshTimer,StopRefreshTimer")
-
 VideoUIPlayer::VideoUIPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : VideoPlayer(Parent, PlaybackFlags, DecodeFlags),
-    TorcHTTPService(this, "player", tr("Player"), VideoUIPlayer::staticMetaObject, BLACKLIST),
     m_colourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED)),
     m_currentFrame(NULL)
 {

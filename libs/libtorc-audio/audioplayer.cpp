@@ -34,8 +34,7 @@
 #define BLACKLIST QString("SetPropertyAvailable,SetPropertyUnavailable,StartRefreshTimer,StopRefreshTimer")
 
 AudioPlayer::AudioPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
-  : TorcPlayer(Parent, PlaybackFlags, DecodeFlags),
-    TorcHTTPService(this, "player", tr("Player"), AudioPlayer::staticMetaObject, BLACKLIST),
+  : TorcPlayer(Parent, AudioPlayer::staticMetaObject, BLACKLIST, PlaybackFlags, DecodeFlags),
     m_audioWrapper(new AudioWrapper(this))
 {
     setObjectName("Player");

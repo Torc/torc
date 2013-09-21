@@ -157,8 +157,8 @@ TorcPlayer::PlayerProperty TorcPlayer::StringToProperty(const QString &Property)
     return (PlayerProperty)metaEnum.keyToValue(Property.toLatin1());
 }
 
-TorcPlayer::TorcPlayer(QObject *Parent, int PlaybackFlags, int DecoderFlags)
-  : QObject(Parent),
+TorcPlayer::TorcPlayer(QObject *Parent, const QMetaObject &MetaObject, const QString &Blacklist, int PlaybackFlags, int DecoderFlags)
+  : TorcHTTPService(Parent, "player", tr("Player"), MetaObject, Blacklist),
     m_playerFlags(PlaybackFlags),
     m_decoderFlags(DecoderFlags),
     m_uri(QString()),

@@ -80,7 +80,7 @@ class TORC_CORE_PUBLIC TorcUSBDeviceHandler
 
 class TorcUSBPriv;
 
-class TORC_CORE_PUBLIC TorcUSB : public QObject, public TorcHTTPService
+class TORC_CORE_PUBLIC TorcUSB : public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",    "1.0.0")

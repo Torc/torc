@@ -11,14 +11,23 @@
 // Torc
 #include "torccoreexport.h"
 #include "torcsetting.h"
+#include "http/torchttpservice.h"
 
 class TorcDecoder;
 
-class TORC_CORE_PUBLIC TorcPlayer : public QObject
+class TORC_CORE_PUBLIC TorcPlayer : public TorcHTTPService
 {
     Q_OBJECT
     Q_ENUMS(PlayerState)
     Q_ENUMS(PlayerProperty)
+    Q_CLASSINFO("Version",     "1.0.0")
+    Q_CLASSINFO("Play",        "methods=PUT")
+    Q_CLASSINFO("Pause",       "methods=PUT")
+    Q_CLASSINFO("Unpause",     "methods=PUT")
+    Q_CLASSINFO("TogglePause", "methods=PUT")
+    Q_CLASSINFO("Stop",        "methods=PUT")
+    Q_CLASSINFO("PlayMedia",   "methods=PUT")
+
 
   public:
     enum PlayerFlags
@@ -107,7 +116,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
     void            PropertyUnavailable    (TorcPlayer::PlayerProperty Property);
 
   protected:
-    TorcPlayer(QObject *Parent, int PlaybackFlags, int DecoderFlags);
+    TorcPlayer(QObject *Parent, const QMetaObject &MetaObject, const QString &Blacklist, int PlaybackFlags, int DecoderFlags);
     virtual void    Teardown               (void);
 
   protected:

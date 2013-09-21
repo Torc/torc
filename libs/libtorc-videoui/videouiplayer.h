@@ -12,16 +12,9 @@
 
 class VideoColourSpace;
 
-class VideoUIPlayer : public VideoPlayer, public TorcHTTPService
+class VideoUIPlayer : public VideoPlayer
 {
     Q_OBJECT
-    Q_CLASSINFO("Version",     "1.0.0")
-    Q_CLASSINFO("Play",        "methods=PUT")
-    Q_CLASSINFO("Pause",       "methods=PUT")
-    Q_CLASSINFO("Unpause",     "methods=PUT")
-    Q_CLASSINFO("TogglePause", "methods=PUT")
-    Q_CLASSINFO("Stop",        "methods=PUT")
-    Q_CLASSINFO("PlayMedia",   "methods=PUT")
 
   public:
     static void        Initialise    (void);
