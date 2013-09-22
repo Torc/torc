@@ -67,6 +67,9 @@ void TorcHTTPServer::RegisterHandler(TorcHTTPHandler *Handler)
     {
         LOG(VB_GENERAL, LOG_DEBUG, QString("Added handler '%1' for %2").arg(Handler->Name()).arg(signature));
         gHandlers.insert(signature, Handler);
+
+        if (gWebServer)
+            emit gWebServer->HandlersChanged();
     }
 }
 
@@ -79,7 +82,12 @@ void TorcHTTPServer::DeregisterHandler(TorcHTTPHandler *Handler)
 
     QMap<QString,TorcHTTPHandler*>::iterator it = gHandlers.find(Handler->Signature());
     if (it != gHandlers.end())
+    {
         gHandlers.erase(it);
+
+        if (gWebServer)
+            emit gWebServer->HandlersChanged();
+    }
 }
 
 void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPRequest *Request)

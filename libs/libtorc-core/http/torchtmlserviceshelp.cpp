@@ -33,9 +33,12 @@
 #include "torchttpservice.h"
 #include "torchtmlserviceshelp.h"
 
+
 TorcHTMLServicesHelp::TorcHTMLServicesHelp(TorcHTTPServer *Server)
-  : TorcHTTPService(this, "", tr("Services"), TorcHTMLServicesHelp::staticMetaObject)
+  : TorcHTTPService(this, "", tr("Services"), TorcHTMLServicesHelp::staticMetaObject, QString("HandlersChanged"))
 {
+    connect(Server, SIGNAL(HandlersChanged()), this, SLOT(HandlersChanged()));
+    serviceList = TorcHTTPServer::GetServiceHandlers();
 }
 
 void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection* Connection)
@@ -133,4 +136,10 @@ int TorcHTMLServicesHelp::GetPriority(void)
 QString TorcHTMLServicesHelp::GetUuid(void)
 {
     return gLocalContext->GetUuid();
+}
+
+void TorcHTMLServicesHelp::HandlersChanged(void)
+{
+    serviceList = TorcHTTPServer::GetServiceHandlers();
+    emit ServiceListChanged();
 }

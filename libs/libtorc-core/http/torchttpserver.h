@@ -46,6 +46,9 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
   public:
     virtual       ~TorcHTTPServer     ();
 
+  signals:
+    void           HandlersChanged    (void);
+
   protected slots:
     // WebSockets
     void           HandleUpgrade      (TorcHTTPRequest *Request, QTcpSocket *Socket);

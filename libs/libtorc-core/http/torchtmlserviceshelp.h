@@ -23,16 +23,25 @@ class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public TorcHTTPService
     Q_CLASSINFO("GetUuid",        "type=uuid")
     Q_CLASSINFO("GetDetails",     "type=details")
 
+    Q_PROPERTY(QMap serviceList READ GetServiceList NOTIFY ServiceListChanged)
+
   public:
     TorcHTMLServicesHelp(TorcHTTPServer *Server);
     void ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection* Connection);
 
+  signals:
+    void           ServiceListChanged   (void);
+
   public slots:
-    QVariantMap GetDetails     (void);
-    QVariantMap GetServiceList (void);
-    qint64      GetStartTime   (void);
-    int         GetPriority    (void);
-    QString     GetUuid        (void);
+    QVariantMap    GetDetails           (void);
+    QVariantMap    GetServiceList       (void);
+    qint64         GetStartTime         (void);
+    int            GetPriority          (void);
+    QString        GetUuid              (void);
+    void           HandlersChanged      (void);
+
+  private:
+    QMap<QString,QString> serviceList;
 };
 
 #endif // TORCHTMLSERVICESHELP_H
