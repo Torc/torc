@@ -1097,6 +1097,27 @@ void TorcWebSocket::ReadyRead(void)
     }
 }
 
+/*! \brief A subscriber object has been deleted.
+ *
+ * If subscribers exit without unsubscribing, the subscriber list will never be cleaned up. So listen
+ * for deletion signals and act if necessary.
+*/
+void TorcWebSocket::SubscriberDeleted(QObject *Object)
+{
+    QList<QString> remove;
+
+    QMap<QString,QObject*>::const_iterator it = m_subscribers.begin();
+    for ( ; it != m_subscribers.end(); ++it)
+        if (it.value() == Object)
+            remove.append(it.key());
+
+    foreach (QString service, remove)
+    {
+        m_subscribers.remove(service, Object);
+        LOG(VB_GENERAL, LOG_WARNING, QString("Removed stale subscription to '%1'").arg(service));
+    }
+}
+
 void TorcWebSocket::CloseSocket(void)
 {
     if (m_socket)
@@ -1452,6 +1473,9 @@ void TorcWebSocket::ProcessPayload(const QByteArray &Payload)
                         }
                         else if (request->GetReply().type() == QVariant::Map)
                         {
+                            // listen for destroyed signals to ensure the subscriptions are cleaned up
+                            connect(parent, SIGNAL(destroyed(QObject*)), this, SLOT(SubscriberDeleted(QObject*)));
+
                             QVariantMap map = request->GetReply().toMap();
                             if (map.contains("properties") && map.value("properties").type() == QVariant::List)
                             {
@@ -1501,6 +1525,10 @@ void TorcWebSocket::ProcessPayload(const QByteArray &Payload)
                             LOG(VB_GENERAL, LOG_INFO, QString("Object '%1' unsubscribed from '%2'").arg(parent->objectName()).arg(signature));
                             m_subscribers.remove(signature, parent);
                         }
+
+                        // and disconnect the destroyed signal if we have no more subscriptions for this object
+                        if (!m_subscribers.values().contains(parent))
+                            (void)disconnect(parent, 0, this, 0);
                     }
 
                     requestor->SetReply(request->GetReply());

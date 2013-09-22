@@ -116,6 +116,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     void            Error                 (QAbstractSocket::SocketError);
     void            HandleRemoteRequest   (TorcRPCRequest *Request);
     void            HandleCancelRequest   (TorcRPCRequest *Request);
+    void            SubscriberDeleted     (QObject *Subscriber);
 
   protected:
     bool            event                 (QEvent *Event);
