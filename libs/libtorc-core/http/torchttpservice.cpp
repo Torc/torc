@@ -257,7 +257,7 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
             name = name.section('(', 0, 0);
 
             // discard unwanted slots
-            if (name == "deleteLater" || blacklist.contains(name))
+            if (name == "deleteLater" || name == "SubscriberDeleted" || blacklist.contains(name))
                 continue;
 
             // any Q_CLASSINFO for this method?
