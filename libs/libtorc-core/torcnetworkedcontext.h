@@ -123,6 +123,10 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel
     bool                       event               (QEvent* Event);
 
   private:
+    void                       Add                 (TorcNetworkService* Peer);
+    void                       Delete              (const QString &UUID);
+
+  private:
     QList<TorcNetworkService*> m_discoveredServices;
     QList<QString>             m_serviceList;
     quint32                    m_bonjourBrowserReference;

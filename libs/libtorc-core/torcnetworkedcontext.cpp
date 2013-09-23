@@ -653,36 +653,14 @@ bool TorcNetworkedContext::event(QEvent *Event)
                         service->SetHost(host);
 
                         // and insert into the list model
-                        int position = m_discoveredServices.size();
-                        beginInsertRows(QModelIndex(), position, position);
-                        m_discoveredServices.append(service);
-                        endInsertRows();
-
-                        m_serviceList.append(uuid);
-
-                        LOG(VB_GENERAL, LOG_INFO, QString("New Torc peer '%1'").arg(name.data()));
+                        Add(service);
 
                         // try and connect - the txt records should have given us everything we need to know
                         service->Connect();
                     }
-                    else if (event->GetEvent() == Torc::ServiceWentAway && m_serviceList.contains(uuid))
+                    else if (event->GetEvent() == Torc::ServiceWentAway)
                     {
-                        (void)m_serviceList.removeAll(uuid);
-
-                        for (int i = 0; i < m_discoveredServices.size(); ++i)
-                        {
-                            if (m_discoveredServices.at(i)->GetUuid() == uuid)
-                            {
-                                // remove the item from the model
-                                beginRemoveRows(QModelIndex(), i, i);
-                                delete m_discoveredServices.takeAt(i);
-                                endRemoveRows();
-
-                                break;
-                            }
-                        }
-
-                        LOG(VB_GENERAL, LOG_INFO, QString("Torc peer %1 went away").arg(uuid.data()));
+                        Delete(uuid);
                     }
                 }
 #endif
@@ -836,8 +814,7 @@ void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *S
         QStringList address;
         address.append(Socket->peerAddress().toString());
         service = new TorcNetworkService(name, uuid, Socket->peerPort(), address);
-        m_serviceList.append(uuid);
-        m_discoveredServices.append(service);
+        Add(service);
     }
 
     if (!service)
@@ -853,6 +830,44 @@ void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *S
 
     // create the socket
     service->CreateSocket(Request, Socket);
+}
+
+void TorcNetworkedContext::Add(TorcNetworkService *Peer)
+{
+    if (Peer && !m_serviceList.contains(Peer->GetUuid()))
+    {
+        int position = m_discoveredServices.size();
+        beginInsertRows(QModelIndex(), position, position);
+        m_discoveredServices.append(Peer);
+        endInsertRows();
+
+        m_serviceList.append(Peer->GetUuid());
+
+        LOG(VB_GENERAL, LOG_INFO, QString("New Torc peer '%1'").arg(Peer->GetName()));
+    }
+}
+
+void TorcNetworkedContext::Delete(const QString &UUID)
+{
+    if (m_serviceList.contains(UUID))
+    {
+        (void)m_serviceList.removeAll(UUID);
+
+        for (int i = 0; i < m_discoveredServices.size(); ++i)
+        {
+            if (m_discoveredServices.at(i)->GetUuid() == UUID)
+            {
+                // remove the item from the model
+                beginRemoveRows(QModelIndex(), i, i);
+                delete m_discoveredServices.takeAt(i);
+                endRemoveRows();
+
+                break;
+            }
+        }
+
+        LOG(VB_GENERAL, LOG_INFO, QString("Torc peer %1 went away").arg(UUID));
+    }
 }
 
 static class TorcNetworkedContextObject : public TorcAdminObject
