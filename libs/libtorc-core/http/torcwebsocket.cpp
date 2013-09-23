@@ -1155,7 +1155,8 @@ void TorcWebSocket::Connected(void)
     stream << "Connection: Upgrade\r\n";
     stream << "Sec-WebSocket-Version: 13\r\n";
     stream << "Sec-WebSocket-Key: " << nonce.data() << "\r\n";
-    stream << "Torc-UUID:" << gLocalContext->GetUuid() << "\r\n";
+    stream << "Torc-UUID: " << gLocalContext->GetUuid() << "\r\n";
+    stream << "Torc-Port: " << QString::number(TorcHTTPServer::GetPort()) << "\r\n";
     if (m_subProtocol != SubProtocolNone)
         stream << "Sec-WebSocket-Protocol: " << SubProtocolsToString(m_subProtocol) << "\r\n";
     stream << "\r\n";

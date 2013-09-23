@@ -788,6 +788,8 @@ void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *S
         return;
 
     QString uuid = Request->Headers()->value("Torc-UUID").trimmed();
+    int     port = Request->Headers()->value("Torc-Port").trimmed().toInt();
+
     TorcNetworkService *service = NULL;
 
     if (!uuid.isEmpty() && m_serviceList.contains(uuid))
@@ -813,7 +815,7 @@ void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *S
         LOG(VB_GENERAL, LOG_INFO, QString("Received WebSocket for new peer ('%1')").arg(name));
         QStringList address;
         address.append(Socket->peerAddress().toString());
-        service = new TorcNetworkService(name, uuid, Socket->peerPort(), address);
+        service = new TorcNetworkService(name, uuid, port < 1 ? Socket->peerPort() : port, address);
         Add(service);
     }
 
