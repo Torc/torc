@@ -38,20 +38,20 @@ TorcNetworkedContext *gNetworkedContext = NULL;
 /*! \class TorcNetworkService
  *  \brief Encapsulates information on a discovered Torc peer.
  *
- * \todo TorcNetworkService properties are marked as constant, hence changes will not be propagated to list model.
  * \todo Should retries be limited? If support is added for manually specified peers (e.g. remote) and that
  *       peer is offline, need a better approach.
 */
 TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QStringList &Addresses)
   : QObject(),
-    m_name(Name),
-    m_uuid(UUID),
-    m_port(Port),
-    m_uiAddress(QString()),
+    name(Name),
+    uuid(UUID),
+    port(Port),
+    uiAddress(QString()),
+    startTime(0),
+    priority(-1),
+    apiVersion(QString()),
+    connected(false),
     m_addresses(Addresses),
-    m_startTime(0),
-    m_priority(-1),
-    m_apiVersion(QString()),
     m_preferredAddress(0),
     m_abort(0),
     m_getPeerDetailsRPC(NULL),
@@ -60,17 +60,17 @@ TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID,
     m_retryScheduled(false),
     m_retryInterval(10000)
 {
-    QString port = QString::number(m_port);
+    QString ports = QString::number(port);
     for (int i = 0; i < m_addresses.size(); ++i)
     {
         // Qt5.0/5.1 network requests fail with link local IPv6 addresses (due to the scope ID). So we use
         // the host if available but otherwise try to use an IPv4 address in preference to IPv6.
         if (QHostAddress(m_addresses[i]).protocol() == QAbstractSocket::IPv4Protocol)
             m_preferredAddress = i;
-        m_uiAddress += m_addresses[i] + ":" + port + " ";
+        uiAddress += m_addresses[i] + ":" + ports + " ";
     }
 
-    m_debugString = m_addresses[m_preferredAddress] + ":" + port;
+    m_debugString = m_addresses[m_preferredAddress] + ":" + ports;
 }
 
 /*! \brief Destroy this service.
@@ -138,7 +138,7 @@ void TorcNetworkService::Connect(void)
     //  - the result of SSDP discovery - we will have no details, so perform HTTP query and then create WebSocket if needed.
     //  - an incoming client peer WebSocket - we will have no details, so peform RPC call over WebSocket to retrieve details.
 
-    if (m_startTime == 0 || m_apiVersion.isEmpty() || m_priority < 0)
+    if (startTime == 0 || apiVersion.isEmpty() || priority < 0)
     {
         QueryPeerDetails();
         return;
@@ -150,11 +150,15 @@ void TorcNetworkService::Connect(void)
         // notify the parent that the connection is complete
         if (gNetworkedContext)
             gNetworkedContext->Connected(this);
+
+        connected = true;
+        emit ConnectedChanged();
+
         return;
     }
 
     // lower priority peers should initiate the connection
-    if (m_priority < gLocalContext->GetPriority())
+    if (priority < gLocalContext->GetPriority())
     {
         LOG(VB_GENERAL, LOG_INFO, QString("Not connecting to %1 - we have higher priority").arg(m_debugString));
         return;
@@ -162,7 +166,7 @@ void TorcNetworkService::Connect(void)
 
     // matching priority, longer running app acts as the server
     // yes - the start times could be the same...
-    if (m_priority == gLocalContext->GetPriority() && m_startTime > gLocalContext->GetStartTime())
+    if (priority == gLocalContext->GetPriority() && startTime > gLocalContext->GetStartTime())
     {
         LOG(VB_GENERAL, LOG_INFO, QString("Not connecting to %1 - we started earlier").arg(m_debugString));
         return;
@@ -173,7 +177,7 @@ void TorcNetworkService::Connect(void)
 
     LOG(VB_GENERAL, LOG_INFO, QString("Trying to connect to %1").arg(m_debugString));
 
-    m_webSocketThread = new TorcWebSocketThread(host, m_port);
+    m_webSocketThread = new TorcWebSocketThread(host, port);
     connect(m_webSocketThread,           SIGNAL(Finished()),              this, SLOT(Disconnected()));
     connect(m_webSocketThread->Socket(), SIGNAL(ConnectionEstablished()), this, SLOT(Connected()));
 
@@ -182,37 +186,42 @@ void TorcNetworkService::Connect(void)
 
 QString TorcNetworkService::GetName(void)
 {
-    return m_name;
+    return name;
 }
 
 QString TorcNetworkService::GetUuid(void)
 {
-    return m_uuid;
+    return uuid;
 }
 
 int TorcNetworkService::GetPort(void)
 {
-    return m_port;
+    return port;
 }
 
 QString TorcNetworkService::GetAddress(void)
 {
-    return m_uiAddress;
+    return uiAddress;
 }
 
 qint64 TorcNetworkService::GetStartTime(void)
 {
-    return m_startTime;
+    return startTime;
 }
 
 int TorcNetworkService::GetPriority(void)
 {
-    return m_priority;
+    return priority;
 }
 
 QString TorcNetworkService::GetAPIVersion(void)
 {
-    return m_apiVersion;
+    return apiVersion;
+}
+
+bool TorcNetworkService::GetConnected(void)
+{
+    return connected;
 }
 
 void TorcNetworkService::Connected(void)
@@ -246,7 +255,12 @@ void TorcNetworkService::Disconnected(void)
 
         // notify the parent
         if (gNetworkedContext)
+        {
             gNetworkedContext->Disconnected(this);
+
+            connected = false;
+            emit ConnectedChanged();
+        }
     }
     else
     {
@@ -268,16 +282,20 @@ void TorcNetworkService::RequestReady(TorcNetworkRequest *Request)
 
             if (object.contains("details"))
             {
-                QJsonObject details     = object["details"].toObject();
-                QJsonValueRef priority  = details["priority"];
-                QJsonValueRef starttime = details["starttime"];
-                QJsonValueRef version   = details["version"];
+                QJsonObject   details   = object["details"].toObject();
+                QJsonValueRef jpriority  = details["priority"];
+                QJsonValueRef jstarttime = details["starttime"];
+                QJsonValueRef jversion   = details["version"];
 
-                if (!priority.isNull() && !starttime.isNull() && !version.isNull())
+                if (!jpriority.isNull() && !jstarttime.isNull() && !jversion.isNull())
                 {
-                    m_apiVersion = version.toString();
-                    m_priority   = (int)priority.toDouble();
-                    m_startTime  = (qint64)starttime.toDouble();
+                    apiVersion = jversion.toString();
+                    priority   = (int)jpriority.toDouble();
+                    startTime  = (qint64)jstarttime.toDouble();
+
+                    emit ApiVersionChanged();
+                    emit PriorityChanged();
+                    emit StartTimeChanged();
 
                     Connect();
                     return;
@@ -337,16 +355,21 @@ void TorcNetworkService::RequestReady(TorcRPCRequest *Request)
         {
             if (m_getPeerDetailsRPC->GetReply().type() == QVariant::Map)
             {
-                QVariantMap map = m_getPeerDetailsRPC->GetReply().toMap();
-                QVariant priority  = map["priority"];
-                QVariant starttime = map["starttime"];
-                QVariant version   = map["version"];
+                QVariantMap map     = m_getPeerDetailsRPC->GetReply().toMap();
+                QVariant vpriority  = map["priority"];
+                QVariant vstarttime = map["starttime"];
+                QVariant vversion   = map["version"];
 
-                if (!priority.isNull() && !starttime.isNull() && !version.isNull())
+                if (!vpriority.isNull() && !vstarttime.isNull() && !vversion.isNull())
                 {
-                    m_apiVersion = version.toString();
-                    m_priority   = (int)priority.toDouble();
-                    m_startTime  = (qint64)starttime.toDouble();
+                    apiVersion = vversion.toString();
+                    priority   = (int)vpriority.toDouble();
+                    startTime  = (qint64)vstarttime.toDouble();
+
+                    emit ApiVersionChanged();
+                    emit PriorityChanged();
+                    emit StartTimeChanged();
+
                     success = true;
                 }
                 else
@@ -408,7 +431,7 @@ void TorcNetworkService::QueryPeerDetails(void)
         LOG(VB_GENERAL, LOG_INFO, "Querying peer details over HTTP");
 
         QUrl url(host);
-        url.setPort(m_port);
+        url.setPort(port);
         url.setScheme("http");
         url.setPath("/services/GetDetails");
 
@@ -489,22 +512,22 @@ QStringList TorcNetworkService::GetAddresses(void)
 void TorcNetworkService::SetHost(const QString &Host)
 {
     m_host = Host;
-    m_debugString = m_host + ":" + QString::number(m_port);
+    m_debugString = m_host + ":" + QString::number(port);
 }
 
 void TorcNetworkService::SetStartTime(qint64 StartTime)
 {
-    m_startTime = StartTime;
+    startTime = StartTime;
 }
 
 void TorcNetworkService::SetPriority(int Priority)
 {
-    m_priority = Priority;
+    priority = Priority;
 }
 
 void TorcNetworkService::SetAPIVersion(const QString &Version)
 {
-    m_apiVersion = Version;
+    apiVersion = Version;
 }
 
 /*! \class TorcNetworkedContext
@@ -588,9 +611,9 @@ QVariant TorcNetworkedContext::data(const QModelIndex &Index, int Role) const
 QHash<int,QByteArray> TorcNetworkedContext::roleNames(void) const
 {
     QHash<int,QByteArray> roles;
-    roles.insert(Qt::DisplayRole, "m_name");
-    roles.insert(Qt::DisplayRole, "m_uuid");
-    roles.insert(Qt::DisplayRole, "m_port");
+    roles.insert(Qt::DisplayRole, "name");
+    roles.insert(Qt::DisplayRole, "uuid");
+    roles.insert(Qt::DisplayRole, "port");
     roles.insert(Qt::DisplayRole, "m_uiaddress");
     return roles;
 }

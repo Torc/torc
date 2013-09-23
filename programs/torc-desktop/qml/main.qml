@@ -159,19 +159,25 @@ ApplicationWindow {
                         TableViewColumn {
                             width: 250
                             title: qsTr("Name")
-                            role: "m_name"
+                            role: "name"
                         }
 
                         TableViewColumn {
                             width: 200
                             title: qsTr("Address")
-                            role: "m_uiAddress"
+                            role: "uiAddress"
                         }
 
                         TableViewColumn {
-                            width: 300
-                            title: qsTr("Identifier")
-                            role: "m_uuid"
+                            width: 100
+                            title: qsTr("API Version")
+                            role: "apiVersion"
+                        }
+
+                        TableViewColumn {
+                            width: 100
+                            title: qsTr("Connected")
+                            role: "connected"
                         }
                     }
                 }

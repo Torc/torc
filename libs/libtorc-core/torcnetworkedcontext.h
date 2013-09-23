@@ -23,62 +23,71 @@ class TorcNetworkService : public QObject
     TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QStringList &Addresses);
     ~TorcNetworkService();
 
-    Q_PROPERTY (QString     m_name         READ GetName         CONSTANT)
-    Q_PROPERTY (QString     m_uuid         READ GetUuid         CONSTANT)
-    Q_PROPERTY (int         m_port         READ GetPort         CONSTANT)
-    Q_PROPERTY (QString     m_uiAddress    READ GetAddress      CONSTANT)
-    Q_PROPERTY (qint64      m_startTime    READ GetStartTime    CONSTANT)
-    Q_PROPERTY (int         m_priority     READ GetPriority     CONSTANT)
-    Q_PROPERTY (QString     m_apiVersion   READ GetAPIVersion   CONSTANT)
+    Q_PROPERTY (QString     name              READ GetName         CONSTANT)
+    Q_PROPERTY (QString     uuid              READ GetUuid         CONSTANT)
+    Q_PROPERTY (int         port              READ GetPort         CONSTANT)
+    Q_PROPERTY (QString     uiAddress         READ GetAddress      CONSTANT)
+    Q_PROPERTY (qint64      startTime         READ GetStartTime    NOTIFY StartTimeChanged)
+    Q_PROPERTY (int         priority          READ GetPriority     NOTIFY PriorityChanged)
+    Q_PROPERTY (QString     apiVersion        READ GetAPIVersion   NOTIFY ApiVersionChanged)
+    Q_PROPERTY (bool        connected         READ GetConnected    NOTIFY ConnectedChanged)
+
+  signals:
+    void                    StartTimeChanged  (void);
+    void                    PriorityChanged   (void);
+    void                    ApiVersionChanged (void);
+    void                    ConnectedChanged  (void);
 
   public slots:
-    QString         GetName         (void);
-    QString         GetUuid         (void);
-    int             GetPort         (void);
-    QStringList     GetAddresses    (void);
-    QString         GetAddress      (void);
-    qint64          GetStartTime    (void);
-    int             GetPriority     (void);
-    QString         GetAPIVersion   (void);
+    QString                 GetName           (void);
+    QString                 GetUuid           (void);
+    int                     GetPort           (void);
+    QStringList             GetAddresses      (void);
+    QString                 GetAddress        (void);
+    qint64                  GetStartTime      (void);
+    int                     GetPriority       (void);
+    QString                 GetAPIVersion     (void);
+    bool                    GetConnected      (void);
 
-    void            Connect         (void);
-    void            Connected       (void);
-    void            Disconnected    (void);
-    void            RequestReady    (TorcNetworkRequest *Request);
-    void            RequestReady    (TorcRPCRequest     *Request);
+    void                    Connect           (void);
+    void                    Connected         (void);
+    void                    Disconnected      (void);
+    void                    RequestReady      (TorcNetworkRequest *Request);
+    void                    RequestReady      (TorcRPCRequest     *Request);
 
   public:
-    void            SetHost         (const QString &Host);
-    void            SetStartTime    (qint64 StartTime);
-    void            SetPriority     (int    Priority);
-    void            SetAPIVersion   (const QString &Version);
-    void            CreateSocket    (TorcHTTPRequest *Request, QTcpSocket *Socket);
-    void            RemoteRequest   (TorcRPCRequest *Request);
-    void            CancelRequest   (TorcRPCRequest *Request);
+    void                    SetHost           (const QString &Host);
+    void                    SetStartTime      (qint64 StartTime);
+    void                    SetPriority       (int    Priority);
+    void                    SetAPIVersion     (const QString &Version);
+    void                    CreateSocket      (TorcHTTPRequest *Request, QTcpSocket *Socket);
+    void                    RemoteRequest     (TorcRPCRequest *Request);
+    void                    CancelRequest     (TorcRPCRequest *Request);
 
   private:
-    void            ScheduleRetry   (void);
-    void            QueryPeerDetails (void);
+    void                    ScheduleRetry     (void);
+    void                    QueryPeerDetails  (void);
 
   private:
-    QString         m_debugString;
-    QString         m_name;
-    QString         m_uuid;
-    int             m_port;
-    QString         m_host;
-    QString         m_uiAddress;
-    QStringList     m_addresses;
-    qint64          m_startTime;
-    int             m_priority;
-    QString         m_apiVersion;
-    int             m_preferredAddress;
+    QString                 name;
+    QString                 uuid;
+    int                     port;
+    QString                 uiAddress;
+    qint64                  startTime;
+    int                     priority;
+    QString                 apiVersion;
+    bool                    connected;
 
-    int                   m_abort;
-    TorcRPCRequest       *m_getPeerDetailsRPC;
-    TorcNetworkRequest   *m_getPeerDetails;
-    TorcWebSocketThread  *m_webSocketThread;
-    bool                  m_retryScheduled;
-    int                   m_retryInterval;
+    QString                 m_debugString;
+    QString                 m_host;
+    QStringList             m_addresses;
+    int                     m_preferredAddress;
+    int                     m_abort;
+    TorcRPCRequest         *m_getPeerDetailsRPC;
+    TorcNetworkRequest     *m_getPeerDetails;
+    TorcWebSocketThread    *m_webSocketThread;
+    bool                    m_retryScheduled;
+    int                     m_retryInterval;
 };
 
 Q_DECLARE_METATYPE(TorcNetworkService*);
