@@ -11,8 +11,8 @@ class TorcDB
     TorcDB(const QString &DatabaseName, const QString &DatabaseType);
     virtual ~TorcDB();
 
-    static void  DebugError             (QSqlQuery *Query);
-    static void  DebugError             (QSqlDatabase *Database);
+    static bool  DebugError             (QSqlQuery *Query);
+    static bool  DebugError             (QSqlDatabase *Database);
     bool         IsValid                (void);
     void         CloseThreadConnection  (void);
 

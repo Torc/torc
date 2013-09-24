@@ -49,7 +49,9 @@ class TorcDBPriv
 {
   public:
     TorcDBPriv(const QString &Name, const QString &Type)
-      : m_name(Name), m_type(Type), m_lock(new QMutex(QMutex::Recursive))
+      : m_name(Name),
+        m_type(Type),
+        m_lock(new QMutex(QMutex::Recursive))
     {
     }
 
@@ -114,6 +116,9 @@ class TorcDBPriv
                            .arg(thread->objectName())
                            .arg(QString::number((unsigned long long)thread));
         QSqlDatabase newdb = QSqlDatabase::addDatabase(m_type, name);
+
+        if (m_type == "QSQLITE")
+            newdb.setConnectOptions("QSQLITE_BUSY_TIMEOUT=1");
         newdb.setDatabaseName(m_name);
 
         {
@@ -206,27 +211,30 @@ QString TorcDB::GetThreadConnection(void)
  *
  * \sa Debugerror(QSqlDatabase*)
 */
-void TorcDB::DebugError(QSqlQuery *Query)
+bool TorcDB::DebugError(QSqlQuery *Query)
 {
     if (!Query)
-        return;
+        return true;
 
     QSqlError error = Query->lastError();
 
     if (error.type() == QSqlError::NoError)
-        return;
+        return false;
 
     if (!error.databaseText().isEmpty())
     {
-        LOG(VB_DATABASE, LOG_ERR, QString("Database Error: %1")
+        LOG(VB_GENERAL, LOG_ERR, QString("Database Error: %1")
             .arg(error.databaseText()));
+        return true;
     }
 
     if (!error.driverText().isEmpty())
     {
-        LOG(VB_DATABASE, LOG_ERR, QString("Driver Error: %1")
+        LOG(VB_GENERAL, LOG_ERR, QString("Driver Error: %1")
             .arg(error.driverText()));
     }
+
+    return true;
 }
 
 /*! \fn    TorcDB::DebugError(QSqlDatabase*)
@@ -234,27 +242,30 @@ void TorcDB::DebugError(QSqlQuery *Query)
  *
  * \sa Debugerror(QSqlQuery*)
 */
-void TorcDB::DebugError(QSqlDatabase *Database)
+bool TorcDB::DebugError(QSqlDatabase *Database)
 {
     if (!Database)
-        return;
+        return true;
 
     QSqlError error = Database->lastError();
 
     if (error.type() == QSqlError::NoError)
-        return;
+        return false;
 
     if (!error.databaseText().isEmpty())
     {
-        LOG(VB_DATABASE, LOG_ERR, QString("Database Error: %1")
+        LOG(VB_GENERAL, LOG_ERR, QString("Database Error: %1")
             .arg(error.databaseText()));
+        return true;
     }
 
     if (!error.driverText().isEmpty())
     {
-        LOG(VB_DATABASE, LOG_ERR, QString("Driver Error: %1")
+        LOG(VB_GENERAL, LOG_ERR, QString("Driver Error: %1")
             .arg(error.driverText()));
     }
+
+    return true;
 }
 
 /*! \fn    TorcDB::LoadSettings
