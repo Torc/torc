@@ -122,9 +122,12 @@ TorcLocalContextPriv::~TorcLocalContextPriv()
     QThreadPool::globalInstance()->waitForDone();
 
     // remove root setting
-    gRootSetting->Remove();
-    gRootSetting->DownRef();
-    gRootSetting = NULL;
+    if (gRootSetting)
+    {
+        gRootSetting->Remove();
+        gRootSetting->DownRef();
+        gRootSetting = NULL;
+    }
 
     // delete the database connection(s)
     delete m_sqliteDB;
