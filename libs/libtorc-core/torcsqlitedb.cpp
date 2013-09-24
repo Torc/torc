@@ -33,6 +33,8 @@
  * All Sql specific code resides in TorcDB. TorcSQLiteDB applies SQLite specifics
  * when creating the database and upon first use after startup.
  *
+ * \todo Check the exclusive lock handling. It's unclear whether this will lock out other threads.
+ *
  * \sa TorcDB
 */
 TorcSQLiteDB::TorcSQLiteDB(const QString &DatabaseName)
@@ -51,13 +53,32 @@ bool TorcSQLiteDB::InitDatabase(void)
 
     QSqlDatabase db = QSqlDatabase::database(GetThreadConnection());
     DebugError(&db);
-    if (!db.isValid() || !db.isOpen())
+    if (!db.isValid())
     {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to get database connection.");
+        LOG(VB_GENERAL, LOG_ERR, "Failed to get valid database connection.");
+        return false;
+    }
+
+    if (!db.open())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to open database.");
         return false;
     }
 
     QSqlQuery query(db);
+
+    // ensure this is the only application accessing this database
+    query.exec("PRAGMA locking_mode = EXCLUSIVE");
+    if (DebugError(&query))
+        return false;
+
+    query.exec("BEGIN EXCLUSIVE");
+    if (DebugError(&query))
+        return false;
+
+    db.commit();
+    if (DebugError(&db))
+        return false;
 
     // Create the settings table if it doesn't exist
     query.exec("CREATE TABLE IF NOT EXISTS settings "
