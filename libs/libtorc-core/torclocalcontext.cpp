@@ -392,7 +392,9 @@ TorcLocalContext::TorcLocalContext(TorcCommandLine* CommandLine, Torc::Applicati
     InitialiseTorcDirectories();
 
     // Start logging at the first opportunity
-    QString logfile(GetTorcConfigDir() + "/" + QCoreApplication::applicationName() + ".log");
+    QString logfile = CommandLine->GetValue("logfile").toString();
+    if (logfile.isEmpty())
+        logfile = QString(GetTorcConfigDir() + "/" + QCoreApplication::applicationName() + ".log");
 
     ParseVerboseArgument(CommandLine->GetValue("l").toString());
 

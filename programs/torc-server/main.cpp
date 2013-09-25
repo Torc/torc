@@ -21,7 +21,7 @@ int main(int argc, char **argv)
 
     {
         bool justexit = false;
-        QScopedPointer<TorcCommandLine> cmdline(new TorcCommandLine(TorcCommandLine::URI | TorcCommandLine::Database));
+        QScopedPointer<TorcCommandLine> cmdline(new TorcCommandLine(TorcCommandLine::URI | TorcCommandLine::Database | TorcCommandLine::LogFile));
 
         if (!cmdline.data())
             return GENERIC_EXIT_NOT_OK;

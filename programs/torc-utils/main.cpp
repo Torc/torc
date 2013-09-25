@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     int ret = GENERIC_EXIT_OK;
 
     {
-        QScopedPointer<TorcCommandLine> cmdline(new TorcCommandLine(TorcCommandLine::URI));
+        QScopedPointer<TorcCommandLine> cmdline(new TorcCommandLine(TorcCommandLine::URI | TorcCommandLine::LogFile));
         if (!cmdline.data())
             return GENERIC_EXIT_NOT_OK;
 
