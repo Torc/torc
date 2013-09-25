@@ -107,6 +107,8 @@ TorcCommandLinePriv::TorcCommandLinePriv(TorcCommandLine::Options Flags)
         Add("version", QVariant(), "Display version information.", TorcCommandLine::Version, true);
     if (options.testFlag(TorcCommandLine::URI))
         Add("f,file,uri", QString(""), "URI pointing to the file/resource to be used.", TorcCommandLine::None);
+    if (options.testFlag(TorcCommandLine::Database))
+        Add("db,database", QString(""), "Use a custom database location. If the file does not exist, it will be created.");
 }
 
 /// \brief Add a command line option

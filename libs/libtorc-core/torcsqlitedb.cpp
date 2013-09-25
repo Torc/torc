@@ -74,7 +74,14 @@ bool TorcSQLiteDB::InitDatabase(void)
 
     query.exec("BEGIN EXCLUSIVE");
     if (DebugError(&query))
+    {
+        LOG(VB_GENERAL, LOG_ERR, "\r\n***************************************"
+                                 "\r\nThe database is already in use by another instance of this application. "
+                                 "Please run additional instances as a different user or override the database location "
+                                 "with the db/database command line option."
+                                 "\r\n***************************************");
         return false;
+    }
 
     db.commit();
     if (DebugError(&db))

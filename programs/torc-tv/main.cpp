@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 
     // create local context
     {
-        QScopedPointer<TorcCommandLine> cmdline(new TorcCommandLine(TorcCommandLine::None));
+        QScopedPointer<TorcCommandLine> cmdline(new TorcCommandLine(TorcCommandLine::Database));
 
         if (!cmdline.data())
             return GENERIC_EXIT_NOT_OK;

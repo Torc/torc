@@ -23,7 +23,8 @@ class TORC_CORE_PUBLIC TorcCommandLine
         Version  = (1 << 1),
         LogLevel = (1 << 2),
         LogType  = (1 << 3),
-        URI      = (1 << 4)
+        URI      = (1 << 4),
+        Database = (1 << 5)
     };
 
     Q_DECLARE_FLAGS(Options, Option);

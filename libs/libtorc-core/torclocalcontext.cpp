@@ -64,7 +64,7 @@ static void ExitHandler(int Sig)
 class TorcLocalContextPriv
 {
   public:
-    TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFlags);
+    TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFlags, TorcCommandLine *CommandLine);
    ~TorcLocalContextPriv();
 
     bool    Init                 (void);
@@ -76,6 +76,7 @@ class TorcLocalContextPriv
 
     Torc::ApplicationFlags m_flags;
     TorcSQLiteDB         *m_sqliteDB;
+    QString               m_dbName;
     QMap<QString,QString> m_localSettings;
     QReadWriteLock       *m_localSettingsLock;
     QMap<QString,QString> m_preferences;
@@ -87,20 +88,25 @@ class TorcLocalContextPriv
     QString               m_uuidString;
 };
 
-TorcLocalContextPriv::TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFlags)
+TorcLocalContextPriv::TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFlags, TorcCommandLine *CommandLine)
   : m_flags(ApplicationFlags),
     m_sqliteDB(NULL),
+    m_dbName(QString("")),
     m_localSettingsLock(new QReadWriteLock(QReadWriteLock::Recursive)),
     m_preferencesLock(new QReadWriteLock(QReadWriteLock::Recursive)),
     m_UIObject(NULL),
     m_adminThread(NULL),
     m_uuid(QUuid::createUuid())
 {
+    // clean up the UUID
     m_uuidString = m_uuid.toString();
     if (m_uuidString.startsWith('{'))
         m_uuidString = m_uuidString.mid(1);
     if (m_uuidString.endsWith('}'))
         m_uuidString.chop(1);
+
+    // set any custom database location
+    m_dbName = CommandLine->GetValue("db").toString();
 }
 
 TorcLocalContextPriv::~TorcLocalContextPriv()
@@ -164,8 +170,10 @@ bool TorcLocalContextPriv::Init(void)
     // Open the local database
     if (m_flags & Torc::Database)
     {
-        QString dbname = configdir + "/torc-settings.sqlite";
-        m_sqliteDB = new TorcSQLiteDB(dbname);
+        if (m_dbName.isEmpty())
+            m_dbName = configdir + "/torc-settings.sqlite";
+
+        m_sqliteDB = new TorcSQLiteDB(m_dbName);
 
         if (!m_sqliteDB || (m_sqliteDB && !m_sqliteDB->IsValid()))
             return false;
@@ -367,7 +375,7 @@ void TorcLocalContext::SendMessage(int Type, int Destination, int Timeout,
 */
 TorcLocalContext::TorcLocalContext(TorcCommandLine* CommandLine, Torc::ApplicationFlags ApplicationFlags)
   : QObject(),
-    m_priv(new TorcLocalContextPriv(ApplicationFlags))
+    m_priv(new TorcLocalContextPriv(ApplicationFlags, CommandLine))
 {
     // Initialise TorcQThread FIRST
     TorcQThread::SetMainThread();
