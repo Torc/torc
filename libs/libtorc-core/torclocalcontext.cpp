@@ -171,7 +171,7 @@ bool TorcLocalContextPriv::Init(void)
     if (m_flags & Torc::Database)
     {
         if (m_dbName.isEmpty())
-            m_dbName = configdir + "/torc-settings.sqlite";
+            m_dbName = configdir + "/" + QCoreApplication::applicationName() + "-settings.sqlite";
 
         m_sqliteDB = new TorcSQLiteDB(m_dbName);
 
