@@ -23,9 +23,11 @@ HEADERS += torcqmlexport.h
 HEADERS += torcqmleventproxy.h
 HEADERS += torcqmlutils.h
 HEADERS += torcqmlframerate.h
+HEADERS += torcqmlvideoelement.h
 SOURCES += torcqmlutils.cpp
 SOURCES += torcqmleventproxy.cpp
 SOURCES += torcqmlframerate.cpp
+SOURCES += torcqmlvideoelement.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files += torcqmlutils.h
