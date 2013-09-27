@@ -4,7 +4,10 @@
 // Qt
 #include <QtQuick/QQuickItem>
 
-class TorcQMLMediaElement : public QQuickItem
+// Torc
+#include "torcqmlexport.h"
+
+class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem
 {
     Q_OBJECT
 
