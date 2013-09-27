@@ -1,4 +1,4 @@
-/* Class TorcQMLVideoElement
+/* Class TorcQMLMediaElement
 *
 * Copyright (C) Mark Kendall 2013
 *
@@ -25,19 +25,19 @@
 // Torc
 #include "torclogging.h"
 #include "torcloggingimp.h"
-#include "torcqmlvideoelement.h"
+#include "torcqmlmediaelement.h"
 
-TorcQMLVideoElement::TorcQMLVideoElement(QQuickItem *Parent)
+TorcQMLMediaElement::TorcQMLMediaElement(QQuickItem *Parent)
   : QQuickItem(Parent)
 {
     setFlag(ItemHasContents, true);
 }
 
-TorcQMLVideoElement::~TorcQMLVideoElement()
+TorcQMLMediaElement::~TorcQMLMediaElement()
 {
 }
 
-QSGNode* TorcQMLVideoElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData*)
+QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData*)
 {
     QSGSimpleTextureNode *node = static_cast<QSGSimpleTextureNode*>(Node);
 
