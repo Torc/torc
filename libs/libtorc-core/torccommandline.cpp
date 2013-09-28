@@ -266,8 +266,8 @@ int TorcCommandLinePriv::Evaluate(int argc, const char * const *argv, bool &Exit
         }
 
         Exit         |= argument.m_exitImmediately;
-        printhelp    |= argument.m_flags & TorcCommandLine::Help;
-        printversion |= argument.m_flags & TorcCommandLine::Version;
+        printhelp    |= (bool)(argument.m_flags & TorcCommandLine::Help);
+        printversion |= (bool)(argument.m_flags & TorcCommandLine::Version);
 
         // update the value for the option
         if (!value.isEmpty())
