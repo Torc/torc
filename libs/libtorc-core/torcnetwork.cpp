@@ -667,7 +667,7 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
     if (m_online && !wasonline)
     {
         gLocalContext->NotifyEvent(Torc::NetworkAvailable);
-        gLocalContext->SendMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout, tr("Network"), tr("Network available"));
+        gLocalContext->UserMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout, tr("Network"), tr("Network available"));
 
         QStringList addresses;
         QList<QNetworkAddressEntry> entries = m_interface.addressEntries();
@@ -681,7 +681,7 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
         LOG(VB_GENERAL, LOG_INFO, "Network down");
         CloseConnections();
         gLocalContext->NotifyEvent(Torc::NetworkUnavailable);
-        gLocalContext->SendMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout,
+        gLocalContext->UserMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout,
                                    tr("Network"), tr("Network unavailable"));
     }
 }

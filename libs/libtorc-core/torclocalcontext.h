@@ -216,7 +216,7 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     static void   TearDown    (void);
 
     Q_INVOKABLE static void  NotifyEvent   (int Event);
-    Q_INVOKABLE static void  SendMessage   (int Type, int Destination, int Timeout,
+    Q_INVOKABLE static void  UserMessage   (int Type, int Destination, int Timeout,
                                             const QString &Header, const QString &Body,
                                             QString Uuid = QString());
     Q_INVOKABLE   QString    GetSetting    (const QString &Name, const QString &DefaultValue);

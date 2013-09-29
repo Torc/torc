@@ -328,7 +328,7 @@ void TorcLocalContext::NotifyEvent(int Event)
 #define MESSAGE_TIMEOUT_SHORT   1000
 #define MESSAGE_TIMEOUT_LONG    10000
 
-void TorcLocalContext::SendMessage(int Type, int Destination, int Timeout,
+void TorcLocalContext::UserMessage(int Type, int Destination, int Timeout,
                                    const QString &Header, const QString &Body,
                                    QString Uuid)
 {
