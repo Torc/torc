@@ -46,7 +46,7 @@ class VideoColourSpace : public QObject
 
   public:
     explicit VideoColourSpace(AVColorSpace ColourSpace);
-    ~VideoColourSpace();
+    virtual ~VideoColourSpace();
 
     QSet<TorcPlayer::PlayerProperty> GetSupportedProperties (void);
 
