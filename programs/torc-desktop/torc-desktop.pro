@@ -14,10 +14,20 @@ qtHaveModule(widgets) {
     QT += widgets
 }
 
-INCLUDEPATH += ../../libs/libtorc-core ../../libs/libtorc-media ../../libs/libtorc-qml
+DEPENDPATH += ../../libs/libtorc-core ../../libs/libtorc-media ../../libs/libtorc-qml ../../libs/libtorc-av
+DEPENDPATH += ../../libs/libtorc-audio ../../libs/libtorc-video ../../libs/libtorc-qml ../../libs/libtorc-av
+INCLUDEPATH += ../.. ../
+INCLUDEPATH += $$DEPENDPATH
+
 LIBS += -L../../libs/libtorc-core -ltorc-core-$$LIBVERSION
+LIBS += -L../../libs/libtorc-audio -ltorc-audio-$$LIBVERSION
+LIBS += -L../../libs/libtorc-video -ltorc-video-$$LIBVERSION
 LIBS += -L../../libs/libtorc-media -ltorc-media-$$LIBVERSION
 LIBS += -L../../libs/libtorc-qml -ltorc-qml-$$LIBVERSION
+LIBS += -L../../libs/libtorc-av/libavformat -ltorc-avformat
+LIBS += -L../../libs/libtorc-av/libavcodec  -ltorc-avcodec
+LIBS += -L../../libs/libtorc-av/libavutil   -ltorc-avutil
+LIBS += -L../../libs/libtorc-av/libswscale  -ltorc-swscale
 
 SOURCES += main.cpp
 
