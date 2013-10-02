@@ -23,7 +23,9 @@
 // Torc
 #include "torcadminthread.h"
 #include "torcnetwork.h"
+#if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
 #include "torcbonjour.h"
+#endif
 #include "torcevent.h"
 #include "torchttpserver.h"
 #include "upnp/torcupnp.h"
