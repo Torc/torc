@@ -19,3 +19,4 @@ object_script.*
 patches
 Makefile
 *qrc_*
+*.obj
