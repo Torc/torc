@@ -21,6 +21,7 @@
 */
 
 // Torc
+#include "torcconfig.h"
 #include "torcadminthread.h"
 #include "torcnetwork.h"
 #if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
