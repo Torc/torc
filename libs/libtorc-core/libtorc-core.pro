@@ -168,7 +168,7 @@ win32 {
     HEADERS += platforms/torcusbprivwin.h
     SOURCES += platforms/torcpowerwin.cpp
     SOURCES += platforms/torcusbprivwin.cpp
-    LIBS += -lPowrProf -lsetupapi
+    LIBS += -lPowrProf -lsetupapi -luser32 -ladvapi32
 }
 
 macx {
