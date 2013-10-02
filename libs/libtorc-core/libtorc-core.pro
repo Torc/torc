@@ -14,6 +14,7 @@ QT += sql network
 QT -= gui
 
 DEPENDPATH  += ./platforms ./http ./upnp
+DEPENDPATH  += ../.. ../ ./
 INCLUDEPATH += $$DEPENDPATH
 
 HEADERS += torccoreexport.h
