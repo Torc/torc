@@ -1339,6 +1339,7 @@ void TorcWebSocket::HandlePing(QByteArray &Payload)
 void TorcWebSocket::HandlePong(QByteArray &Payload)
 {
     // TODO validate known pings
+    (void)Payload;
 }
 
 void TorcWebSocket::HandleCloseRequest(QByteArray &Close)
