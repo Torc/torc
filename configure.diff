@@ -1,5 +1,5 @@
---- libs/libtorc-av/configure	2013-05-01 20:34:52.277266987 +0100
-+++ configure	2013-09-18 08:24:46.518979172 +0100
+--- libs/libtorc-av/configure	2013-05-01 10:16:11.000000000 +0100
++++ configure	2013-10-05 19:39:11.000000000 +0100
 @@ -1,6 +1,6 @@
  #!/bin/sh
  #
@@ -277,15 +277,6 @@
  }
  
  enabled pic && enable_pic
-@@ -3539,7 +3623,7 @@
- 
- _restrict=
- for restrict_keyword in restrict __restrict__ __restrict; do
--    check_cc <<EOF && _restrict=$restrict_keyword && break
-+    check_cxx <<EOF && _restrict=$restrict_keyword && break
- void foo(char * $restrict_keyword p);
- EOF
- done
 @@ -3815,6 +3899,7 @@
  check_header dlfcn.h
  check_header dxva.h
