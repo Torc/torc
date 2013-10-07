@@ -5,7 +5,10 @@
 #include <QTimerEvent>
 #include <QObject>
 
-class TorcQMLFrameRate : public QObject
+// Torc
+#include "torcqmlexport.h"
+
+class TORC_QML_PUBLIC TorcQMLFrameRate : public QObject
 {
     Q_OBJECT
 
