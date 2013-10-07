@@ -84,6 +84,7 @@ win32 {
     HEADERS += platforms/audiooutputwin.h
     SOURCES += platforms/audiooutputdx.cpp
     SOURCES += platforms/audiooutputwin.cpp
+    INCLUDEPATH += ./include
     LIBS    += -lwinmm
 }
 
