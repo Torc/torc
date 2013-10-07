@@ -10,22 +10,25 @@ INSTALLS = target
 
 QT -= gui
 
-DEPENDPATH += ../../libs/libtorc-core ../../libs/libtorc-audio ../../libs/libtorc-media ../../libs/libtorc-av
+DEPENDPATH  += ../../libs/libtorc-core
+DEPENDPATH  += ../../libs/libtorc-audio
+DEPENDPATH  += ../../libs/libtorc-media
+DEPENDPATH  += ../../libs/libtorc-av
 INCLUDEPATH += ../.. ../
 INCLUDEPATH += $$DEPENDPATH
 
-LIBS += -L../../libs/libtorc-core -ltorc-core-$$LIBVERSION
-LIBS += -L../../libs/libtorc-audio -ltorc-audio-$$LIBVERSION
-LIBS += -L../../libs/libtorc-media -ltorc-media-$$LIBVERSION
-LIBS += -L../../libs/libtorc-av/libavformat -ltorc-avformat
-LIBS += -L../../libs/libtorc-av/libavcodec -ltorc-avcodec
-LIBS += -L../../libs/libtorc-av/libavutil -ltorc-avutil
-LIBS += -L../../libs/libtorc-av/libavdevice -ltorc-avdevice
+LIBS += -L../../libs/libtorc-core             -ltorc-core-$$LIBVERSION
+LIBS += -L../../libs/libtorc-audio            -ltorc-audio-$$LIBVERSION
+LIBS += -L../../libs/libtorc-media            -ltorc-media-$$LIBVERSION
+LIBS += -L../../libs/libtorc-av/libavformat   -ltorc-avformat
+LIBS += -L../../libs/libtorc-av/libavcodec    -ltorc-avcodec
+LIBS += -L../../libs/libtorc-av/libavutil     -ltorc-avutil
+LIBS += -L../../libs/libtorc-av/libavdevice   -ltorc-avdevice
 LIBS += -L../../libs/libtorc-av/libavresample -ltorc-avresample
 LIBS += -L../../libs/libtorc-av/libswresample -ltorc-swresample
-LIBS += -L../../libs/libtorc-av/libavfilter -ltorc-avfilter
-LIBS += -L../../libs/libtorc-av/libswscale -ltorc-swscale
-LIBS += -L../../libs/libtorc-av/libpostproc -ltorc-postproc
+LIBS += -L../../libs/libtorc-av/libavfilter   -ltorc-avfilter
+LIBS += -L../../libs/libtorc-av/libswscale    -ltorc-swscale
+LIBS += -L../../libs/libtorc-av/libpostproc   -ltorc-postproc
 
 setting.path = $${PREFIX}/share/$${PROJECTNAME}/
 setting.extra = -ldconfig

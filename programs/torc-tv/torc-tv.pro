@@ -10,10 +10,14 @@ INSTALLS = target
 
 QT += qml quick
 
-INCLUDEPATH += ../../libs/libtorc-core ../../libs/libtorc-media ../../libs/libtorc-qml
-LIBS += -L../../libs/libtorc-core -ltorc-core-$$LIBVERSION
+DEPENDPATH  += ../../libs/libtorc-core
+DEPENDPATH  += ../../libs/libtorc-media
+DEPENDPATH  += ../../libs/libtorc-qml
+INCLUDEPATH += ../.. ../
+INCLUDEPATH += $$DEPENDPATH
+LIBS += -L../../libs/libtorc-core  -ltorc-core-$$LIBVERSION
 LIBS += -L../../libs/libtorc-media -ltorc-media-$$LIBVERSION
-LIBS += -L../../libs/libtorc-qml -ltorc-qml-$$LIBVERSION
+LIBS += -L../../libs/libtorc-qml   -ltorc-qml-$$LIBVERSION
 
 SOURCES += main.cpp
 

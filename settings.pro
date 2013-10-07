@@ -4,22 +4,12 @@ CONFIG += $$CCONFIG
 
 cache()
 
+PROJECTNAME = torc
+LIBVERSION  = 0.1
+VERSION     = 0.1.0
+
 !win32 {
     CONFIG += silent
-}
-
-defineReplace(avLibName) {
-    NAME = $$1
-
-    major = \$\${lib$${NAME}_VERSION_MAJOR}
-    eval(LIBVERSION = $$major)
-
-    temp = $$SLIBNAME_WITH_MAJOR_QT
-    temp = $$replace(temp, FULLNAME, $$NAME)
-    temp = $$replace(temp, NAME,     $$NAME)
-    temp = $$replace(temp, LIBMAJOR, $$LIBVERSION)
-
-    return($$temp)
 }
 
 #check QT major version
@@ -43,10 +33,6 @@ isEmpty(LIBDIRNAME) {
 isEmpty(LIBDIR) {
     LIBDIR = $${RUNPREFIX}/$${LIBDIRNAME}
 }
-
-PROJECTNAME = torc
-LIBVERSION  = 0.1
-VERSION     = 0.1.0
 
 isEmpty(TARGET_OS) : win32 {
     CONFIG += mingw

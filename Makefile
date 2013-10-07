@@ -27,6 +27,7 @@ libs/libtorc-core/version.h:	version.sh force
 	sh version.sh "$(PWD)"
 
 # explicit subdir dependencies
+libs: libs/libtorc-av
 programs: libs
 
 subdirs: $(SUBDIRS)
