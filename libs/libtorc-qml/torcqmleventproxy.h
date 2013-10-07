@@ -5,7 +5,10 @@
 #include <QWindow>
 #include <QObject>
 
-class TorcQMLEventProxy : public QObject
+// Torc
+#include "torcqmlexport.h"
+
+class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
 {
     Q_OBJECT
 
