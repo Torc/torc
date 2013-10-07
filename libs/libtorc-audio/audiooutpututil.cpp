@@ -9,6 +9,10 @@
 // Std
 #include <math.h>
 
+extern "C" {
+#include "libavutil/avutil.h"
+}
+
 #if ARCH_X86 & HAVE_INLINE_ASM
 static int has_sse2 = -1;
 
