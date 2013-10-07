@@ -611,8 +611,8 @@ class AudioFactoryDX : public AudioFactory
     {
         AudioOutputDXPrivate *priv = new AudioOutputDXPrivate(NULL);
         priv->InitDirectSound(false);
-        QMap<int, QString> devices(tmp_priv->m_deviceList);
-        delete tmp_priv;
+        QMap<int, QString> devices(priv->m_deviceList);
+        delete priv;
 
         QMap<int, QString>::iterator it = devices.begin();
         for ( ; it != devices.end(); ++it)
