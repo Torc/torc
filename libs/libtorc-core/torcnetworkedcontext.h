@@ -15,7 +15,7 @@ class TorcWebSocketThread;
 class TorcHTTPRequest;
 class QTcpSocket;
 
-class TorcNetworkService : public QObject
+class TORC_CORE_PUBLIC TorcNetworkService : public QObject
 {
     Q_OBJECT
 
