@@ -86,7 +86,7 @@ FFLIBS    := $(FFLIBS-yes) $(FFLIBS)
 TESTPROGS += $(TESTPROGS-yes)
 
 LDLIBS       = $(FFLIBS:%=%$(BUILDSUF))
-FFEXTRALIBS := $(addprefix -ltorc-,$(addsuffix $(BUILDSUF),$(FFLIBS))) $(EXTRALIBS)
+FFEXTRALIBS := $(LDLIBS:%=$(LD_TORC_LIB)) $(EXTRALIBS)
 
 EXAMPLES  := $(EXAMPLES:%=$(SUBDIR)%-example$(EXESUF))
 OBJS      := $(sort $(OBJS:%=$(SUBDIR)%))
