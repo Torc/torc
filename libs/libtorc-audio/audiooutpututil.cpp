@@ -3,12 +3,13 @@
 
 // Torc
 #include "torcconfig.h"
+#include "torccompat.h"
 #include "audiooutpututil.h"
 
 // Std
 #include <math.h>
 
-#if ARCH_X86
+#if ARCH_X86 & HAVE_INLINE_ASM
 static int has_sse2 = -1;
 
 // Check cpuid for SSE2 support on x86 / x86_64
@@ -62,7 +63,7 @@ static int ToFloat8(float *Out, uchar *in, int Length)
     int i = 0;
     float f = 1.0f / ((1<<7) - 1);
 
-#if ARCH_X86
+#if ARCH_X86 & HAVE_INLINE_ASM
     if (sse_check() && Length >= 16)
     {
         int loops = Length >> 4;
@@ -129,7 +130,7 @@ static int FromFloat8(uchar *Out, float *in, int Length)
     int i = 0;
     float f = (1<<7) - 1;
 
-#if ARCH_X86
+#if ARCH_X86 & HAVE_INLINE_ASM
     if (sse_check() && Length >= 16 && ((unsigned long)Out & 0xf) == 0)
     {
         int loops = Length >> 4;
@@ -180,7 +181,7 @@ static int ToFloat16(float *Out, short *in, int Length)
     int i = 0;
     float f = 1.0f / ((1<<15) - 1);
 
-#if ARCH_X86
+#if ARCH_X86 & HAVE_INLINE_ASM
     if (sse_check() && Length >= 16)
     {
         int loops = Length >> 4;
@@ -234,7 +235,7 @@ static int FromFloat16(short *Out, float *in, int Length)
     int i = 0;
     float f = (1<<15) - 1;
 
-#if ARCH_X86
+#if ARCH_X86 & HAVE_INLINE_ASM
     if (sse_check() && Length >= 16 && ((unsigned long)Out & 0xf) == 0)
     {
         int loops = Length >> 4;
@@ -285,7 +286,7 @@ static int ToFloat32(AudioFormat Format, float *Out, int *in, int Length)
     if (Format == FORMAT_S24LSB)
         shift = 0;
 
-#if ARCH_X86
+#if ARCH_X86 & HAVE_INLINE_ASM
     if (sse_check() && Length >= 16)
     {
         int loops = Length >> 4;
@@ -341,7 +342,7 @@ static int FromFloat32(AudioFormat Format, int *Out, float *in, int Length)
     if (Format == FORMAT_S24LSB)
         shift = 0;
 
-#if ARCH_X86
+#if ARCH_X86 & HAVE_INLINE_ASM
     if (sse_check() && Length >= 16 && ((unsigned long)Out & 0xf) == 0)
     {
         float o = 1, mo = -1;
@@ -406,7 +407,7 @@ static int FromFloatFLT(float *Out, float *in, int Length)
 {
     int i = 0;
 
-#if ARCH_X86
+#if ARCH_X86 & HAVE_INLINE_ASM
     if (sse_check() && Length >= 16 && ((unsigned long)in & 0xf) == 0)
     {
         int loops = Length >> 4;
@@ -457,7 +458,7 @@ static int FromFloatFLT(float *Out, float *in, int Length)
  */
 bool AudioOutputUtil::HasHardwareFPU(void)
 {
-#if ARCH_X86
+#if ARCH_X86 & HAVE_INLINE_ASM
     return sse_check();
 #else
     return false;
@@ -565,7 +566,7 @@ void AudioOutputUtil::AdjustVolume(void *buf, int Length, int Volume,
     if (g == 1.0f)
         return;
 
-#if ARCH_X86
+#if ARCH_X86 & HAVE_INLINE_ASM
     if (sse_check() && samples >= 16)
     {
         int loops = samples >> 4;
