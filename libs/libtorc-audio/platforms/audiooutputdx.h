@@ -2,7 +2,7 @@
 #define AUDIOOUTPUTDX_H
 
 // Torc
-#include "audiooutput.h"
+#include "../audiooutput.h"
 
 class AudioOutputDXPrivate;
 

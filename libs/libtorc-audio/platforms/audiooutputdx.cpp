@@ -79,7 +79,7 @@ class AudioOutputDXPrivate
 
         ResetDirectSound();
 
-        m_directSoundLib = LoadLibrary("DSOUND.DLL");
+        m_directSoundLib = LoadLibrary(TEXT("DSOUND.DLL"));
         if (m_directSoundLib == NULL)
         {
             LOG(VB_GENERAL, LOG_ERR, "Cannot open DSOUND.DLL");
@@ -289,9 +289,15 @@ class AudioOutputDXPrivate
         return true;
     }
 
-    static int CALLBACK DSEnumCallback(LPGUID lpGuid,LPCSTR lpcstrDesc, LPCSTR lpcstrModule, LPVOID lpContext)
+#ifdef UNICODE
+    static int CALLBACK DSEnumCallback(LPGUID lpGuid, LPCWSTR lpcstrDesc, LPCWSTR lpcstrModule, LPVOID lpContext)
     {
-        const QString enum_desc = lpcstrDesc;
+        const QString enum_desc = QString::fromWCharArray(lpcstrDesc);
+#else
+    static int CALLBACK DSEnumCallback(LPGUID lpGuid, LPCSTR lpcstrDesc, LPCSTR lpcstrModule, LPVOID lpContext)
+    {
+        const QString enum_desc = QString::fromLocal8Bit(lpcstrDesc);
+#endif
         AudioOutputDXPrivate *context = static_cast<AudioOutputDXPrivate*>(lpContext);
         const QString cfg_desc  = context->m_deviceName;
         const int m_deviceNum   = context->m_deviceNum;
