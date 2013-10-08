@@ -8,6 +8,8 @@ CONFIG += thread dll
 target.path = $${LIBDIR}
 INSTALLS = target
 
+QT -= gui
+
 DEPENDPATH  += ./platforms ../libtorc-av ../libtorc-audio
 INCLUDEPATH += ../libtorc-core ../libtorc-core/platforms
 INCLUDEPATH += ../.. ../
