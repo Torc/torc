@@ -3381,12 +3381,15 @@ case $target_os in
         if enabled shared; then
             # Link to the import library instead of the normal static library
             # for shared libs.
-            LD_LIB='%.lib'
+            LD_LIB='torc-%.lib'
+            LD_TORC_LIB='torc-%.lib'
             # Cannot build shared and static libraries at the same time with
             # MSVC.
             disable static
         fi
         shlibdir_default="$bindir_default"
+        LIBPREF="torc"
+        SLIBPREF="torc"
         SLIBSUF=".dll"
         SLIBNAME_WITH_VERSION='$(SLIBPREF)$(FULLNAME)-$(LIBVERSION)$(SLIBSUF)'
         SLIBNAME_WITH_MAJOR='$(SLIBPREF)$(FULLNAME)-$(LIBMAJOR)$(SLIBSUF)'
