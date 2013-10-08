@@ -2,7 +2,7 @@
 #define AUDIOOUTPUTWIN_H
 
 // Torc
-#include "audiooutput.h"
+#include "../audiooutput.h"
 
 class AudioOutputWinPrivate;
 
