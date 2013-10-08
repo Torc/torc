@@ -114,8 +114,11 @@ void TorcUSBPrivWin::Refresh(void)
                 DWORD datasize = size;
 
                 if (SetupDiGetDeviceInterfaceDetail(handle, &deviceinterfacedata, deviceinterfacedetaildata, datasize , &size, NULL))
+#ifdef UNICODE
+                    paths.append(QString::fromWCharArray(deviceinterfacedetaildata->DevicePath));
+#else
                     paths.append(deviceinterfacedetaildata->DevicePath);
-
+#endif
                 free(deviceinterfacedetaildata);
             }
         }
