@@ -3389,8 +3389,8 @@ case $target_os in
             disable static
         fi
         shlibdir_default="$bindir_default"
-        LIBPREF="torc"
-        SLIBPREF="torc"
+        LIBPREF="torc-"
+        SLIBPREF="torc-"
         SLIBSUF=".dll"
         SLIBNAME_WITH_VERSION='$(SLIBPREF)$(FULLNAME)-$(LIBVERSION)$(SLIBSUF)'
         SLIBNAME_WITH_MAJOR='$(SLIBPREF)$(FULLNAME)-$(LIBMAJOR)$(SLIBSUF)'
@@ -4694,8 +4694,8 @@ LIBTARGET=${LIBTARGET}
 SLIBNAME=${SLIBNAME}
 SLIBNAME_WITH_VERSION=${SLIBNAME_WITH_VERSION}
 SLIBNAME_WITH_MAJOR=${SLIBNAME_WITH_MAJOR}
-SLIB_CREATE_DEF_CMD=${SLIB_CREATE_DEF_CMD}
-SLIB_EXTRA_CMD=${SLIB_EXTRA_CMD}
+#SLIB_CREATE_DEF_CMD=${SLIB_CREATE_DEF_CMD}
+#SLIB_EXTRA_CMD=${SLIB_EXTRA_CMD}
 SLIB_INSTALL_NAME=${SLIB_INSTALL_NAME}
 SLIB_INSTALL_LINKS=${SLIB_INSTALL_LINKS}
 SLIB_INSTALL_EXTRA_LIB=${SLIB_INSTALL_EXTRA_LIB}
@@ -4755,7 +4755,7 @@ echo "#endif # FFMPEG_CONFIG_MAK" >> config.mak
 
 tmpfile TMPMAK .mak
 tmpfile TMPMAK2 .mak
-sed -e 's/#SHFLAGS=/SHFLAGS=/' -e 's/#EXTRALIBS=/EXTRALIBS=/' -e 's/#ifndef/ifndef/' -e 's/#endif/endif/' -e 's/#SRC_PATH:=/SRC_PATH:=/' config.mak > $TMPMAK
+sed -e 's/#SHFLAGS=/SHFLAGS=/' -e 's/#EXTRALIBS=/EXTRALIBS=/' -e 's/#ifndef/ifndef/' -e 's/#endif/endif/' -e 's/#SRC_PATH:=/SRC_PATH:=/' -e 's/#SLIB_CREATE_DEF_CMD/SLIB_CREATE_DEF_CMD/' -e 's/#SLIB_EXTRA_CMD/SLIB_EXTRA_CMD/' config.mak > $TMPMAK
 cp_if_changed $TMPMAK libs/libtorc-av/config.mak
 sed -e 's/^!/#/' config.mak > $TMPMAK2
 cp_if_changed $TMPMAK2 config.mak

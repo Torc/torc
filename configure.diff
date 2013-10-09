@@ -1,5 +1,5 @@
 --- libs/libtorc-av/configure	2013-05-01 20:34:52.277266987 +0100
-+++ configure	2013-10-07 08:29:25.522085782 +0100
++++ configure	2013-10-09 08:46:40.685379218 +0100
 @@ -1,6 +1,6 @@
  #!/bin/sh
  #
@@ -153,7 +153,15 @@
  SLIBSUF=".so"
  SLIBNAME='$(SLIBPREF)$(FULLNAME)$(SLIBSUF)'
  SLIBNAME_WITH_VERSION='$(SLIBNAME).$(LIBVERSION)'
-@@ -2241,17 +2302,17 @@
+@@ -2198,6 +2259,7 @@
+ CXX_O='-o $@'
+ LD_O='-o $@'
+ LD_LIB='-l%'
++LD_TORC_LIB='-ltorc-%'
+ LD_PATH='-L'
+ HOSTCC_C='-c'
+ HOSTCC_O='-o $@'
+@@ -2241,17 +2303,17 @@
      sed -n "s/^[^#]*$pattern.*([^,]*, *\([^,]*\)\(,.*\)*).*/\1_$thing/p" "$file"
  }
  
@@ -182,7 +190,7 @@
  
  ALL_COMPONENTS="
      $BSF_LIST
-@@ -2316,6 +2377,8 @@
+@@ -2316,6 +2378,8 @@
  for opt do
      optval="${opt#*=}"
      case "$opt" in
@@ -191,7 +199,7 @@
          --extra-ldflags=*)
              add_ldflags $optval
          ;;
-@@ -2391,6 +2454,15 @@
+@@ -2391,6 +2455,15 @@
      esac
  done
  
@@ -207,7 +215,15 @@
  disabled logging && logfile=/dev/null
  
  echo "# $0 $FFMPEG_CONFIGURATION" > $logfile
-@@ -2436,7 +2508,7 @@
+@@ -2426,6 +2499,7 @@
+     ;;
+     msvc)
+         cc_default="c99wrap cl"
++        cxx_default="c99wrap cl"
+         ld_default="c99wrap link"
+         nm_default="dumpbin -symbols"
+         ar_default="lib"
+@@ -2436,7 +2510,7 @@
      ;;
  esac
  
@@ -216,7 +232,7 @@
  enabled cross_compile || host_cc_default=$cc
  set_default host_cc
  
-@@ -2845,11 +2917,13 @@
+@@ -2845,11 +2919,13 @@
      case "$cc_type" in
          gcc|llvm_gcc|clang)
              add_cppflags --sysroot="$sysroot"
@@ -230,7 +246,7 @@
          ;;
      esac
  fi
-@@ -3144,6 +3218,7 @@
+@@ -3144,6 +3220,7 @@
  
  add_cppflags -D_ISOC99_SOURCE
  add_cxxflags -D__STDC_CONSTANT_MACROS
@@ -238,7 +254,7 @@
  check_cflags -std=c99
  check_cc -D_FILE_OFFSET_BITS=64 <<EOF && add_cppflags -D_FILE_OFFSET_BITS=64
  #include <stdlib.h>
-@@ -3151,6 +3226,12 @@
+@@ -3151,6 +3228,12 @@
  check_cc -D_LARGEFILE_SOURCE <<EOF && add_cppflags -D_LARGEFILE_SOURCE
  #include <stdlib.h>
  EOF
@@ -251,7 +267,7 @@
  
  check_host_cflags -std=c99
  check_host_cflags -Wall
-@@ -3244,6 +3325,8 @@
+@@ -3244,6 +3327,8 @@
          strip="strip -d"
          ;;
      darwin)
@@ -260,7 +276,7 @@
          gas="gas-preprocessor.pl $cc"
          enabled ppc && add_asflags -force_cpusubtype_ALL
          SHFLAGS='-dynamiclib -Wl,-single_module -Wl,-install_name,$(SHLIBDIR)/$(SLIBNAME_WITH_MAJOR),-current_version,$(LIBVERSION),-compatibility_version,$(LIBMAJOR)'
-@@ -3272,7 +3355,6 @@
+@@ -3272,7 +3357,6 @@
              LIBTARGET=arm-wince
          fi
          shlibdir_default="$bindir_default"
@@ -268,15 +284,25 @@
          SLIBSUF=".dll"
          SLIBNAME_WITH_VERSION='$(SLIBPREF)$(FULLNAME)-$(LIBVERSION)$(SLIBSUF)'
          SLIBNAME_WITH_MAJOR='$(SLIBPREF)$(FULLNAME)-$(LIBMAJOR)$(SLIBSUF)'
-@@ -3304,7 +3386,6 @@
+@@ -3298,13 +3382,15 @@
+         if enabled shared; then
+             # Link to the import library instead of the normal static library
+             # for shared libs.
+-            LD_LIB='%.lib'
++            LD_LIB='torc-%.lib'
++            LD_TORC_LIB='torc-%.lib'
+             # Cannot build shared and static libraries at the same time with
+             # MSVC.
              disable static
          fi
          shlibdir_default="$bindir_default"
 -        SLIBPREF=""
++        LIBPREF="torc-"
++        SLIBPREF="torc-"
          SLIBSUF=".dll"
          SLIBNAME_WITH_VERSION='$(SLIBPREF)$(FULLNAME)-$(LIBVERSION)$(SLIBSUF)'
          SLIBNAME_WITH_MAJOR='$(SLIBPREF)$(FULLNAME)-$(LIBMAJOR)$(SLIBSUF)'
-@@ -3523,6 +3604,8 @@
+@@ -3523,6 +3609,8 @@
      add_cppflags -DPIC
      add_cflags   -fPIC
      add_asflags  -fPIC
@@ -285,7 +311,7 @@
  }
  
  enabled pic && enable_pic
-@@ -3815,6 +3898,7 @@
+@@ -3815,6 +3903,7 @@
  check_header dlfcn.h
  check_header dxva.h
  check_header dxva2api.h -D_WIN32_WINNT=0x0600
@@ -293,7 +319,7 @@
  check_header io.h
  check_header libcrystalhd/libcrystalhd_if.h
  check_header malloc.h
-@@ -3873,7 +3957,7 @@
+@@ -3873,7 +3962,7 @@
  
  check_lib math.h sin -lm && LIBM="-lm"
  disabled crystalhd || check_lib libcrystalhd/libcrystalhd_if.h DtsCrystalHDVersion -lcrystalhd || disable crystalhd
@@ -302,7 +328,7 @@
  
  atan2f_args=2
  ldexpf_args=2
-@@ -3953,6 +4037,9 @@
+@@ -3953,6 +4042,9 @@
                          check_lib openssl/ssl.h SSL_library_init -lssl32 -leay32 ||
                          check_lib openssl/ssl.h SSL_library_init -lssl -lcrypto -lws2_32 -lgdi32 ||
                          die "ERROR: openssl not found"; }
@@ -312,7 +338,7 @@
  
  if enabled gnutls; then
      { check_lib nettle/bignum.h nettle_mpz_get_str_256 -lnettle -lhogweed -lgmp && enable nettle; } ||
-@@ -4033,7 +4120,7 @@
+@@ -4033,7 +4125,7 @@
  enabled_any sndio_indev sndio_outdev && check_lib2 sndio.h sio_open -lsndio
  
  if enabled libcdio; then
@@ -321,7 +347,7 @@
  fi
  
  enabled x11grab                                           &&
-@@ -4055,7 +4142,7 @@
+@@ -4055,7 +4147,7 @@
  # Funny iconv installations are not unusual, so check it after all flags have been set
  disabled iconv || check_func_headers iconv.h iconv || check_lib2 iconv.h iconv -liconv || disable iconv
  
@@ -330,7 +356,7 @@
  enabled coverage && add_cflags "-fprofile-arcs -ftest-coverage" && add_ldflags "-fprofile-arcs -ftest-coverage"
  test -n "$valgrind" && target_exec="$valgrind --error-exitcode=1 --malloc-fill=0x2a --track-origins=yes --leak-check=full --gen-suppressions=all --suppressions=$source_path/tests/fate-valgrind.supp"
  
-@@ -4076,6 +4163,13 @@
+@@ -4076,6 +4168,13 @@
  check_cflags -Wno-pointer-to-int-cast
  check_cflags -Wstrict-prototypes
  enabled extra_warnings && check_cflags -Winline
@@ -344,7 +370,7 @@
  
  # add some linker flags
  check_ldflags -Wl,--warn-common
-@@ -4109,11 +4203,16 @@
+@@ -4109,11 +4208,16 @@
  if [ -z "$optflags" ]; then
      if enabled small; then
          optflags=$cflags_size
@@ -361,7 +387,7 @@
  fi
  
  check_optflags(){
-@@ -4252,6 +4351,8 @@
+@@ -4252,6 +4356,8 @@
  
  merge_deps libavfilter $FILTER_LIST
  
@@ -370,7 +396,7 @@
  echo "install prefix            $prefix"
  echo "source path               $source_path"
  echo "C compiler                $cc"
-@@ -4348,6 +4449,124 @@
+@@ -4348,6 +4454,124 @@
  
  echo "License: $license"
  
@@ -495,7 +521,7 @@
  echo "Creating config.mak and config.h..."
  
  test -e Makefile || $ln_s "$source_path/Makefile" .
-@@ -4358,20 +4577,25 @@
+@@ -4358,20 +4582,25 @@
  
  cat > config.mak <<EOF
  # Automatically generated by configure - do not modify!
@@ -531,7 +557,12 @@
  CC_IDENT=$cc_ident
  ARCH=$arch
  CC=$cc
-@@ -4408,7 +4632,15 @@
+@@ -4404,11 +4633,20 @@
+ CXX_O=$CXX_O
+ LD_O=$LD_O
+ LD_LIB=$LD_LIB
++LD_TORC_LIB=$LD_TORC_LIB
+ LD_PATH=$LD_PATH
  DLLTOOL=$dlltool
  LDFLAGS=$LDFLAGS
  LDFLAGS-ffserver=$FFSERVERLDFLAGS
@@ -548,7 +579,7 @@
  YASMFLAGS=$YASMFLAGS
  BUILDSUF=$build_suffix
  PROGSSUF=$progs_suffix
-@@ -4448,7 +4680,7 @@
+@@ -4448,7 +4686,7 @@
  CFLAGS-ffplay=$sdl_cflags
  ZLIB=$($ldflags_filter -lz)
  LIB_INSTALL_EXTRA_CMD=$LIB_INSTALL_EXTRA_CMD
@@ -557,7 +588,15 @@
  COMPAT_OBJS=$compat_objs
  EXEOBJS=$exeobjs
  INSTALL=$install
-@@ -4462,14 +4694,14 @@
+@@ -4456,20 +4694,20 @@
+ SLIBNAME=${SLIBNAME}
+ SLIBNAME_WITH_VERSION=${SLIBNAME_WITH_VERSION}
+ SLIBNAME_WITH_MAJOR=${SLIBNAME_WITH_MAJOR}
+-SLIB_CREATE_DEF_CMD=${SLIB_CREATE_DEF_CMD}
+-SLIB_EXTRA_CMD=${SLIB_EXTRA_CMD}
++#SLIB_CREATE_DEF_CMD=${SLIB_CREATE_DEF_CMD}
++#SLIB_EXTRA_CMD=${SLIB_EXTRA_CMD}
+ SLIB_INSTALL_NAME=${SLIB_INSTALL_NAME}
  SLIB_INSTALL_LINKS=${SLIB_INSTALL_LINKS}
  SLIB_INSTALL_EXTRA_LIB=${SLIB_INSTALL_EXTRA_LIB}
  SLIB_INSTALL_EXTRA_SHLIB=${SLIB_INSTALL_EXTRA_SHLIB}
@@ -574,7 +613,7 @@
      eval $(awk "/#define ${name}_VERSION_M/ { print \$2 \"=\" \$3 }" "$file")
      eval ${name}_VERSION=\$${name}_VERSION_MAJOR.\$${name}_VERSION_MINOR.\$${name}_VERSION_MICRO
      eval echo "${lcname}_VERSION=\$${name}_VERSION" >> config.mak
-@@ -4513,13 +4745,21 @@
+@@ -4513,13 +4751,21 @@
                                       $ALL_COMPONENTS    \
  
  echo "#endif /* FFMPEG_CONFIG_H */" >> $TMPH
@@ -583,7 +622,7 @@
 +
 +tmpfile TMPMAK .mak
 +tmpfile TMPMAK2 .mak
-+sed -e 's/#SHFLAGS=/SHFLAGS=/' -e 's/#EXTRALIBS=/EXTRALIBS=/' -e 's/#ifndef/ifndef/' -e 's/#endif/endif/' -e 's/#SRC_PATH:=/SRC_PATH:=/' config.mak > $TMPMAK
++sed -e 's/#SHFLAGS=/SHFLAGS=/' -e 's/#EXTRALIBS=/EXTRALIBS=/' -e 's/#ifndef/ifndef/' -e 's/#endif/endif/' -e 's/#SRC_PATH:=/SRC_PATH:=/' -e 's/#SLIB_CREATE_DEF_CMD/SLIB_CREATE_DEF_CMD/' -e 's/#SLIB_EXTRA_CMD/SLIB_EXTRA_CMD/' config.mak > $TMPMAK
 +cp_if_changed $TMPMAK libs/libtorc-av/config.mak
 +sed -e 's/^!/#/' config.mak > $TMPMAK2
 +cp_if_changed $TMPMAK2 config.mak
@@ -600,7 +639,7 @@
  
  cat > $TMPH <<EOF
  /* Generated by ffconf */
-@@ -4531,101 +4771,9 @@
+@@ -4531,101 +4777,9 @@
  
  echo "#endif /* AVUTIL_AVCONFIG_H */" >> $TMPH
  
