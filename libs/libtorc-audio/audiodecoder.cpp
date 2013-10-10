@@ -980,7 +980,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
                         used = m_priv->DecodeAudioPacket(context, audiosamples, datasize, &temp);
                         decodedsize = datasize;
                         decoded = true;
-                        reselectaudiotrack |= context->channels;
+                        reselectaudiotrack |= (context->channels > 0);
                     }
 
                     if (reselectaudiotrack)
