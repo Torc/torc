@@ -85,7 +85,7 @@ win32 {
     SOURCES += platforms/audiooutputdx.cpp
     SOURCES += platforms/audiooutputwin.cpp
     INCLUDEPATH += ./include
-    LIBS    += -lwinmm
+    LIBS    += -lwinmm -luser32
 }
 
 contains(CONFIG_ALSA_OUTDEV, yes) {
@@ -129,9 +129,15 @@ SOURCES += soundtouch/SoundTouch.cpp
 SOURCES += soundtouch/TDStretch.cpp
 SOURCES += soundtouch/cpu_detect_x86.cpp
 
-contains(HAVE_SSE3, yes) {
-    SOURCES += soundtouch/sse_optimized.cpp
-    unix|mingw:QMAKE_CXXFLAGS += -msse3
+win32-msvc* {
+    contains(QMAKE_TARGET.arch, x86) {
+        SOURCES += soundtouch/sse_optimized.cpp
+    }
+} else {
+    contains(HAVE_SSE3, yes) {
+        SOURCES += soundtouch/sse_optimized.cpp
+        unix|mingw:QMAKE_CXXFLAGS += -msse3
+    }
 }
 
 # samplerate
