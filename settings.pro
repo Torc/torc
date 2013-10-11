@@ -45,6 +45,12 @@ win32 {
         DEFINES += __STDC_LIMIT_MACROS
         QMAKE_EXTENSION_SHLIB = dll
         VERSION =
+
+        DESTDIR         = $${PWD}/bin/release
+        QMAKE_LIBDIR   += $${PWD}/bin/release
+        MOC_DIR         = $${PWD}/bin/release/moc
+        LIBS           += -L$${PWD}/bin/release
+        QMAKE_CXXFLAGS *= /MD /MP
     }
 
     mingw {
