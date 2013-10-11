@@ -3,7 +3,7 @@ include ( ../../version.pro )
 include ( ../programs-libs.pro )
 
 TEMPLATE = app
-CONFIG += thread
+CONFIG += thread console
 TARGET = torc-utils
 target.path = $${PREFIX}/bin
 INSTALLS = target
