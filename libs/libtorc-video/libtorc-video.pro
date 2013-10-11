@@ -47,6 +47,11 @@ contains(CONFIG_VDA, yes) {
     LIBS           += -framework CoreVideo -framework CoreFoundation
 }
 
+win32-msvc* {
+    # your guess is as good as mine...
+    CONFIG += staticlib
+}
+
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files += videoplayer.h    videodecoder.h
 inc.files += videoframe.h     videobuffers.h
