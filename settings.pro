@@ -1,16 +1,15 @@
-include ( config.mak )
+!win32-msvc* {
+    include ( config.mak )
+}
 
 CONFIG += $$CCONFIG
+CONFIG += silent
 
 cache()
 
 PROJECTNAME = torc
 LIBVERSION  = 0.1
 VERSION     = 0.1.0
-
-!win32 {
-    CONFIG += silent
-}
 
 #check QT major version
 lessThan(QT_MAJOR_VERSION, 5) {
