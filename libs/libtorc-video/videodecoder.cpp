@@ -407,7 +407,7 @@ void VideoDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream
         return;
 
     // mark frames that may be corrupt
-    if (!m_keyframeSeen && avframe.key_frame)
+    if (!m_keyframeSeen && (avframe.key_frame || (Packet->flags & AV_PKT_FLAG_KEY)))
         m_keyframeSeen = true;
 
     VideoFrame *frame = avframe.opaque ? static_cast<VideoFrame*>(avframe.opaque) : m_videoParent->GetBuffers()->GetFrameForDecoding();
