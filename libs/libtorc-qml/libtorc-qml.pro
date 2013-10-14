@@ -10,12 +10,21 @@ INSTALLS = target
 
 QT += qml quick
 
-DEPENDPATH  +=
-INCLUDEPATH += ../libtorc-core ../libtorc-core/platforms
+DEPENDPATH  += ../libtorc-core
+DEPENDPATH  += ../libtorc-core/platforms
+DEPENDPATH  += ../libtorc-av
+DEPENDPATH  += ../libtorc-audio
+DEPENDPATH  += ../libtorc-video
 INCLUDEPATH += ../.. ../
 INCLUDEPATH += $$DEPENDPATH
 
-LIBS += -L../libtorc-core -ltorc-core-$$LIBVERSION
+LIBS += -L../libtorc-core  -ltorc-core-$$LIBVERSION
+LIBS += -L../libtorc-audio -ltorc-audio-$$LIBVERSION
+LIBS += -L../libtorc-video -ltorc-video-$$LIBVERSION
+LIBS += -L../libtorc-av/libavformat -ltorc-avformat
+LIBS += -L../libtorc-av/libavcodec  -ltorc-avcodec
+LIBS += -L../libtorc-av/libavutil   -ltorc-avutil
+LIBS += -L../libtorc-av/libswscale  -ltorc-swscale
 
 QMAKE_CLEAN += $(TARGET) $(TARGETA) $(TARGETD) $(TARGET0) $(TARGET1) $(TARGET2)
 
