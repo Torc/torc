@@ -522,6 +522,22 @@ void TorcLocalContext::CloseDatabaseConnections(void)
         m_priv->m_sqliteDB->CloseThreadConnection();
 }
 
+/*! \brief Register a non-Torc QThread for logging and database access.
+ *
+ * \note This must be called from the relevant QThread and the QThread must already be named.
+*/
+void TorcLocalContext::RegisterQThread(void)
+{
+    RegisterLoggingThread(QThread::currentThread()->objectName());
+}
+
+///\brief Deregister a non-Torc QThread from logging and close any database connections.
+void TorcLocalContext::DeregisterQThread(void)
+{
+    CloseDatabaseConnections();
+    DeregisterLoggingThread();
+}
+
 QString TorcLocalContext::GetUuid(void)
 {
     return m_priv->GetUuid();

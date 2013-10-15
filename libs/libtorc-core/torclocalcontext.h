@@ -242,6 +242,11 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     void                     SetUIObject   (QObject* UI);
     void                     CloseDatabaseConnections (void);
 
+  public slots:
+    void                     RegisterQThread          (void);
+    void                     DeregisterQThread        (void);
+
+
   private:
     TorcLocalContext(TorcCommandLine* CommandLine, Torc::ApplicationFlags ApplicationFlags);
    ~TorcLocalContext();
