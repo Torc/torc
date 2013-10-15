@@ -24,7 +24,6 @@
 
 // Torc
 #include "torclogging.h"
-#include "torcloggingimp.h"
 #include "torccoreutils.h"
 #include "torclocalcontext.h"
 #include "torcdecoder.h"

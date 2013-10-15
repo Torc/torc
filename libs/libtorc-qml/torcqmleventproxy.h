@@ -16,10 +16,16 @@ class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
     TorcQMLEventProxy(QWindow *Window);
    ~TorcQMLEventProxy();
 
-    bool event(QEvent *Event);
+    bool          event(QEvent *Event);
+
+  signals:
+    void          SceneGraphReady          (void);
+
+  public slots:
+    void          SceneGraphInitialized    (void);
 
   private:
-    QWindow *m_window;
+    QWindow      *m_window;
 };
 
 #endif // TORCQMLEVENTPROXY_H

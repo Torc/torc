@@ -17,8 +17,13 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
+// Qt
+#include <QThread>
+#include <QQuickWindow>
+
 // Torc
 #include "torclocalcontext.h"
+#include "torcloggingimp.h"
 #include "torcevent.h"
 #include "torcqmleventproxy.h"
 
@@ -27,7 +32,17 @@ TorcQMLEventProxy::TorcQMLEventProxy(QWindow *Window)
     m_window(Window)
 {
     if (m_window)
+    {
         gLocalContext->AddObserver(this);
+
+        QQuickWindow *window = dynamic_cast<QQuickWindow*>(m_window);
+        if (window && gLocalContext)
+        {
+            connect(window, SIGNAL(sceneGraphInitialized()), this,          SLOT(SceneGraphInitialized()), Qt::DirectConnection);
+            connect(this,   SIGNAL(SceneGraphReady()),       gLocalContext, SLOT(RegisterQThread()),       Qt::DirectConnection);
+            connect(window, SIGNAL(sceneGraphInvalidated()), gLocalContext, SLOT(DeregisterQThread()),     Qt::DirectConnection);
+        }
+    }
 }
 
 TorcQMLEventProxy::~TorcQMLEventProxy()
@@ -50,4 +65,11 @@ bool TorcQMLEventProxy::event(QEvent *Event)
     }
 
     return false;
+}
+
+void TorcQMLEventProxy::SceneGraphInitialized(void)
+{
+    QThread::currentThread()->setObjectName("QtRender");
+    emit SceneGraphReady();
+    LOG(VB_GENERAL, LOG_INFO, "Qt SceneGraph ready");
 }
