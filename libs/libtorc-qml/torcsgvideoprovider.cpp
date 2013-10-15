@@ -154,6 +154,12 @@ TorcSGVideoProvider::TorcSGVideoProvider(VideoColourSpace *ColourSpace)
 
         // create a default framebuffer now to avoid on screen garbage
         m_rgbVideoFrameBuffer = new QOpenGLFramebufferObject(QSize(128,128), m_rgbVideoTextureType);
+        if (m_rgbVideoFrameBuffer->isValid())
+        {
+            m_rgbVideoFrameBuffer->bind();
+            glClear(GL_COLOR_BUFFER_BIT);
+            m_rgbVideoFrameBuffer->release();
+        }
     }
 }
 
