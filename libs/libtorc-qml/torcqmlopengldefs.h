@@ -32,6 +32,11 @@
 #define GL_UNSIGNED_SHORT_8_8_MESA        0x85BA
 #endif
 
+// rectangular textures
+#ifndef GL_TEXTURE_RECTANGLE_ARB
+#define GL_TEXTURE_RECTANGLE_ARB 0x84F5
+#endif
+
 // OpenGL ES 2.0 workarounds
 #ifndef GL_RGBA
 #define GL_RGBA 0x1908
