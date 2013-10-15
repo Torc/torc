@@ -6,7 +6,7 @@
 class QFile;
 class LogItem;
 
-void RegisterLoggingThread(const QString &name);
+void RegisterLoggingThread(void);
 void DeregisterLoggingThread(void);
 
 class LoggerBase

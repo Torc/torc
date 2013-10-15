@@ -46,6 +46,7 @@ static QThread *gAdminThread = NULL;
 void TorcQThread::SetMainThread(void)
 {
     gMainThread = QThread::currentThread();
+    QThread::currentThread()->setObjectName("MainLoop");
 }
 
 void TorcQThread::SetAdminThread(void)
@@ -93,7 +94,7 @@ void TorcQThread::run(void)
 ///\brief Performs Torc specific thread initialisation.
 void TorcQThread::Initialise(void)
 {
-    RegisterLoggingThread(objectName());
+    RegisterLoggingThread();
     qsrand(QDateTime::currentDateTime().toTime_t() ^ QTime::currentTime().msec());
 
     Start();

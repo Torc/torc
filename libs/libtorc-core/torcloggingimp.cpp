@@ -614,7 +614,7 @@ bool GetQuietLogPropagation(void)
 void StartLogging(QString Logfile, int progress, int quiet,
                   QString Level, bool Propagate)
 {
-    RegisterLoggingThread("MainLoop");
+    RegisterLoggingThread();
 
     LogLevel level = GetLogLevel(Level);
 
@@ -675,7 +675,7 @@ void StopLogging(void)
     }
 }
 
-void RegisterLoggingThread(const QString &name)
+void RegisterLoggingThread(void)
 {
     if (gLogThreadFinished)
         return;
@@ -686,7 +686,7 @@ void RegisterLoggingThread(const QString &name)
                                    (LogLevel)LOG_DEBUG, kRegistering);
     if (item)
     {
-        item->threadName = strdup((char *)name.toLocal8Bit().constData());
+        item->threadName = strdup((char *)QThread::currentThread()->objectName().toLocal8Bit().constData());
         gLogQueue.enqueue(item);
     }
 }

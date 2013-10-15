@@ -528,7 +528,7 @@ void TorcLocalContext::CloseDatabaseConnections(void)
 */
 void TorcLocalContext::RegisterQThread(void)
 {
-    RegisterLoggingThread(QThread::currentThread()->objectName());
+    RegisterLoggingThread();
 }
 
 ///\brief Deregister a non-Torc QThread from logging and close any database connections.
