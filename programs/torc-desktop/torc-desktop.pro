@@ -20,7 +20,6 @@ DEPENDPATH  += ../../libs/libtorc-qml
 DEPENDPATH  += ../../libs/libtorc-av
 DEPENDPATH  += ../../libs/libtorc-audio
 DEPENDPATH  += ../../libs/libtorc-video
-DEPENDPATH  += ../../libs/libtorc-qml
 INCLUDEPATH += ../.. ../
 INCLUDEPATH += $$DEPENDPATH
 
