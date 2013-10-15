@@ -33,10 +33,15 @@ HEADERS += torcqmleventproxy.h
 HEADERS += torcqmlutils.h
 HEADERS += torcqmlframerate.h
 HEADERS += torcqmlmediaelement.h
+HEADERS += torcsgvideoprovider.h
+HEADERS += torcsgvideoplayer.h
+HEADERS += torcqmlopengldefs.h
 SOURCES += torcqmlutils.cpp
 SOURCES += torcqmleventproxy.cpp
 SOURCES += torcqmlframerate.cpp
 SOURCES += torcqmlmediaelement.cpp
+SOURCES += torcsgvideoprovider.cpp
+SOURCES += torcsgvideoplayer.cpp
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files += torcqmlutils.h

@@ -22,6 +22,7 @@
 #include "torcmediamasterfilter.h"
 #include "torcqmlutils.h"
 #include "torcqmleventproxy.h"
+#include "torcqmlmediaelement.h"
 
 int main(int argc, char *argv[])
 {
@@ -59,6 +60,7 @@ int main(int argc, char *argv[])
     qmlRegisterUncreatableType<TorcNetworkService> ("Torc.Core",  0, 1, "TorcNetworkService", "TorcNetworkService cannot be created within scripts");
     qmlRegisterUncreatableType<TorcMedia>          ("Torc.Media", 0, 1, "TorcMedia",          "TorcMedia cannot be created within scripts");
     qmlRegisterType<TorcMediaMasterFilter>         ("Torc.Media", 0, 1, "TorcMediaMasterFilter");
+    qmlRegisterType<TorcQMLMediaElement>           ("Torc.QML",   0, 1, "TorcQMLMediaElement");
     qmlRegisterType<QAbstractItemModel>();
 
     // create the engine

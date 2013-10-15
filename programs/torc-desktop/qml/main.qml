@@ -4,6 +4,7 @@ import QtQuick.Controls 1.0
 import QtQuick.Layouts 1.0
 import Torc.Core 0.1
 import Torc.Media 0.1
+import Torc.QML 0.1
 
 ApplicationWindow {
     id: window
@@ -27,16 +28,9 @@ ApplicationWindow {
                 anchors.margins: 8
                 orientation: Qt.Vertical
 
-                MediaPlayer {
-                    id: mediaPlayer
-                    source: "/Users/mark/Dropbox/Videos/bourne.mp4"
-                    autoPlay: true
-                }
-
-                VideoOutput {
-                    id: videoOutput
+                TorcQMLMediaElement {
+                    width: 600
                     height: 400
-                    source: mediaPlayer
                 }
 
                 Column {
@@ -55,7 +49,6 @@ ApplicationWindow {
 
                         onSortIndicatorOrderChanged: mediaFilter.SetSortOrder(mediaView.sortIndicatorOrder, mediaView.sortIndicatorColumn)
                         onSortIndicatorColumnChanged: mediaFilter.SetSortOrder(mediaView.sortIndicatorOrder, mediaView.sortIndicatorColumn)
-                        onDoubleClicked: mediaPlayer.source = mediaFilter.GetChildByIndex(currentRow).url
 
                         TableViewColumn {
                             width: 250
