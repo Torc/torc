@@ -113,8 +113,10 @@ class TorcVideoPlayerSettings : public TorcAdminObject
 
 } TorcVideoPlayerSettings;
 
+#define BLACKLIST QString("SetPropertyAvailable,SetPropertyUnavailable,StartRefreshTimer,StopRefreshTimer")
+
 VideoPlayer::VideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
-  : TorcPlayer(Parent, VideoPlayer::staticMetaObject, QString(""), PlaybackFlags, DecodeFlags),
+  : TorcPlayer(Parent, VideoPlayer::staticMetaObject, BLACKLIST, PlaybackFlags, DecodeFlags),
     m_audioWrapper(new AudioWrapper(this)),
     m_reset(false)
 {
