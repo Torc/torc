@@ -115,8 +115,9 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
         m_textureStale = false;
     }
 
+    bool dirtyframe = false;
     if (m_player)
-        m_player->Refresh(TorcCoreUtils::GetMicrosecondCount(), boundingRect().size(), true);
+        dirtyframe = m_player->Refresh(TorcCoreUtils::GetMicrosecondCount(), boundingRect().size(), true);
 
     if (node)
     {
@@ -128,7 +129,8 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
         }
 
         node->setRect(boundingRect());
-        node->markDirty(QSGNode::DirtyMaterial | QSGNode::DirtyGeometry);
+        if (dirtyframe)
+            node->markDirty(QSGNode::DirtyMaterial);
     }
 
     return node;
