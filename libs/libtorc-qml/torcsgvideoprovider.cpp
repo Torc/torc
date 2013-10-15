@@ -186,7 +186,7 @@ QSize TorcSGVideoProvider::textureSize(void) const
 
 bool TorcSGVideoProvider::hasAlphaChannel(void) const
 {
-    return true;
+    return false;
 }
 
 bool TorcSGVideoProvider::hasMipmaps(void) const
@@ -555,6 +555,9 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
         // enable framebuffer
         if (m_rgbVideoFrameBuffer->bind())
         {
+            // disable blending
+            glDisable(GL_BLEND);
+
             // enable shader
             m_YUV2RGBShader->bind();
 
