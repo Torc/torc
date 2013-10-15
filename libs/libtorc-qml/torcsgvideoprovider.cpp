@@ -78,10 +78,12 @@ inline uint OpenGLBufferSize(QSize Size, GLuint DataFormat, GLuint DataType)
  *
  * \note As the 'SG' suggests, use this class like any other scene graph object i.e. only from within updatePaintNode.
  *
+ * \note Rectangular textures are supported for the RGB framebuffer (they are not needed for the raw input frame) but
+ *       additional support is required at the QML level to allow their use (Qt only uses 2D textures in there shaders).
+ *
  * \todo Add proper failure mode or fallback for lack of FramebufferObject support.
  * \todo Remove duplicate texture creation code.
  * \todo Add pixel buffer object support.
- * \todo Add rectangular texture support.
  * \todo Add bicubic scaling support.
  * \todo Add proper video scaling/position.
  * \todo Refactor hardware AccelerationFactory to support new code.
@@ -99,7 +101,11 @@ TorcSGVideoProvider::TorcSGVideoProvider(VideoColourSpace *ColourSpace)
     m_rgbVideoTextureSize(QSize(0,0)),
     m_rgbVideoTextureSizeUsed(QSize(0,0)),
     m_openGLContext(NULL),
+    m_haveNPOTTextures(false),
     m_useNPOTTextures(false),
+    m_haveRectangularTextures(false),
+    m_useRectangularTextures(false),
+    m_needRectangularTextures(false),
     m_haveFramebuffers(false),
     m_outputFormat(AV_PIX_FMT_UYVY422),
     m_lastInputFormat(AV_PIX_FMT_NONE),
@@ -122,7 +128,15 @@ TorcSGVideoProvider::TorcSGVideoProvider(VideoColourSpace *ColourSpace)
         if (m_openGLContext->functions()->hasOpenGLFeature(QOpenGLFunctions::NPOTTextures))
         {
             LOG(VB_GENERAL, LOG_INFO, "NPOT textures available");
-            m_useNPOTTextures = true;
+            m_haveNPOTTextures = true;
+        }
+
+        if (m_openGLContext->hasExtension("GL_NV_texture_rectangle") ||
+            m_openGLContext->hasExtension("GL_ARB_texture_rectangle") ||
+            m_openGLContext->hasExtension("GL_EXT_texture_rectangle"))
+        {
+            LOG(VB_GENERAL, LOG_INFO, "Rectangular textures available");
+            m_haveRectangularTextures = true;
         }
 
         if (m_openGLContext->functions()->hasOpenGLFeature(QOpenGLFunctions::Framebuffers))
@@ -160,6 +174,8 @@ TorcSGVideoProvider::TorcSGVideoProvider(VideoColourSpace *ColourSpace)
             glClear(GL_COLOR_BUFFER_BIT);
             m_rgbVideoFrameBuffer->release();
         }
+
+        CustomiseTextures();
     }
 }
 
@@ -236,6 +252,41 @@ void TorcSGVideoProvider::Reset(void)
     m_YUV2RGBShaderColourLocation = -1;
 
     m_conversionBuffer.resize(0);
+
+    CustomiseTextures();
+}
+
+/*! \brief Setup specific texture requirements.
+ *
+ * This is used to setup rectangular textures if they are available and required. Otherwise
+ * 'non-power-of-two' textures are used if available (to save video memory), with a fallback to normal 2D textures.
+ *
+ * Rectangular textures use 'regular' (i.e. non-normalised) texture co-ordinates, which allows
+ * optimisations for certain shader operations (e.g. bicubic scaling).
+ */
+void TorcSGVideoProvider::CustomiseTextures(void)
+{
+    // defaults
+    m_rgbVideoTextureTypeDefault = GL_TEXTURE_2D;
+    m_useRectangularTextures     = false;
+    m_useNPOTTextures            = false;
+
+    // decide on texturing support
+    if (m_needRectangularTextures && m_haveRectangularTextures)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Using rectangular textures.");
+        m_rgbVideoTextureTypeDefault = GL_TEXTURE_RECTANGLE_ARB;
+        m_useRectangularTextures = true;
+    }
+    else if (m_haveNPOTTextures)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Using NPOT textures");
+        m_useNPOTTextures = true;
+    }
+    else
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Using plain 2D textures");
+    }
 }
 
 /*! \brief Customise shader source for Torc specific requirements
@@ -244,6 +295,8 @@ void TorcSGVideoProvider::Reset(void)
 */
 void TorcSGVideoProvider::CustomiseShader(QByteArray &Source, GLenum TextureType, QSize &Size, QSize &UsedSize)
 {
+    Q_UNUSED(TextureType);
+
     bool  rectangle    = false;
     float selectcolumn = 1.0f;
     float halfwidth    = Size.width() / 2.0f;
@@ -317,7 +370,7 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
             if (factory->NeedsCustomSurfaceFormat(Frame, &customformat))
                 break;
 
-        m_rgbVideoTextureType = customformat != 0 ? customformat : GL_TEXTURE_2D;
+        m_rgbVideoTextureType = customformat != 0 ? customformat : m_rgbVideoTextureTypeDefault;
     }
 
     m_lastInputFormat      = Frame->m_pixelFormat;
@@ -332,7 +385,7 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
         // determine the required size
         m_rgbVideoTextureSizeUsed = QSize(Frame->m_rawWidth, Frame->m_rawHeight);
 
-        if (!m_useNPOTTextures)
+        if (!m_useNPOTTextures && !m_useRectangularTextures)
         {
             int width  = 64;
             int height = 64;
@@ -464,7 +517,7 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
                               "    TEXCOORDOUT = TEXCOORDIN;\n"
                               "}\n"
                               );
-            CustomiseShader(vertex, GL_TEXTURE_2D, m_rawVideoTextureSize, m_rawVideoTextureSizeUsed);
+            CustomiseShader(vertex, m_rgbVideoTextureType, m_rawVideoTextureSize, m_rawVideoTextureSizeUsed);
 
             if (m_YUV2RGBShader->addShaderFromSourceCode(QOpenGLShader::Vertex, vertex))
             {
@@ -481,7 +534,7 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
                                     "}\n"
                                     );
 
-                CustomiseShader(fragment, GL_TEXTURE_2D, m_rawVideoTextureSize, m_rawVideoTextureSizeUsed);
+                CustomiseShader(fragment, m_rgbVideoTextureType, m_rawVideoTextureSize, m_rawVideoTextureSizeUsed);
 
                 if (m_YUV2RGBShader->addShaderFromSourceCode(QOpenGLShader::Fragment, fragment))
                 {

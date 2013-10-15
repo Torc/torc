@@ -43,6 +43,7 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
     void                bind                  (void);
 
   private:
+    void                CustomiseTextures     (void);
     void                CustomiseShader       (QByteArray &Source, GLenum TextureType, QSize &Size, QSize &UsedSize);
 
   private:
@@ -54,11 +55,16 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
 
     QOpenGLFramebufferObject *m_rgbVideoFrameBuffer;
     GLenum              m_rgbVideoTextureType;
+    GLenum              m_rgbVideoTextureTypeDefault;
     QSize               m_rgbVideoTextureSize;
     QSize               m_rgbVideoTextureSizeUsed;
 
     QOpenGLContext     *m_openGLContext;
+    bool                m_haveNPOTTextures;
     bool                m_useNPOTTextures;
+    bool                m_haveRectangularTextures;
+    bool                m_useRectangularTextures;
+    bool                m_needRectangularTextures;
     bool                m_haveFramebuffers;
     QByteArray          m_qualifiers;
     QByteArray          m_GLSLVersion;
