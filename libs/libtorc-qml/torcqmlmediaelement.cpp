@@ -29,6 +29,7 @@
 #include "torcdecoder.h"
 #include "videocolourspace.h"
 #include "torcsgvideoplayer.h"
+#include "torcsgvideoprovider.h"
 #include "torcqmlmediaelement.h"
 
 /*! \class TorcQMLMediaElement

@@ -8,9 +8,9 @@
 // Torc
 #include "torcplayer.h"
 #include "torcqmlexport.h"
-#include "torcsgvideoprovider.h"
 
 class VideoColourSpace;
+class TorcSGVideoProvider;
 
 class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem, public TorcPlayerInterface
 {
