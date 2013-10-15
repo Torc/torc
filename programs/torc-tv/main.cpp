@@ -16,6 +16,7 @@
 #include "torcqmlutils.h"
 #include "torcqmleventproxy.h"
 #include "torcqmlframerate.h"
+#include "torcqmlmediaelement.h"
 
 #include <QtQuick/QQuickItem>
 
@@ -56,6 +57,7 @@ int main(int argc, char *argv[])
     qmlRegisterUncreatableType<TorcPower>          ("Torc.Core",  0, 1, "TorcPower",          "TorcPower cannot be created within scripts");
     qmlRegisterUncreatableType<TorcMedia>          ("Torc.Media", 0, 1, "TorcMedia",          "TorcMedia cannot be created within scripts");
     qmlRegisterType<TorcMediaMasterFilter>         ("Torc.Media", 0, 1, "TorcMediaMasterFilter");
+    qmlRegisterType<TorcQMLMediaElement>           ("Torc.QML",   0, 1, "TorcQMLMediaElement");
     qmlRegisterType<QAbstractItemModel>();
 
     // create the view

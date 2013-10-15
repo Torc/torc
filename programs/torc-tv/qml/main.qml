@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import Torc.Core 0.1
 import Torc.Media 0.1
+import Torc.QML 0.1
 
 Rectangle {
     width: 1920
@@ -20,15 +21,8 @@ Rectangle {
             if (torcPower.GetCanSuspend()) torcPower.Suspend()
     }
 
-    Text {
-        id: background
+    TorcQMLMediaElement {
         anchors.fill: parent
-        font.family: fontLoader.name
-        font.pointSize: 700
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        text: "\uf011"
-        color: "#60707070"
     }
 
     Text {
@@ -85,8 +79,6 @@ Rectangle {
         preferredHighlightEnd: width / 2
         highlightRangeMode: "StrictlyEnforceRange"
         highlightMoveVelocity: 1000
-
-        onCurrentItemChanged: background.text = model.get(currentIndex).menutext
 
         delegate: Text {
             anchors.verticalCenter: parent.verticalCenter
