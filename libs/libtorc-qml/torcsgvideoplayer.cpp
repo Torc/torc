@@ -34,8 +34,7 @@
 */
 TorcSGVideoPlayer::TorcSGVideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : VideoPlayer(Parent, TorcSGVideoPlayer::staticMetaObject, QString(""), PlaybackFlags, DecodeFlags),
-    m_videoColourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED)),
-    m_videoProvider(new TorcSGVideoProvider(m_videoColourSpace)),
+    m_videoProvider(NULL),
     m_currentFrame(NULL),
     m_manualAVSyncAdjustment(0)
 {
@@ -59,6 +58,14 @@ void TorcSGVideoPlayer::Teardown(void)
 bool TorcSGVideoPlayer::HandleAction(int Action)
 {
     return VideoPlayer::HandleAction(Action);
+}
+
+void TorcSGVideoPlayer::SetVideoProvider(TorcSGVideoProvider *Provider)
+{
+    if (m_videoProvider)
+        LOG(VB_GENERAL, LOG_INFO, "Setting new video provider");
+
+    m_videoProvider = Provider;
 }
 
 TorcSGVideoProvider* TorcSGVideoPlayer::GetVideoProvider(void)

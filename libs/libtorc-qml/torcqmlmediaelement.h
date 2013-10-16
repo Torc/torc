@@ -32,7 +32,11 @@ class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem, public TorcPlayer
     void                 PlayerStateChanged       (TorcPlayer::PlayerState State);
     void                 TextureChanged           (void);
 
+  protected:
+    bool                 event                    (QEvent *Event);
+
   private:
+    VideoColourSpace    *m_videoColourSpace;
     TorcSGVideoProvider *m_videoProvider;
     QTimer              *m_refreshTimer;
     bool                 m_textureStale;

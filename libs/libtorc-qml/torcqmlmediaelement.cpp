@@ -50,6 +50,7 @@
 TorcQMLMediaElement::TorcQMLMediaElement(QQuickItem *Parent)
   : QQuickItem(Parent),
     TorcPlayerInterface(false),
+    m_videoColourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED)),
     m_videoProvider(NULL),
     m_refreshTimer(NULL),
     m_textureStale(false)
@@ -60,18 +61,37 @@ TorcQMLMediaElement::TorcQMLMediaElement(QQuickItem *Parent)
     // listen for relevant Torc events
     gLocalContext->AddObserver(this);
 
-    SetURI("/Users/mark/Dropbox/Videos/pioneer.ts");
+    // create the player
+    InitialisePlayer();
 
+    // start the update timer
     m_refreshTimer = new QTimer();
     m_refreshTimer->setTimerType(Qt::PreciseTimer);
     connect(m_refreshTimer, SIGNAL(timeout()), this, SLOT(update()));
     m_refreshTimer->start(1000 / 120);
+
+    // testing only - remove
+    SetURI("/Users/mark/Dropbox/Videos/pioneer.ts");
 }
 
 TorcQMLMediaElement::~TorcQMLMediaElement()
 {
+    // stop listening for events
     gLocalContext->RemoveObserver(this);
+
+    // stop the updat timer
     delete m_refreshTimer;
+
+    // delete the player
+    if (m_player)
+        m_player->disconnect();
+
+    delete m_player;
+    m_player = NULL;
+
+    // delete the colourspace
+    delete m_videoColourSpace;
+    m_videoColourSpace = NULL;
 }
 
 /*! \brief Refresh the media being played.
@@ -84,31 +104,33 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
 {
     QSGSimpleTextureNode *node = static_cast<QSGSimpleTextureNode*>(Node);
 
-    if (!m_player)
+    // create video texture provider
+    if (!m_videoProvider)
     {
-        InitialisePlayer();
-
         // ensure we cleanup when the QOpenGLContext is deleted
         if (!connect(window()->openglContext(), SIGNAL(aboutToBeDestroyed()), this, SLOT(Cleanup()), Qt::DirectConnection))
             LOG(VB_GENERAL, LOG_ERR, "Error connecting to QOpenGLContext");
-    }
 
-    if (!node && m_player)
-    {
-        // create video texture provider
-        TorcSGVideoPlayer* player = static_cast<TorcSGVideoPlayer*>(m_player);
+        // create the provider
+        m_videoProvider = new TorcSGVideoProvider(m_videoColourSpace);
+
+        // listen for texture changes
+        connect(dynamic_cast<QSGTextureProvider*>(m_videoProvider), SIGNAL(textureChanged()), this, SLOT(TextureChanged()), Qt::DirectConnection);
+
+        // tell the player about the provider
+        TorcSGVideoPlayer *player = dynamic_cast<TorcSGVideoPlayer*>(m_player);
         if (player)
         {
-            m_videoProvider = player->GetVideoProvider();
-            connect(dynamic_cast<QSGTextureProvider*>(m_videoProvider), SIGNAL(textureChanged()), this, SLOT(TextureChanged()), Qt::DirectConnection);
-        }
-        else
-        {
-            LOG(VB_GENERAL, LOG_INFO, "No video player");
-        }
+            player->SetVideoProvider(m_videoProvider);
 
-        m_player->PlayMedia(m_uri, false);
+            // testing - remove
+            player->PlayMedia(m_uri, false);
+        }
+    }
 
+
+    if (!node && m_videoProvider)
+    {
         // create node
         node = new QSGSimpleTextureNode();
         node->setTexture(m_videoProvider->texture());
@@ -116,11 +138,13 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
         m_textureStale = false;
     }
 
+    // NB although the player resides in the main thread, the main thread is blocked while the scenegraph is updated,
+    // so this should be thread safe.
     bool dirtyframe = false;
     if (m_player)
         dirtyframe = m_player->Refresh(TorcCoreUtils::GetMicrosecondCount(), boundingRect().size(), true);
 
-    if (node)
+    if (node && m_videoProvider)
     {
         if (m_textureStale)
         {
@@ -140,6 +164,14 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
 void TorcQMLMediaElement::TextureChanged(void)
 {
     m_textureStale = true;
+}
+
+bool TorcQMLMediaElement::event(QEvent *Event)
+{
+    if (Event->type() == TorcEvent::TorcEventType)
+        return HandleEvent(Event);
+
+    return false;
 }
 
 ///\brief Creates a TorcPlayer instance suitable for presenting video as well as audio.
@@ -170,10 +202,7 @@ void TorcQMLMediaElement::PlayerStateChanged(TorcPlayer::PlayerState State)
 */
 void TorcQMLMediaElement::Cleanup(void)
 {
-    // the player and associated objects are created in the render thread and need to be deleted there.
-    if (m_player)
-        m_player->disconnect();
-
-    delete m_player;
-    m_player = NULL;
+    // the video provider is created in the Qt render thread and must be deleted there
+    delete m_videoProvider;
+    m_videoProvider = NULL;
 }
