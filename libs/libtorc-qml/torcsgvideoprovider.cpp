@@ -70,6 +70,23 @@ inline uint OpenGLBufferSize(QSize Size, GLuint DataFormat, GLuint DataType)
 
 }
 
+inline QSize OpenGLTextureSize(const QSize &Size, bool Rectangular)
+{
+    if (Rectangular)
+        return Size;
+
+    int width  = 64;
+    int height = 64;
+
+    while (width < Size.width())
+        width *= 2;
+
+    while (height < Size.height())
+        height *= 2;
+
+    return QSize(width, height);
+}
+
 /*! \class TorcSGVideoProvider
  *  \brief A class to provide and update a video texture.
  *
@@ -82,7 +99,6 @@ inline uint OpenGLBufferSize(QSize Size, GLuint DataFormat, GLuint DataType)
  *       additional support is required at the QML level to allow their use (Qt only uses 2D textures in there shaders).
  *
  * \todo Add proper failure mode or fallback for lack of FramebufferObject support.
- * \todo Remove duplicate texture creation code.
  * \todo Add pixel buffer object support.
  * \todo Add bicubic scaling support.
  * \todo Add proper video scaling/position.
@@ -384,24 +400,7 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
     {
         // determine the required size
         m_rgbVideoTextureSizeUsed = QSize(Frame->m_rawWidth, Frame->m_rawHeight);
-
-        if (!m_useNPOTTextures && !m_useRectangularTextures)
-        {
-            int width  = 64;
-            int height = 64;
-
-            while (width < m_rgbVideoTextureSizeUsed.width())
-                width *= 2;
-
-            while (height < m_rgbVideoTextureSizeUsed.height())
-                height *= 2;
-
-            m_rgbVideoTextureSize = QSize(width, height);
-        }
-        else
-        {
-            m_rgbVideoTextureSize = m_rgbVideoTextureSizeUsed;
-        }
+        m_rgbVideoTextureSize     = OpenGLTextureSize(m_rgbVideoTextureSizeUsed, m_useNPOTTextures || m_useRectangularTextures);
 
         // create the framebuffer
         m_rgbVideoFrameBuffer = new QOpenGLFramebufferObject(m_rgbVideoTextureSize, m_rgbVideoTextureType);
@@ -455,24 +454,7 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
         if (!m_rawVideoTexture)
         {
             m_rawVideoTextureSizeUsed = QSize(Frame->m_rawWidth / 2, Frame->m_rawHeight);
-
-            if (!m_useNPOTTextures)
-            {
-                int width  = 64;
-                int height = 64;
-
-                while (width < m_rawVideoTextureSizeUsed.width())
-                    width *= 2;
-
-                while (height < m_rawVideoTextureSizeUsed.height())
-                    height *= 2;
-
-                m_rawVideoTextureSize = QSize(width, height);
-            }
-            else
-            {
-                m_rawVideoTextureSize = m_rawVideoTextureSizeUsed;
-            }
+            m_rawVideoTextureSize     = OpenGLTextureSize(m_rawVideoTextureSizeUsed, m_useNPOTTextures);
 
             glGenTextures(1, &m_rawVideoTexture);
             glBindTexture(GL_TEXTURE_2D, m_rawVideoTexture);
