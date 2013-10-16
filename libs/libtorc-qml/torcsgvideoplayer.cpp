@@ -36,7 +36,8 @@ TorcSGVideoPlayer::TorcSGVideoPlayer(QObject *Parent, int PlaybackFlags, int Dec
   : VideoPlayer(Parent, TorcSGVideoPlayer::staticMetaObject, QString(""), PlaybackFlags, DecodeFlags),
     m_videoProvider(NULL),
     m_currentFrame(NULL),
-    m_manualAVSyncAdjustment(0)
+    m_manualAVSyncAdjustment(0),
+    m_waitState(WaitStateNone)
 {
     connect(this, SIGNAL(ResetRequest()), this, SLOT(HandleReset()));
 }
@@ -147,18 +148,51 @@ bool TorcSGVideoPlayer::Refresh(quint64 TimeNow, const QSizeF &Size, bool Visibl
 
         if (hasaudiostream && validaudio && validvideo && ((videotime - audiotime) > 50))
         {
-            LOG(VB_GENERAL, LOG_INFO, QString("Video ahead of audio by %1ms - waiting").arg(videotime - audiotime));
+            if (m_waitState != WaitStateVideoAhead)
+            {
+                m_waitTimer.restart();
+                m_waitState = WaitStateVideoAhead;
+            }
+
+            if (m_waitTimer.elapsed() > 250)
+            {
+                LOG(VB_GENERAL, LOG_INFO, QString("Video ahead of audio by %1ms - waiting").arg(videotime - audiotime));
+                m_waitTimer.restart();
+            }
         }
         else if (hasaudiostream && !validaudio)
         {
-            LOG(VB_GENERAL, LOG_INFO, "Waiting for audio to start");
+            if (m_waitState != WaitStateNoAudio)
+            {
+                m_waitTimer.restart();
+                m_waitState = WaitStateNoAudio;
+            }
+
+            if (m_waitTimer.elapsed() > 250)
+            {
+                LOG(VB_GENERAL, LOG_INFO, "Waiting for audio to start");
+                m_waitTimer.restart();
+            }
         }
         else if (hasaudiostream && !validvideo)
         {
-            LOG(VB_GENERAL, LOG_INFO, "Waiting for video to start");
+            if (m_waitState != WaitStateNoVideo)
+            {
+                m_waitTimer.restart();
+                m_waitState = WaitStateNoVideo;
+            }
+
+            if (m_waitTimer.elapsed() > 250)
+            {
+                LOG(VB_GENERAL, LOG_INFO, "Waiting for video to start");
+                m_waitTimer.restart();
+            }
         }
         else
         {
+            m_waitState = WaitStateNone;
+            m_waitTimer.invalidate();
+
             // get the next available frame. If no video this will be null
             m_currentFrame = m_buffers.GetFrameForDisplaying();
 

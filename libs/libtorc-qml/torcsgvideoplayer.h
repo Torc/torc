@@ -1,6 +1,9 @@
 #ifndef TORCSGVIDEOPLAYER_H
 #define TORCSGVIDEOPLAYER_H
 
+// Qt
+#include <QElapsedTimer>
+
 // Torc
 #include "torcqmlexport.h"
 #include "videoplayer.h"
@@ -11,6 +14,14 @@ class TorcSGVideoProvider;
 class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
 {
     Q_OBJECT
+
+    enum WaitState
+    {
+        WaitStateNone       = 0,
+        WaitStateNoAudio    = 1,
+        WaitStateNoVideo    = 2,
+        WaitStateVideoAhead = 3
+    };
 
   public:
     TorcSGVideoPlayer(QObject* Parent, int PlaybackFlags, int DecodeFlags);
@@ -36,6 +47,8 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
     TorcSGVideoProvider   *m_videoProvider;
     VideoFrame            *m_currentFrame;
     int                    m_manualAVSyncAdjustment;
+    WaitState              m_waitState;
+    QElapsedTimer          m_waitTimer;
 };
 
 #endif // TORCSGVIDEOPLAYER_H
