@@ -128,6 +128,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public TorcHTTPService
     bool            event                  (QEvent* Event);
 
   protected:
+    QObject        *m_parent;
     int             m_playerFlags;
     int             m_decoderFlags;
     QString         m_uri;

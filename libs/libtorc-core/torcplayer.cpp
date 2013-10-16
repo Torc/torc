@@ -159,6 +159,7 @@ TorcPlayer::PlayerProperty TorcPlayer::StringToProperty(const QString &Property)
 
 TorcPlayer::TorcPlayer(QObject *Parent, const QMetaObject &MetaObject, const QString &Blacklist, int PlaybackFlags, int DecoderFlags)
   : TorcHTTPService(this, "player", tr("Player"), MetaObject, Blacklist),
+    m_parent(Parent),
     m_playerFlags(PlaybackFlags),
     m_decoderFlags(DecoderFlags),
     m_uri(QString()),
@@ -296,7 +297,7 @@ bool TorcPlayer::PlayMedia(const QString &URI, bool StartPaused)
         data.insert("uri", URI);
         data.insert("paused", StartPaused);
         TorcEvent *event = new TorcEvent(Torc::PlayMedia, data);
-        QCoreApplication::postEvent(parent(), event);
+        QCoreApplication::postEvent(m_parent, event);
         return true;
     }
 
