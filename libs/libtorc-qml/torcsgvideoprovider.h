@@ -28,7 +28,7 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
     TorcSGVideoProvider(VideoColourSpace *ColourSpace);
     virtual ~TorcSGVideoProvider();
 
-    bool                Refresh               (VideoFrame* Frame, const QSizeF &Size, quint64 TimeNow);
+    bool                Refresh               (VideoFrame* Frame, const QSizeF &Size, quint64 TimeNow, bool ResetVideo);
     void                Reset                 (void);
 
 

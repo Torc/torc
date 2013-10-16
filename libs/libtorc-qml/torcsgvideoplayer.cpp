@@ -34,6 +34,7 @@
 */
 TorcSGVideoPlayer::TorcSGVideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : VideoPlayer(Parent, TorcSGVideoPlayer::staticMetaObject, QString(""), PlaybackFlags, DecodeFlags),
+    m_resetVideoProvider(false),
     m_videoProvider(NULL),
     m_currentFrame(NULL),
     m_manualAVSyncAdjustment(0),
@@ -69,11 +70,6 @@ void TorcSGVideoPlayer::SetVideoProvider(TorcSGVideoProvider *Provider)
     m_videoProvider = Provider;
 }
 
-TorcSGVideoProvider* TorcSGVideoPlayer::GetVideoProvider(void)
-{
-    return m_videoProvider;
-}
-
 void TorcSGVideoPlayer::Render(quint64 TimeNow)
 {
     (void)TimeNow;
@@ -90,8 +86,8 @@ void TorcSGVideoPlayer::HandleReset(void)
         m_buffers.ReleaseFrameFromDisplaying(m_currentFrame, false);
     m_currentFrame = NULL;
 
-    if (m_videoProvider)
-        m_videoProvider->Reset();
+    // this needs to be processed in the Qt render thread
+    m_resetVideoProvider = true;
 
     VideoPlayer::Reset();
 }
@@ -229,7 +225,8 @@ bool TorcSGVideoPlayer::Refresh(quint64 TimeNow, const QSizeF &Size, bool Visibl
                 m_state == Playing || m_state == Searching ||
                 m_state == Pausing || m_state == Stopping)
             {
-                m_videoProvider->Refresh(m_currentFrame, Size, TimeNow);
+                m_videoProvider->Refresh(m_currentFrame, Size, TimeNow, m_resetVideoProvider);
+                m_resetVideoProvider = false;
             }
         }
     }

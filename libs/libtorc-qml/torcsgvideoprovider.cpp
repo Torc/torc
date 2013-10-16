@@ -356,10 +356,13 @@ void TorcSGVideoProvider::CustomiseShader(QByteArray &Source, GLenum TextureType
  *
  * \todo Refactor to remove code duplication and break up into more manageable functions.
 */
-bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64 TimeNow)
+bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64 TimeNow, bool ResetVideo)
 {
     (void)TimeNow;
     (void)Size;
+
+    if (ResetVideo)
+        Reset();
 
     if (!Frame || !m_openGLContext/* || (Frame && Frame->m_corrupt)*/)
         return false;

@@ -32,7 +32,6 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
     void                   Reset                  (void);
     bool                   HandleAction           (int Action);
     void                   SetVideoProvider       (TorcSGVideoProvider *Provider);
-    TorcSGVideoProvider*   GetVideoProvider       (void);
 
   signals:
     void                   ResetRequest           (void);
@@ -44,6 +43,7 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
     void                   HandleReset            (void);
 
   private:
+    bool                   m_resetVideoProvider;
     TorcSGVideoProvider   *m_videoProvider;
     VideoFrame            *m_currentFrame;
     int                    m_manualAVSyncAdjustment;
