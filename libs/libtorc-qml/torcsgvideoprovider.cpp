@@ -123,6 +123,8 @@ TorcSGVideoProvider::TorcSGVideoProvider(VideoColourSpace *ColourSpace)
     m_useRectangularTextures(false),
     m_needRectangularTextures(false),
     m_haveFramebuffers(false),
+    m_ignoreCorruptFrames(true),
+    m_corruptFrameCount(0),
     m_outputFormat(AV_PIX_FMT_UYVY422),
     m_lastInputFormat(AV_PIX_FMT_NONE),
     m_validVideoFrame(false),
@@ -245,6 +247,9 @@ void TorcSGVideoProvider::bind(void)
 */
 void TorcSGVideoProvider::Reset(void)
 {
+    m_ignoreCorruptFrames = true;
+    m_corruptFrameCount = 0;
+
     m_videoColourSpace->SetChanged(true);
     m_validVideoFrame = false;
     m_lastInputFormat = AV_PIX_FMT_NONE;
@@ -364,8 +369,20 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
     if (ResetVideo)
         Reset();
 
-    if (!Frame || !m_openGLContext/* || (Frame && Frame->m_corrupt)*/)
+    if (!Frame || !m_openGLContext)
         return false;
+
+    if (Frame->m_corrupt && !m_ignoreCorruptFrames)
+    {
+        m_corruptFrameCount++;
+        LOG(VB_GENERAL, LOG_INFO, "Ignoring frame flagged as corrupt");
+
+        if (m_corruptFrameCount > 20 /*an entirely arbitrary number*/)
+        {
+            m_ignoreCorruptFrames = true;
+            LOG(VB_GENERAL, LOG_WARNING, QString("%1 corrupt frames seen - disabling corrupt frame filter").arg(m_corruptFrameCount));
+        }
+    }
 
     // update the colourspace for the latest frame
     m_videoColourSpace->SetColourSpace(Frame->m_colourSpace);

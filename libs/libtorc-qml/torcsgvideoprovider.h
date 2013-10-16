@@ -69,6 +69,8 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
     QByteArray          m_qualifiers;
     QByteArray          m_GLSLVersion;
 
+    bool                m_ignoreCorruptFrames;
+    int                 m_corruptFrameCount;
     AVPixelFormat       m_outputFormat;
     AVPixelFormat       m_lastInputFormat;
     bool                m_validVideoFrame;
