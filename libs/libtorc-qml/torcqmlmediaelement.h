@@ -32,6 +32,9 @@ class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem, public TorcPlayer
     void                 PlayerStateChanged       (TorcPlayer::PlayerState State);
     void                 TextureChanged           (void);
 
+    // QQuickItem
+    void                 geometryChanged          (const QRectF &NewGeometry, const QRectF &OldGeometry);
+
   protected:
     bool                 event                    (QEvent *Event);
 
@@ -40,6 +43,7 @@ class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem, public TorcPlayer
     TorcSGVideoProvider *m_videoProvider;
     QTimer              *m_refreshTimer;
     bool                 m_textureStale;
+    bool                 m_geometryStale;
 };
 
 #endif // TORCQMLMEDIAELEMENT_H

@@ -30,6 +30,8 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
 
     bool                Refresh               (VideoFrame* Frame, const QSizeF &Size, quint64 TimeNow, bool ResetVideo);
     void                Reset                 (void);
+    QRectF              GetGeometry           (const QRectF &ParentGeometry, qreal DisplayAspectRatio);
+    bool                GetDirtyGeometry      (void);
 
 
     // QSGTextureProvider
@@ -77,6 +79,8 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
     double              m_lastFrameAspectRatio;
     int                 m_lastFrameWidth;
     int                 m_lastFrameHeight;
+    bool                m_lastFrameInverted;
+    bool                m_dirtyGeometry;
     VideoColourSpace   *m_videoColourSpace;
     SwsContext         *m_conversionContext;
     QByteArray          m_conversionBuffer;

@@ -131,6 +131,8 @@ TorcSGVideoProvider::TorcSGVideoProvider(VideoColourSpace *ColourSpace)
     m_lastFrameAspectRatio(1.77778f),
     m_lastFrameWidth(1920),
     m_lastFrameHeight(1080),
+    m_lastFrameInverted(false),
+    m_dirtyGeometry(true),
     m_videoColourSpace(ColourSpace),
     m_conversionContext(NULL)
 {
@@ -277,6 +279,48 @@ void TorcSGVideoProvider::Reset(void)
     CustomiseTextures();
 }
 
+///\brief Inform the parent that the video geometry needs updating
+bool TorcSGVideoProvider::GetDirtyGeometry(void)
+{
+    if (m_dirtyGeometry)
+    {
+        m_dirtyGeometry = false;
+        return true;
+    }
+
+    return false;
+}
+
+/*! \brief Provide the subrect of ParentGeometry in which the current video frame should be displayed.
+ *
+ * /todo Check using non-square display PAR.
+*/
+QRectF TorcSGVideoProvider::GetGeometry(const QRectF &ParentGeometry, qreal DisplayAspectRatio)
+{
+    qreal width        = m_lastFrameHeight * m_lastFrameAspectRatio;
+    qreal height       = m_lastFrameHeight;
+    qreal widthfactor  = (qreal)ParentGeometry.width() / width;
+    qreal heightfactor = (qreal)ParentGeometry.height() / height;
+
+    qreal left = 0.0f;
+    qreal top  = 0.0f;
+
+    if (widthfactor < heightfactor)
+    {
+        width *= widthfactor;
+        height *= widthfactor;
+        top = (ParentGeometry.height() - height) / 2.0f;
+    }
+    else
+    {
+        width *= heightfactor;
+        height *= heightfactor;
+        left = (ParentGeometry.width() - width) / 2.0f;
+    }
+
+    return QRectF(left , m_lastFrameInverted ? top + height : top, width, m_lastFrameInverted ? -height : height);
+}
+
 /*! \brief Setup specific texture requirements.
  *
  * This is used to setup rectangular textures if they are available and required. Otherwise
@@ -382,6 +426,10 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
             m_ignoreCorruptFrames = true;
             LOG(VB_GENERAL, LOG_WARNING, QString("%1 corrupt frames seen - disabling corrupt frame filter").arg(m_corruptFrameCount));
         }
+        else
+        {
+            return false;
+        }
     }
 
     // update the colourspace for the latest frame
@@ -389,9 +437,17 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
     m_videoColourSpace->SetColourRange(Frame->m_colourRange);
 
     // check for format changes
-    if (m_lastFrameWidth  != Frame->m_rawWidth  ||
-        m_lastFrameHeight != Frame->m_rawHeight ||
-        m_lastInputFormat != Frame->m_pixelFormat)
+    bool framesizechanged  = m_lastFrameWidth != Frame->m_rawWidth  || m_lastFrameHeight != Frame->m_rawHeight;
+
+    // notify parent of any geometry changes
+    bool inverted = (Frame->m_invertForSource + Frame->m_invertForDisplay) & 1;
+    if (framesizechanged || (m_lastFrameAspectRatio != Frame->m_frameAspectRatio) || (m_lastFrameInverted != inverted))
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Video frame geometry changed");
+        m_dirtyGeometry = true;
+    }
+
+    if (framesizechanged || m_lastInputFormat != Frame->m_pixelFormat)
     {
         LOG(VB_GENERAL, LOG_INFO, QString("Video frame format changed from '%1'@%2x%3 to '%4'@%5x%6")
             .arg(av_get_pix_fmt_name(m_lastInputFormat)).arg(m_lastFrameWidth).arg(m_lastFrameHeight)
@@ -409,10 +465,12 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
         m_rgbVideoTextureType = customformat != 0 ? customformat : m_rgbVideoTextureTypeDefault;
     }
 
+    // update frame display attributes
     m_lastInputFormat      = Frame->m_pixelFormat;
     m_lastFrameWidth       = Frame->m_rawWidth;
     m_lastFrameHeight      = Frame->m_rawHeight;
     m_lastFrameAspectRatio = Frame->m_frameAspectRatio;
+    m_lastFrameInverted    = inverted;
 
     // We always create an rgb framebuffer for the video texture, even though some hardware decoding
     // methods only need the actual texture and not the framebuffer 'wrapper'.

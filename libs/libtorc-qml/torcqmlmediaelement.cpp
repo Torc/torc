@@ -53,7 +53,8 @@ TorcQMLMediaElement::TorcQMLMediaElement(QQuickItem *Parent)
     m_videoColourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED)),
     m_videoProvider(NULL),
     m_refreshTimer(NULL),
-    m_textureStale(false)
+    m_textureStale(false),
+    m_geometryStale(true)
 {
     // inform scenegraph that we need to be drawn
     setFlag(ItemHasContents, true);
@@ -135,12 +136,14 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
         node = new QSGSimpleTextureNode();
         node->setTexture(m_videoProvider->texture());
 
-        m_textureStale = false;
+        m_textureStale  = false;
+        m_geometryStale = true;
     }
 
     // NB although the player resides in the main thread, the main thread is blocked while the scenegraph is updated,
     // so this should be thread safe.
     bool dirtyframe = false;
+
     if (m_player)
         dirtyframe = m_player->Refresh(TorcCoreUtils::GetMicrosecondCount(), boundingRect().size(), true);
 
@@ -153,7 +156,13 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
             m_textureStale = false;
         }
 
-        node->setRect(boundingRect());
+        if (m_geometryStale || m_videoProvider->GetDirtyGeometry())
+        {
+            node->setRect(m_videoProvider->GetGeometry(boundingRect(), 1.0f));
+            m_geometryStale = false;
+            node->markDirty(QSGNode::DirtyGeometry);
+        }
+
         if (dirtyframe)
             node->markDirty(QSGNode::DirtyMaterial);
     }
@@ -164,6 +173,14 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
 void TorcQMLMediaElement::TextureChanged(void)
 {
     m_textureStale = true;
+}
+
+void TorcQMLMediaElement::geometryChanged(const QRectF &NewGeometry, const QRectF &OldGeometry)
+{
+    if (NewGeometry != OldGeometry)
+        m_geometryStale = true;
+
+    QQuickItem::geometryChanged(NewGeometry, OldGeometry);
 }
 
 bool TorcQMLMediaElement::event(QEvent *Event)
