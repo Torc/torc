@@ -203,6 +203,10 @@ void TorcQMLMediaElement::PlayerStateChanged(TorcPlayer::PlayerState State)
 void TorcQMLMediaElement::Cleanup(void)
 {
     // the video provider is created in the Qt render thread and must be deleted there
+    TorcSGVideoPlayer *player = dynamic_cast<TorcSGVideoPlayer*>(m_player);
+    if (player)
+        player->SetVideoProvider(NULL);
+
     delete m_videoProvider;
     m_videoProvider = NULL;
 }
