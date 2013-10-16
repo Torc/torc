@@ -33,7 +33,7 @@
  * \todo Review TorcPlayer interface for changes post move to QML (e.g. Render)
 */
 TorcSGVideoPlayer::TorcSGVideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
-  : VideoPlayer(Parent, PlaybackFlags, DecodeFlags),
+  : VideoPlayer(Parent, TorcSGVideoPlayer::staticMetaObject, QString(""), PlaybackFlags, DecodeFlags),
     m_videoColourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED)),
     m_videoProvider(new TorcSGVideoProvider(m_videoColourSpace)),
     m_currentFrame(NULL),

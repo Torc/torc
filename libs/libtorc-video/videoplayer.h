@@ -21,6 +21,7 @@ class VideoPlayer : public TorcPlayer
     static TorcSetting* gAllowOtherAcceleration;
 
   public:
+    VideoPlayer(QObject* Parent, const QMetaObject &MetaObject, const QString &Blacklist, int PlaybackFlags, int DecodeFlags);
     VideoPlayer(QObject* Parent, int PlaybackFlags, int DecodeFlags);
     virtual ~VideoPlayer();
 
