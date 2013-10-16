@@ -67,6 +67,9 @@ double VideoDecoder::GetFrameAspectRatio(AVStream *Stream, AVFrame &Frame)
 
         if ((result <= 0.1f || result > 10.0f) && Stream->codec->height)
             result = (double)Stream->codec->width / (double)Stream->codec->height;
+
+        if (SANE_ASPECT_RATIO(result))
+            return result;
     }
 
     if (Frame.height > 0)
