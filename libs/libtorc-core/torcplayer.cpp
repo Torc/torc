@@ -158,7 +158,7 @@ TorcPlayer::PlayerProperty TorcPlayer::StringToProperty(const QString &Property)
 }
 
 TorcPlayer::TorcPlayer(QObject *Parent, const QMetaObject &MetaObject, const QString &Blacklist, int PlaybackFlags, int DecoderFlags)
-  : TorcHTTPService(Parent, "player", tr("Player"), MetaObject, Blacklist),
+  : TorcHTTPService(this, "player", tr("Player"), MetaObject, Blacklist),
     m_playerFlags(PlaybackFlags),
     m_decoderFlags(DecoderFlags),
     m_uri(QString()),
