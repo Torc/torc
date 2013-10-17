@@ -82,7 +82,7 @@ class VDAAcceleration : public AccelerationFactory
         }
     }
 
-    bool InitialiseBuffer(AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame)
+    bool InitialiseBuffer(AVCodecContext*, AVFrame*, VideoFrame*)
     {
         return false;
     }
@@ -140,46 +140,34 @@ class VDAAcceleration : public AccelerationFactory
         }
     }
 
-    bool UpdateFrame(VideoFrame *Frame, VideoColourSpace *ColourSpace, void *Surface)
+    bool UpdateFrame(VideoFrame*F, VideoColourSpace*, void*, void*)
     {
-        (void)Frame;
-        (void)ColourSpace;
-        (void)Surface;
         return false;
     }
 
-    bool ReleaseFrame(VideoFrame *Frame)
+    bool ReleaseFrame(VideoFrame*)
     {
-        (void)Frame;
         return false;
     }
 
-    bool MapFrame(VideoFrame *Frame, void *Surface)
+    bool MapFrame(VideoFrame*, void*, void*)
     {
-        (void)Frame;
-        (void)Surface;
         return false;
     }
 
-    bool UnmapFrame(VideoFrame *Frame, void *Surface)
+    bool UnmapFrame(VideoFrame*, void*, void*)
     {
-        (void)Frame;
-        (void)Surface;
         return false;
     }
 
-    bool NeedsCustomSurfaceFormat(VideoFrame *Frame, void *Format)
+    bool NeedsCustomSurfaceFormat(VideoFrame*, void*)
     {
-        (void)Frame;
-        (void)Format;
         return false;
     }
 
-    bool SupportedProperties(VideoFrame *Frame, QSet<TorcPlayer::PlayerProperty> &Properties)
+    bool SupportedProperties(VideoFrame*, QSet<TorcPlayer::PlayerProperty>&)
     {
         // support the defaults (VDA frame is returned as a software frame)
-        (void)Frame;
-        (void)Properties;
         return false;
     }
 
