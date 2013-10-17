@@ -111,11 +111,20 @@ class VDAAcceleration : public AccelerationFactory
 
                 AVPicture in;
                 memset(&in, 0, sizeof(AVPicture));
-                uint planes = std::max((uint)1, (uint)CVPixelBufferGetPlaneCount(buffer));
-                for (uint i = 0; i < planes; ++i)
+
+                uint planes = CVPixelBufferGetPlaneCount(buffer);
+                if (planes)
                 {
-                    in.data[i]     = (uint8_t*)CVPixelBufferGetBaseAddressOfPlane(buffer, i);
-                    in.linesize[i] = CVPixelBufferGetBytesPerRowOfPlane(buffer, i);
+                    for (uint i = 0; i < planes; ++i)
+                    {
+                        in.data[i]     = (uint8_t*)CVPixelBufferGetBaseAddressOfPlane(buffer, i);
+                        in.linesize[i] = CVPixelBufferGetBytesPerRowOfPlane(buffer, i);
+                    }
+                }
+                else
+                {
+                    in.data[0]     = (uint8_t*)CVPixelBufferGetBaseAddress(buffer);
+                    in.linesize[0] = CVPixelBufferGetBytesPerRow(buffer);
                 }
 
                 AVPicture out;
