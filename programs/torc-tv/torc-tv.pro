@@ -31,6 +31,8 @@ LIBS += -L../../libs/libtorc-av/libavdevice   -ltorc-avdevice
 LIBS += -L../../libs/libtorc-av/libavresample -ltorc-avresample
 LIBS += -L../../libs/libtorc-av/libavfilter   -ltorc-avfilter
 LIBS += -L../../libs/libtorc-av/libswscale    -ltorc-swscale
+LIBS += -L../../libs/libtorc-av/libswresample -ltorc-swresample
+LIBS += -L../../libs/libtorc-av/libpostproc   -ltorc-postproc
 
 SOURCES += main.cpp
 
