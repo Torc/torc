@@ -2,11 +2,31 @@
 #define TORCQMLEVENTPROXY_H
 
 // Qt
+#include <QMutex>
 #include <QWindow>
 #include <QObject>
 
 // Torc
 #include "torcqmlexport.h"
+
+#define QTRENDER_THREAD QString("QtRender")
+
+typedef void (*RenderCallback) (void*, int);
+
+class TORC_QML_PUBLIC TorcRenderCallback
+{
+  public:
+    TorcRenderCallback(RenderCallback Function, void *Object, int Parameter)
+      : m_function(Function),
+        m_object(Object),
+        m_parameter(Parameter)
+    {
+    }
+
+    RenderCallback m_function;
+    void          *m_object;
+    int            m_parameter;
+};
 
 class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
 {
@@ -16,16 +36,20 @@ class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
     TorcQMLEventProxy(QWindow *Window);
    ~TorcQMLEventProxy();
 
-    bool          event(QEvent *Event);
+    void                      RegisterCallback         (RenderCallback Function, void* Object, int Parameter);
+    void                      ProcessCallbacks         (void);
+    bool                      event                    (QEvent *Event);
 
   signals:
-    void          SceneGraphReady          (void);
+    void                      SceneGraphReady          (void);
 
   public slots:
-    void          SceneGraphInitialized    (void);
+    void                      SceneGraphInitialized    (void);
 
   private:
-    QWindow      *m_window;
+    QWindow                  *m_window;
+    QMutex                   *m_callbackLock;
+    QList<TorcRenderCallback> m_callbacks;
 };
 
 #endif // TORCQMLEVENTPROXY_H

@@ -36,12 +36,41 @@ HEADERS += torcqmlmediaelement.h
 HEADERS += torcsgvideoprovider.h
 HEADERS += torcsgvideoplayer.h
 HEADERS += torcqmlopengldefs.h
+HEADERS += torcedid.h
 SOURCES += torcqmlutils.cpp
 SOURCES += torcqmleventproxy.cpp
 SOURCES += torcqmlframerate.cpp
 SOURCES += torcqmlmediaelement.cpp
 SOURCES += torcsgvideoprovider.cpp
 SOURCES += torcsgvideoplayer.cpp
+SOURCES += torcedid.cpp
+
+contains(CONFIG_X11BASE, yes) {
+    contains(CONFIG_VDPAU, yes) {
+        DEPENDPATH += ./platforms
+        HEADERS += platforms/videovdpau.h
+        HEADERS += platforms/nvidiavdpau.h
+        SOURCES += platforms/videovdpau.cpp
+        SOURCES += platforms/nvidiavdpau.cpp
+        LIBS    += -lvdpau
+    }
+
+    contains(CONFIG_VAAPI, yes) {
+        DEPENDPATH += ./platforms
+        HEADERS += platforms/videovaapi.h
+        SOURCES += platforms/videovaapi.cpp
+        LIBS    += -lva
+    }
+
+    DEPENDPATH += ./platforms/nvctrl
+    HEADERS    += platforms/nvctrl/include/NVCtrl.h
+    HEADERS    += platforms/nvctrl/include/NVCtrlLib.h
+    HEADERS    += platforms/nvctrl/include/nv_control.h
+    HEADERS    += platforms/nvctrl/torcnvcontrol.h
+    SOURCES    += platforms/nvctrl/include/NVCtrl.c
+    SOURCES    += platforms/nvctrl/torcnvcontrol.cpp
+    LIBS       += -lXxf86vm
+}
 
 inc.path   = $${PREFIX}/include/$${PROJECTNAME}/
 inc.files += torcqmlutils.h

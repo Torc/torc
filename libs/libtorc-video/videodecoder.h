@@ -80,9 +80,9 @@ class AccelerationFactory
     virtual bool                InitialiseBuffer        (AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame) = 0;
     virtual void                DeinitialiseBuffer      (AVCodecContext *Context, AVFrame *Avframe, VideoFrame *Frame) = 0;
     virtual void                ConvertBuffer           (AVFrame &Avframe, VideoFrame *Frame, SwsContext *&ConversionContext) = 0;
-    virtual bool                UpdateFrame             (VideoFrame *Frame, VideoColourSpace *ColourSpace, void *Surface) = 0;
-    virtual bool                MapFrame                (VideoFrame *Frame, void *Surface) = 0;
-    virtual bool                UnmapFrame              (VideoFrame *Frame, void *Surface) = 0;
+    virtual bool                UpdateFrame             (VideoFrame *Frame, VideoColourSpace *ColourSpace, void *Surface, void* SurfaceType) = 0;
+    virtual bool                MapFrame                (VideoFrame *Frame, void *Surface, void *SurfaceType) = 0;
+    virtual bool                UnmapFrame              (VideoFrame *Frame, void *Surface, void *SurfaceType) = 0;
     virtual bool                ReleaseFrame            (VideoFrame *Frame) = 0;
     virtual bool                NeedsCustomSurfaceFormat(VideoFrame *Frame, void* Format) = 0;
     virtual bool                SupportedProperties     (VideoFrame *Frame, QSet<TorcPlayer::PlayerProperty> &Properties) = 0;

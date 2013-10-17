@@ -29,8 +29,11 @@
 
 TorcQMLEventProxy::TorcQMLEventProxy(QWindow *Window)
   : QObject(),
-    m_window(Window)
+    m_window(Window),
+    m_callbackLock(new QMutex())
 {
+    gLocalContext->SetUIObject(this);
+
     if (m_window)
     {
         gLocalContext->AddObserver(this);
@@ -49,6 +52,31 @@ TorcQMLEventProxy::~TorcQMLEventProxy()
 {
     if (m_window)
         gLocalContext->RemoveObserver(this);
+
+    gLocalContext->SetUIObject(NULL);
+}
+
+void TorcQMLEventProxy::RegisterCallback(RenderCallback Function, void *Object, int Parameter)
+{
+    QMutexLocker locker(m_callbackLock);
+    m_callbacks.push_back(TorcRenderCallback(Function, Object, Parameter));
+}
+
+void TorcQMLEventProxy::ProcessCallbacks(void)
+{
+    m_callbackLock->lock();
+    if (m_callbacks.isEmpty())
+    {
+        m_callbackLock->unlock();
+        return;
+    }
+
+    QList<TorcRenderCallback> callbacks = m_callbacks;
+    m_callbacks.clear();
+    m_callbackLock->unlock();
+
+    for (int i = 0; i < callbacks.size(); ++i)
+        (callbacks[i].m_function)(callbacks[i].m_object, callbacks[i].m_parameter);
 }
 
 bool TorcQMLEventProxy::event(QEvent *Event)
@@ -69,7 +97,7 @@ bool TorcQMLEventProxy::event(QEvent *Event)
 
 void TorcQMLEventProxy::SceneGraphInitialized(void)
 {
-    QThread::currentThread()->setObjectName("QtRender");
+    QThread::currentThread()->setObjectName(QTRENDER_THREAD);
     emit SceneGraphReady();
     LOG(VB_GENERAL, LOG_INFO, "Qt SceneGraph ready");
 }

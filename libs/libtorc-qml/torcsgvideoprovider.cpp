@@ -513,18 +513,16 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
     // actually update the frame
     if (IsHardwarePixelFormat(Frame->m_pixelFormat))
     {
-        // AccelerationFactory needs refactoring to remove the GLTexture dependency
-        /*
         AccelerationFactory* factory = AccelerationFactory::GetAccelerationFactory();
         for ( ; factory; factory = factory->NextFactory())
         {
-            if (factory->UpdateFrame(Frame, m_videoColourSpace, (void*)m_rgbVideoTexture))
+            GLuint texture = m_rgbVideoFrameBuffer->texture();
+            if (factory->UpdateFrame(Frame, m_videoColourSpace, (void*)&texture, (void*)&m_rgbVideoTextureType))
             {
                 m_validVideoFrame = true;
                 break;
             }
         }
-        */
     }
     else
     {

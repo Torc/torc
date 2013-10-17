@@ -30,6 +30,7 @@
 #include "videocolourspace.h"
 #include "torcsgvideoplayer.h"
 #include "torcsgvideoprovider.h"
+#include "torcqmleventproxy.h"
 #include "torcqmlmediaelement.h"
 
 /*! \class TorcQMLMediaElement
@@ -103,6 +104,11 @@ TorcQMLMediaElement::~TorcQMLMediaElement()
 */
 QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData*)
 {
+    // handle callback requests that need to processed while the OpenGLContext is current
+    TorcQMLEventProxy *proxy = dynamic_cast<TorcQMLEventProxy*>(gLocalContext->GetUIObject());
+    if (proxy)
+        proxy->ProcessCallbacks();
+
     QSGSimpleTextureNode *node = static_cast<QSGSimpleTextureNode*>(Node);
 
     // create video texture provider
