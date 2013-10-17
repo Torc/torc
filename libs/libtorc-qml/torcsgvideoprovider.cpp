@@ -112,6 +112,8 @@ TorcSGVideoProvider::TorcSGVideoProvider(VideoColourSpace *ColourSpace)
     m_rawVideoTextureSizeUsed(QSize(0,0)),
     m_YUV2RGBShader(NULL),
     m_YUV2RGBShaderColourLocation(-1),
+    m_YUV2RGBShaderTextureLocation(-1),
+    m_YUV2RGBShaderVertexLocation(-1),
     m_rgbVideoFrameBuffer(NULL),
     m_rgbVideoTextureType(GL_TEXTURE_2D),
     m_rgbVideoTextureSize(QSize(0,0)),
@@ -271,6 +273,8 @@ void TorcSGVideoProvider::Reset(void)
         delete m_YUV2RGBShader;
     m_YUV2RGBShader = NULL;
     m_YUV2RGBShaderColourLocation = -1;
+    m_YUV2RGBShaderTextureLocation = -1;
+    m_YUV2RGBShaderVertexLocation = -1;
 
     m_conversionBuffer.resize(0);
 
@@ -596,7 +600,9 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
                         LOG(VB_GENERAL, LOG_INFO, "Created YUV->RGB shader");
                         m_YUV2RGBShader->bind();
 
-                        m_YUV2RGBShaderColourLocation = m_YUV2RGBShader->uniformLocation("COLOUR_UNIFORM");
+                        m_YUV2RGBShaderColourLocation  = m_YUV2RGBShader->uniformLocation("COLOUR_UNIFORM");
+                        m_YUV2RGBShaderTextureLocation = m_YUV2RGBShader->attributeLocation("TEXCOORDIN");
+                        m_YUV2RGBShaderVertexLocation  = m_YUV2RGBShader->attributeLocation("VERTEX");
 
                         // set the orthographix matrix. This only needs to be done once.
                         QRect ortho(0, 0, m_rgbVideoTextureSizeUsed.width(), m_rgbVideoTextureSizeUsed.height());
@@ -674,24 +680,24 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
             m_YUV2RGBShader->bind();
 
             // set the vertices
-            m_YUV2RGBShader->enableAttributeArray("VERTEX");
+            m_YUV2RGBShader->enableAttributeArray(m_YUV2RGBShaderVertexLocation);
             GLfloat width  = m_rgbVideoTextureSizeUsed.width();
             GLfloat height = m_rgbVideoTextureSizeUsed.height();
             GLfloat const vertices[] = { 0.0f,  height, 0.0f,
                                          0.0f,  0.0f,   0.0f,
                                          width, height, 0.0f,
                                          width, 0.0f,   0.0f };
-            m_YUV2RGBShader->setAttributeArray("VERTEX", vertices, 3);
+            m_YUV2RGBShader->setAttributeArray(m_YUV2RGBShaderVertexLocation, vertices, 3);
 
             // set the texture coordindates
-            m_YUV2RGBShader->enableAttributeArray("TEXCOORDIN");
+            m_YUV2RGBShader->enableAttributeArray(m_YUV2RGBShaderTextureLocation);
             width  = m_rawVideoTextureSizeUsed.width() / m_rawVideoTextureSize.width();
             height = m_rawVideoTextureSizeUsed.height() / m_rawVideoTextureSize.height();
             GLfloat const texcoord[] = { 0.0f,  0.0f,
                                          0.0f,  height,
                                          width, 0.0f,
                                          width, height };
-            m_YUV2RGBShader->setAttributeArray("TEXCOORDIN", texcoord, 2);
+            m_YUV2RGBShader->setAttributeArray(m_YUV2RGBShaderTextureLocation, texcoord, 2);
 
             // set viewport
             glViewport(0, 0, m_rgbVideoTextureSizeUsed.width(), m_rgbVideoTextureSizeUsed.height());

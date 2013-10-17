@@ -54,6 +54,8 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
     QSize               m_rawVideoTextureSizeUsed;
     QOpenGLShaderProgram *m_YUV2RGBShader;
     int                 m_YUV2RGBShaderColourLocation;
+    int                 m_YUV2RGBShaderTextureLocation;
+    int                 m_YUV2RGBShaderVertexLocation;
 
     QOpenGLFramebufferObject *m_rgbVideoFrameBuffer;
     GLenum              m_rgbVideoTextureType;
