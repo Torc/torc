@@ -19,15 +19,17 @@ DEPENDPATH  += ../../libs/libtorc-video
 INCLUDEPATH += ../.. ../
 INCLUDEPATH += $$DEPENDPATH
 
-LIBS += -L../../libs/libtorc-core           -ltorc-core-$$LIBVERSION
-LIBS += -L../../libs/libtorc-audio          -ltorc-audio-$$LIBVERSION
-LIBS += -L../../libs/libtorc-video          -ltorc-video-$$LIBVERSION
-LIBS += -L../../libs/libtorc-media          -ltorc-media-$$LIBVERSION
-LIBS += -L../../libs/libtorc-qml            -ltorc-qml-$$LIBVERSION
-LIBS += -L../../libs/libtorc-av/libavformat -ltorc-avformat
-LIBS += -L../../libs/libtorc-av/libavcodec  -ltorc-avcodec
-LIBS += -L../../libs/libtorc-av/libavutil   -ltorc-avutil
-LIBS += -L../../libs/libtorc-av/libswscale  -ltorc-swscale
+LIBS += -L../../libs/libtorc-core             -ltorc-core-$$LIBVERSION
+LIBS += -L../../libs/libtorc-audio            -ltorc-audio-$$LIBVERSION
+LIBS += -L../../libs/libtorc-video            -ltorc-video-$$LIBVERSION
+LIBS += -L../../libs/libtorc-media            -ltorc-media-$$LIBVERSION
+LIBS += -L../../libs/libtorc-qml              -ltorc-qml-$$LIBVERSION
+LIBS += -L../../libs/libtorc-av/libavformat   -ltorc-avformat
+LIBS += -L../../libs/libtorc-av/libavcodec    -ltorc-avcodec
+LIBS += -L../../libs/libtorc-av/libavutil     -ltorc-avutil
+LIBS += -L../../libs/libtorc-av/libavdevice   -ltorc-avdevice
+LIBS += -L../../libs/libtorc-av/libavresample -ltorc-avresample
+LIBS += -L../../libs/libtorc-av/libswscale    -ltorc-swscale
 
 SOURCES += main.cpp
 
