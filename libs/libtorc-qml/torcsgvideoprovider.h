@@ -75,7 +75,6 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
     int                 m_corruptFrameCount;
     AVPixelFormat       m_outputFormat;
     AVPixelFormat       m_lastInputFormat;
-    bool                m_validVideoFrame;
     double              m_lastFrameAspectRatio;
     int                 m_lastFrameWidth;
     int                 m_lastFrameHeight;

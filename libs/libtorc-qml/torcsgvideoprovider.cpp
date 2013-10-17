@@ -127,7 +127,6 @@ TorcSGVideoProvider::TorcSGVideoProvider(VideoColourSpace *ColourSpace)
     m_corruptFrameCount(0),
     m_outputFormat(AV_PIX_FMT_UYVY422),
     m_lastInputFormat(AV_PIX_FMT_NONE),
-    m_validVideoFrame(false),
     m_lastFrameAspectRatio(1.77778f),
     m_lastFrameWidth(1920),
     m_lastFrameHeight(1080),
@@ -253,7 +252,6 @@ void TorcSGVideoProvider::Reset(void)
     m_corruptFrameCount = 0;
 
     m_videoColourSpace->SetChanged(true);
-    m_validVideoFrame = false;
     m_lastInputFormat = AV_PIX_FMT_NONE;
 
     if (m_rgbVideoFrameBuffer)
@@ -518,10 +516,7 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
         {
             GLuint texture = m_rgbVideoFrameBuffer->texture();
             if (factory->UpdateFrame(Frame, m_videoColourSpace, (void*)&texture, (void*)&m_rgbVideoTextureType))
-            {
-                m_validVideoFrame = true;
                 break;
-            }
         }
     }
     else
