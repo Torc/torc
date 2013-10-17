@@ -21,6 +21,7 @@
 */
 
 // Qt
+#include <QThread>
 #include <QStringList>
 
 // Std
@@ -30,6 +31,7 @@
 // Torc
 #include "torcconfig.h"
 #include "torccompat.h"
+#include "torclogging.h"
 #include "torccoreutils.h"
 
 /// \brief Parse a QDataTime from the given QString
@@ -95,4 +97,29 @@ QString TorcCoreUtils::EnumsToScript(const QMetaObject &MetaObject)
     }
 
     return result;
+}
+
+/*! \brief A handler routine for Qt messages.
+ *
+ * This ensures Qt warnings are included in non-console logs.
+ *
+ * \todo Refactor logging to allow using Context directly in the log, hence removing line/function duplication.
+*/
+void TorcCoreUtils::QtMessage(QtMsgType Type, const QMessageLogContext &Context, const QString &Message)
+{
+    QString message = QString("(%1:%2) %3").arg(Context.file).arg(Context.line).arg(Message);
+
+    switch (Type)
+    {
+        case QtFatalMsg:
+            LOG(VB_GENERAL, LOG_CRIT, message);
+            QThread::msleep(100);
+            abort();
+        case QtDebugMsg:
+            LOG(VB_GENERAL, LOG_INFO, message);
+            break;
+        default:
+            LOG(VB_GENERAL, LOG_ERR, message);
+            break;
+    }
 }

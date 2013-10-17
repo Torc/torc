@@ -14,6 +14,7 @@ class TORC_CORE_PUBLIC TorcCoreUtils
     static QDateTime   DateTimeFromString    (const QString &String);
     static quint64     GetMicrosecondCount   (void);
     static QString     EnumsToScript         (const QMetaObject &MetaObject);
+    static void        QtMessage             (QtMsgType Type, const QMessageLogContext &Context, const QString &Message);
 };
 
 #endif // TORCCOREUTILS_H

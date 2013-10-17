@@ -45,6 +45,7 @@
 #include "torcstoragedevice.h"
 #include "torclocalcontext.h"
 #include "torcdirectories.h"
+#include "torccoreutils.h"
 #include "version.h"
 
 TorcLocalContext *gLocalContext = NULL;
@@ -379,8 +380,12 @@ TorcLocalContext::TorcLocalContext(TorcCommandLine* CommandLine, Torc::Applicati
 {
     // Initialise TorcQThread FIRST
     TorcQThread::SetMainThread();
+
     // NB this will be changed if a separate admin thread is started
     TorcQThread::SetAdminThread();
+
+    // install our message handler
+    qInstallMessageHandler(&TorcCoreUtils::QtMessage);
 
     setObjectName("LocalContext");
 

@@ -424,6 +424,7 @@ bool FileLogger::Logmsg(LogItem *Item)
 
     Item->refCount.ref();
 
+    char line[MAX_STRING_LENGTH];
     char timestamp[TIMESTAMP_MAX];
     char usPart[9];
     strftime(timestamp, TIMESTAMP_MAX-8, "%Y-%m-%d %H:%M:%S",
@@ -445,7 +446,7 @@ bool FileLogger::Logmsg(LogItem *Item)
 
     if (Item->type & kStandardIO)
     {
-        qDebug("%s", Item->message);
+        snprintf(line, MAX_STRING_LENGTH, "%s", Item->message);
     }
     else
     {
@@ -454,20 +455,14 @@ bool FileLogger::Logmsg(LogItem *Item)
         char* threadName = GetThreadName(Item);
         pid_t tid = GetThreadTid(Item);
 
+        snprintf(line, MAX_STRING_LENGTH, "%s %c [%6d/%6d] %-11s %-50s - %s\n",
+                 timestamp, shortname, getpid(), tid, threadName, fileline,
+                 Item->message);
+
         if (m_file)
-        {
-            char line[MAX_STRING_LENGTH];
-            snprintf(line, MAX_STRING_LENGTH, "%s %c [%6d/%6d] %-11s %-50s - %s\n",
-                     timestamp, shortname, getpid(), tid, threadName, fileline,
-                     Item->message);
             error = m_file->write(line);
-        }
         else
-        {
-            qDebug("%s %c [%6d/%6d] %-11s %-50s - %s",
-                   timestamp, shortname, getpid(), tid, threadName, fileline,
-                   Item->message);
-        }
+            error = write(1, line, strlen(line));
     }
 
     LogItem::Delete(Item);
