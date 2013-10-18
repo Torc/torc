@@ -34,9 +34,11 @@ class TORC_CORE_PUBLIC TorcCommandLine
     TorcCommandLine(TorcCommandLine::Options Flags);
     ~TorcCommandLine();
 
-    int       Evaluate  (int argc, const char * const * argv, bool &Exit);
-    void      Add       (const QString Keys, const QVariant &Default, const QString &HelpText, bool ExitImmediately = false);
-    QVariant  GetValue  (const QString &Key);
+    static void   RegisterEnvironmentVariable  (const QString &Var, const QString &Description);
+
+    int           Evaluate                     (int argc, const char * const * argv, bool &Exit);
+    void          Add                          (const QString Keys, const QVariant &Default, const QString &HelpText, bool ExitImmediately = false);
+    QVariant      GetValue                     (const QString &Key);
 
   private:
     TorcCommandLinePriv *m_priv;

@@ -22,6 +22,7 @@
 
 // Qt
 #include <QHash>
+#include <QMutex>
 #include <QVariant>
 #include <QStringList>
 #include <QCoreApplication>
@@ -34,6 +35,9 @@
 #include "torccommandline.h"
 
 #include <iostream>
+
+QMutex *gEnvVarLock = new QMutex();
+QMap<QString,QString> gEnvVars;
 
 /*! \class TorcArgument
  *  \brief Simple wrapper around a command line argument.
@@ -305,6 +309,23 @@ int TorcCommandLinePriv::Evaluate(int argc, const char * const *argv, bool &Exit
         }
 
         std::cout << std::endl << "All options may be preceeded by '-' or '--'" << std::endl;
+
+        {
+            QMutexLocker locker(gEnvVarLock);
+
+            if (!gEnvVars.isEmpty())
+            {
+                std::cout << std::endl << "The following environment variables may be useful:" << std::endl;
+
+                QMap<QString,QString>::const_iterator it = gEnvVars.constBegin();
+                for ( ; it != gEnvVars.constEnd(); ++it)
+                {
+                    QByteArray var(it.key().toLocal8Bit().constData());
+                    QByteArray padding(m_maxLength - var.size(), 32);
+                    std::cout << var.constData() << padding.constData() << it.value().toLocal8Bit().constData() << std::endl;
+                }
+            }
+        }
     }
 
     if (printversion)
@@ -366,4 +387,13 @@ int TorcCommandLine::Evaluate(int argc, const char * const *argv, bool &Exit)
 QVariant TorcCommandLine::GetValue(const QString &Key)
 {
     return m_priv->GetValue(Key);
+}
+
+///\brief Register an environment variable for display via the help option.
+void TorcCommandLine::RegisterEnvironmentVariable(const QString &Var, const QString &Description)
+{
+    QMutexLocker locker(gEnvVarLock);
+
+    if (!gEnvVars.contains(Var))
+        gEnvVars.insert(Var, Description);
 }
