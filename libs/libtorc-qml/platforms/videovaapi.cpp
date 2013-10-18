@@ -933,15 +933,23 @@ QSet<TorcPlayer::PlayerProperty> VideoVAAPI::GetSupportedProperties(void)
 class VAAPIFactory : public AccelerationFactory
 {
   public:
+    VAAPIFactory() : AccelerationFactory()
+    {
+        // some old VA libraries are crashtastic, particularily when loading VDPAU backends.
+        TorcCommandLine::RegisterEnvironmentVariable("TORC_NO_VAAPI", "Disable VAAPI video hardware acceleration.");
+    }
+
     bool InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
     {
-        /*
+        if (!qgetenv("TORC_NO_VAAPI").isEmpty())
+            return false;
+
         if (!(VideoPlayer::gAllowGPUAcceleration && VideoPlayer::gAllowGPUAcceleration->IsActive() &&
-            VideoPlayer::gAllowGPUAcceleration->GetValue().toBool()))
+            VideoPlayer::gAllowGPUAcceleration->GetValue().toBool() && VideoVAAPI::VAAPIAvailable(false)))
         {
             return false;
         }
-*/
+
         if (Context->hwaccel_context)
         {
             LOG(VB_GENERAL, LOG_ERR, "AVCodecContext already has a hardware acceleration context. Aborting");
