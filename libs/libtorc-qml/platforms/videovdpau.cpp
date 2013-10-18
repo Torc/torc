@@ -983,8 +983,17 @@ QMap<AVCodecContext*,VideoVDPAU*> VideoVDPAU::gVDPAUInstances;
 
 class VDPAUFactory : public AccelerationFactory
 {
+  public:
+    VDPAUFactory() : AccelerationFactory()
+    {
+        TorcCommandLine::RegisterEnvironmentVariable("TORC_NO_VDPAU", "Disable VDPAU video hardware acceleration.");
+    }
+
     bool InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
     {
+        if (!qgetenv("TORC_NO_VDPAU").isEmpty())
+            return false;
+
         if (!(Context && VideoPlayer::gAllowGPUAcceleration && VideoPlayer::gAllowGPUAcceleration->IsActive() &&
               VideoPlayer::gAllowGPUAcceleration->GetValue().toBool() && VideoVDPAU::VDPAUAvailable()))
         {
