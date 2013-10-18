@@ -56,8 +56,17 @@ bool VideoVDA::InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
 
 class VDAAcceleration : public AccelerationFactory
 {
+  public:
+    VDAAcceleration() : AccelerationFactory()
+    {
+        TorcCommandLine::RegisterEnvironmentVariable("TORC_NO_VDA", "Disable VDA video hardware acceleration.");
+    }
+
     bool InitialiseDecoder(AVCodecContext *Context, AVPixelFormat Format)
     {
+        if (!qgetenv("TORC_NO_VDA").isEmpty())
+            return false;
+
         if (VideoPlayer::gAllowOtherAcceleration && VideoPlayer::gAllowOtherAcceleration->IsActive() &&
             VideoPlayer::gAllowOtherAcceleration->GetValue().toBool())
         {
