@@ -633,13 +633,15 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
 
         int buffersize = OpenGLBufferSize(QSize(Frame->m_adjustedWidth, Frame->m_adjustedHeight), TORC_UYVY, GL_UNSIGNED_BYTE);
 
-        if (m_conversionBuffer.size() != buffersize)
-            m_conversionBuffer.resize(buffersize);
-
+        unsigned char *buffer = NULL;
         PixelFormat informat = Frame->m_secondaryPixelFormat != PIX_FMT_NONE ? Frame->m_secondaryPixelFormat : Frame->m_pixelFormat;
 
         if (informat != m_outputFormat)
         {
+            if (m_conversionBuffer.size() != buffersize)
+                m_conversionBuffer.resize(buffersize);
+            buffer = (unsigned char*)m_conversionBuffer.data();
+
             AVPicture in;
             avpicture_fill(&in, Frame->m_buffer, informat, Frame->m_adjustedWidth, Frame->m_adjustedHeight);
             AVPicture out;
@@ -661,13 +663,15 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
         }
         else
         {
-            memcpy(m_conversionBuffer.data(), Frame->m_buffer, Frame->m_bufferSize);
+            if (!m_conversionBuffer.isEmpty())
+                m_conversionBuffer.resize(0);
+            buffer = Frame->m_buffer;
         }
 
         glBindTexture(GL_TEXTURE_2D, m_rawVideoTexture);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_rawVideoTextureSizeUsed.width(),
                         m_rawVideoTextureSizeUsed.height(), GL_RGBA,
-                        GL_UNSIGNED_BYTE, m_conversionBuffer.data());
+                        GL_UNSIGNED_BYTE, buffer);
 
         // we have a raw texture, a YUV->RGB shader and a framebuffer. Now do the colourspace conversion.
         // enable framebuffer
