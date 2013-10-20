@@ -1,14 +1,10 @@
 #ifndef TORCSGVIDEOPROVIDER_H
 #define TORCSGVIDEOPROVIDER_H
 
+// Qt
 #include <QSGTexture>
 #include <QOpenGLContext>
 #include <QSGTextureProvider>
-
-// Qt
-#include <QtGui/QOpenGLContext>
-#include <QtGui/QOpenGLShaderProgram>
-#include <QtGui/QOpenGLFramebufferObject>
 
 // Torc
 #include "torcqmlexport.h"
@@ -21,6 +17,9 @@ extern "C" {
 
 class VideoFrame;
 class VideoColourSpace;
+class QOpenGLBuffer;
+class QOpenGLShaderProgram;
+class QOpenGLFramebufferObject;
 
 class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTextureProvider
 {
@@ -32,7 +31,6 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
     void                Reset                 (void);
     QRectF              GetGeometry           (const QRectF &ParentGeometry, qreal DisplayAspectRatio);
     bool                GetDirtyGeometry      (void);
-
 
     // QSGTextureProvider
     QSGTexture*         texture               (void) const;
@@ -52,6 +50,7 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
     GLuint              m_rawVideoTexture;
     QSize               m_rawVideoTextureSize;
     QSize               m_rawVideoTextureSizeUsed;
+    QOpenGLBuffer      *m_rawVideoTextureBuffer;
     QOpenGLShaderProgram *m_YUV2RGBShader;
     int                 m_YUV2RGBShaderColourLocation;
     int                 m_YUV2RGBShaderTextureLocation;

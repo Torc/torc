@@ -18,7 +18,10 @@
 */
 
 // Qt
-#include <QtGui/QOpenGLFunctions>
+#include <QOpenGLBuffer>
+#include <QOpenGLFunctions>
+#include <QOpenGLShaderProgram>
+#include <QOpenGLFramebufferObject>
 
 // Torc
 #include "torclogging.h"
@@ -99,9 +102,7 @@ inline QSize OpenGLTextureSize(const QSize &Size, bool Rectangular)
  *       additional support is required at the QML level to allow their use (Qt only uses 2D textures in there shaders).
  *
  * \todo Add proper failure mode or fallback for lack of FramebufferObject support.
- * \todo Add pixel buffer object support.
  * \todo Add bicubic scaling support.
- * \todo Add proper video scaling/position.
  * \todo Refactor hardware AccelerationFactory to support new code.
 */
 TorcSGVideoProvider::TorcSGVideoProvider(VideoColourSpace *ColourSpace)
@@ -110,6 +111,7 @@ TorcSGVideoProvider::TorcSGVideoProvider(VideoColourSpace *ColourSpace)
     m_rawVideoTexture(0),
     m_rawVideoTextureSize(QSize(0,0)),
     m_rawVideoTextureSizeUsed(QSize(0,0)),
+    m_rawVideoTextureBuffer(NULL),
     m_YUV2RGBShader(NULL),
     m_YUV2RGBShaderColourLocation(-1),
     m_YUV2RGBShaderTextureLocation(-1),
@@ -268,6 +270,9 @@ void TorcSGVideoProvider::Reset(void)
     m_rawVideoTexture = 0;
     m_rawVideoTextureSize = QSize(0, 0);
     m_rawVideoTextureSizeUsed = QSize(0, 0);
+    if (m_rawVideoTextureBuffer)
+        delete m_rawVideoTextureBuffer;
+    m_rawVideoTextureBuffer = NULL;
 
     if (m_YUV2RGBShader)
         delete m_YUV2RGBShader;
@@ -559,6 +564,17 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
             emit textureChanged();
         }
 
+        // create a Pixel Buffer Object if available and needed
+        if (!m_rawVideoTextureBuffer && m_openGLContext->format().renderableType() == QSurfaceFormat::OpenGL)
+        {
+            m_rawVideoTextureBuffer = new QOpenGLBuffer(QOpenGLBuffer::PixelUnpackBuffer);
+            if (m_rawVideoTextureBuffer->create())
+            {
+                m_rawVideoTextureBuffer->setUsagePattern(QOpenGLBuffer::DynamicDraw);
+                LOG(VB_GENERAL, LOG_INFO, "Created Pixel Buffer Object");
+            }
+        }
+
         // create a YUV->RGB shader if needed
         if (!m_YUV2RGBShader)
         {
@@ -630,22 +646,36 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
             return false;
 
         // update raw video texture
+        glBindTexture(GL_TEXTURE_2D, m_rawVideoTexture);
 
         int buffersize = OpenGLBufferSize(QSize(Frame->m_adjustedWidth, Frame->m_adjustedHeight), TORC_UYVY, GL_UNSIGNED_BYTE);
-
         unsigned char *buffer = NULL;
         PixelFormat informat = Frame->m_secondaryPixelFormat != PIX_FMT_NONE ? Frame->m_secondaryPixelFormat : Frame->m_pixelFormat;
 
+        if (m_rawVideoTextureBuffer && m_rawVideoTextureBuffer->isCreated())
+        {
+            m_rawVideoTextureBuffer->bind();
+            m_rawVideoTextureBuffer->allocate(NULL, buffersize);
+            buffer = (unsigned char*)m_rawVideoTextureBuffer->map(QOpenGLBuffer::WriteOnly);
+        }
+
         if (informat != m_outputFormat)
         {
-            if (m_conversionBuffer.size() != buffersize)
-                m_conversionBuffer.resize(buffersize);
-            buffer = (unsigned char*)m_conversionBuffer.data();
+            if (buffer == NULL)
+            {
+                if (m_conversionBuffer.size() != buffersize)
+                    m_conversionBuffer.resize(buffersize);
+                buffer = (unsigned char*)m_conversionBuffer.data();
+            }
+            else if (!m_conversionBuffer.isEmpty())
+            {
+                m_conversionBuffer.resize(0);
+            }
 
             AVPicture in;
             avpicture_fill(&in, Frame->m_buffer, informat, Frame->m_adjustedWidth, Frame->m_adjustedHeight);
             AVPicture out;
-            avpicture_fill(&out, (uint8_t*)m_conversionBuffer.data(), m_outputFormat, Frame->m_rawWidth, Frame->m_rawHeight);
+            avpicture_fill(&out, (uint8_t*)buffer, m_outputFormat, Frame->m_rawWidth, Frame->m_rawHeight);
 
             m_conversionContext = sws_getCachedContext(m_conversionContext,
                                                        Frame->m_rawWidth, Frame->m_rawHeight, informat,
@@ -665,13 +695,27 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
         {
             if (!m_conversionBuffer.isEmpty())
                 m_conversionBuffer.resize(0);
-            buffer = Frame->m_buffer;
+
+            if (buffer == NULL)
+                buffer = Frame->m_buffer;
+            else
+                memcpy(buffer, Frame->m_buffer, Frame->m_bufferSize);
         }
 
-        glBindTexture(GL_TEXTURE_2D, m_rawVideoTexture);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_rawVideoTextureSizeUsed.width(),
-                        m_rawVideoTextureSizeUsed.height(), GL_RGBA,
-                        GL_UNSIGNED_BYTE, buffer);
+        if (m_rawVideoTextureBuffer && m_rawVideoTextureBuffer->isCreated())
+        {
+            m_rawVideoTextureBuffer->unmap();
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_rawVideoTextureSizeUsed.width(),
+                            m_rawVideoTextureSizeUsed.height(), GL_RGBA,
+                            GL_UNSIGNED_BYTE, 0);
+            m_rawVideoTextureBuffer->release();
+        }
+        else
+        {
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, m_rawVideoTextureSizeUsed.width(),
+                            m_rawVideoTextureSizeUsed.height(), GL_RGBA,
+                            GL_UNSIGNED_BYTE, buffer);
+        }
 
         // we have a raw texture, a YUV->RGB shader and a framebuffer. Now do the colourspace conversion.
         // enable framebuffer
