@@ -409,3 +409,25 @@ bool IsHardwarePixelFormat(AVPixelFormat Format)
 
     // AV_PIX_FMT_VDA_VLD
 }
+
+bool AVPixelFormatIsFullScale(AVPixelFormat Format)
+{
+    return Format == AV_PIX_FMT_YUVJ420P ||
+           Format == AV_PIX_FMT_YUVJ422P ||
+           Format == AV_PIX_FMT_YUVJ440P ||
+           Format == AV_PIX_FMT_YUVJ444P;
+}
+
+AVPixelFormat AVPixelFormatFromFullScale(AVPixelFormat Format)
+{
+    switch (Format)
+    {
+        case AV_PIX_FMT_YUVJ420P: return AV_PIX_FMT_YUV420P;
+        case AV_PIX_FMT_YUVJ422P: return AV_PIX_FMT_YUV422P;
+        case AV_PIX_FMT_YUVJ440P: return AV_PIX_FMT_YUV440P;
+        case AV_PIX_FMT_YUVJ444P: return AV_PIX_FMT_YUV444P;
+        default: break;
+    }
+
+    return Format;
+}
