@@ -661,6 +661,20 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
 
         if (informat != m_outputFormat)
         {
+            // avoid a double colour range conversion for full range JPEG formats
+            // according to FFmpeg docs, full range pix formats are deprecated but still seem to be used.
+            if (AVPixelFormatIsFullScale(informat))
+            {
+                informat = AVPixelFormatFromFullScale(informat);
+                // just in case
+                if (Frame->m_colourRange != AVCOL_RANGE_JPEG)
+                {
+                    Frame->m_colourRange = AVCOL_RANGE_JPEG;
+                    m_videoColourSpace->SetColourRange(AVCOL_RANGE_JPEG);
+                }
+            }
+
+
             if (buffer == NULL)
             {
                 if (m_conversionBuffer.size() != buffersize)
