@@ -527,7 +527,7 @@ void TorcRAOPConnection::ProcessText(void)
                     TorcEvent event = TorcEvent(Torc::PlayMedia, data);
                     gLocalContext->Notify(event);
                     if (!m_priv->m_playerReadTimeout)
-                        m_priv->m_playerReadTimeout = startTimer(250);
+                        m_priv->m_playerReadTimeout = startTimer(250, Qt::CoarseTimer);
                 }
             }
         }
@@ -559,7 +559,7 @@ void TorcRAOPConnection::ProcessText(void)
                 .arg(controlport).arg(timingport));
 
         if (!m_priv->m_clientSendTimeout)
-            m_priv->m_clientSendTimeout = startTimer(250);
+            m_priv->m_clientSendTimeout = startTimer(250, Qt::CoarseTimer);
 
         m_priv->m_peerAddress = m_priv->m_socket->peerAddress();
 

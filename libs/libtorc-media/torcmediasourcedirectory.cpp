@@ -122,7 +122,7 @@ TorcMediaSourceDirectory::TorcMediaSourceDirectory()
     if (gLocalContext->GetSetting(TORC_CORE + "StorageEnabled", (bool)true))
         StartMonitoring();
 
-    m_timerId = startTimer(UPDATE_FREQUENCY);
+    m_timerId = startTimer(UPDATE_FREQUENCY, Qt::CoarseTimer);
 }
 
 TorcMediaSourceDirectory::~TorcMediaSourceDirectory()
