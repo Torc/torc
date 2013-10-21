@@ -94,6 +94,7 @@ TorcPowerWin::TorcPowerWin(TorcPower *Parent)
     Refresh();
 
     connect(m_timer, SIGNAL(timeout()), this, SLOT(Update()));
+    m_timer->setTimerType(Qt::Qt::VeryCoarseTimer);
     m_timer->start(60 * 1000);
 }
 

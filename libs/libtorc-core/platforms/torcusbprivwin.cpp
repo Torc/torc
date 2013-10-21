@@ -41,6 +41,7 @@ TorcUSBPrivWin::TorcUSBPrivWin(TorcUSB *Parent)
     // 5 seconds
 
     connect(m_timer, SIGNAL(timeout()), this, SLOT(Update()));
+    m_timer->setTimerType(Qt::Qt::VeryCoarseTimer);
     m_timer->start(5 * 1000);
 }
 
