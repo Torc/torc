@@ -536,12 +536,12 @@ TorcSSDP::TorcSSDP()
         SearchPriv(QString(), NULL);
 
         // and schedule another search for after the MX time in our first request (3)
-        m_searchTimer = startTimer(3000 + qrand() % 2000);
+        m_searchTimer = startTimer(3000 + qrand() % 2000, Qt::CoarseTimer);
     }
 
     // minimum advertisement duration is 30 mins (1800 seconds). Check for expiry
     // every 5 minutes and flush stale entries
-    m_refreshTimer = startTimer(5 * 60 * 1000);
+    m_refreshTimer = startTimer(5 * 60 * 1000, Qt::VeryCoarseTimer);
 }
 
 TorcSSDP::~TorcSSDP()
@@ -696,7 +696,7 @@ bool TorcSSDP::event(QEvent *Event)
                 SearchPriv(QString(), NULL);
                 if (m_searchTimer)
                     killTimer(m_searchTimer);
-                m_searchTimer = startTimer(3000 + qrand() % 2000);
+                m_searchTimer = startTimer(3000 + qrand() % 2000, Qt::CoarseTimer);
             }
             else if (event->GetEvent() == Torc::NetworkUnavailable && m_priv)
             {

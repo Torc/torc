@@ -411,7 +411,7 @@ void TorcNetworkService::ScheduleRetry(void)
 {
     if (!m_retryScheduled)
     {
-        QTimer::singleShot(m_retryInterval, this, SLOT(Connect()));
+        QTimer::singleShot(m_retryInterval, Qt::VeryCoarseTimer, this, SLOT(Connect()));
         m_retryScheduled = true;
     }
 }

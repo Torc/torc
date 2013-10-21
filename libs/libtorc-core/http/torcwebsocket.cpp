@@ -637,7 +637,7 @@ void TorcWebSocket::HandleRemoteRequest(TorcRPCRequest *Request)
             m_currentRequests.insert(id, Request);
 
             // start a timer for this request
-            m_requestTimers.insert(startTimer(10000), id);
+            m_requestTimers.insert(startTimer(10000, Qt::CoarseTimer), id);
 
             // keep id's at sane values
             if (m_currentRequestID > 100000)

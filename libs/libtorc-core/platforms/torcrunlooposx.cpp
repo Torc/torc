@@ -83,7 +83,7 @@ CallbackObject::CallbackObject()
 {
     // schedule the run loop to start
     if (gAdminRunLoopRunning)
-        QTimer::singleShot(10, this, SLOT(Run()));
+        QTimer::singleShot(10, Qt::CoarseTimer, this, SLOT(Run()));
 }
 
 void CallbackObject::Run(void)
@@ -95,7 +95,7 @@ void CallbackObject::Run(void)
     // if it exits, schedule it to start again. This usually means there is nothing
     // setup using a callback, so don't wast cycles and wait a while before restarting.
     if (gAdminRunLoopRunning)
-        QTimer::singleShot(100, this, SLOT(Run()));
+        QTimer::singleShot(100, Qt::CoarseTimer, this, SLOT(Run()));
 }
 
 /*! \class TorcRunLoopOSX

@@ -490,7 +490,7 @@ void TorcPlayer::StartTimer(int &Timer, int Timeout)
 {
     if (Timer)
         KillTimer(Timer);
-    Timer = startTimer(Timeout);
+    Timer = startTimer(Timeout, Qt::CoarseTimer);
 }
 
 void TorcPlayer::KillTimer(int &Timer)
