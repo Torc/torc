@@ -597,39 +597,37 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
                 while ((sent < size) && !(*Abort));
             }
 #elif defined(Q_OS_MAC)
+            if (size > sent)
             {
-                if (size > sent)
+                // sendfile accesses the socket directly, bypassing Qt's cache, so we must flush first
+                Socket->flush();
+
+                off_t bytessent  = 0;
+                off_t off        = offset;
+
+                do
                 {
-                    // sendfile accesses the socket directly, bypassing Qt's cache, so we must flush first
-                    Socket->flush();
+                    bytessent = qMin(size - sent, (qint64)READ_CHUNK_SIZE);;
 
-                    off_t bytessent  = 0;
-                    off_t off        = offset;
-
-                    do
+                    if (sendfile(m_responseFile->handle(), Socket->socketDescriptor(), off, &bytessent, NULL, 0) < 0)
                     {
-                        bytessent = qMin(size - sent, (qint64)READ_CHUNK_SIZE);;
-
-                        if (sendfile(m_responseFile->handle(), Socket->socketDescriptor(), off, &bytessent, NULL, 0) < 0)
+                        if (errno != EAGAIN)
                         {
-                            if (errno != EAGAIN)
-                            {
-                                LOG(VB_GENERAL, LOG_ERR, QString("Error sending data (%1) %2").arg(errno).arg(strerror(errno)));
-                                break;
-                            }
-
-                            QThread::usleep(5000);
-                        }
-                        else
-                        {
-                            LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 for %2").arg(bytessent).arg(m_responseFile->handle()));
+                            LOG(VB_GENERAL, LOG_ERR, QString("Error sending data (%1) %2").arg(errno).arg(strerror(errno)));
+                            break;
                         }
 
-                        sent += bytessent;
-                        off  += bytessent;
+                        QThread::usleep(5000);
                     }
-                    while ((sent < size) && !(*Abort));
+                    else
+                    {
+                        LOG(VB_GENERAL, LOG_DEBUG, QString("Sent %1 for %2").arg(bytessent).arg(m_responseFile->handle()));
+                    }
+
+                    sent += bytessent;
+                    off  += bytessent;
                 }
+                while ((sent < size) && !(*Abort));
             }
 #else
             if (size > sent)
