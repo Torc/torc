@@ -9,6 +9,10 @@
 #include "videoframe.h"
 
 extern "C" {
+#include "va/va_version.h"
+#if VA_CHECK_VERSION(0,34,0)
+#include "va/va_compat.h"
+#endif
 #include <X11/Xlib.h>
 #include "va/va.h"
 #include "libavcodec/vaapi.h"
