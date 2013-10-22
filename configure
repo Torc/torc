@@ -4457,8 +4457,12 @@ echo "License: $license"
 # Torc
 
 # Qt
-if ! expr $($qmake -query QT_VERSION) : "5\.[0-9]\.[0-9]" >/dev/null; then
-  die "qmake for Qt5.0 or newer not found.\nPlease specify the correct qmake with --qmake="
+is_qmake5(){
+    $1 --version 2>&1 | egrep -q -e "Qt version 5\.[0-9]\.[0-9]"
+}
+
+if ! is_qmake5 $qmake ; then
+    is_qmake5 qmake-qt5 && qmake=qmake-qt5 || die "qmake for Qt5.0 or newer not found. Please specify the correct qmake with --qmake="
 fi
 
 if test $target_os = mingw32 ; then
