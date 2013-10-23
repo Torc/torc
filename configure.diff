@@ -1,5 +1,5 @@
 --- libs/libtorc-av/configure	2013-05-01 20:34:52.277266987 +0100
-+++ configure	2013-10-23 08:51:15.348301187 +0100
++++ configure	2013-10-23 09:04:37.076316376 +0100
 @@ -1,6 +1,6 @@
  #!/bin/sh
  #
@@ -8,7 +8,7 @@
  #
  # Copyright (c) 2000-2002 Fabrice Bellard
  # Copyright (c) 2005-2008 Diego Biurrun
-@@ -341,6 +341,19 @@
+@@ -341,6 +341,18 @@
    --random-seed=VALUE      seed value for --enable/disable-random
  
  NOTE: Object files are built at the place where configure is launched.
@@ -21,14 +21,13 @@
 +Torc external library support:
 +  --disable-libdns_sd      disable Bonjour via libdns_sd [autodetect]
 +  --disable-libudev        disable udev via libudev [autodetect]
-+  --disable-qtsvg          disable SVG support via QtSvg [autodetect]
 +  --disable-x11base        disable default X11 support [autodetect]
 +  --disable-libcrypto      disable use of the OpenSSL cryptographic library [autodetect]
 +
  EOF
    exit 0
  }
-@@ -690,7 +703,7 @@
+@@ -690,7 +702,7 @@
  }
  
  add_cxxflags(){
@@ -37,7 +36,7 @@
  }
  
  add_asflags(){
-@@ -747,7 +760,19 @@
+@@ -747,7 +759,19 @@
      log check_cxx "$@"
      cat > $TMPCPP
      log_file $TMPCPP
@@ -58,7 +57,7 @@
  }
  
  check_cpp(){
-@@ -904,6 +929,7 @@
+@@ -904,6 +928,7 @@
              echo "#include <$hdr>"
          done
          for func in $funcs; do
@@ -66,19 +65,18 @@
              echo "long check_$func(void) { return (long) $func; }"
          done
          echo "int main(void) { return 0; }"
-@@ -1252,6 +1278,11 @@
+@@ -1252,6 +1277,10 @@
      thumb
      version3
      xmm_clobber_test
 +    libcrypto
 +    libdns_sd
 +    libudev
-+    qtsvg
 +    x11base
  "
  
  THREADS_LIST='
-@@ -1388,6 +1419,8 @@
+@@ -1388,6 +1417,8 @@
      closesocket
      cmov
      CommandLineToArgvW
@@ -87,7 +85,7 @@
      cpunop
      CryptGenRandom
      dcbzl
-@@ -1583,6 +1616,7 @@
+@@ -1583,6 +1614,7 @@
      nm
      optflags
      pkg_config
@@ -95,7 +93,7 @@
      progs_suffix
      random_seed
      samples
-@@ -2123,11 +2157,12 @@
+@@ -2123,11 +2155,12 @@
  # installation paths
  prefix_default="/usr/local"
  bindir_default='${prefix}/bin'
@@ -110,7 +108,7 @@
  
  # toolchain
  ar_default="ar"
-@@ -2169,14 +2204,37 @@
+@@ -2169,14 +2202,36 @@
  enable static
  enable swscale_alpha
  
@@ -134,7 +132,6 @@
 +enable libcrypto
 +enable libdns_sd
 +enable libudev
-+enable qtsvg
 +qmake_default="qmake"
 +
  # build settings
@@ -150,7 +147,7 @@
  SLIBSUF=".so"
  SLIBNAME='$(SLIBPREF)$(FULLNAME)$(SLIBSUF)'
  SLIBNAME_WITH_VERSION='$(SLIBNAME).$(LIBVERSION)'
-@@ -2198,6 +2256,7 @@
+@@ -2198,6 +2253,7 @@
  CXX_O='-o $@'
  LD_O='-o $@'
  LD_LIB='-l%'
@@ -158,7 +155,7 @@
  LD_PATH='-L'
  HOSTCC_C='-c'
  HOSTCC_O='-o $@'
-@@ -2241,17 +2300,17 @@
+@@ -2241,17 +2297,17 @@
      sed -n "s/^[^#]*$pattern.*([^,]*, *\([^,]*\)\(,.*\)*).*/\1_$thing/p" "$file"
  }
  
@@ -187,7 +184,7 @@
  
  ALL_COMPONENTS="
      $BSF_LIST
-@@ -2316,6 +2375,8 @@
+@@ -2316,6 +2372,8 @@
  for opt do
      optval="${opt#*=}"
      case "$opt" in
@@ -196,7 +193,7 @@
          --extra-ldflags=*)
              add_ldflags $optval
          ;;
-@@ -2391,6 +2452,15 @@
+@@ -2391,6 +2449,15 @@
      esac
  done
  
@@ -212,7 +209,7 @@
  disabled logging && logfile=/dev/null
  
  echo "# $0 $FFMPEG_CONFIGURATION" > $logfile
-@@ -2426,6 +2496,7 @@
+@@ -2426,6 +2493,7 @@
      ;;
      msvc)
          cc_default="c99wrap cl"
@@ -220,7 +217,7 @@
          ld_default="c99wrap link"
          nm_default="dumpbin -symbols"
          ar_default="lib"
-@@ -2436,7 +2507,7 @@
+@@ -2436,7 +2504,7 @@
      ;;
  esac
  
@@ -229,7 +226,7 @@
  enabled cross_compile || host_cc_default=$cc
  set_default host_cc
  
-@@ -2845,11 +2916,13 @@
+@@ -2845,11 +2913,13 @@
      case "$cc_type" in
          gcc|llvm_gcc|clang)
              add_cppflags --sysroot="$sysroot"
@@ -243,7 +240,7 @@
          ;;
      esac
  fi
-@@ -3144,6 +3217,7 @@
+@@ -3144,6 +3214,7 @@
  
  add_cppflags -D_ISOC99_SOURCE
  add_cxxflags -D__STDC_CONSTANT_MACROS
@@ -251,7 +248,7 @@
  check_cflags -std=c99
  check_cc -D_FILE_OFFSET_BITS=64 <<EOF && add_cppflags -D_FILE_OFFSET_BITS=64
  #include <stdlib.h>
-@@ -3151,6 +3225,12 @@
+@@ -3151,6 +3222,12 @@
  check_cc -D_LARGEFILE_SOURCE <<EOF && add_cppflags -D_LARGEFILE_SOURCE
  #include <stdlib.h>
  EOF
@@ -264,7 +261,7 @@
  
  check_host_cflags -std=c99
  check_host_cflags -Wall
-@@ -3244,6 +3324,8 @@
+@@ -3244,6 +3321,8 @@
          strip="strip -d"
          ;;
      darwin)
@@ -273,7 +270,7 @@
          gas="gas-preprocessor.pl $cc"
          enabled ppc && add_asflags -force_cpusubtype_ALL
          SHFLAGS='-dynamiclib -Wl,-single_module -Wl,-install_name,$(SHLIBDIR)/$(SLIBNAME_WITH_MAJOR),-current_version,$(LIBVERSION),-compatibility_version,$(LIBMAJOR)'
-@@ -3272,7 +3354,6 @@
+@@ -3272,7 +3351,6 @@
              LIBTARGET=arm-wince
          fi
          shlibdir_default="$bindir_default"
@@ -281,7 +278,7 @@
          SLIBSUF=".dll"
          SLIBNAME_WITH_VERSION='$(SLIBPREF)$(FULLNAME)-$(LIBVERSION)$(SLIBSUF)'
          SLIBNAME_WITH_MAJOR='$(SLIBPREF)$(FULLNAME)-$(LIBMAJOR)$(SLIBSUF)'
-@@ -3298,13 +3379,15 @@
+@@ -3298,13 +3376,15 @@
          if enabled shared; then
              # Link to the import library instead of the normal static library
              # for shared libs.
@@ -299,7 +296,7 @@
          SLIBSUF=".dll"
          SLIBNAME_WITH_VERSION='$(SLIBPREF)$(FULLNAME)-$(LIBVERSION)$(SLIBSUF)'
          SLIBNAME_WITH_MAJOR='$(SLIBPREF)$(FULLNAME)-$(LIBMAJOR)$(SLIBSUF)'
-@@ -3523,6 +3606,8 @@
+@@ -3523,6 +3603,8 @@
      add_cppflags -DPIC
      add_cflags   -fPIC
      add_asflags  -fPIC
@@ -308,7 +305,7 @@
  }
  
  enabled pic && enable_pic
-@@ -3815,6 +3900,7 @@
+@@ -3815,6 +3897,7 @@
  check_header dlfcn.h
  check_header dxva.h
  check_header dxva2api.h -D_WIN32_WINNT=0x0600
@@ -316,7 +313,7 @@
  check_header io.h
  check_header libcrystalhd/libcrystalhd_if.h
  check_header malloc.h
-@@ -3873,7 +3959,7 @@
+@@ -3873,7 +3956,7 @@
  
  check_lib math.h sin -lm && LIBM="-lm"
  disabled crystalhd || check_lib libcrystalhd/libcrystalhd_if.h DtsCrystalHDVersion -lcrystalhd || disable crystalhd
@@ -325,7 +322,7 @@
  
  atan2f_args=2
  ldexpf_args=2
-@@ -3953,6 +4039,9 @@
+@@ -3953,6 +4036,9 @@
                          check_lib openssl/ssl.h SSL_library_init -lssl32 -leay32 ||
                          check_lib openssl/ssl.h SSL_library_init -lssl -lcrypto -lws2_32 -lgdi32 ||
                          die "ERROR: openssl not found"; }
@@ -335,7 +332,7 @@
  
  if enabled gnutls; then
      { check_lib nettle/bignum.h nettle_mpz_get_str_256 -lnettle -lhogweed -lgmp && enable nettle; } ||
-@@ -4033,7 +4122,7 @@
+@@ -4033,7 +4119,7 @@
  enabled_any sndio_indev sndio_outdev && check_lib2 sndio.h sio_open -lsndio
  
  if enabled libcdio; then
@@ -344,7 +341,7 @@
  fi
  
  enabled x11grab                                           &&
-@@ -4055,7 +4144,7 @@
+@@ -4055,7 +4141,7 @@
  # Funny iconv installations are not unusual, so check it after all flags have been set
  disabled iconv || check_func_headers iconv.h iconv || check_lib2 iconv.h iconv -liconv || disable iconv
  
@@ -353,7 +350,7 @@
  enabled coverage && add_cflags "-fprofile-arcs -ftest-coverage" && add_ldflags "-fprofile-arcs -ftest-coverage"
  test -n "$valgrind" && target_exec="$valgrind --error-exitcode=1 --malloc-fill=0x2a --track-origins=yes --leak-check=full --gen-suppressions=all --suppressions=$source_path/tests/fate-valgrind.supp"
  
-@@ -4076,6 +4165,13 @@
+@@ -4076,6 +4162,13 @@
  check_cflags -Wno-pointer-to-int-cast
  check_cflags -Wstrict-prototypes
  enabled extra_warnings && check_cflags -Winline
@@ -367,7 +364,7 @@
  
  # add some linker flags
  check_ldflags -Wl,--warn-common
-@@ -4109,11 +4205,16 @@
+@@ -4109,11 +4202,16 @@
  if [ -z "$optflags" ]; then
      if enabled small; then
          optflags=$cflags_size
@@ -384,7 +381,7 @@
  fi
  
  check_optflags(){
-@@ -4252,6 +4353,8 @@
+@@ -4252,6 +4350,8 @@
  
  merge_deps libavfilter $FILTER_LIST
  
@@ -393,7 +390,7 @@
  echo "install prefix            $prefix"
  echo "source path               $source_path"
  echo "C compiler                $cc"
-@@ -4348,6 +4451,114 @@
+@@ -4348,6 +4448,100 @@
  
  echo "License: $license"
  
@@ -414,19 +411,6 @@
 +else
 +    qt_inc="-I${sysroot}/$(${qmake} -query QT_INSTALL_HEADERS)"
 +    qt_libs="-L${sysroot}/$(${qmake} -query QT_INSTALL_LIBS)"
-+fi
-+
-+# QtSvg support
-+if enabled qtsvg && ! $(pkg-config --exists QtSvg) ; then
-+    check_cxx ${qt_inc} <<EOF || { disable qtsvg; }
-+#include <QtSvg/QtSvg>
-+#include <QtSvg/QSvgRenderer>
-+int main(void)
-+{
-+    QSvgRenderer renderer();
-+    return 0;
-+}
-+EOF
 +fi
 +
 +# udev support for linux disk detection
@@ -497,7 +481,6 @@
 +echo "qmake                        $(which $qmake) [$($qmake -query QT_VERSION)]"
 +echo "libcrypto enabled            ${libcrypto-no}"
 +echo "libdns_sd (Bonjour) enabled  ${libdns_sd-no}"
-+echo "QtSvg enabled                ${qtsvg-no}"
 +if test $target_os = "linux"; then
 +    echo "libudev enabled              ${libudev-no}"
 +    echo "X11 enabled                  ${x11base-no}"
@@ -508,7 +491,7 @@
  echo "Creating config.mak and config.h..."
  
  test -e Makefile || $ln_s "$source_path/Makefile" .
-@@ -4358,20 +4569,25 @@
+@@ -4358,20 +4552,25 @@
  
  cat > config.mak <<EOF
  # Automatically generated by configure - do not modify!
@@ -544,7 +527,7 @@
  CC_IDENT=$cc_ident
  ARCH=$arch
  CC=$cc
-@@ -4404,11 +4620,20 @@
+@@ -4404,11 +4603,20 @@
  CXX_O=$CXX_O
  LD_O=$LD_O
  LD_LIB=$LD_LIB
@@ -566,7 +549,7 @@
  YASMFLAGS=$YASMFLAGS
  BUILDSUF=$build_suffix
  PROGSSUF=$progs_suffix
-@@ -4448,7 +4673,7 @@
+@@ -4448,7 +4656,7 @@
  CFLAGS-ffplay=$sdl_cflags
  ZLIB=$($ldflags_filter -lz)
  LIB_INSTALL_EXTRA_CMD=$LIB_INSTALL_EXTRA_CMD
@@ -575,7 +558,7 @@
  COMPAT_OBJS=$compat_objs
  EXEOBJS=$exeobjs
  INSTALL=$install
-@@ -4456,20 +4681,20 @@
+@@ -4456,20 +4664,20 @@
  SLIBNAME=${SLIBNAME}
  SLIBNAME_WITH_VERSION=${SLIBNAME_WITH_VERSION}
  SLIBNAME_WITH_MAJOR=${SLIBNAME_WITH_MAJOR}
@@ -600,7 +583,7 @@
      eval $(awk "/#define ${name}_VERSION_M/ { print \$2 \"=\" \$3 }" "$file")
      eval ${name}_VERSION=\$${name}_VERSION_MAJOR.\$${name}_VERSION_MINOR.\$${name}_VERSION_MICRO
      eval echo "${lcname}_VERSION=\$${name}_VERSION" >> config.mak
-@@ -4513,13 +4738,21 @@
+@@ -4513,13 +4721,21 @@
                                       $ALL_COMPONENTS    \
  
  echo "#endif /* FFMPEG_CONFIG_H */" >> $TMPH
@@ -626,7 +609,7 @@
  
  cat > $TMPH <<EOF
  /* Generated by ffconf */
-@@ -4531,101 +4764,9 @@
+@@ -4531,101 +4747,9 @@
  
  echo "#endif /* AVUTIL_AVCONFIG_H */" >> $TMPH
  
