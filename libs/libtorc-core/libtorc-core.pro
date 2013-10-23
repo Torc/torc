@@ -155,12 +155,13 @@ unix:contains(CONFIG_LIBUDEV, yes) {
     LIBS    += -ludev
 }
 
-unix:contains(CONFIG_QTDBUS, yes) {
+unix:qtHaveModule(dbus) {
     QT += dbus
     HEADERS += platforms/torcpowerunixdbus.h
     HEADERS += platforms/torcstorageunixdbus.h
     SOURCES += platforms/torcpowerunixdbus.cpp
     SOURCES += platforms/torcstorageunixdbus.cpp
+    DEFINES += USING_QTDBUS
 }
 
 win32 {

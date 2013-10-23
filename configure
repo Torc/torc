@@ -350,7 +350,6 @@ Torc:
 Torc external library support:
   --disable-libdns_sd      disable Bonjour via libdns_sd [autodetect]
   --disable-libudev        disable udev via libudev [autodetect]
-  --disable-qtdbus         disable DBus via QtDbus [autodetect]
   --disable-qtsvg          disable SVG support via QtSvg [autodetect]
   --disable-x11base        disable default X11 support [autodetect]
   --disable-libcrypto      disable use of the OpenSSL cryptographic library [autodetect]
@@ -1282,7 +1281,6 @@ CONFIG_LIST="
     libcrypto
     libdns_sd
     libudev
-    qtdbus
     qtsvg
     x11base
 "
@@ -2226,7 +2224,6 @@ enable avresample
 enable libcrypto
 enable libdns_sd
 enable libudev
-enable qtdbus
 enable qtsvg
 qmake_default="qmake"
 
@@ -4473,19 +4470,6 @@ else
     qt_libs="-L${sysroot}/$(${qmake} -query QT_INSTALL_LIBS)"
 fi
 
-# QtDbus support
-if enabled qtdbus && ! $(pkg-config --exists QtDBus) ; then
-    check_cxx ${qt_inc} <<EOF || { disable qtdbus; }
-#include <QtDBus/QtDBus>
-#include <QtDBus/QDBusInterface>
-int main(void)
-{
-    QDBusInterface test("org.kde.test", "/test", "org.kde.blah");
-    return 0;
-}
-EOF
-fi
-
 # QtSvg support
 if enabled qtsvg && ! $(pkg-config --exists QtSvg) ; then
     check_cxx ${qt_inc} <<EOF || { disable qtsvg; }
@@ -4569,7 +4553,6 @@ echo "libcrypto enabled            ${libcrypto-no}"
 echo "libdns_sd (Bonjour) enabled  ${libdns_sd-no}"
 echo "QtSvg enabled                ${qtsvg-no}"
 if test $target_os = "linux"; then
-    echo "QtDbus enabled               ${qtdbus-no}"
     echo "libudev enabled              ${libudev-no}"
     echo "X11 enabled                  ${x11base-no}"
 fi
