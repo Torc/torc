@@ -22,6 +22,7 @@
 
 // Qt
 #include <QTimer>
+#include <QAtomicInt>
 
 // Torc
 #include "torclogging.h"
@@ -31,7 +32,7 @@
 #include "torcrunlooposx.h"
 
 CFRunLoopRef gAdminRunLoop = 0;
-bool         gAdminRunLoopRunning = true;
+QAtomicInt   gAdminRunLoopRunning(0);
 
 /*! \class TorcOSXCallbackThread
  *  \brief TorcQThread subclass to run a CFRunLoop
@@ -70,6 +71,8 @@ void TorcOSXCallbackThread::Start(void)
 
 void TorcOSXCallbackThread::Finish(void)
 {
+    if (m_object)
+        m_object->disconnect();
     delete m_object;
     m_object = NULL;
     gAdminRunLoop = 0;
@@ -82,19 +85,18 @@ void TorcOSXCallbackThread::Finish(void)
 CallbackObject::CallbackObject()
 {
     // schedule the run loop to start
-    if (gAdminRunLoopRunning)
-        QTimer::singleShot(10, Qt::CoarseTimer, this, SLOT(Run()));
+    QTimer::singleShot(10, Qt::CoarseTimer, this, SLOT(Run()));
 }
 
 void CallbackObject::Run(void)
 {
     // start the run loop
-    if (gAdminRunLoopRunning)
+    if (gAdminRunLoopRunning.fetchAndAddOrdered(0))
         CFRunLoopRun();
 
     // if it exits, schedule it to start again. This usually means there is nothing
-    // setup using a callback, so don't wast cycles and wait a while before restarting.
-    if (gAdminRunLoopRunning)
+    // setup using a callback, so don't waste cycles and wait a while before restarting.
+    if (gAdminRunLoopRunning.fetchAndAddOrdered(0))
         QTimer::singleShot(100, Qt::CoarseTimer, this, SLOT(Run()));
 }
 
@@ -119,7 +121,8 @@ static class TorcRunLoopOSX : public TorcAdminObject
     {
         Destroy();
 
-        gAdminRunLoopRunning = true;
+        gAdminRunLoopRunning.ref();
+
         m_thread = new TorcOSXCallbackThread();
         m_thread->start();
 
@@ -133,7 +136,7 @@ static class TorcRunLoopOSX : public TorcAdminObject
 
     void Destroy(void)
     {
-        gAdminRunLoopRunning = false;
+        gAdminRunLoopRunning.deref();
 
         if (gAdminRunLoop)
             CFRunLoopStop(gAdminRunLoop);
