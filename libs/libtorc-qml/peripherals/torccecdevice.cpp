@@ -910,6 +910,7 @@ bool TorcCECDevice::event(QEvent *Event)
         if (timerevent && (timerevent->timerId() == m_retryTimer))
         {
             killTimer(m_retryTimer);
+            m_retryTimer = 0;
             Open();
         }
     }
