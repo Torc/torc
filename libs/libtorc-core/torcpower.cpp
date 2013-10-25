@@ -211,8 +211,7 @@ void TorcPower::TearDown(void)
 {
     QMutexLocker lock(gPowerLock);
 
-    if (gPower)
-        gPower->deleteLater();
+    delete gPower;
     gPower = NULL;
 }
 

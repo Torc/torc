@@ -65,8 +65,7 @@ void TorcStorage::Destroy(void)
 {
     QMutexLocker locker(gStorageLock);
 
-    if (gStorage)
-        gStorage->deleteLater();
+    delete gStorage;
     gStorage = NULL;
 }
 
