@@ -75,13 +75,8 @@ TorcUSBPrivOSX::~TorcUSBPrivOSX()
         m_notifications.clear();
     }
 
-    // release iterator
-    if (m_iterator)
-        IOObjectRelease(m_iterator);
-    m_iterator = 0;
-
-    // release source
-    if (m_usbRef && gAdminRunLoop)
+    // release source - for some reason this is unsafe when running outside of the main runloop.
+    if (m_usbRef && gAdminRunLoop && gAdminRunLoop != CFRunLoopGetMain())
     {
         CFRunLoopRemoveSource(gAdminRunLoop, m_usbRef, kCFRunLoopDefaultMode);
         CFRelease(m_usbRef);
@@ -94,6 +89,11 @@ TorcUSBPrivOSX::~TorcUSBPrivOSX()
         IONotificationPortDestroy(m_usbNotifyPort);
         m_usbNotifyPort = NULL;
     }
+
+    // release iterator
+    if (m_iterator)
+        IOObjectRelease(m_iterator);
+    m_iterator = 0;
 
     // delete lock
     delete m_notificationsLock;
