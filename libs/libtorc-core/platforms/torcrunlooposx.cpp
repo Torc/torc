@@ -107,7 +107,7 @@ static class TorcRunLoopOSX : public TorcAdminObject
 {
   public:
     TorcRunLoopOSX()
-      : TorcAdminObject(TORC_ADMIN_CRIT_PRIORITY),
+      : TorcAdminObject(TORC_ADMIN_CRIT_PRIORITY + 10),
         m_thread(NULL)
     {
     }
