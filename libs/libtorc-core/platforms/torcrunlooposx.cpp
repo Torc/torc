@@ -25,6 +25,7 @@
 #include <QAtomicInt>
 
 // Torc
+#include "torclocalcontext.h"
 #include "torclogging.h"
 #include "torccocoa.h"
 #include "torcqthread.h"
@@ -108,7 +109,8 @@ static class TorcRunLoopOSX : public TorcAdminObject
   public:
     TorcRunLoopOSX()
       : TorcAdminObject(TORC_ADMIN_CRIT_PRIORITY + 10),
-        m_thread(NULL)
+        m_thread(NULL),
+        m_createdThread(false)
     {
     }
 
@@ -121,6 +123,13 @@ static class TorcRunLoopOSX : public TorcAdminObject
     {
         Destroy();
 
+        if (!gLocalContext->FlagIsSet(Torc::AdminThread))
+        {
+            gAdminRunLoop = CFRunLoopGetMain();
+            return;
+        }
+
+        m_createdThread = true;
         gAdminRunLoopRunning.ref();
 
         m_thread = new TorcOSXCallbackThread();
@@ -136,6 +145,10 @@ static class TorcRunLoopOSX : public TorcAdminObject
 
     void Destroy(void)
     {
+        if (!m_createdThread)
+            return;
+
+        m_createdThread = false;
         gAdminRunLoopRunning.deref();
 
         if (gAdminRunLoop)
@@ -153,5 +166,6 @@ static class TorcRunLoopOSX : public TorcAdminObject
 
   private:
     TorcOSXCallbackThread *m_thread;
+    bool                   m_createdThread;
 } TorcRunLoopOSX;
 
