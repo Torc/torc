@@ -21,7 +21,7 @@
 */
 
 // Qt
-#include <QApplication>
+#include <QGuiApplication>
 #include <QLibrary>
 #include <QKeyEvent>
 
@@ -32,7 +32,7 @@
 #include "torcqthread.h"
 #include "torcadminthread.h"
 #include "torcusb.h"
-#include "uiedid.h"
+#include "torcedid.h"
 #include "torccecdevice.h"
 
 // libCEC
@@ -65,7 +65,7 @@ QMutex    *gCECDeviceLock = new QMutex(QMutex::Recursive);
  * \todo Sound controls for amplifiers
  * \todo Fix crash in CBCecConfigurationChanged callback
  *
- * \sa UIEDID
+ * \sa TorcEDID
 */
 
 class TorcCECDevicePriv
@@ -124,7 +124,7 @@ class TorcCECDevicePriv
         LOG(VB_GENERAL, LOG_INFO, QString("Creating libCEC device (compiled with version %1)")
             .arg(LIBCEC_VERSION_CURRENT, 0, 16));
 
-        qint16 detectedphysicaladdress = UIEDID::PhysicalAddress();
+        qint16 detectedphysicaladdress = TorcEDID::PhysicalAddress();
 
         // create adapter interface
         libcec_configuration config;
@@ -714,7 +714,7 @@ class TorcCECDevicePriv
                             CEC_KEYPRESS_CONTEXT);
 
         if (gLocalContext->GetUIObject())
-            QApplication::postEvent(gLocalContext->GetUIObject(), keyevent);
+            QGuiApplication::postEvent(gLocalContext->GetUIObject(), keyevent);
 
         return 1;
     }
@@ -798,7 +798,7 @@ class TorcCECDevicePriv
   *
   * \todo Extend to handle settings management
   *
-  * \sa UIEDID
+  * \sa TorcEDID
   * \sa TorcCECDevicePriv
 */
 
@@ -924,7 +924,7 @@ void TorcCECDevice::Open(void)
     // this may be launched during gLocalContext creation and before the main
     // UI is available. Wait a little and see if we can retrieve a valid
     // physical address
-    if (UIEDID::PhysicalAddress() == 0x000/*invalid*/ && m_retryCount++ < 5)
+    if (TorcEDID::PhysicalAddress() == 0x000/*invalid*/ && m_retryCount++ < 5)
     {
         LOG(VB_GENERAL, LOG_INFO, "No valid physical address detected - deferring CEC startup");
         m_retryTimer = startTimer(200);

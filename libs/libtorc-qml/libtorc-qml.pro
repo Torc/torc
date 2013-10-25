@@ -15,6 +15,8 @@ DEPENDPATH  += ../libtorc-core/platforms
 DEPENDPATH  += ../libtorc-av
 DEPENDPATH  += ../libtorc-audio
 DEPENDPATH  += ../libtorc-video
+DEPENDPATH  += ./peripherals
+DEPENDPATH  += ./peripherals/cec
 INCLUDEPATH += ../.. ../
 INCLUDEPATH += $$DEPENDPATH
 
@@ -44,6 +46,12 @@ SOURCES += torcqmlmediaelement.cpp
 SOURCES += torcsgvideoprovider.cpp
 SOURCES += torcsgvideoplayer.cpp
 SOURCES += torcedid.cpp
+
+#libCEC
+HEADERS += peripherals/cec/cec.h
+HEADERS += peripherals/cec/cectypes.h
+HEADERS += peripherals/torccecdevice.h
+SOURCES += peripherals/torccecdevice.cpp
 
 contains(CONFIG_X11BASE, yes) {
     contains(CONFIG_VDPAU, yes) {
