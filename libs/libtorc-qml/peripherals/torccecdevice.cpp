@@ -869,8 +869,6 @@ bool TorcCECDevice::event(QEvent *Event)
     {
         // thread affinity has been changed and the device can be opened
         Open();
-        // listen for power events
-        gLocalContext->AddObserver(this);
         return true;
     }
     else if (Event->type() == QEvent::Close)
@@ -934,6 +932,9 @@ void TorcCECDevice::Open(void)
 
     if (!m_priv)
     {
+        // listen for power events
+        gLocalContext->AddObserver(this);
+
         m_priv = new TorcCECDevicePriv();
         m_priv->Open();
     }
