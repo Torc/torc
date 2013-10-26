@@ -53,6 +53,25 @@ HEADERS += peripherals/cec/cectypes.h
 HEADERS += peripherals/torccecdevice.h
 SOURCES += peripherals/torccecdevice.cpp
 
+linux-rasp-pi-g++ {
+    #HEADERS += platforms/torcraspberrypi.h
+    #SOURCES += platforms/torcraspberrypi.cpp
+
+    DEPENDPATH += ./openmax
+    HEADERS    += openmax/torcomxcore.h
+    HEADERS    += openmax/torcomxport.h
+    HEADERS    += openmax/torcomxtunnel.h
+    HEADERS    += openmax/torcomxcomponent.h
+    SOURCES    += openmax/torcomxcore.cpp
+    SOURCES    += openmax/torcomxport.cpp
+    SOURCES    += openmax/torcomxtunnel.cpp
+    SOURCES    += openmax/torcomxcomponent.cpp
+    inc.files  += openmax/torcomxcore.h
+    inc.files  += openmax/torcomxport.h
+    inc.files  += openamx/torcomxtunnel.h
+    inc.files  += openmax/torcomxcomponent.h
+}
+
 contains(CONFIG_X11BASE, yes) {
     contains(CONFIG_VDPAU, yes) {
         DEPENDPATH += ./platforms

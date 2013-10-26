@@ -549,6 +549,3 @@ OMX_ERRORTYPE TorcOMXComponent::DisablePorts(OMX_INDEXTYPE Domain)
 
     return OMX_ErrorNone;
 }
-
-
-
