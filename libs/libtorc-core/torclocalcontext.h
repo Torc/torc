@@ -181,6 +181,8 @@ class TORC_CORE_PUBLIC Torc
         ToggleStudioLevels,
         // USB
         USBRescan = 8000,
+        USBDeviceAdded,
+        USBDeviceRemoved,
         // users
         ChangeUser = 9000,
         UserChanged,
