@@ -2,8 +2,9 @@
 #define TORCQMLFRAMERATE_H
 
 // Qt
-#include <QTimerEvent>
 #include <QObject>
+#include <QTimer>
+#include <QElapsedTimer>
 
 // Torc
 #include "torcqmlexport.h"
@@ -19,19 +20,21 @@ class TORC_QML_PUBLIC TorcQMLFrameRate : public QObject
    ~TorcQMLFrameRate();
 
    signals:
-    void      framesPerSecondChanged  (void);
+    void           framesPerSecondChanged  (void);
 
   public slots:
-    qreal     GetFramesPerSecond      (void);
-    void      NewFrame                (void);
-
-  protected:
-    void      timerEvent              (QTimerEvent *Event);
+    qreal          GetFramesPerSecond      (void);
+    void           NewFrame                (void);
+    void           Timeout                 (void);
 
   private:
-    int       m_timer;
-    int       m_count;
-    qreal     framesPerSecond;
+    void           Update                  (void);
+
+  private:
+    int            m_count;
+    qreal          framesPerSecond;
+    QTimer        *m_timeout;
+    QElapsedTimer  m_timer;
 };
 
 #endif // TORCQMLFRAMERATE_H

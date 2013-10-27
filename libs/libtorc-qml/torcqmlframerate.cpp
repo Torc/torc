@@ -21,18 +21,22 @@
 #include "torclogging.h"
 #include "torcqmlframerate.h"
 
+#define MAX_FRAME_COUNT 60
+
 TorcQMLFrameRate::TorcQMLFrameRate()
-  : m_timer(0),
-    m_count(0),
+  : m_count(0),
     framesPerSecond(0.0)
 {
-    m_timer = startTimer(1000);
+    m_timer.start();
+    m_timeout = new QTimer(this);
+    connect(m_timeout, SIGNAL(timeout()), this, SLOT(Timeout()));
+    m_timeout->setTimerType(Qt::VeryCoarseTimer);
+    m_timeout->start(5000);
 }
 
 TorcQMLFrameRate::~TorcQMLFrameRate()
 {
-    if (m_timer)
-        killTimer(m_timer);
+    delete m_timeout;
 }
 
 qreal TorcQMLFrameRate::GetFramesPerSecond(void)
@@ -42,21 +46,24 @@ qreal TorcQMLFrameRate::GetFramesPerSecond(void)
 
 void TorcQMLFrameRate::NewFrame(void)
 {
-    m_count++;
+    if (++m_count == MAX_FRAME_COUNT)
+        Update();
 }
 
-void TorcQMLFrameRate::timerEvent(QTimerEvent *Event)
+void TorcQMLFrameRate::Timeout(void)
 {
-    if (Event->timerId() == m_timer)
-    {
-        qreal newfps = (qreal)m_count;
-        m_count = 0;
-        LOG(VB_GUI, LOG_DEBUG, QString("FPS %1").arg(framesPerSecond));
+    if (m_timer.elapsed() > 2000)
+        Update();
+}
 
-        if (!qFuzzyCompare(newfps + 1.0, framesPerSecond + 1.0))
-        {
-            framesPerSecond = newfps;
-            emit framesPerSecondChanged();
-        }
+void TorcQMLFrameRate::Update(void)
+{
+    qreal newfps = (m_count * 1000.0f) / m_timer.restart();
+    m_count = 0;
+
+    if (!qFuzzyCompare(newfps + 1.0, framesPerSecond + 1.0))
+    {
+        framesPerSecond = newfps;
+        emit framesPerSecondChanged();
     }
 }
