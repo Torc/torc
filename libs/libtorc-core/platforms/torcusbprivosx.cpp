@@ -20,13 +20,18 @@
 * USA.
 */
 
+// Qt
+#include <QCoreApplication>
+
 // OS X
 #include <IOKit/serial/IOSerialKeys.h>
 #include <IOKit/IOMessage.h>
 #include <IOKit/IOCFPlugIn.h>
 
 // Torc
+#include "torclocalcontext.h"
 #include "torclogging.h"
+#include "torcevent.h"
 #include "torcosxutils.h"
 #include "torcrunlooposx.h"
 #include "torcusbprivosx.h"
@@ -129,7 +134,7 @@ TorcUSBDevice::Classes TorcUSBPrivOSX::ToTorcClass(int ClassType)
 }
 
 void TorcUSBPrivOSX::AddDevice(TorcUSBDevice &Device, io_service_t Service,
-                            io_object_t Notification)
+                               io_object_t Notification)
 {
     bool found = false;
 
@@ -146,7 +151,12 @@ void TorcUSBPrivOSX::AddDevice(TorcUSBDevice &Device, io_service_t Service,
             m_notifications.insert(Service, pair);
         }
 
-        ((TorcUSB*)parent())->DeviceAdded(Device);
+        // This method runs from a CFRunLoop. To avoid unnecessary complexity elsewhere,
+        // we want to move the notification into the correct thread as early as possible.
+        // We cannot use the signal/slot mechanism from the CFRunLoop so send an event.
+        QVariantMap data = Device.ToMap();
+        TorcEvent *event = new TorcEvent(Torc::USBDeviceAdded, data);
+        QCoreApplication::postEvent(parent(), event);
     }
     else
     {
@@ -314,7 +324,13 @@ void TorcUSBPrivOSX::RemoveDevice(io_service_t Service)
             m_notifications.remove(Service);
         }
 
-        ((TorcUSB*)parent())->DeviceRemoved(device);
+        // This method runs from a CFRunLoop. To avoid unnecessary complexity elsewhere,
+        // we want to move the notification into the correct thread as early as possible.
+        // We cannot use the signal/slot mechanism from the CFRunLoop so send an event.
+        QVariantMap data = device.ToMap();
+        TorcEvent *event = new TorcEvent(Torc::USBDeviceRemoved, data);
+        QCoreApplication::postEvent(parent(), event);
+
         return;
     }
 
