@@ -808,15 +808,8 @@ void TorcCECDevice::Create(void)
 
     if (!gCECDevice)
     {
-        // On OS X, creation may be triggered from the CFRunLoop rather than
-        // a QThread - so check the current thread and move the object if
-        // necessary, otherwise trigger initiation straight away.
         gCECDevice = new TorcCECDevice();
-
-        if (TorcQThread::IsAdminThread())
-            gCECDevice->Open();
-        else
-            gCECDevice->moveToThread(TorcQThread::GetAdminThread());
+        gCECDevice->Open();
     }
 }
 
@@ -824,19 +817,7 @@ void TorcCECDevice::Destroy(void)
 {
     QMutexLocker locker(gCECDeviceLock);
 
-    if (gCECDevice)
-    {
-        if (TorcQThread::IsAdminThread())
-        {
-            delete gCECDevice;
-        }
-        else
-        {
-            QEvent *event = new QEvent(QEvent::Close);
-            QCoreApplication::postEvent(gCECDevice, event);
-        }
-    }
-
+    delete gCECDevice;
     gCECDevice = NULL;
 }
 
@@ -857,27 +838,7 @@ bool TorcCECDevice::event(QEvent *Event)
 {
     QMutexLocker locker(gCECDeviceLock);
 
-    if (Event->type() == QEvent::ThreadChange)
-    {
-        // the object will be moved into the admin thread so
-        // schedule device inititialisation
-        QEvent *event = new QEvent(QEvent::Enter);
-        QCoreApplication::postEvent(this, event);
-        return true;
-    }
-    else if (Event->type() == QEvent::Enter)
-    {
-        // thread affinity has been changed and the device can be opened
-        Open();
-        return true;
-    }
-    else if (Event->type() == QEvent::Close)
-    {
-        delete this;
-        gCECDevice = NULL;
-        return true;
-    }
-    else if (Event->type() == TorcEvent::TorcEventType)
+    if (Event->type() == TorcEvent::TorcEventType)
     {
         // close the device when suspending etc and restart on wake
         TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
