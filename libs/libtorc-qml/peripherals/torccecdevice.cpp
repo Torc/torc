@@ -49,6 +49,7 @@ typedef void*        (CEC_CDECL *DestroyLibCec)    (CEC::ICECAdapter*);
 #define OSDNAME "Torc"
 
 TorcCECDevice *gCECDevice = NULL;
+TorcCECThread *gCECThread = NULL;
 QMutex    *gCECDeviceLock = new QMutex(QMutex::Recursive);
 
 /*! \class TorcCECDevicePriv
@@ -799,6 +800,7 @@ class TorcCECDevicePriv
   * \todo Extend to handle settings management
   *
   * \sa TorcEDID
+  * \sa TorcCECThread
   * \sa TorcCECDevicePriv
 */
 
@@ -921,13 +923,42 @@ void TorcCECDevice::Close(void)
     m_priv = NULL;
 }
 
+/*! \class TorcCECThread
+ *  \brief A thread to run the libCEC interface.
+*/
+TorcCECThread::TorcCECThread()
+  : TorcQThread("CEC"),
+    m_device(NULL)
+{
+}
+
+TorcCECThread::~TorcCECThread()
+{
+}
+
+/*! \brief Create the CEC object in its own thread.
+ *
+ * Initialisation can block, so we need to run this in a separate thread.
+*/
+void TorcCECThread::Start(void)
+{
+    m_device = new TorcCECDevice();
+    m_device->Open();
+}
+
+void TorcCECThread::Finish(void)
+{
+    delete m_device;
+    m_device = NULL;
+}
+
 /*! \class TorcCECDevicehandler
   * \brief A class to detect and handle libCEC capable devices.
   *
   * \sa TorcUSB
+  * \sa TorcCECThread
   * \sa TorcCECDevice
 */
-
 static class TorcCECDeviceHandler : public TorcUSBDeviceHandler
 {
   public:
@@ -946,7 +977,8 @@ static class TorcCECDeviceHandler : public TorcUSBDeviceHandler
         {
             m_path = Device.m_path;
             LOG(VB_GENERAL, LOG_INFO, "CEC device added");
-            TorcCECDevice::Create();
+            m_thread = new TorcCECThread();
+            m_thread->start();
             return true;
         }
         else
@@ -959,9 +991,12 @@ static class TorcCECDeviceHandler : public TorcUSBDeviceHandler
 
     bool DeviceRemoved(const TorcUSBDevice &Device)
     {
-        if (Device.m_path == m_path)
+        if (Device.m_path == m_path && m_thread)
         {
-            TorcCECDevice::Destroy();
+            m_thread->quit();
+            m_thread->wait();
+            delete m_thread;
+            m_thread = NULL;
             LOG(VB_GENERAL, LOG_INFO, "CEC device removed");
             m_path = QString("");
             return true;
@@ -971,6 +1006,7 @@ static class TorcCECDeviceHandler : public TorcUSBDeviceHandler
     }
 
   private:
-    QString m_path;
+    QString         m_path;
+    TorcCECThread  *m_thread;
 
 } TorcCECDeviceHandler;

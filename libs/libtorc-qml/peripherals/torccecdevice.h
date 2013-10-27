@@ -5,6 +5,7 @@
 #include <QObject>
 
 // Torc
+#include "torcqthread.h"
 #include "torcqmlexport.h"
 
 #define CEC_KEYPRESS_CONTEXT QString("CEC")
@@ -38,6 +39,8 @@ class TorcCECDevicePriv;
 
 class TorcCECDevice : public QObject
 {
+    friend class TorcCECThread;
+
     Q_OBJECT
 
   public:
@@ -58,7 +61,19 @@ class TorcCECDevice : public QObject
     int                m_retryTimer;
 };
 
-extern TORC_QML_PUBLIC TorcCECDevice *gCECDevice;
-extern TORC_QML_PUBLIC QMutex        *gCECDeviceLock;
+class TorcCECThread : public TorcQThread
+{
+    Q_OBJECT
+
+  public:
+    TorcCECThread();
+    ~TorcCECThread();
+
+    void             Start          (void);
+    void             Finish         (void);
+
+  private:
+    TorcCECDevice   *m_device;
+};
 
 #endif // TORCCECDEVICE_H
