@@ -35,9 +35,12 @@ class TORC_CORE_PUBLIC TorcUSBDevice
     TorcUSBDevice();
     TorcUSBDevice(const QString &Path, int VendorID, int ProductID, Classes Class);
 
-    QVariantMap    ToMap         (void);
-    static QString ClassToString (Classes Class);
-    static bool    IgnoreClass   (Classes Class);
+    QVariantMap            ToMap             (void);
+
+    static TorcUSBDevice   FromMap           (QVariantMap &Map);
+    static QString         ClassToString     (Classes Class);
+    static Classes         ClassFromString   (const QString &String);
+    static bool            IgnoreClass       (Classes Class);
 
   public:
     QString m_path;

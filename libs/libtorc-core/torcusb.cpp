@@ -68,6 +68,17 @@ TorcUSBDevice::TorcUSBDevice(const QString &Path, int Vendor, int Product, TorcU
 {
 }
 
+TorcUSBDevice TorcUSBDevice::FromMap(QVariantMap &Map)
+{
+    TorcUSBDevice result(Map.value("path").toString(),
+                         Map.value("vendorid").toInt(),
+                         Map.value("productid").toInt(),
+                         ClassFromString(Map.value("class").toString()));
+    result.m_product = Map.value("product").toString();
+    result.m_vendor  = Map.value("vendor").toString();
+    return result;
+}
+
 QVariantMap TorcUSBDevice::ToMap(void)
 {
     QVariantMap result;
@@ -100,6 +111,23 @@ QString TorcUSBDevice::ClassToString(Classes Class)
     }
 
     return "Unknown";
+}
+
+TorcUSBDevice::Classes TorcUSBDevice::ClassFromString(const QString &String)
+{
+    if (!QString::compare(String, "Composite"))      return PerInterface;
+    if (!QString::compare(String, "Audio"))          return Audio;
+    if (!QString::compare(String, "Communications")) return Comm;
+    if (!QString::compare(String, "HID"))            return HID;
+    if (!QString::compare(String, "Physical"))       return Physical;
+    if (!QString::compare(String, "Still"))          return Still;
+    if (!QString::compare(String, "Printer"))        return Printer;
+    if (!QString::compare(String, "Mass Storage"))   return MassStorage;
+    if (!QString::compare(String, "Hub"))            return Hub;
+    if (!QString::compare(String, "Data"))           return Data;
+    if (!QString::compare(String, "AppSpec"))        return AppSpec;
+    if (!QString::compare(String, "VendorSpec"))     return VendorSpec;
+    return PerInterface;
 }
 
 bool TorcUSBDevice::IgnoreClass(Classes Class)
@@ -225,6 +253,19 @@ bool TorcUSB::event(QEvent *Event)
             m_priv->Refresh();
             return true;
         }
+        else if (torcevent && torcevent->GetEvent() == Torc::USBDeviceAdded)
+        {
+            TorcUSBDevice device = TorcUSBDevice::FromMap(torcevent->Data());
+            DeviceAdded(device);
+            return true;
+        }
+        else if (torcevent && torcevent->GetEvent() == Torc::USBDeviceRemoved)
+        {
+            TorcUSBDevice device = TorcUSBDevice::FromMap(torcevent->Data());
+            DeviceRemoved(device);
+            return true;
+        }
+
     }
 
     return false;
