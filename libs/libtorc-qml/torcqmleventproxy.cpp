@@ -100,7 +100,7 @@ bool TorcQMLEventProxy::event(QEvent *Event)
         if (event && event->GetEvent() == Torc::Exit && m_window)
         {
             LOG(VB_GENERAL, LOG_INFO, "Closing main window");
-            m_window->close();
+            QGuiApplication::quit();
             return true;
         }
     }
