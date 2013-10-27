@@ -51,8 +51,6 @@ TorcAdminThread::~TorcAdminThread()
 
 void TorcAdminThread::Start(void)
 {
-    TorcQThread::SetAdminThread();
-
     LOG(VB_GENERAL, LOG_INFO, "Admin thread starting");
 
     // create objects that will run in the admin thread

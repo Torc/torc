@@ -13,10 +13,7 @@ class TORC_CORE_PUBLIC TorcQThread : public QThread
 
   public:
     static void     SetMainThread    (void);
-    static void     SetAdminThread   (void);
     static bool     IsMainThread     (void);
-    static bool     IsAdminThread    (void);
-    static QThread* GetAdminThread   (void);
 
   public:
     explicit TorcQThread(const QString &Name);

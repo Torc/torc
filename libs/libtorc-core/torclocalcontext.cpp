@@ -381,9 +381,6 @@ TorcLocalContext::TorcLocalContext(TorcCommandLine* CommandLine, Torc::Applicati
     // Initialise TorcQThread FIRST
     TorcQThread::SetMainThread();
 
-    // NB this will be changed if a separate admin thread is started
-    TorcQThread::SetAdminThread();
-
     // install our message handler
     qInstallMessageHandler(&TorcCoreUtils::QtMessage);
 
