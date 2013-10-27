@@ -96,7 +96,7 @@ class TorcCECDevicePriv
 
         // this is causing crashes on windows and osx during the call to CECInitialise
         // we don't actually use it, so just ignore for now
-        m_callbacks.CBCecConfigurationChanged = NULL;//&ConfigCallback;
+        m_callbacks.CBCecConfigurationChanged = &ConfigCallback;
     }
 
     ~TorcCECDevicePriv()
@@ -733,7 +733,7 @@ class TorcCECDevicePriv
         return 1;
     }
 
-    static int CEC_CDECL ConfigCallback(void *Object, const libcec_configuration Config)
+    static int CEC_CDECL ConfigCallback(void*, const libcec_configuration)
     {
         LOG(VB_GENERAL, LOG_INFO, "Adapter configuration changed.");
         return 1;
