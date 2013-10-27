@@ -20,6 +20,7 @@
 // Qt
 #include <QThread>
 #include <QQuickWindow>
+#include <QGuiApplication>
 
 // Torc
 #include "torclocalcontext.h"
@@ -27,10 +28,11 @@
 #include "torcevent.h"
 #include "torcqmleventproxy.h"
 
-TorcQMLEventProxy::TorcQMLEventProxy(QWindow *Window)
+TorcQMLEventProxy::TorcQMLEventProxy(QWindow *Window, bool Hidemouse /*= false*/)
   : QObject(),
     m_window(Window),
-    m_callbackLock(new QMutex())
+    m_callbackLock(new QMutex()),
+    m_mouseTimer(NULL)
 {
     gLocalContext->SetUIObject(this);
 
@@ -46,10 +48,21 @@ TorcQMLEventProxy::TorcQMLEventProxy(QWindow *Window)
             connect(window, SIGNAL(sceneGraphInvalidated()), gLocalContext, SLOT(DeregisterQThread()),     Qt::DirectConnection);
         }
     }
+
+    if (Hidemouse)
+    {
+        HideMouse();
+        m_mouseTimer = new QTimer();
+        connect(m_mouseTimer, SIGNAL(timeout()), this, SLOT(HideMouse()));
+        m_mouseTimer->setTimerType(Qt::VeryCoarseTimer);
+        m_mouseTimer->start(5000);
+    }
 }
 
 TorcQMLEventProxy::~TorcQMLEventProxy()
 {
+    delete m_mouseTimer;
+
     if (m_window)
         gLocalContext->RemoveObserver(this);
 
@@ -100,4 +113,9 @@ void TorcQMLEventProxy::SceneGraphInitialized(void)
     QThread::currentThread()->setObjectName(QTRENDER_THREAD);
     emit SceneGraphReady();
     LOG(VB_GENERAL, LOG_INFO, "Qt SceneGraph ready");
+}
+
+void TorcQMLEventProxy::HideMouse(void)
+{
+    QGuiApplication::setOverrideCursor(QCursor(Qt::BlankCursor));
 }

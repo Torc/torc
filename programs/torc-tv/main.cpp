@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
     if (context)
     {
-        QScopedPointer<TorcQMLEventProxy> proxy(new TorcQMLEventProxy(view));
+        QScopedPointer<TorcQMLEventProxy> proxy(new TorcQMLEventProxy(view, true));
         QScopedPointer<TorcQMLFrameRate>  fps(new TorcQMLFrameRate());
 
         QObject::connect(view->engine(), SIGNAL(quit()), view, SLOT(close()));

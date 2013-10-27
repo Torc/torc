@@ -2,6 +2,7 @@
 #define TORCQMLEVENTPROXY_H
 
 // Qt
+#include <QTimer>
 #include <QMutex>
 #include <QWindow>
 #include <QObject>
@@ -33,7 +34,7 @@ class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
     Q_OBJECT
 
   public:
-    TorcQMLEventProxy(QWindow *Window);
+    TorcQMLEventProxy(QWindow *Window, bool Hidemouse = false);
    ~TorcQMLEventProxy();
 
     void                      RegisterCallback         (RenderCallback Function, void* Object, int Parameter);
@@ -45,11 +46,13 @@ class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
 
   public slots:
     void                      SceneGraphInitialized    (void);
+    void                      HideMouse                (void);
 
   private:
     QWindow                  *m_window;
     QMutex                   *m_callbackLock;
     QList<TorcRenderCallback> m_callbacks;
+    QTimer                   *m_mouseTimer;
 };
 
 #endif // TORCQMLEVENTPROXY_H
