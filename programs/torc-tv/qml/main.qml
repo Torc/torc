@@ -28,8 +28,8 @@ Rectangle {
     Text {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        font.pointSize: 70
-        text: torcFPS.framesPerSecond
+        font.pointSize: 30
+        text: torcFPS.framesPerSecond.toFixed(1)
         color: "white"
     }
 
