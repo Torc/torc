@@ -48,10 +48,6 @@ typedef void*        (CEC_CDECL *DestroyLibCec)    (CEC::ICECAdapter*);
 #define MAX_CEC_DEVICES 10
 #define OSDNAME "Torc"
 
-TorcCECDevice *gCECDevice = NULL;
-TorcCECThread *gCECThread = NULL;
-QMutex    *gCECDeviceLock = new QMutex(QMutex::Recursive);
-
 /*! \class TorcCECDevicePriv
  *  \brief A class that interfaces with libCEC and supported devices.
  *
@@ -803,26 +799,6 @@ class TorcCECDevicePriv
   * \sa TorcCECThread
   * \sa TorcCECDevicePriv
 */
-
-void TorcCECDevice::Create(void)
-{
-    QMutexLocker locker(gCECDeviceLock);
-
-    if (!gCECDevice)
-    {
-        gCECDevice = new TorcCECDevice();
-        gCECDevice->Open();
-    }
-}
-
-void TorcCECDevice::Destroy(void)
-{
-    QMutexLocker locker(gCECDeviceLock);
-
-    delete gCECDevice;
-    gCECDevice = NULL;
-}
-
 TorcCECDevice::TorcCECDevice()
   : QObject(NULL),
     m_priv(NULL),
@@ -838,8 +814,6 @@ TorcCECDevice::~TorcCECDevice()
 
 bool TorcCECDevice::event(QEvent *Event)
 {
-    QMutexLocker locker(gCECDeviceLock);
-
     if (Event->type() == TorcEvent::TorcEventType)
     {
         // close the device when suspending etc and restart on wake
@@ -881,8 +855,6 @@ bool TorcCECDevice::event(QEvent *Event)
 
 void TorcCECDevice::Open(void)
 {
-    QMutexLocker locker(gCECDeviceLock);
-
     // this may be launched during gLocalContext creation and before the main
     // UI is available. Wait a little and see if we can retrieve a valid
     // physical address
@@ -905,8 +877,6 @@ void TorcCECDevice::Open(void)
 
 void TorcCECDevice::Close(void)
 {
-    QMutexLocker locker(gCECDeviceLock);
-
     // stop the retry timer
     if (m_retryTimer)
     {

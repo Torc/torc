@@ -6,7 +6,6 @@
 
 // Torc
 #include "torcqthread.h"
-#include "torcqmlexport.h"
 
 #define CEC_KEYPRESS_CONTEXT QString("CEC")
 
@@ -34,7 +33,6 @@
 #define LIBCEC_MAKEACTIVESOURCE_DEFAULT   true
 #define LIBCEC_SENDINACTIVESOURCE_DEFAULT true
 
-class QMutex;
 class TorcCECDevicePriv;
 
 class TorcCECDevice : public QObject
@@ -43,22 +41,18 @@ class TorcCECDevice : public QObject
 
     Q_OBJECT
 
-  public:
-    static void Create  (void);
-    static void Destroy (void);
-
   protected:
     TorcCECDevice();
     virtual ~TorcCECDevice();
 
-    bool        event   (QEvent *Event);
-    void        Open    (void);
-    void        Close   (void);
+    bool                event         (QEvent *Event);
+    void                Open          (void);
+    void                Close         (void);
 
   private:
-    TorcCECDevicePriv *m_priv;
-    int                m_retryCount;
-    int                m_retryTimer;
+    TorcCECDevicePriv  *m_priv;
+    int                 m_retryCount;
+    int                 m_retryTimer;
 };
 
 class TorcCECThread : public TorcQThread
@@ -69,11 +63,11 @@ class TorcCECThread : public TorcQThread
     TorcCECThread();
     ~TorcCECThread();
 
-    void             Start          (void);
-    void             Finish         (void);
+    void               Start          (void);
+    void               Finish         (void);
 
   private:
-    TorcCECDevice   *m_device;
+    TorcCECDevice     *m_device;
 };
 
 #endif // TORCCECDEVICE_H
