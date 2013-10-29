@@ -26,6 +26,7 @@
 
 // OS X
 #import <Cocoa/Cocoa.h>
+#import <IOKit/graphics/IOGraphicsLib.h>
 
 @implementation NSThread (Dummy)
 - (void) run;
@@ -85,58 +86,11 @@ QByteArray GetOSXEDID(CGDirectDisplayID Display)
 
     io_registry_entry_t displayport = CGDisplayIOServicePort(Display);
 
-    CFDataRef edid = (CFDataRef)IORegistryEntrySearchCFProperty(displayport, kIOServicePlane, CFSTR("EDID"),
-                                                                kCFAllocatorDefault,
-                                                                kIORegistryIterateRecursively | kIORegistryIterateParents);
+    NSDictionary* dict = (NSDictionary*)IODisplayCreateInfoDictionary(displayport, kIODisplayOnlyPreferredName);
 
-    const char* buf = (const char*)[(NSData*)edid bytes];
-
-    if (!buf)
-    {
-        LOG(VB_GENERAL, LOG_WARNING, "Failed to retrieve EDID for display - "
-                                     "try rebooting if this is a hotplugged display");
-        return result;
-    }
-
-    int length = [(NSData*)edid length];
-    result = QByteArray(buf, length);
-
-    return result;
-}
-
-/// \brief Get the EDID for the current display.
-QByteArray GetOSXEDID(void)
-{
-    QByteArray result;
-
-    // pool
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-
-    // get displays
-    CGDisplayCount count = 0;
-    CGError err = CGGetActiveDisplayList(0, NULL, &count);
-
-    if (err == CGDisplayNoErr)
-    {
-        CGDirectDisplayID *displays = (CGDirectDisplayID*)calloc((size_t)count, sizeof(CGDirectDisplayID));
-        err = CGGetActiveDisplayList(count, displays, &count);
-
-        if (err == CGDisplayNoErr)
-        {
-            for (uint i = 0; i < count; i++)
-            {
-                QByteArray ediddata = GetOSXEDID(displays[i]);
-
-                if (!ediddata.isEmpty())
-                {
-                    result = ediddata;
-                    break;
-                }
-            }
-        }
-    }
-
-    [pool release];
+    NSData* edid = [dict objectForKey: [NSString stringWithUTF8String: kIODisplayEDIDKey]];
+    if (edid && [edid isKindOfClass: [NSData class]] && [edid length] != 0)
+        result = QByteArray((char*)[edid bytes], [edid length]);
 
     return result;
 }
