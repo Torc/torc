@@ -402,9 +402,9 @@ int TorcNVControl::GetPCIID(Display *XDisplay, int Screen)
     return 0;
 }
 
-class EDIDFactoryNVControl : public EDIDFactory
+class EDIDFactoryNVControl : public TorcEDIDFactory
 {
-    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, WId Window, int Screen)
+    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, QWindow *Window, int Screen)
     {
         const char *displaystring = NULL;
         Display* display = XOpenDisplay(displaystring);
