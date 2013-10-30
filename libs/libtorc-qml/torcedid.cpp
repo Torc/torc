@@ -28,9 +28,6 @@
 #include "torclogging.h"
 #include "torcedid.h"
 
-TorcEDID* TorcEDID::gTorcEDID   = new TorcEDID();
-QMutex* TorcEDID::gTorcEDIDLock = new QMutex(QMutex::Recursive);
-
 /*! \class TorcEDID
  *  \brief A parser for Extended Display Identification Data (EDID)
  *
@@ -66,43 +63,45 @@ TorcEDID::~TorcEDID()
 {
 }
 
-void TorcEDID::RegisterEDID(WId Window, int Screen)
+TorcEDID TorcEDID::GetEDID(QWindow *Window, int Screen)
 {
-    QMutexLocker locker(gTorcEDIDLock);
-
     // source edid
     QMap<QPair<int,QString>,QByteArray> edids;
 
-    EDIDFactory* factory = EDIDFactory::GetEDIDFactory();
+    TorcEDIDFactory* factory = TorcEDIDFactory::GetTorcEDIDFactory();
     for ( ; factory; factory = factory->NextFactory())
         factory->GetEDID(edids, Window, Screen);
 
-    if (edids.isEmpty())
+    if (!edids.isEmpty())
     {
-        LOG(VB_GENERAL, LOG_INFO, "Failed to find EDID for monitor");
-        return;
-    }
-
-    // pick the best
-    int score = -1;
-    QMap<QPair<int,QString>,QByteArray>::iterator best = edids.end();
-    QMap<QPair<int,QString>,QByteArray>::iterator it = edids.begin();
-    for ( ; it != edids.end(); ++it)
-    {
-        LOG(VB_GENERAL, LOG_DEBUG, QString("EDID from '%1': score %2").arg(it.key().second).arg(it.key().first));
-        if (it.key().first > score)
+        // pick the best
+        int score = -1;
+        QMap<QPair<int,QString>,QByteArray>::iterator best = edids.end();
+        QMap<QPair<int,QString>,QByteArray>::iterator it = edids.begin();
+        for ( ; it != edids.end(); ++it)
         {
-            score = it.key().first;
-            best = it;
+            LOG(VB_GENERAL, LOG_DEBUG, QString("EDID from '%1': score %2").arg(it.key().second).arg(it.key().first));
+            if (it.key().first > score)
+            {
+                score = it.key().first;
+                best = it;
+            }
+        }
+
+        // and use it
+        if (best != edids.end())
+        {
+            TorcEDID result = best.value();
+            result.Process();
+            return result;
         }
     }
-
-    // and use it
-    if (best != edids.end())
+    else
     {
-        gTorcEDID->m_edidData = best.value();
-        gTorcEDID->Process();
+        LOG(VB_GENERAL, LOG_INFO, "Failed to find EDID for monitor");
     }
+
+    return TorcEDID();
 }
 
 QByteArray TorcEDID::TrimEDID(const QByteArray &EDID)
@@ -118,29 +117,23 @@ QByteArray TorcEDID::TrimEDID(const QByteArray &EDID)
 
 qint16 TorcEDID::PhysicalAddress(void)
 {
-    QMutexLocker locker(gTorcEDIDLock);
-
-    return gTorcEDID->m_physicalAddress;
+    return m_physicalAddress;
 }
 
 int TorcEDID::GetAudioLatency(bool Interlaced)
 {
-    QMutexLocker locker(gTorcEDIDLock);
+    if (Interlaced && m_interlacedAudioLatency >=0 )
+        return m_interlacedAudioLatency;
 
-    if (Interlaced && gTorcEDID->m_interlacedAudioLatency >=0 )
-        return gTorcEDID->m_interlacedAudioLatency;
-
-    return gTorcEDID->m_audioLatency;
+    return m_audioLatency;
 }
 
 int TorcEDID::GetVideoLatency(bool Interlaced)
 {
-    QMutexLocker locker(gTorcEDIDLock);
+    if (Interlaced && m_interlacedVideoLatency >= 0)
+        return m_interlacedVideoLatency;
 
-    if (Interlaced && gTorcEDID->m_interlacedVideoLatency >= 0)
-        return gTorcEDID->m_interlacedVideoLatency;
-
-    return gTorcEDID->m_videoLatency;;
+    return m_videoLatency;;
 }
 
 QString TorcEDID::GetMSString(void)
@@ -223,7 +216,7 @@ void TorcEDID::Process(bool Quiet /*=false*/)
                 {
                     m_physicalAddress = (m_edidData.at(i + 3) << 8) + m_edidData.at(i + 4);
                     if (!Quiet)
-                        LOG(VB_GENERAL, LOG_INFO, QString("EDID physical address: 0x%1").arg(m_physicalAddress,0,16));
+                        LOG(VB_GENERAL, LOG_INFO, QString("EDID physical address: 0x%1").arg(m_physicalAddress, 4, 16, QChar('0')));
 
                     if (length >= 8 && ((i + 7) < size))
                     {
@@ -284,24 +277,24 @@ void TorcEDID::Process(bool Quiet /*=false*/)
     }
 }
 
-EDIDFactory* EDIDFactory::gEDIDFactory = NULL;
+TorcEDIDFactory* TorcEDIDFactory::gTorcEDIDFactory = NULL;
 
-EDIDFactory::EDIDFactory()
+TorcEDIDFactory::TorcEDIDFactory()
 {
-    nextEDIDFactory = gEDIDFactory;
-    gEDIDFactory = this;
+    nextTorcEDIDFactory = gTorcEDIDFactory;
+    gTorcEDIDFactory = this;
 }
 
-EDIDFactory::~EDIDFactory()
+TorcEDIDFactory::~TorcEDIDFactory()
 {
 }
 
-EDIDFactory* EDIDFactory::GetEDIDFactory(void)
+TorcEDIDFactory* TorcEDIDFactory::GetTorcEDIDFactory(void)
 {
-    return gEDIDFactory;
+    return gTorcEDIDFactory;
 }
 
-EDIDFactory* EDIDFactory::NextFactory(void) const
+TorcEDIDFactory* TorcEDIDFactory::NextFactory(void) const
 {
-    return nextEDIDFactory;
+    return nextTorcEDIDFactory;
 }

@@ -17,6 +17,7 @@ DEPENDPATH  += ../libtorc-audio
 DEPENDPATH  += ../libtorc-video
 DEPENDPATH  += ./peripherals
 DEPENDPATH  += ./peripherals/cec
+DEPENDPATH  += ./platforms
 INCLUDEPATH += ../.. ../
 INCLUDEPATH += $$DEPENDPATH
 
@@ -39,6 +40,8 @@ HEADERS += torcsgvideoprovider.h
 HEADERS += torcsgvideoplayer.h
 HEADERS += torcqmlopengldefs.h
 HEADERS += torcedid.h
+HEADERS += torcqmldisplay.h
+
 SOURCES += torcqmlutils.cpp
 SOURCES += torcqmleventproxy.cpp
 SOURCES += torcqmlframerate.cpp
@@ -46,12 +49,19 @@ SOURCES += torcqmlmediaelement.cpp
 SOURCES += torcsgvideoprovider.cpp
 SOURCES += torcsgvideoplayer.cpp
 SOURCES += torcedid.cpp
+SOURCES += torcqmldisplay.cpp
 
 #libCEC
 HEADERS += peripherals/cec/cec.h
 HEADERS += peripherals/cec/cectypes.h
 HEADERS += peripherals/torccecdevice.h
 SOURCES += peripherals/torccecdevice.cpp
+
+macx {
+    LIBS    += -framework Cocoa
+    SOURCES += platforms/torcqmldisplayosx.h
+    SOURCES += platforms/torcqmldisplayosx.cpp
+}
 
 linux-rasp-pi-g++ {
     #HEADERS += platforms/torcraspberrypi.h

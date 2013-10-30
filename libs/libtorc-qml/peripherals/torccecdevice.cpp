@@ -33,6 +33,8 @@
 #include "torcadminthread.h"
 #include "torcusb.h"
 #include "torcedid.h"
+#include "torcqmleventproxy.h"
+#include "torcqmldisplay.h"
 #include "torccecdevice.h"
 
 // libCEC
@@ -68,8 +70,9 @@ typedef void*        (CEC_CDECL *DestroyLibCec)    (CEC::ICECAdapter*);
 class TorcCECDevicePriv
 {
   public:
-    TorcCECDevicePriv()
-      : m_adapter(NULL),
+    TorcCECDevicePriv(int PhysicalAddress)
+      : m_physicalAddress(PhysicalAddress),
+        m_adapter(NULL),
         m_defaultDevice(LIBCEC_DEVICE_DEFAULT),
         m_physicalAddressAutoDetected(false),
         m_defaultPhysicalAddress(LIBCEC_PHYSICALADDRESS_DEFAULT),
@@ -103,6 +106,7 @@ class TorcCECDevicePriv
 
     bool Open(void)
     {
+        // load the library
         QLibrary libcec("libcec", 2);
 
         LibCecInitialise cecinitialise = (LibCecInitialise)libcec.resolve("CECInitialise");
@@ -121,7 +125,7 @@ class TorcCECDevicePriv
         LOG(VB_GENERAL, LOG_INFO, QString("Creating libCEC device (compiled with version %1)")
             .arg(LIBCEC_VERSION_CURRENT, 0, 16));
 
-        qint16 detectedphysicaladdress = TorcEDID::PhysicalAddress();
+        qint16 detectedphysicaladdress = m_physicalAddress;
 
         // create adapter interface
         libcec_configuration config;
@@ -763,7 +767,13 @@ class TorcCECDevicePriv
             .arg(Address).arg(Activated ? "Activated" : "Deactivated"));
     }
 
+    int GetPhysicalAddress(void)
+    {
+        return m_physicalAddress;
+    }
+
   private:
+    int           m_physicalAddress;
     ICECAdapter  *m_adapter;
     ICECCallbacks m_callbacks;
     QString       m_defaultDevice;
@@ -802,13 +812,14 @@ class TorcCECDevicePriv
 TorcCECDevice::TorcCECDevice()
   : QObject(NULL),
     m_priv(NULL),
-    m_retryCount(0),
-    m_retryTimer(0)
+    m_retryTimer(0),
+    m_display(NULL)
 {
 }
 
 TorcCECDevice::~TorcCECDevice()
 {
+    disconnect();
     Close();
 }
 
@@ -829,11 +840,11 @@ bool TorcCECDevice::event(QEvent *Event)
                 case Torc::Restarting:
                     if (m_priv)
                         m_priv->Close(false, true);
-                    break;
+                    return true;
                 case Torc::WokeUp:
                     if (m_priv)
                         m_priv->Open();
-                    break;
+                    return true;
                 default:
                     break;
             }
@@ -847,21 +858,67 @@ bool TorcCECDevice::event(QEvent *Event)
             killTimer(m_retryTimer);
             m_retryTimer = 0;
             Open();
+            return true;
         }
     }
 
-    return false;
+    return QObject::event(Event);
+}
+
+void TorcCECDevice::PhysicalAddressChanged(int Address)
+{
+    // kill the retry timer if it is active (which it shouldn't be)
+    if (m_retryTimer)
+    {
+        killTimer(m_retryTimer);
+        m_retryTimer = 0;
+    }
+
+    // If we have a new physical address, recreate the device interface. This will have issues...
+    // External CEC adapters have no knowledge of which display they're connected to, so if we have
+    // multiple active external displays with valid physical addresses, we have no idea which physical address
+    // corresponds to the device.
+    // This is more realistically useful for a window that has been moved from the internal display (e.g. laptop)
+    // that has no physical address to an external display with address (or vice versa).
+    if (m_priv && m_priv->GetPhysicalAddress() != Address)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "New physical address detected - deleting current CEC device");
+        Close();
+    }
+
+    // and create
+    if (!m_priv)
+        Open();
 }
 
 void TorcCECDevice::Open(void)
 {
-    // this may be launched during gLocalContext creation and before the main
-    // UI is available. Wait a little and see if we can retrieve a valid
-    // physical address
-    if (TorcEDID::PhysicalAddress() == 0x000/*invalid*/ && m_retryCount++ < 5)
+    // retrieve the physical address for the current screen
+    if (!m_display)
+    {
+        TorcQMLEventProxy *proxy = static_cast<TorcQMLEventProxy*>(gLocalContext->GetUIObject());
+        if (proxy)
+        {
+            m_display = proxy->GetDisplay();
+            if (connect(m_display, SIGNAL(screenCECPhysicalAddressChanged(int)), this, SLOT(PhysicalAddressChanged(int))))
+                LOG(VB_GENERAL, LOG_INFO, "Listening for physical address changes");
+        }
+    }
+
+    if (!m_display)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "No display detected - waiting...");
+        m_retryTimer = startTimer(1000, Qt::CoarseTimer);
+        return;
+    }
+
+    // We have the display at this point but it may not have a valid physical address (not HDMI), in which
+    // case there will be no CEC functionality anyware. So bail out; we will still be listening for physical
+    // address changes if the window is moved into a different display.
+    int physicalAddress = m_display->getScreenCECPhysicalAddress();
+    if (physicalAddress == 0x0000/*invalid*/)
     {
         LOG(VB_GENERAL, LOG_INFO, "No valid physical address detected - deferring CEC startup");
-        m_retryTimer = startTimer(200);
         return;
     }
 
@@ -870,7 +927,7 @@ void TorcCECDevice::Open(void)
         // listen for power events
         gLocalContext->AddObserver(this);
 
-        m_priv = new TorcCECDevicePriv();
+        m_priv = new TorcCECDevicePriv(physicalAddress);
         m_priv->Open();
     }
 }
@@ -883,7 +940,6 @@ void TorcCECDevice::Close(void)
         killTimer(m_retryTimer);
         m_retryTimer = 0;
     }
-    m_retryCount = 0;
 
     // stop listening for power events
     gLocalContext->RemoveObserver(this);

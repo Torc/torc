@@ -29,6 +29,8 @@ class TORC_QML_PUBLIC TorcRenderCallback
     int            m_parameter;
 };
 
+class TorcQMLDisplay;
+
 class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
 {
     Q_OBJECT
@@ -39,6 +41,9 @@ class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
 
     void                      RegisterCallback         (RenderCallback Function, void* Object, int Parameter);
     void                      ProcessCallbacks         (void);
+    TorcQMLDisplay*           GetDisplay               (void);
+
+  protected:
     bool                      event                    (QEvent *Event);
 
   signals:
@@ -53,6 +58,7 @@ class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
     QMutex                   *m_callbackLock;
     QList<TorcRenderCallback> m_callbacks;
     QTimer                   *m_mouseTimer;
+    TorcQMLDisplay           *m_display;
 };
 
 #endif // TORCQMLEVENTPROXY_H

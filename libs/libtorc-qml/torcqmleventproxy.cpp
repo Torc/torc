@@ -26,13 +26,15 @@
 #include "torclocalcontext.h"
 #include "torcloggingimp.h"
 #include "torcevent.h"
+#include "torcqmldisplay.h"
 #include "torcqmleventproxy.h"
 
 TorcQMLEventProxy::TorcQMLEventProxy(QWindow *Window, bool Hidemouse /*= false*/)
   : QObject(),
     m_window(Window),
     m_callbackLock(new QMutex()),
-    m_mouseTimer(NULL)
+    m_mouseTimer(NULL),
+    m_display(TorcQMLDisplay::Create(Window))
 {
     gLocalContext->SetUIObject(this);
 
@@ -61,6 +63,7 @@ TorcQMLEventProxy::TorcQMLEventProxy(QWindow *Window, bool Hidemouse /*= false*/
 
 TorcQMLEventProxy::~TorcQMLEventProxy()
 {
+    delete m_display;
     delete m_mouseTimer;
 
     if (m_window)
@@ -90,6 +93,11 @@ void TorcQMLEventProxy::ProcessCallbacks(void)
 
     for (int i = 0; i < callbacks.size(); ++i)
         (callbacks[i].m_function)(callbacks[i].m_object, callbacks[i].m_parameter);
+}
+
+TorcQMLDisplay* TorcQMLEventProxy::GetDisplay(void)
+{
+    return m_display;
 }
 
 bool TorcQMLEventProxy::event(QEvent *Event)

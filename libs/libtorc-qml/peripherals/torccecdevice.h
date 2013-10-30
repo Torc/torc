@@ -34,6 +34,7 @@
 #define LIBCEC_SENDINACTIVESOURCE_DEFAULT true
 
 class TorcCECDevicePriv;
+class TorcQMLDisplay;
 
 class TorcCECDevice : public QObject
 {
@@ -49,10 +50,13 @@ class TorcCECDevice : public QObject
     void                Open          (void);
     void                Close         (void);
 
+  public slots:
+    void                PhysicalAddressChanged (int Address);
+
   private:
     TorcCECDevicePriv  *m_priv;
-    int                 m_retryCount;
     int                 m_retryTimer;
+    TorcQMLDisplay     *m_display;
 };
 
 class TorcCECThread : public TorcQThread
