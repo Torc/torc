@@ -78,7 +78,6 @@ void TorcQMLDisplayOSX::UpdateScreenData(void)
     RefreshScreenModes();
     m_edid = TorcEDID::GetEDID(m_window, screenNumber);
     setScreenCECPhysicalAddress(m_edid.PhysicalAddress());
-    emit screenCECPhysicalAddressChanged(screenCECPhysicalAddress);
 }
 
 void TorcQMLDisplayOSX::RefreshScreenModes(void)
@@ -90,6 +89,7 @@ void TorcQMLDisplayOSX::RefreshScreenModes(void)
     if (m_displayModes)
         CFRelease(m_displayModes);
     m_displayModes = NULL;
+    m_modes.clear();
 
     // retrieve new list of modes
     CGDirectDisplayID display = GetOSXDisplay(m_window->winId());
