@@ -1,4 +1,4 @@
-/* UIADL
+/* TorcADL
 *
 * This file is part of the Torc project.
 *
@@ -28,8 +28,8 @@
 #include "torclocaldefs.h"
 #include "torccompat.h"
 #include "torclogging.h"
-#include "uiedid.h"
-#include "uiadl.h"
+#include "torcedid.h"
+#include "torcadl.h"
 
 #include <stdlib.h>
 
@@ -81,7 +81,7 @@ class ADLLibrary : public QLibrary
             return gLib;
         }
 
-        LOG(VB_GENERAL, LOG_DEBUG, "Failed to load ATI ADL library");
+        LOG(VB_GENERAL, LOG_INFO, "ATI ADL library not present");
         delete gLib;
         return NULL;
     }
@@ -119,7 +119,7 @@ class ADLLibrary : public QLibrary
 };
 
 
-bool UIADL::ADLAvailable(void)
+bool TorcADL::ADLAvailable(void)
 {
     QMutexLocker locker(gADLLock);
 
@@ -134,7 +134,7 @@ bool UIADL::ADLAvailable(void)
     return available;
 }
 
-QByteArray UIADL::GetADLEDID(char *Display, int Screen, const QString Hint)
+QByteArray TorcADL::GetADLEDID(char *Display, int Screen, const QString Hint)
 {
     (void)Screen;
     (void)Hint;
@@ -247,8 +247,8 @@ QByteArray UIADL::GetADLEDID(char *Display, int Screen, const QString Hint)
 
                     if (!edid.isEmpty())
                     {
-                        UIEDID check(edid);
 #if defined (Q_OS_WIN)
+                        TorcEDID check(edid);
                         if (Hint == check.GetMSString())
 #endif
                             return edid;
@@ -266,11 +266,11 @@ QByteArray UIADL::GetADLEDID(char *Display, int Screen, const QString Hint)
 }
 
 #if defined (Q_OS_WIN)
-class EDIDFactoryADLWin : public EDIDFactory
+class TorcEDIDFactoryADLWin : public TorcEDIDFactory
 {
-    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, WId Window, int Screen)
+    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, QWindow *Window, int Screen)
     {
-        if (UIADL::ADLAvailable())
+        if (TorcADL::ADLAvailable())
         {
             MONITORINFOEX monitor;
             memset(&monitor, 0, sizeof(MONITORINFOEX));
@@ -279,31 +279,31 @@ class EDIDFactoryADLWin : public EDIDFactory
             HMONITOR monitorid = MonitorFromWindow(Window, MONITOR_DEFAULTTONEAREST);
             GetMonitorInfo(monitorid, &monitor);
 
-            QByteArray edid = UIADL::GetADLEDID(monitor.szDevice, Screen);
+            QByteArray edid = TorcADL::GetADLEDID(monitor.szDevice, Screen);
 
             if (!edid.isEmpty())
                 EDIDMap.insert(qMakePair(50, QString("ADL")), edid);
         }
     }
-} EDIDFactoryADLWin;
+} TorcEDIDFactoryADLWin;
 #endif
 
 #if defined (Q_OS_LINUX)
-class EDIDFactoryADLLinux : public EDIDFactory
+class TorcEDIDFactoryADLLinux : public TorcEDIDFactory
 {
-    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, WId Window, int Screen)
+    void GetEDID(QMap<QPair<int, QString>, QByteArray> &EDIDMap, QWindow *Window, int Screen)
     {
         (void)Window;
 
-        if (UIADL::ADLAvailable())
+        if (TorcADL::ADLAvailable())
         {
             const char *displaystring = NULL;
             Display* display = XOpenDisplay(displaystring);
-            QByteArray edid = UIADL::GetADLEDID(XDisplayString(display), Screen);
+            QByteArray edid = TorcADL::GetADLEDID(XDisplayString(display), Screen);
 
             if (!edid.isEmpty())
                 EDIDMap.insert(qMakePair(90, QString("ADL")), edid);
         }
     }
-} EDIDFactoryADLLinux;
+} TorcEDIDFactoryADLLinux;
 #endif

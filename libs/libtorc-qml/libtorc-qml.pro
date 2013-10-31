@@ -82,6 +82,15 @@ linux-rasp-pi-g++ {
     inc.files  += openmax/torcomxcomponent.h
 }
 
+win32|contains(CONFIG_X11BASE, yes) {
+    DEPENDPATH += ./platforms/adl
+    HEADERS    += platforms/adl/include/adl_defines.h
+    HEADERS    += platforms/adl/include/adl_sdk.h
+    HEADERS    += platforms/adl/include/adl_structures.h
+    HEADERS    += platforms/adl/torcadl.h
+    SOURCES    += platforms/adl/torcadl.cpp
+}
+
 contains(CONFIG_X11BASE, yes) {
     contains(CONFIG_VDPAU, yes) {
         DEPENDPATH += ./platforms
@@ -106,6 +115,8 @@ contains(CONFIG_X11BASE, yes) {
     HEADERS    += platforms/nvctrl/torcnvcontrol.h
     SOURCES    += platforms/nvctrl/include/NVCtrl.c
     SOURCES    += platforms/nvctrl/torcnvcontrol.cpp
+    HEADERS    += platforms/torcqmldisplayx11.h
+    SOURCES    += platforms/torcqmldisplayx11.cpp
     LIBS       += -lXxf86vm
 }
 
