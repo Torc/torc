@@ -129,7 +129,14 @@ void TorcQMLDisplayOSX::RefreshScreenModes(void)
                 .arg(mode == current ? QString(" CURRENT"): ""));
 
             if (!ignore)
+            {
+                if (mode == current)
+                {
+                    setScreenInterlaced(interlaced);
+                    setScreenRefreshRate(moderate);
+                }
                 m_modes.append(TorcDisplayMode(modewidth, modeheight, depth, moderate, interlaced, i));
+            }
         }
     }
 }
