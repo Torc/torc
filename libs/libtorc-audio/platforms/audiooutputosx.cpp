@@ -65,22 +65,23 @@ QString StreamDescriptionToString(AudioStreamBasicDescription Description)
     return result;
 }
 
-static UInt32   sNumberCommonSampleRates = 15;
-static Float64  sCommonSampleRates[] = {
+#define COMMON_SAMPLE_RATE_COUNT 15
+
+static Float64 CommonSampleRates[] =
+{
     8000.0,   11025.0,  12000.0,
     16000.0,  22050.0,  24000.0,
     32000.0,  44100.0,  48000.0,
     64000.0,  88200.0,  96000.0,
-    128000.0, 176400.0, 192000.0 };
+    128000.0, 176400.0, 192000.0
+};
 
-static bool IsRateCommon(Float64 inRate)
+static bool IsRateCommon(Float64 Rate)
 {
-    bool theAnswer = false;
-    for(UInt32 i = 0; !theAnswer && (i < sNumberCommonSampleRates); i++)
-    {
-        theAnswer = inRate == sCommonSampleRates[i];
-    }
-    return theAnswer;
+    for (UInt32 i = 0; i < COMMON_SAMPLE_RATE_COUNT; i++)
+        if (Rate == CommonSampleRates[i])
+            return true;
+    return false;
 }
 
 template <class AudioDataType>
@@ -166,59 +167,69 @@ class AudioOutputOSXPriv
         m_started         = false;
         m_bytesPerPacket  = -1;
         m_wasDigital      = false;
+        m_spdifIOProcID   = 0;
     }
 
     AudioDeviceID GetDefaultOutputDevice(void)
     {
-        AudioDeviceID deviceId = 0;
+        AudioDeviceID deviceID = 0;
 
-        UInt32 paramsize = sizeof(deviceId);
-        OSStatus err = AudioHardwareGetProperty(kAudioHardwarePropertyDefaultOutputDevice,
-                                                &paramsize, &deviceId);
+        AudioObjectPropertyAddress propertyAddress;
+        UInt32 propertySize       = sizeof(AudioDeviceID);
+        propertyAddress.mSelector = kAudioHardwarePropertyDefaultOutputDevice;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+        OSStatus err = AudioObjectGetPropertyData(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &propertySize, &deviceID);
+
         if (err == noErr)
         {
-            LOG(VB_AUDIO, LOG_INFO, QString("Default device ID '%1'").arg(deviceId));
+            LOG(VB_AUDIO, LOG_INFO, QString("Default device ID: '%1'").arg(deviceID));
         }
         else
         {
             LOG(VB_GENERAL, LOG_WARNING, QString("Failed to get default audio device '%1'").arg(UInt32ToFourCC(err)));
-            deviceId = 0;
+            deviceID = 0;
         }
 
-        return deviceId;
+        return deviceID;
     }
 
     int GetTotalOutputChannels(void)
     {
-        UInt32 channels = 0;
         if (!m_deviceID)
-            return channels;
+            return 0;
 
-        UInt32 size = 0;
-        AudioDeviceGetPropertyInfo(m_deviceID, 0, false,
-                                   kAudioDevicePropertyStreamConfiguration,
-                                   &size, NULL);
-        AudioBufferList *list = (AudioBufferList *)malloc(size);
-        OSStatus err = AudioDeviceGetProperty(m_deviceID, 0, false,
-                                              kAudioDevicePropertyStreamConfiguration,
-                                              &size, list);
-        if (err == noErr)
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioDevicePropertyStreamConfiguration;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+
+        if (AudioObjectHasProperty(m_deviceID, &propertyAddress))
         {
-            for (UInt32 buffer = 0; buffer < list->mNumberBuffers; buffer++)
-                channels += list->mBuffers[buffer].mNumberChannels;
-        }
-        else
-        {
-            LOG(VB_GENERAL, LOG_WARNING, QString(
-                 "Unable to get total device output channels - id: %1 Error = [%2]")
-                 .arg(m_deviceID).arg(err));
+            UInt32 propertySize = 0;
+            OSStatus err = AudioObjectGetPropertyDataSize(m_deviceID, &propertyAddress, 0, NULL, &propertySize);
+
+            if (err == noErr)
+            {
+                AudioBufferList *list = (AudioBufferList*) new unsigned char(propertySize);
+                err = AudioObjectGetPropertyData(m_deviceID, &propertyAddress, 0, NULL, &propertySize, list);
+
+                if (err == noErr)
+                {
+                    UInt32 channels = 0;
+                    for (UInt32 buffer = 0; buffer < list->mNumberBuffers; buffer++)
+                        channels += list->mBuffers[buffer].mNumberChannels;
+                    LOG(VB_AUDIO, LOG_INFO, QString("Found %1 channels in %2 buffers").arg(channels).arg(list->mNumberBuffers));
+                    delete [] list;
+                    return channels;
+                }
+
+                delete [] list;
+            }
         }
 
-        LOG(VB_AUDIO, LOG_INFO, QString("GetTotalOutputChannels: Found %1 channels in %2 buffers")
-              .arg(channels).arg(list->mNumberBuffers));
-        free(list);
-
-        return channels;
+        LOG(VB_GENERAL, LOG_WARNING, "Unable to get total device output channels for device");
+        return 0;
     }
 
     QString GetName(void)
@@ -226,19 +237,18 @@ class AudioOutputOSXPriv
         if (!m_deviceID)
             return QString();
 
-        UInt32 propertySize;
-        AudioObjectPropertyAddress propertyAddress;
-
         CFStringRef name;
-        propertySize = sizeof(CFStringRef);
+        UInt32 propertySize       = sizeof(CFStringRef);
+
+        AudioObjectPropertyAddress propertyAddress;
         propertyAddress.mSelector = kAudioObjectPropertyName;
         propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
         propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
-        OSStatus err = AudioObjectGetPropertyData(m_deviceID, &propertyAddress,
-                                                  0, NULL, &propertySize, &name);
+        OSStatus err = AudioObjectGetPropertyData(m_deviceID, &propertyAddress, 0, NULL, &propertySize, &name);
+
         if (err != noErr)
         {
-            LOG(VB_GENERAL, LOG_ERR, QString("AudioObjectGetPropertyData for kAudioObjectPropertyName error: [%1]").arg(err));
+            LOG(VB_GENERAL, LOG_ERR, QString("Failed to retrieve object name (Error: %1)").arg(err));
             return QString();
         }
 
@@ -247,41 +257,53 @@ class AudioOutputOSXPriv
 
     bool GetAutoHogMode(void)
     {
-        UInt32 val = 0;
-        UInt32 size = sizeof(val);
-        OSStatus err = AudioHardwareGetProperty(kAudioHardwarePropertyHogModeIsAllowed, &size, &val);
+        UInt32 hogmode;
+        UInt32 propertySize       = sizeof(UInt32);
+
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioHardwarePropertyHogModeIsAllowed;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+        OSStatus err = AudioObjectGetPropertyData(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &propertySize, &hogmode);
 
         if (err != noErr)
         {
-            LOG(VB_GENERAL, LOG_WARNING, QString("Unable to get auto 'hog' mode. Error = [%1]").arg(err));
+            LOG(VB_GENERAL, LOG_WARNING, QString("Failed to get auto 'hog' mode (Error: %1)").arg(err));
             return false;
         }
 
-        return (val == 1);
+        return (hogmode == 1);
     }
 
     void SetAutoHogMode(bool Enable)
     {
-        UInt32 val = Enable ? 1 : 0;
-        OSStatus err = AudioHardwareSetProperty(kAudioHardwarePropertyHogModeIsAllowed,
-                                                sizeof(val), &val);
+        UInt32 hogmode            = Enable ? 1 : 0;
+        UInt32 propertySize       = sizeof(UInt32);
+
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioDevicePropertyHogMode;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+        OSStatus err = AudioObjectSetPropertyData(kAudioObjectSystemObject, &propertyAddress, 0, NULL, propertySize, &hogmode);
+
         if (err != noErr)
-        {
-            LOG(VB_GENERAL, LOG_WARNING, QString("SetAutoHogMode: Unable to set auto 'hog' mode. Error = [%1]")
-                 .arg(err));
-        }
+            LOG(VB_GENERAL, LOG_WARNING, QString("Failed to set auto 'hog'mode (Error: %1)").arg(err));
     }
 
     pid_t GetHogStatus(void)
     {
         pid_t pid;
         UInt32 pidsize = sizeof(pid);
-        OSStatus err = AudioDeviceGetProperty(m_deviceID, 0, FALSE, kAudioDevicePropertyHogMode,
-                                              &pidsize, &pid);
+
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioDevicePropertyHogMode;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+        OSStatus err = AudioObjectGetPropertyData(m_deviceID, &propertyAddress, 0, NULL, &pidsize, &pid);
+
         if (err != noErr)
         {
-            // This is not a fatal error. Some drivers simply don't support this property
-            LOG(VB_AUDIO, LOG_INFO, QString("GetHogStatus: unable to check: [%1]").arg(err));
+            LOG(VB_GENERAL, LOG_WARNING, QString("Failed to get auto 'hog' status (Error: %1)").arg(err));
             return -1;
         }
 
@@ -296,84 +318,94 @@ class AudioOutputOSXPriv
         if (!m_deviceID)
             return false;
 
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioDevicePropertyHogMode;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+
         if (Hog)
         {
             if (m_hog == -1)
             {
-                LOG(VB_AUDIO, LOG_INFO, QString("Setting 'hog' status on device %1").arg(m_deviceID));
-                OSStatus err = AudioDeviceSetProperty(m_deviceID, NULL, 0, false,
-                                                      kAudioDevicePropertyHogMode,
-                                                      sizeof(m_hog), &m_hog);
+                LOG(VB_AUDIO, LOG_INFO, QString("Setting 'hog' status on device '%1'").arg(m_deviceID));
+
+                OSStatus err = AudioObjectSetPropertyData(m_deviceID, &propertyAddress, 0, NULL, sizeof(m_hog), &m_hog);
+
                 if (err || m_hog != getpid())
                 {
-                    LOG(VB_GENERAL, LOG_WARNING, QString("Unable to set 'hog' status. Error = [%1]")
-                         .arg(UInt32ToFourCC(err)));
+                    LOG(VB_GENERAL, LOG_WARNING, QString("Unable to set 'hog' status (Error: %1)").arg(UInt32ToFourCC(err)));
                     return false;
                 }
-                LOG(VB_AUDIO, LOG_INFO, QString("Successfully set 'hog' status on device %1")
-                      .arg(m_deviceID));
+
+                LOG(VB_AUDIO, LOG_INFO, QString("Set 'hog' status on device '%1'").arg(m_deviceID));
             }
         }
         else
         {
             if (m_hog > -1)
             {
-                LOG(VB_AUDIO, LOG_INFO, QString("Releasing 'hog' status on device %1").arg(m_deviceID));
-                pid_t hogPid = -1;
-                OSStatus err = AudioDeviceSetProperty(m_deviceID, NULL, 0, false,
-                                                      kAudioDevicePropertyHogMode,
-                                                      sizeof(hogPid), &hogPid);
-                if (err || hogPid == getpid())
+                LOG(VB_AUDIO, LOG_INFO, QString("Releasing 'hog' status on device '%1'").arg(m_deviceID));
+                pid_t hogpid = -1;
+
+                OSStatus err = AudioObjectSetPropertyData(m_deviceID, &propertyAddress, 0, NULL, sizeof(hogpid), &hogpid);
+
+                if (err || hogpid == getpid())
                 {
-                    LOG(VB_GENERAL, LOG_WARNING, QString("Unable to release 'hog' status. Error = [%1]").arg(UInt32ToFourCC(err)));
+                    LOG(VB_GENERAL, LOG_WARNING, QString("Unable to release 'hog' status (Error: %1)").arg(UInt32ToFourCC(err)));
                     return false;
                 }
 
-                m_hog = hogPid;
+                m_hog = hogpid;
             }
         }
 
         return true;
     }
 
+    static QVector<AudioDeviceID> GetDevices(void)
+    {
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioHardwarePropertyDevices;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+        UInt32 size = 0;
+
+        OSStatus err = AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &size);
+
+        if (err == noErr)
+        {
+            UInt32 devicecount = size / sizeof(AudioDeviceID);
+            QVector<AudioDeviceID> devices(devicecount);
+
+            err = AudioObjectGetPropertyData(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &size, devices.data());
+
+            if (err == noErr)
+                return devices;
+        }
+
+        LOG(VB_GENERAL, LOG_ERR, "Failed to retrieve audio device list");
+        return QVector<AudioDeviceID>();
+    }
 
     AudioDeviceID GetDeviceWithName(QString DeviceName)
     {
-        UInt32 size = 0;
-        AudioDeviceID deviceID = 0;
+        QVector<AudioDeviceID> devices = GetDevices();
 
-        AudioHardwareGetPropertyInfo(kAudioHardwarePropertyDevices, &size, NULL);
-        UInt32 deviceCount = size / sizeof(AudioDeviceID);
-        AudioDeviceID* devices = new AudioDeviceID[deviceCount];
+        foreach (AudioDeviceID deviceid, devices)
+        {
+            AudioOutputOSXPriv device(NULL, deviceid);
+            if (device.GetTotalOutputChannels() == 0)
+                continue;
 
-        OSStatus err = AudioHardwareGetProperty(kAudioHardwarePropertyDevices, &size, devices);
-        if (err != noErr)
-        {
-            LOG(VB_GENERAL, LOG_WARNING, QString("Unable to retrieve the list of available devices. "
-                         "Error [%1]").arg(err));
-        }
-        else
-        {
-            for (UInt32 dev = 0; dev < deviceCount; dev++)
+            QString name = device.GetName();
+            if (!name.isEmpty() && name == DeviceName)
             {
-                AudioOutputOSXPriv device(NULL, devices[dev]);
-                if (device.GetTotalOutputChannels() == 0)
-                    continue;
-
-                QString name = device.GetName();
-                if (!name.isEmpty() && name == DeviceName)
-                {
-                    LOG(VB_AUDIO, LOG_INFO, QString("Found: %1").arg(name));
-                    deviceID = devices[dev];
-                }
-
-                if (deviceID)
-                    break;
+                LOG(VB_AUDIO, LOG_INFO, QString("Found: %1").arg(name));
+                return deviceid;
             }
         }
 
-        delete [] devices;
-        return deviceID;
+        return 0;
     }
 
     int OpenAnalog(void)
@@ -381,6 +413,7 @@ class AudioOutputOSXPriv
         LOG(VB_AUDIO, LOG_INFO, "OpenAnalog");
 
         AudioDeviceID defaultDevice = GetDefaultOutputDevice();
+
         ComponentDescription desc;
         desc.componentType = kAudioUnitType_Output;
 
@@ -716,7 +749,7 @@ class AudioOutputOSXPriv
 
         LOG(VB_AUDIO, LOG_INFO, "OpenSPDIF");
 
-        QList<AudioStreamID> streams = StreamsList(m_deviceID);
+        QVector<AudioStreamID> streams = StreamsList(m_deviceID);
         if (streams.isEmpty())
         {
             LOG(VB_GENERAL, LOG_WARNING, "Couldn't retrieve list of streams");
@@ -726,7 +759,7 @@ class AudioOutputOSXPriv
         for (int i = 0; i < streams.size(); ++i)
         {
             LOG(VB_GENERAL, LOG_INFO, QString::number(i));
-            QList<AudioStreamBasicDescription> formats = FormatsList(streams[i]);
+            QVector<AudioStreamBasicDescription> formats = FormatsList(streams[i]);
             if (formats.isEmpty())
                 continue;
 
@@ -759,18 +792,18 @@ class AudioOutputOSXPriv
         if (m_revertFormat == false)
         {
             // Retrieve the original format of this stream first if not done so already
-            UInt32 paramsize = sizeof(m_formatOrig);
-            err = AudioStreamGetProperty(m_streamID, 0, kAudioStreamPropertyPhysicalFormat,
-                                         &paramsize, &m_formatOrig);
+            AudioObjectPropertyAddress propertyAddress;
+            propertyAddress.mSelector = kAudioStreamPropertyPhysicalFormat;
+            propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+            propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+            UInt32 size = sizeof(m_formatOrig);
+
+            err = AudioObjectGetPropertyData(m_streamID, &propertyAddress, 0, NULL, &size, &m_formatOrig);
+
             if (err != noErr)
-            {
-                LOG(VB_GENERAL, LOG_WARNING, QString("OpenSPDIF - could not retrieve the original streamformat: [%1]")
-                     .arg(UInt32ToFourCC(err)));
-            }
+                LOG(VB_GENERAL, LOG_WARNING, QString("Failed to retrieve the original streamformat (Error: %1)").arg(UInt32ToFourCC(err)));
             else
-            {
                 m_revertFormat = true;
-            }
         }
 
         m_digitalInUse = true;
@@ -789,7 +822,8 @@ class AudioOutputOSXPriv
             return false;
 
         m_bytesPerPacket = m_formatNew.mBytesPerPacket;
-        err = AudioDeviceAddIOProc(m_deviceID, (AudioDeviceIOProc)RenderCallbackSPDIF, (void *)this);
+
+        err = AudioDeviceCreateIOProcID(m_deviceID, (AudioDeviceIOProc)RenderCallbackSPDIF, (void*)this, &m_spdifIOProcID);
 
         if (err != noErr)
         {
@@ -799,7 +833,7 @@ class AudioOutputOSXPriv
         }
 
         m_hasCallback = true;
-        err = AudioDeviceStart(m_deviceID, (AudioDeviceIOProc)RenderCallbackSPDIF);
+        err = AudioDeviceStart(m_deviceID, m_spdifIOProcID);
 
         if (err != noErr)
         {
@@ -854,23 +888,19 @@ class AudioOutputOSXPriv
         {
             OSStatus err = AudioDeviceStop(m_deviceID, (AudioDeviceIOProc)RenderCallbackSPDIF);
             if (err != noErr)
-            {
-                LOG(VB_GENERAL, LOG_ERR, QString("AudioDeviceStop failed: [%1]")
-                      .arg(UInt32ToFourCC(err)));
-            }
+                LOG(VB_GENERAL, LOG_ERR, QString("AudioDeviceStop failed (Error: %1)").arg(UInt32ToFourCC(err)));
 
             m_started = false;
         }
 
-        if (m_hasCallback)
+        if (m_hasCallback || m_spdifIOProcID)
         {
-            OSStatus err = AudioDeviceRemoveIOProc(m_deviceID, (AudioDeviceIOProc)RenderCallbackSPDIF);
-            if (err != noErr)
-            {
-                LOG(VB_GENERAL, LOG_ERR, QString("AudioDeviceRemoveIOProc failed: [%1]")
-                      .arg(UInt32ToFourCC(err)));
-            }
+            OSStatus err = AudioDeviceDestroyIOProcID(m_deviceID, m_spdifIOProcID);
 
+            if (err != noErr)
+                LOG(VB_GENERAL, LOG_ERR, QString("AudioDeviceRemoveIOProc failed (Error: %1)").arg(UInt32ToFourCC(err)));
+
+            m_spdifIOProcID = 0;
             m_hasCallback = false;
         }
 
@@ -898,15 +928,19 @@ class AudioOutputOSXPriv
             return false;
 
         int restore = -1;
-        if (m_restoreMixer == -1) // This is our first change to this setting. Store the original setting for restore
+        if (m_restoreMixer == -1)
             restore = (GetMixingSupport() ? 1 : 0);
 
-        UInt32 mixEnable = Mix ? 1 : 0;
-        LOG(VB_AUDIO, LOG_INFO, QString("%1abling mixing for device %2").arg(Mix ? "En" : "Dis").arg(m_deviceID));
+        UInt32 enablemixing = Mix ? 1 : 0;
+        LOG(VB_AUDIO, LOG_INFO, QString("%1abling mixing for device '%2'").arg(Mix ? "En" : "Dis").arg(m_deviceID));
 
-        OSStatus err = AudioDeviceSetProperty(m_deviceID, NULL, 0, false,
-                                              kAudioDevicePropertySupportsMixing,
-                                              sizeof(mixEnable), &mixEnable);
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioDevicePropertySupportsMixing;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+
+        OSStatus err = AudioObjectSetPropertyData(m_deviceID, &propertyAddress, 0, NULL, sizeof(enablemixing), &enablemixing);
+
         if (err != noErr)
         {
             LOG(VB_GENERAL, LOG_WARNING, QString("Unable to set MixingSupport to %1. Error = [%2]")
@@ -925,28 +959,32 @@ class AudioOutputOSXPriv
         if (!m_deviceID)
             return false;
 
-        UInt32 val = 0;
-        UInt32 size = sizeof(val);
-        OSStatus err = AudioDeviceGetProperty(m_deviceID, 0, false,
-                                              kAudioDevicePropertySupportsMixing,
-                                              &size, &val);
-        if (err != noErr)
-            return false;
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioDevicePropertySupportsMixing;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+        UInt32 value;
+        UInt32 size = sizeof(UInt32);
 
-        return (val > 0);
+        OSStatus err = AudioObjectGetPropertyData(m_deviceID, &propertyAddress, 0, NULL, &size, &value);
+
+        if (err == noErr)
+            return value > 0;
+
+        return false;
     }
 
     bool FindAC3Stream(void)
     {
         bool found = false;
 
-        QList<AudioStreamID> streams = StreamsList(m_deviceID);
+        QVector<AudioStreamID> streams = StreamsList(m_deviceID);
         if (streams.isEmpty())
             return found;
 
         foreach (AudioStreamID stream, streams)
         {
-            QList<AudioStreamBasicDescription> formats = FormatsList(stream);
+            QVector<AudioStreamBasicDescription> formats = FormatsList(stream);
             if (formats.isEmpty())
                 continue;
 
@@ -966,41 +1004,31 @@ class AudioOutputOSXPriv
 
     void ResetAudioDevices(void)
     {
-        UInt32 size;
-        AudioHardwareGetPropertyInfo(kAudioHardwarePropertyDevices, &size, NULL);
-        AudioDeviceID  *devices = (AudioDeviceID*)malloc(size);
+        QVector<AudioDeviceID> devices = GetDevices();
 
-        if (!devices)
-            return;
-
-        int numDevices = size / sizeof(AudioDeviceID);
-        AudioHardwareGetProperty(kAudioHardwarePropertyDevices, &size, devices);
-
-        for (int i = 0; i < numDevices; i++)
+        foreach (AudioDeviceID deviceid, devices)
         {
-            QList<AudioStreamID> streams = StreamsList(devices[i]);
-            if (streams.isEmpty())
-                continue;
-
+            QVector<AudioStreamID> streams = StreamsList(deviceid);
             foreach (AudioStreamID stream, streams)
                 ResetStream(stream);
         }
-
-        free(devices);
     }
 
     void ResetStream(AudioStreamID StreamID)
     {
         AudioStreamBasicDescription  currentformat;
-        OSStatus                     err;
-        UInt32 paramsize = sizeof(currentformat);
-        AudioStreamGetProperty(StreamID, 0, kAudioStreamPropertyPhysicalFormat,
-                               &paramsize, &currentformat);
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioStreamPropertyPhysicalFormat;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+        UInt32 size = sizeof(currentformat);
+
+        OSStatus err = AudioObjectGetPropertyData(StreamID, &propertyAddress, 0, NULL, &size, &currentformat);
 
         // If it's currently AC-3/SPDIF then reset it to some mixable format
         if (currentformat.mFormatID == 'IAC3' || currentformat.mFormatID == kAudioFormat60958AC3)
         {
-            QList<AudioStreamBasicDescription> formats = FormatsList(StreamID);
+            QVector<AudioStreamBasicDescription> formats = FormatsList(StreamID);
             bool streamreset = false;
             if (formats.isEmpty())
                 return;
@@ -1009,88 +1037,84 @@ class AudioOutputOSXPriv
             {
                 if (!streamreset && format.mFormatID == kAudioFormatLinearPCM)
                 {
-                    err = AudioStreamSetProperty(StreamID, NULL, 0,
-                                                 kAudioStreamPropertyPhysicalFormat,
-                                                 sizeof(format), &(format));
+                    err = AudioObjectSetPropertyData(StreamID, &propertyAddress, 0, NULL, size, &format);
+
                     if (err != noErr)
                     {
-                        LOG(VB_GENERAL, LOG_WARNING, QString("ResetStream: could not set physical format: [%1]")
-                             .arg(UInt32ToFourCC(err)));
+                        LOG(VB_GENERAL, LOG_WARNING, QString("Could not reset physical format (Error: %1)").arg(UInt32ToFourCC(err)));
                         continue;
                     }
                     else
                     {
                         streamreset = true;
-                        sleep(1);   // For the change to take effect
+                        // Is this really needed?
+                        //sleep(1);
                     }
                 }
             }
         }
     }
 
-    QList<int> RatesList(AudioDeviceID DeviceID)
+    QList<int> GetSampleRates(AudioDeviceID DeviceID)
     {
         QList<int> results;
 
-        UInt32 listsize;
-        OSStatus err = AudioDeviceGetPropertyInfo(DeviceID, 0, 0, kAudioDevicePropertyAvailableNominalSampleRates,
-                                                  &listsize, NULL);
-        if (err != noErr)
+        UInt32 size = sizeof(UInt32);
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioDevicePropertyAvailableNominalSampleRates;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+
+        OSStatus err = AudioObjectGetPropertyDataSize(DeviceID, &propertyAddress, 0, NULL, &size);
+        if (err == noErr)
         {
-            LOG(VB_GENERAL, LOG_WARNING, QString("Couldn't get data rate list size: [%1]")
-                 .arg(err));
-            return results;
-        }
+            AudioValueRange *list = (AudioValueRange*)new unsigned char(size);
+            err = AudioObjectGetPropertyData(DeviceID, &propertyAddress, 0, NULL, &size, list);
 
-        AudioValueRange *list = (AudioValueRange*)malloc(listsize);
-        if (list == NULL)
-            return results;
-
-        err = AudioDeviceGetProperty(DeviceID, 0, 0, kAudioDevicePropertyAvailableNominalSampleRates,
-                                     &listsize, list);
-        if (err != noErr)
-        {
-            LOG(VB_GENERAL, LOG_WARNING, QString("couldn't get list: [%1]")
-                 .arg(err));
-            return results;
-        }
-
-        // iterate through the ranges and add the minimum, maximum, and common rates in between
-        UInt32 theFirstIndex = 0, theLastIndex = 0;
-        for(UInt32 i = 0; i < listsize / sizeof(AudioValueRange); i++)
-        {
-            theFirstIndex = theLastIndex;
-            // find the index of the first common rate greater than or equal to the minimum
-            while((theFirstIndex < sNumberCommonSampleRates) &&  (sCommonSampleRates[theFirstIndex] < list[i].mMinimum))
-                theFirstIndex++;
-
-            if (theFirstIndex >= sNumberCommonSampleRates)
-                break;
-
-            theLastIndex = theFirstIndex;
-            // find the index of the first common rate greater than or equal to the maximum
-            while((theLastIndex < sNumberCommonSampleRates) && (sCommonSampleRates[theLastIndex] < list[i].mMaximum))
+            if (err == noErr)
             {
-                results.append(sCommonSampleRates[theLastIndex]);
-                theLastIndex++;
+                // iterate through the ranges and add the minimum, maximum, and common rates in between
+                UInt32 first = 0;
+                UInt32 last  = 0;
+                for(UInt32 i = 0; i < size / sizeof(AudioValueRange); i++)
+                {
+                    first = last;
+                    // find the index of the first common rate greater than or equal to the minimum
+                    while((first < COMMON_SAMPLE_RATE_COUNT) &&  (CommonSampleRates[first] < list[i].mMinimum))
+                        first++;
+
+                    if (first >= COMMON_SAMPLE_RATE_COUNT)
+                        break;
+
+                    last = first;
+                    // find the index of the first common rate greater than or equal to the maximum
+                    while((last < COMMON_SAMPLE_RATE_COUNT) && (CommonSampleRates[last] < list[i].mMaximum))
+                    {
+                        results.append(CommonSampleRates[last]);
+                        last++;
+                    }
+
+                    if (IsRateCommon(list[i].mMinimum))
+                        results.append(list[i].mMinimum);
+                    else if (IsRateCommon(list[i].mMaximum))
+                        results.append(list[i].mMaximum);
+                }
+
+                delete [] list;
+                return results;
             }
 
-            if (IsRateCommon(list[i].mMinimum))
-                results.append(list[i].mMinimum);
-            else if (IsRateCommon(list[i].mMaximum))
-                results.append(list[i].mMaximum);
+            delete [] list;
         }
 
-        free(list);
+        LOG(VB_GENERAL, LOG_WARNING, QString("Failed to retrieve sample rates (Error: %1)").arg(err));
         return results;
     }
 
-    QList<int> ChannelsList(AudioDeviceID DeviceID, bool Passthrough)
+    QList<int> ChannelsList(AudioDeviceID, bool Passthrough)
     {
-        (void)DeviceID;
-
         QList<int> channels;
-        QList<AudioStreamID> streams = StreamsList(m_deviceID);
+        QVector<AudioStreamID> streams = StreamsList(m_deviceID);
         if (streams.isEmpty())
             return channels;
 
@@ -1099,7 +1123,7 @@ class AudioOutputOSXPriv
         {
             foreach (AudioStreamID stream, streams)
             {
-                QList<AudioStreamBasicDescription> formats = FormatsList(stream);
+                QVector<AudioStreamBasicDescription> formats = FormatsList(stream);
                 if (formats.isEmpty())
                     continue;
 
@@ -1118,7 +1142,7 @@ class AudioOutputOSXPriv
         {
             foreach (AudioStreamID stream, streams)
             {
-                QList<AudioStreamBasicDescription> formats = FormatsList(stream);
+                QVector<AudioStreamBasicDescription> formats = FormatsList(stream);
                 if (formats.isEmpty())
                     continue;
 
@@ -1131,93 +1155,68 @@ class AudioOutputOSXPriv
         return channels;
     }
 
-    QList<AudioStreamID> StreamsList(AudioDeviceID DeviceID)
+    QVector<AudioStreamID> StreamsList(AudioDeviceID DeviceID)
     {
-        QList<AudioStreamID> streams;
+        UInt32 size = sizeof(UInt32);
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioDevicePropertyStreams;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
 
-        UInt32 listsize;
-        OSStatus err = AudioDeviceGetPropertyInfo(DeviceID, 0, FALSE, kAudioDevicePropertyStreams,
-                                                  &listsize, NULL);
-        if (err != noErr)
+        OSStatus err = AudioObjectGetPropertyDataSize(DeviceID, &propertyAddress, 0, NULL, &size);
+
+        if (err == noErr)
         {
-            LOG(VB_GENERAL, LOG_ERR, QString("Could not get list size: [%1]")
-                  .arg(UInt32ToFourCC(err)));
-            return streams;
+            QVector<AudioStreamID> list(size / sizeof(AudioStreamID));
+            err = AudioObjectGetPropertyData(DeviceID, &propertyAddress, 0, NULL, &size, list.data());
+
+            if (err == noErr)
+                return list;
         }
 
-        AudioStreamID *list = (AudioStreamID*)malloc(listsize);
-        if (list == NULL)
-            return streams;
-
-        err = AudioDeviceGetProperty(DeviceID, 0, FALSE, kAudioDevicePropertyStreams,
-                                     &listsize, list);
-        if (err != noErr)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("Could not get list: [%1]")
-                  .arg(UInt32ToFourCC(err)));
-            free(list);
-            return streams;
-        }
-
-        uint count = listsize / sizeof(AudioStreamID);
-        for (uint i = 0; i < count; ++i)
-            streams.append(list[i]);
-
-        free(list);
-        return streams;
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to retrieve stream list (Error: %1)").arg(err));
+        return QVector<AudioStreamID>();
     }
 
-    QList<AudioStreamBasicDescription> FormatsList(AudioStreamID StreamID)
+    QVector<AudioStreamBasicDescription> FormatsList(AudioStreamID StreamID)
     {
-        QList<AudioStreamBasicDescription> formats;
+        UInt32 size = sizeof(UInt32);
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioStreamPropertyAvailablePhysicalFormats;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
 
-        UInt32 listsize;
-        AudioDevicePropertyID property = kAudioStreamPropertyAvailablePhysicalFormats;
-        OSStatus err = AudioStreamGetPropertyInfo(StreamID, 0, property, &listsize, NULL);
-        if (err != noErr)
+        OSStatus err = AudioObjectGetPropertyDataSize(StreamID, &propertyAddress, 0, NULL, &size);
+
+        if (err == noErr)
         {
-            LOG(VB_GENERAL, LOG_WARNING, QString("Couldn't get list size: [%1] id %2")
-                .arg(UInt32ToFourCC(err)).arg(StreamID));
-            return formats;
+            QVector<AudioStreamBasicDescription> list(size / sizeof(AudioStreamBasicDescription));
+            err = AudioObjectGetPropertyData(StreamID, &propertyAddress, 0, NULL, &size, list.data());
+
+            if (err == noErr)
+                return list;
         }
 
-        AudioStreamBasicDescription *list = (AudioStreamBasicDescription *)malloc(listsize);
-        if (list == NULL)
-            return formats;
-
-        err = AudioStreamGetProperty(StreamID, 0, kAudioStreamPropertyPhysicalFormats, &listsize, list);
-        if (err != noErr)
-        {
-            LOG(VB_GENERAL, LOG_WARNING, QString("FormatsList: couldn't get list: [%1]")
-                 .arg(UInt32ToFourCC(err)));
-            free(list);
-            return formats;
-        }
-
-        uint count = listsize / sizeof(AudioStreamBasicDescription);
-        for (uint i = 0; i < count; ++i)
-            formats.append(list[i]);
-
-        free(list);
-        return formats;
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to retrieve formats list (Error: %1)").arg(err));
+        return QVector<AudioStreamBasicDescription>();
     }
 
-    int AudioStreamChangeFormat(AudioStreamID               StreamID,
-                                AudioStreamBasicDescription Format)
+    int AudioStreamChangeFormat(AudioStreamID StreamID, AudioStreamBasicDescription Format)
     {
-        LOG(VB_AUDIO, LOG_INFO, QString("AudioStreamChangeFormat: %1 -> %2")
-              .arg(StreamID).arg(StreamDescriptionToString(Format)));
+        AudioObjectPropertyAddress propertyAddress;
+        propertyAddress.mSelector = kAudioStreamPropertyPhysicalFormat;
+        propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+        propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
 
-        OSStatus err = AudioStreamSetProperty(StreamID, 0, 0,
-                                              kAudioStreamPropertyPhysicalFormat,
-                                              sizeof(Format), &Format);
-        if (err != noErr)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("AudioStreamChangeFormat couldn't set stream format: [%1]").arg(UInt32ToFourCC(err)));
-            return false;
-        }
+        LOG(VB_AUDIO, LOG_INFO, QString("AudioStreamChangeFormat: %1 -> %2").arg(StreamID).arg(StreamDescriptionToString(Format)));
 
-        return true;
+        OSStatus err = AudioObjectSetPropertyData(StreamID, &propertyAddress, 0, NULL, sizeof(AudioStreamBasicDescription), &Format);
+
+        if (err == noErr)
+            return true;
+
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed set stream format (Error: %1)").arg(UInt32ToFourCC(err)));
+        return false;
     }
 
   public:
@@ -1232,6 +1231,7 @@ class AudioOutputOSXPriv
     int            m_restoreMixer;
     AudioDeviceID  m_deviceID;
     AudioStreamID  m_streamID;     // StreamID that has a cac3 streamformat
+    AudioDeviceIOProcID m_spdifIOProcID;
     int            m_streamIndex;  // Index of m_streamID in an AudioBufferList
     UInt32         m_bytesPerPacket;
     AudioStreamBasicDescription m_formatOrig;
@@ -1269,7 +1269,7 @@ AudioOutputOSX::~AudioOutputOSX()
 AudioOutputSettings* AudioOutputOSX::GetOutputSettings(bool Digital)
 {
     AudioOutputSettings *settings = new AudioOutputSettings();
-    QList<int> rates = m_priv->RatesList(m_priv->m_deviceID);
+    QList<int> rates = m_priv->GetSampleRates(m_priv->m_deviceID);
 
     if (rates.isEmpty())
     {
@@ -1497,36 +1497,22 @@ class AudioFactoryOSX : public AudioFactory
 
     void GetDevices(QList<AudioDeviceConfig> &DeviceList)
     {
-        UInt32 size = 0;
-        AudioHardwareGetPropertyInfo(kAudioHardwarePropertyDevices, &size, NULL);
-        UInt32 deviceCount = size / sizeof(AudioDeviceID);
-        AudioDeviceID* devices = new AudioDeviceID[deviceCount];
+        QVector<AudioDeviceID> devices = AudioOutputOSXPriv::GetDevices();
+        LOG(VB_AUDIO, LOG_INFO,  QString("Number of devices: %1").arg(devices.size()));
 
-        OSStatus error = AudioHardwareGetProperty(kAudioHardwarePropertyDevices, &size, devices);
-        if (error)
+        foreach (AudioDeviceID deviceid, devices)
         {
-            LOG(VB_AUDIO, LOG_INFO, QString("Unable to retrieve the list of available devices. Error [%1]").arg(error));
-        }
-        else
-        {
-            LOG(VB_AUDIO, LOG_INFO,  QString("GetDevices: Number of devices: %1").arg(deviceCount));
+            AudioOutputOSXPriv device(NULL, deviceid);
+            if (device.GetTotalOutputChannels() == 0)
+                continue;
 
-            for (UInt32 dev = 0; dev < deviceCount; dev++)
+            AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(QString("CoreAudio:%1").arg(device.GetName()), QString());
+            if (config)
             {
-                AudioOutputOSXPriv device(NULL, devices[dev]);
-                if (device.GetTotalOutputChannels() == 0)
-                    continue;
-
-                AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(QString("CoreAudio:%1").arg(device.GetName()), QString());
-                if (config)
-                {
-                    DeviceList.append(*config);
-                    delete config;
-                }
+                DeviceList.append(*config);
+                delete config;
             }
         }
-
-        delete [] devices;
 
         AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(QString("CoreAudio:Default"), QString("Default device"));
         if (config)
