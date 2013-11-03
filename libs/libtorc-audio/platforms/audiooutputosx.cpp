@@ -1205,8 +1205,8 @@ QList<int> AudioOutputOSXPriv::GetSampleRates(AudioDeviceID DeviceID)
     OSStatus err = AudioObjectGetPropertyDataSize(DeviceID, &propertyAddress, 0, NULL, &size);
     if (err == noErr)
     {
-        AudioValueRange *list = (AudioValueRange*)new unsigned char(size);
-        err = AudioObjectGetPropertyData(DeviceID, &propertyAddress, 0, NULL, &size, list);
+        QVector<AudioValueRange> list(size / sizeof(AudioValueRange));
+        err = AudioObjectGetPropertyData(DeviceID, &propertyAddress, 0, NULL, &size, list.data());
 
         if (err == noErr)
         {
@@ -1237,11 +1237,8 @@ QList<int> AudioOutputOSXPriv::GetSampleRates(AudioDeviceID DeviceID)
                     results.append(list[i].mMaximum);
             }
 
-            delete [] list;
             return results;
         }
-
-        delete [] list;
     }
 
     LOG(VB_GENERAL, LOG_WARNING, QString("Failed to retrieve sample rates (Error: %1)").arg(err));
