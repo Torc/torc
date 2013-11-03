@@ -114,6 +114,14 @@ static inline void ReorderSmpteToCA(void *Buffer, uint Frames, AudioFormat Forma
     }
 }
 
+/*! \class AudioOutoutOSXPriv
+ *  \brief Concrete implementation of CoreAudio interface audio output on OS X.
+ *
+ * \todo Action device changes when notified via callback (needs QObject/QThread changes to AudioOutput to enable proper signalling).
+ * \todo Review use of usleep after audio initialisation failure.
+ * \todo Look at master volume changes.
+ * \todo Refactor OpenAnalog.
+*/
 class AudioOutputOSXPriv
 {
   public:
@@ -124,6 +132,8 @@ class AudioOutputOSXPriv
     static QVector<AudioDeviceID> GetDevices     (void);
 
     void            Initialise                   (void);
+    bool            Open                         (bool Digital);
+    void            Close                        (void);
     AudioDeviceID   GetDefaultOutputDevice       (void);
     int             GetTotalOutputChannels       (void);
     QString         GetName                      (void);
@@ -152,6 +162,12 @@ class AudioOutputOSXPriv
     QVector<AudioStreamID> GetStreamsList        (AudioDeviceID DeviceID);
     QVector<AudioStreamBasicDescription> GetFormatsList (AudioStreamID StreamID);
     int             ChangeAudioStreamFormat      (AudioStreamID StreamID, AudioStreamBasicDescription Format);
+    static OSStatus DefaultDeviceChangedCallback (AudioObjectID ObjectID, UInt32 NumberAddresses,
+                                                  const AudioObjectPropertyAddress Addresses[], void* Client);
+    static OSStatus DeviceIsAliveCallback        (AudioObjectID ObjectID, UInt32 NumberAddresses,
+                                                  const AudioObjectPropertyAddress Addresses[], void* Client);
+    static OSStatus DeviceListChangedCallback    (AudioObjectID ObjectID, UInt32 NumberAddresses,
+                                                  const AudioObjectPropertyAddress Addresses[], void* Client);
 
   public:
     AudioOutputOSX *m_parent;
@@ -231,6 +247,77 @@ void AudioOutputOSXPriv::Initialise(void)
     m_spdifIOProcID   = 0;
 }
 
+bool AudioOutputOSXPriv::Open(bool Digital)
+{
+    if (Digital)
+    {
+        LOG(VB_AUDIO, LOG_DEBUG, "Trying digital output");
+        if (OpenDigital())
+            return true;
+        else
+            CloseDigital();
+    }
+
+    int result = OpenAnalog();
+    LOG(VB_AUDIO, LOG_DEBUG, QString("Trying analog output (Result: %1)").arg(result));
+
+    if (result < 0)
+    {
+        CloseAnalog();
+        LOG(VB_GENERAL, LOG_ERR, "Failed to open audio device");
+        QThread::usleep(100000);
+        return false;
+    }
+
+    AudioObjectPropertyAddress propertyAddress;
+    propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+    propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+
+    // register for changes in the default output device
+    propertyAddress.mSelector = kAudioHardwarePropertyDefaultOutputDevice;
+    if (AudioObjectAddPropertyListener(kAudioObjectSystemObject, &propertyAddress, DefaultDeviceChangedCallback, this) != noErr)
+        LOG(VB_GENERAL, LOG_ERR, "Failed to listen for default device changes");
+
+    // listen for 'alive' status of outpout device
+    if (m_deviceID)
+    {
+        propertyAddress.mSelector = kAudioDevicePropertyDeviceIsAlive;
+        if (AudioObjectAddPropertyListener(kAudioObjectSystemObject, &propertyAddress, DeviceIsAliveCallback, this) != noErr)
+            LOG(VB_GENERAL, LOG_ERR, "Failed to listen for device 'alive' changes");
+    }
+
+    // listen for changes in the device list
+    propertyAddress.mSelector = kAudioHardwarePropertyDevices;
+    if (AudioObjectAddPropertyListener(kAudioObjectSystemObject, &propertyAddress, DeviceListChangedCallback, this) != noErr)
+        LOG(VB_GENERAL, LOG_ERR, "Failed to listen for device list changes");
+
+    return true;
+}
+
+void AudioOutputOSXPriv::Close(void)
+{
+    AudioObjectPropertyAddress propertyAddress;
+    propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+    propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
+
+    // stop listening for default device changes
+    propertyAddress.mSelector = kAudioHardwarePropertyDefaultOutputDevice;
+    AudioObjectRemovePropertyListener(kAudioObjectSystemObject, &propertyAddress, DefaultDeviceChangedCallback, this);
+
+    // stop listening for 'alive' status changes
+    propertyAddress.mSelector = kAudioDevicePropertyDeviceIsAlive;
+    AudioObjectRemovePropertyListener(kAudioObjectSystemObject, &propertyAddress, DeviceIsAliveCallback, this);
+
+    // stop listening for device list changes
+    propertyAddress.mSelector = kAudioHardwarePropertyDevices;
+    AudioObjectRemovePropertyListener(kAudioObjectSystemObject, &propertyAddress, DeviceListChangedCallback, this);
+
+    if (m_digitalInUse)
+        CloseDigital();
+    else
+        CloseAnalog();
+}
+
 AudioDeviceID AudioOutputOSXPriv::GetDefaultOutputDevice(void)
 {
     AudioDeviceID deviceID = 0;
@@ -262,7 +349,7 @@ int AudioOutputOSXPriv::GetTotalOutputChannels(void)
 
     AudioObjectPropertyAddress propertyAddress;
     propertyAddress.mSelector = kAudioDevicePropertyStreamConfiguration;
-    propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+    propertyAddress.mScope    = kAudioObjectPropertyScopeOutput;
     propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
 
     if (AudioObjectHasProperty(m_deviceID, &propertyAddress))
@@ -280,7 +367,7 @@ int AudioOutputOSXPriv::GetTotalOutputChannels(void)
                 UInt32 channels = 0;
                 for (UInt32 buffer = 0; buffer < list->mNumberBuffers; buffer++)
                     channels += list->mBuffers[buffer].mNumberChannels;
-                LOG(VB_AUDIO, LOG_INFO, QString("Found %1 channels in %2 buffers").arg(channels).arg(list->mNumberBuffers));
+                LOG(VB_AUDIO, LOG_INFO, QString("%1: Found %2 channels in %3 buffers").arg(GetName()).arg(channels).arg(list->mNumberBuffers));
                 delete [] list;
                 return channels;
             }
@@ -775,24 +862,24 @@ OSStatus AudioOutputOSXPriv::RenderCallbackAnalog(void                       *in
 
 void AudioOutputOSXPriv::CloseAnalog(void)
 {
+    LOG(VB_GENERAL, LOG_INFO, "Closing analog");
+
     if (m_analogAudioUnit)
     {
-        OSStatus err;
-
         if (m_started)
         {
-            err = AudioOutputUnitStop(m_analogAudioUnit);
-            LOG(VB_AUDIO, LOG_INFO, QString("AudioOutputUnitStop %1").arg(err));
+            if (AudioOutputUnitStop(m_analogAudioUnit) != noErr)
+                LOG(VB_AUDIO, LOG_INFO, "Failed to stop audio");
         }
 
         if (m_initialised)
         {
-            err = AudioUnitUninitialize(m_analogAudioUnit);
-            LOG(VB_AUDIO, LOG_INFO, QString("AudioUnitUninitialize %1").arg(err));
+            if (AudioUnitUninitialize(m_analogAudioUnit) != noErr)
+                LOG(VB_AUDIO, LOG_INFO, "Failed to uninitialise audio");
         }
 
-        err = CloseComponent(m_analogAudioUnit);
-        LOG(VB_AUDIO, LOG_INFO, QString("CloseComponent %1").arg(err));
+        if (CloseComponent(m_analogAudioUnit) != noErr)
+            LOG(VB_AUDIO, LOG_INFO, "Failed to close audio component");
 
         m_analogAudioUnit = NULL;
     }
@@ -808,7 +895,7 @@ bool AudioOutputOSXPriv::OpenDigital(void)
     OSStatus       err;
     AudioStreamBasicDescription outputFormat = {0};
 
-    LOG(VB_AUDIO, LOG_INFO, "OpenDigital");
+    LOG(VB_GENERAL, LOG_INFO, "Open digital");
 
     QVector<AudioStreamID> streams = GetStreamsList(m_deviceID);
     if (streams.isEmpty())
@@ -931,6 +1018,8 @@ void AudioOutputOSXPriv::CloseDigital(void)
 {
     if (!m_digitalInUse)
         return;
+
+    LOG(VB_GENERAL, LOG_INFO, "Closing digital");
 
     if (m_started)
     {
@@ -1301,6 +1390,24 @@ int AudioOutputOSXPriv::ChangeAudioStreamFormat(AudioStreamID StreamID, AudioStr
     return false;
 }
 
+OSStatus AudioOutputOSXPriv::DefaultDeviceChangedCallback(AudioObjectID ObjectID, UInt32 NumberAddresses, const AudioObjectPropertyAddress Addresses[], void* Client)
+{
+    LOG(VB_GENERAL, LOG_INFO, "Default device changed");
+    return noErr;
+}
+
+OSStatus AudioOutputOSXPriv::DeviceIsAliveCallback(AudioObjectID ObjectID, UInt32 NumberAddresses, const AudioObjectPropertyAddress Addresses[], void *Client)
+{
+    LOG(VB_GENERAL, LOG_INFO, "Device 'alive' status changed");
+    return noErr;
+}
+
+OSStatus AudioOutputOSXPriv::DeviceListChangedCallback(AudioObjectID ObjectID, UInt32 NumberAddresses, const AudioObjectPropertyAddress Addresses[], void *Client)
+{
+    LOG(VB_GENERAL, LOG_INFO, "Device list changed");
+    return noErr;
+}
+
 /** \class AudioOutputOSX
  *  \brief Implements Core Audio (Mac OS X Hardware Abstraction Layer) output.
 */
@@ -1376,63 +1483,28 @@ bool AudioOutputOSX::OpenDevice(void)
     if (m_parent)
         m_parent->ClearAudioTime();
 
-    bool deviceOpened = false;
-
-    if (m_passthrough || m_encode)
+    if (m_priv && m_priv->Open(m_passthrough || m_encode))
     {
-        LOG(VB_AUDIO, LOG_DEBUG, "Trying Digital output");
-        if (!(deviceOpened = m_priv->OpenDigital()))
-            m_priv->CloseDigital();
-    }
-
-    if (!deviceOpened)
-    {
-        LOG(VB_AUDIO, LOG_DEBUG, "Trying Analog output");
-        int result = -1;
-
-        //for (int i=0; result < 0 && i < 10; i++)
+        if (m_internalVolumeControl && m_setInitialVolume)
         {
-            result = m_priv->OpenAnalog();
-            LOG(VB_AUDIO, LOG_DEBUG, QString("OpenAnalog '%1'").arg(result));
-
-            if (result < 0)
-            {
-                m_priv->CloseAnalog();
-                QThread::usleep(100000);
-            }
+            QString controlLabel = gLocalContext->GetSetting("MixerControl", QString("PCM"));
+            controlLabel += "MixerVolume";
+            SetCurrentVolume(gLocalContext->GetSetting(controlLabel, (int)80));
         }
 
-        deviceOpened = (result > 0);
+        return true;
     }
 
-    if (!deviceOpened)
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Couldn't open audio device");
-        m_priv->CloseAnalog();
-        return false;
-    }
-
-    if (m_internalVolumeControl && m_setInitialVolume)
-    {
-        QString controlLabel = gLocalContext->GetSetting("MixerControl", QString("PCM"));
-        controlLabel += "MixerVolume";
-        SetCurrentVolume(gLocalContext->GetSetting(controlLabel, (int)80));
-    }
-
-    return true;
+    return false;
 }
 
 void AudioOutputOSX::CloseDevice()
 {
-    LOG(VB_AUDIO, LOG_INFO,  QString("Closing %1").arg(m_priv->m_digitalInUse ? "SPDIF" : "Analog"));
-
     if (m_parent)
         m_parent->ClearAudioTime();
 
-    if (m_priv->m_digitalInUse)
-        m_priv->CloseDigital();
-    else
-        m_priv->CloseAnalog();
+    if (m_priv)
+        m_priv->Close();
 }
 
 bool AudioOutputOSX::RenderAudio(unsigned char *Buffer, int Size, unsigned long long Timestamp)
@@ -1475,11 +1547,8 @@ bool AudioOutputOSX::RenderAudio(unsigned char *Buffer, int Size, unsigned long 
     return (written_size > 0);
 }
 
-void AudioOutputOSX::WriteAudio(unsigned char *Buffer, int Size)
+void AudioOutputOSX::WriteAudio(unsigned char*, int)
 {
-    (void)Buffer;
-    (void)Size;
-    return;
 }
 
 int AudioOutputOSX::GetBufferedOnSoundcard(void) const
@@ -1511,26 +1580,20 @@ int64_t AudioOutputOSX::GetAudiotime(void)
 
 int AudioOutputOSX::GetVolumeChannel(int Channel) const
 {
-    // FIXME: this only returns global volume
     (void)Channel;
 
     Float32 volume;
-    if (!AudioUnitGetParameter(m_priv->m_analogAudioUnit,
-                               kHALOutputParam_Volume,
-                               kAudioUnitScope_Global, 0, &volume))
-    {
+    if (!AudioUnitGetParameter(m_priv->m_analogAudioUnit, kHALOutputParam_Volume, kAudioUnitScope_Global, 0, &volume))
         return (int)lroundf(volume * 100.0f);
-    }
 
     return 0;
 }
 
 void AudioOutputOSX::SetVolumeChannel(int Channel, int Volume)
 {
-    // FIXME: this only sets global volume
     (void)Channel;
-    AudioUnitSetParameter(m_priv->m_analogAudioUnit, kHALOutputParam_Volume,
-                          kAudioUnitScope_Global, 0, (Volume * 0.01f), 0);
+    if (AudioUnitSetParameter(m_priv->m_analogAudioUnit, kHALOutputParam_Volume, kAudioUnitScope_Global, 0, (Volume * 0.01f), 0) != noErr)
+        LOG(VB_GENERAL, LOG_ERR, "Failed to set audio volume");
 }
 
 class AudioFactoryOSX : public AudioFactory

@@ -26,7 +26,7 @@ class AudioOutputOSX : public AudioOutput
   protected:
     bool                 OpenDevice             (void);
     void                 CloseDevice            (void);
-    void                 WriteAudio             (unsigned char *Buffer, int Size);
+    void                 WriteAudio             (unsigned char*, int);
     int                  GetBufferedOnSoundcard (void) const;
     bool                 StartOutputThread      (void);
     void                 StopOutputThread       (void);
