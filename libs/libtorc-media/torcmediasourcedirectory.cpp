@@ -112,8 +112,6 @@ TorcMediaSourceDirectory::TorcMediaSourceDirectory()
             configuredPaths << path;
     }
 
-    configuredPaths << "/Users/mark/Dropbox/";
-
     // connect up the dots
     connect(&m_watcher, SIGNAL(directoryChanged(QString)), this, SLOT(DirectoryChanged(QString)));
     gLocalContext->AddObserver(this);
