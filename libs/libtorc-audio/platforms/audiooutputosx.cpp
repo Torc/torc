@@ -126,17 +126,16 @@ class AudioOutputOSXPriv
 {
   public:
     AudioOutputOSXPriv(AudioOutputOSX *Parent);
-    AudioOutputOSXPriv(AudioOutputOSX *Parent, AudioDeviceID DeviceID);
     AudioOutputOSXPriv(AudioOutputOSX *Parent, QString DeviceName);
 
     static QVector<AudioDeviceID> GetDevices     (void);
+    static int      GetTotalOutputChannels       (UInt32 DeviceID);
+    static QString  GetName                      (UInt32 DeviceID);
 
     void            Initialise                   (void);
     bool            Open                         (bool Digital);
     void            Close                        (void);
     AudioDeviceID   GetDefaultOutputDevice       (void);
-    int             GetTotalOutputChannels       (void);
-    QString         GetName                      (void);
     bool            GetAutoHogMode               (void);
     void            SetAutoHogMode               (bool Enable);
     pid_t           GetHogStatus                 (void);
@@ -201,14 +200,6 @@ AudioOutputOSXPriv::AudioOutputOSXPriv(AudioOutputOSX *Parent)
     m_deviceID = GetDefaultOutputDevice();
 }
 
-AudioOutputOSXPriv::AudioOutputOSXPriv(AudioOutputOSX *Parent, AudioDeviceID DeviceID)
-  : m_parent(Parent)
-{
-    Initialise();
-    ResetAudioDevices();
-    m_deviceID = DeviceID;
-}
-
 AudioOutputOSXPriv::AudioOutputOSXPriv(AudioOutputOSX *Parent, QString DeviceName)
   : m_parent(Parent)
 {
@@ -265,7 +256,7 @@ bool AudioOutputOSXPriv::Open(bool Digital)
     {
         CloseAnalog();
         LOG(VB_GENERAL, LOG_ERR, "Failed to open audio device");
-        QThread::usleep(100000);
+        QThread::usleep(1000000 - 1);
         return false;
     }
 
@@ -342,32 +333,29 @@ AudioDeviceID AudioOutputOSXPriv::GetDefaultOutputDevice(void)
     return deviceID;
 }
 
-int AudioOutputOSXPriv::GetTotalOutputChannels(void)
+int AudioOutputOSXPriv::GetTotalOutputChannels(UInt32 DeviceID)
 {
-    if (!m_deviceID)
-        return 0;
-
     AudioObjectPropertyAddress propertyAddress;
     propertyAddress.mSelector = kAudioDevicePropertyStreamConfiguration;
     propertyAddress.mScope    = kAudioObjectPropertyScopeOutput;
     propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
 
-    if (AudioObjectHasProperty(m_deviceID, &propertyAddress))
+    if (AudioObjectHasProperty(DeviceID, &propertyAddress))
     {
         UInt32 propertySize = 0;
-        OSStatus err = AudioObjectGetPropertyDataSize(m_deviceID, &propertyAddress, 0, NULL, &propertySize);
+        OSStatus err = AudioObjectGetPropertyDataSize(DeviceID, &propertyAddress, 0, NULL, &propertySize);
 
         if (err == noErr)
         {
             AudioBufferList *list = (AudioBufferList*) new unsigned char(propertySize);
-            err = AudioObjectGetPropertyData(m_deviceID, &propertyAddress, 0, NULL, &propertySize, list);
+            err = AudioObjectGetPropertyData(DeviceID, &propertyAddress, 0, NULL, &propertySize, list);
 
             if (err == noErr)
             {
                 UInt32 channels = 0;
                 for (UInt32 buffer = 0; buffer < list->mNumberBuffers; buffer++)
                     channels += list->mBuffers[buffer].mNumberChannels;
-                LOG(VB_AUDIO, LOG_INFO, QString("%1: Found %2 channels in %3 buffers").arg(GetName()).arg(channels).arg(list->mNumberBuffers));
+                LOG(VB_AUDIO, LOG_INFO, QString("Found %1 channels in %2 buffers").arg(channels).arg(list->mNumberBuffers));
                 delete [] list;
                 return channels;
             }
@@ -380,11 +368,8 @@ int AudioOutputOSXPriv::GetTotalOutputChannels(void)
     return 0;
 }
 
-QString AudioOutputOSXPriv::GetName(void)
+QString AudioOutputOSXPriv::GetName(UInt32 DeviceID)
 {
-    if (!m_deviceID)
-        return QString();
-
     CFStringRef name;
     UInt32 propertySize       = sizeof(CFStringRef);
 
@@ -392,7 +377,7 @@ QString AudioOutputOSXPriv::GetName(void)
     propertyAddress.mSelector = kAudioObjectPropertyName;
     propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
     propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
-    OSStatus err = AudioObjectGetPropertyData(m_deviceID, &propertyAddress, 0, NULL, &propertySize, &name);
+    OSStatus err = AudioObjectGetPropertyData(DeviceID, &propertyAddress, 0, NULL, &propertySize, &name);
 
     if (err != noErr)
     {
@@ -520,7 +505,7 @@ QVector<AudioDeviceID> AudioOutputOSXPriv::GetDevices(void)
 
     OSStatus err = AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &size);
 
-    if (err == noErr)
+    if (err == noErr && (size >= sizeof(AudioDeviceID)))
     {
         UInt32 devicecount = size / sizeof(AudioDeviceID);
         QVector<AudioDeviceID> devices(devicecount);
@@ -539,17 +524,19 @@ AudioDeviceID AudioOutputOSXPriv::GetDeviceWithName(QString DeviceName)
 {
     QVector<AudioDeviceID> devices = GetDevices();
 
-    foreach (AudioDeviceID deviceid, devices)
+    if (!devices.isEmpty())
     {
-        AudioOutputOSXPriv device(NULL, deviceid);
-        if (device.GetTotalOutputChannels() == 0)
-            continue;
-
-        QString name = device.GetName();
-        if (!name.isEmpty() && name == DeviceName)
+        foreach (AudioDeviceID deviceid, devices)
         {
-            LOG(VB_AUDIO, LOG_INFO, QString("Found: %1").arg(name));
-            return deviceid;
+            if (GetTotalOutputChannels(deviceid) == 0)
+                continue;
+
+            QString name = GetName(deviceid);
+            if (!name.isEmpty() && name == DeviceName)
+            {
+                LOG(VB_AUDIO, LOG_INFO, QString("Found: %1").arg(name));
+                return deviceid;
+            }
         }
     }
 
@@ -1185,7 +1172,7 @@ void AudioOutputOSXPriv::ResetStream(AudioStreamID StreamID)
                 {
                     streamreset = true;
                     // Is this really needed?
-                    //sleep(1);
+                    QThread::sleep(1);
                 }
             }
         }
@@ -1620,11 +1607,10 @@ class AudioFactoryOSX : public AudioFactory
 
         foreach (AudioDeviceID deviceid, devices)
         {
-            AudioOutputOSXPriv device(NULL, deviceid);
-            if (device.GetTotalOutputChannels() == 0)
+            if (AudioOutputOSXPriv::GetTotalOutputChannels(deviceid) == 0)
                 continue;
 
-            AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(QString("CoreAudio:%1").arg(device.GetName()), QString());
+            AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(QString("CoreAudio:%1").arg(AudioOutputOSXPriv::GetName(deviceid)), QString());
             if (config)
             {
                 DeviceList.append(*config);
