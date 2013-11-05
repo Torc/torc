@@ -101,9 +101,11 @@ inline QSize OpenGLTextureSize(const QSize &Size, bool Rectangular)
  * \note Rectangular textures are supported for the RGB framebuffer (they are not needed for the raw input frame) but
  *       additional support is required at the QML level to allow their use (Qt only uses 2D textures in there shaders).
  *
+ * \note This class inherits from two QObject subclasses (QSGTexture and QSGTexureProvider). This is fine as long as we do not
+ *       try and add new signals or slots. Hence the use of a callback for the dirty video geometry update.
+ *
  * \todo Add proper failure mode or fallback for lack of FramebufferObject support.
  * \todo Add bicubic scaling support.
- * \todo Refactor hardware AccelerationFactory to support new code.
 */
 TorcSGVideoProvider::TorcSGVideoProvider(VideoColourSpace *ColourSpace)
   : QSGTexture(),
