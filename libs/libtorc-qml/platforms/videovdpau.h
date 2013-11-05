@@ -12,6 +12,7 @@
 #include "torcplayer.h"
 #include "videoframe.h"
 #include "videocolourspace.h"
+#include "torcqmlopengldefs.h"
 #include "nvidiavdpau.h"
 
 extern "C" {
@@ -19,6 +20,9 @@ extern "C" {
 #include "libavformat/avformat.h"
 #include "libavcodec/vdpau.h"
 }
+
+class QOpenGLShaderProgram;
+class QOpenGLFramebufferObject;
 
 class VDPAUDecoderCapability
 {
@@ -76,9 +80,7 @@ class VideoVDPAU : protected TorcReferenceCounter
     void                              SetDeleting            (void);
     bool                              IsDeletingOrErrored    (void);
     bool                              RenderFrame            (VideoFrame *Frame, struct vdpau_render_state *Render,
-                                                              GLuint Texture, GLenum TextureType, VideoColourSpace *ColourSpace);
-    bool                              MapFrame               (void* Surface, void* SurfaceType);
-    bool                              UnmapFrame             (void* Surface, void* SurfaceType);
+                                                              QOpenGLFramebufferObject* FramebufferObject, VideoColourSpace *ColourSpace);
     QSet<TorcPlayer::PlayerProperty>  GetSupportedProperties (void);
 
   protected:
@@ -121,8 +123,8 @@ class VideoVDPAU : protected TorcReferenceCounter
     QList<struct vdpau_render_state*> m_createdVideoSurfaces;
     QList<struct vdpau_render_state*> m_allocatedVideoSurfaces;
 
-    GLuint                            m_lastTexture;
-    GLenum                            m_lastTextureType;
+    QOpenGLShaderProgram             *m_shader;
+    GLuint                            m_interopTexture;
     VdpOutputSurface                  m_outputSurface;
     VdpVideoMixer                     m_videoMixer;
     QList<VdpVideoMixerAttribute>     m_supportedMixerAttributes;

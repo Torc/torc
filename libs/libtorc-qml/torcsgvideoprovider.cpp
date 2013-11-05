@@ -524,7 +524,7 @@ bool TorcSGVideoProvider::Refresh(VideoFrame *Frame, const QSizeF &Size, quint64
         for ( ; factory; factory = factory->NextFactory())
         {
             GLuint texture = m_rgbVideoFrameBuffer->texture();
-            if (factory->UpdateFrame(Frame, m_videoColourSpace, (void*)&texture, (void*)&m_rgbVideoTextureType))
+            if (factory->UpdateFrame(Frame, m_videoColourSpace, (void*)m_rgbVideoFrameBuffer, (void*)&m_rgbVideoTextureType))
                 break;
         }
     }

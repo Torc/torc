@@ -168,16 +168,6 @@ class VDAAcceleration : public AccelerationFactory
         return false;
     }
 
-    bool MapFrame(VideoFrame*, void*, void*)
-    {
-        return false;
-    }
-
-    bool UnmapFrame(VideoFrame*, void*, void*)
-    {
-        return false;
-    }
-
     bool NeedsCustomSurfaceFormat(VideoFrame*, void*)
     {
         return false;

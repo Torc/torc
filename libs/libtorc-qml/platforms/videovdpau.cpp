@@ -22,6 +22,8 @@
 
 // Qt
 #include <QMutex>
+#include <QOpenGLShaderProgram>
+#include <QOpenGLFramebufferObject>
 
 // Torc
 #include "torcqmleventproxy.h"
@@ -238,8 +240,8 @@ VideoVDPAU::VideoVDPAU(AVCodecContext *Context)
     m_device(0),
     m_featureSet(Set_Unknown),
     m_decoder(0),
-    m_lastTexture(0),
-    m_lastTextureType(GL_TEXTURE_2D),
+    m_shader(NULL),
+    m_interopTexture(0),
     m_outputSurface(0),
     m_videoMixer(0),
     m_getErrorString(&GetErrorString),
@@ -405,46 +407,102 @@ bool VideoVDPAU::IsDeletingOrErrored(void)
     return m_state == Errored || m_state == Deleting;
 }
 
-bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, GLuint Texture, GLenum TextureType, VideoColourSpace *ColourSpace)
+bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, QOpenGLFramebufferObject *FramebufferObject, VideoColourSpace *ColourSpace)
 {
     PREEMPTION_CHECK
 
-    if (m_state == Errored || !Frame || !Render || !Texture || !ColourSpace || !m_device || !m_avContext)
+    if (m_state == Errored || !Frame || !Render || !FramebufferObject || !ColourSpace || !m_device || !m_avContext)
         return false;
 
+    // this is NVidia specific...
     if (!m_nvidiaInterop)
-        m_nvidiaInterop = new NVInterop;
+    {
+        // initialise interop
+        m_nvidiaInterop = new NVInterop();
+        m_nvidiaInterop->Initialise((void*)m_device, (void*)m_getProcAddress);
 
-    m_nvidiaInterop->Initialise((void*)m_device, (void*)m_getProcAddress);
+        if (m_nvidiaInterop->IsValid())
+        {
+            // create a texture to map the output surface to
+            glGenTextures(1, &m_interopTexture);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, m_interopTexture);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGBA, m_avContext->width, m_avContext->height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+
+            // create a shader to render the texture to a framebuffer object
+            // N.B. the following shaders assume rectangular textures and desktop OpenGL
+            static QByteArray vertex("#version 110\n"
+                                     "attribute vec4 VERTEX;\n"
+                                     "attribute vec2 TEXCOORDIN;\n"
+                                     "varying   vec2 TEXCOORDOUT;\n"
+                                     "uniform   mat4 MATRIX;\n"
+                                     "void main() {\n"
+                                     "    gl_Position = MATRIX * VERTEX;\n"
+                                     "    TEXCOORDOUT = TEXCOORDIN;\n"
+                                     "}\n");
+
+            static QByteArray frag  ("#version 110\n"
+                                     "#extension GL_ARB_texture_rectangle : enable\n"
+                                     "uniform sampler2DRect s_texture0;\n"
+                                     "varying vec2 TEXCOORDOUT;\n"
+                                     "void main(void)\n"
+                                     "{\n"
+                                     "    gl_FragColor = vec4(texture2DRect(s_texture0, TEXCOORDOUT).rgb, 1.0);\n"
+                                     "}\n");
+
+            QOpenGLShaderProgram *shader = new QOpenGLShaderProgram();
+            if (shader->addShaderFromSourceCode(QOpenGLShader::Vertex, vertex))
+            {
+                if (shader->addShaderFromSourceCode(QOpenGLShader::Fragment, frag))
+                {
+                    if (shader->link())
+                    {
+                        m_shader = shader;
+
+                        // set the matrix
+                        QRect ortho(0, 0, m_avContext->width, m_avContext->height);
+                        QMatrix4x4 matrix;
+                        matrix.ortho(ortho);
+                        m_shader->bind();
+                        m_shader->setUniformValue("MATRIX", matrix);
+                        m_shader->release();
+                        LOG(VB_GENERAL, LOG_INFO, "Created simple VDPAU shader");
+                    }
+                    else
+                    {
+                        LOG(VB_GENERAL, LOG_ERR, QString("Shader link error: '%1'").arg(shader->log()));
+                    }
+                }
+                else
+                {
+                    LOG(VB_GENERAL, LOG_ERR, QString("Fragment shader error: '%1'").arg(shader->log()));
+                }
+            }
+            else
+            {
+                LOG(VB_GENERAL, LOG_ERR, QString("Vertex shader error: '%1'").arg(shader->log()));
+            }
+
+            if (m_shader != shader)
+                delete shader;
+        }
+    }
 
     // create an output surface if needed
-    if (Texture && (m_lastTexture != Texture))
+    if (!m_outputSurface && m_outputSurfaceCreate && m_interopTexture)
     {
-        // delete the old
-        if (m_outputSurface && m_outputSurfaceDestroy)
+        VdpStatus status = m_outputSurfaceCreate(m_device, VDP_RGBA_FORMAT_B8G8R8A8, m_avContext->width, m_avContext->height, &m_outputSurface);
+        if (status != VDP_STATUS_OK)
         {
-            // unregister from interop
-            m_nvidiaInterop->Unregister();
-
-            VdpStatus status = m_outputSurfaceDestroy(m_outputSurface);
-            if (status != VDP_STATUS_OK)
-                VDPAU_ERROR(status, "Failed to delete output surface");
+            VDPAU_ERROR(status, "Failed to create output surface");
         }
-
-        m_outputSurface = 0;
-        m_lastTexture = Texture;
-
-        if (m_outputSurfaceCreate)
+        else
         {
-            VdpStatus status = m_outputSurfaceCreate(m_device, VDP_RGBA_FORMAT_B8G8R8A8, m_avContext->width, m_avContext->height, &m_outputSurface);
-            if (status != VDP_STATUS_OK)
-            {
-                VDPAU_ERROR(status, "Failed to create output surface");
-            }
-            else if (m_nvidiaInterop)
-            {
-                m_nvidiaInterop->Register((void*)m_outputSurface, m_lastTextureType, &m_lastTexture);
-            }
+            m_nvidiaInterop->Register((void*)m_outputSurface, GL_TEXTURE_RECTANGLE_ARB, &m_interopTexture);
         }
     }
 
@@ -460,7 +518,7 @@ bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, GLui
             VDPAU_ERROR(status, "Failed to create video mixer");
     }
 
-    // and render
+    // render frame into surface
     if (m_outputSurface && m_videoMixer && m_videoMixerRender)
     {
         // colourspace adjustments
@@ -487,25 +545,43 @@ bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, GLui
             VDPAU_ERROR(status, "Video mixing error");
     }
 
-    return true;
-}
+    // copy frame to FramebufferObject
+    if (m_interopTexture && m_outputSurface && FramebufferObject && m_shader)
+    {
+        GLfloat width  = (GLfloat)m_avContext->width;
+        GLfloat height = (GLfloat)m_avContext->height;
 
-bool VideoVDPAU::MapFrame(void* Surface, void* SurfaceType)
-{
-    GLuint *texture = static_cast<GLuint*>(Surface);
-    GLenum *type    = static_cast<GLenum*>(SurfaceType);
-    if (texture && type && (*texture == m_lastTexture) && (*type == m_lastTextureType) && m_nvidiaInterop)
-        m_nvidiaInterop->MapFrame();
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, m_interopTexture);
+        if (FramebufferObject->bind())
+        {
+            if (m_shader->bind())
+            {
+                // vertices
+                m_shader->enableAttributeArray("VERTEX");
+                GLfloat const vertices[] = { 0.0f,  height, 0.0f,
+                                             0.0f,  0.0f,   0.0f,
+                                             width, height, 0.0f,
+                                             width, 0.0f,   0.0f };
+                m_shader->setAttributeArray("VERTEX", vertices, 3);
 
-    return true;
-}
+                // texture
+                m_shader->enableAttributeArray("TEXCOORDIN");
+                GLfloat const texcoord[] = { 0.0f,  0.0f,
+                                             0.0f,  height,
+                                             width, 0.0f,
+                                             width, height };
+                m_shader->setAttributeArray("TEXCOORDIN", texcoord, 2);
 
-bool VideoVDPAU::UnmapFrame(void* Surface, void* SurfaceType)
-{
-    GLuint *texture = static_cast<GLuint*>(Surface);
-    GLenum *type    = static_cast<GLenum*>(SurfaceType);
-    if (texture && type && (*texture == m_lastTexture) && (*type == m_lastTextureType) && m_nvidiaInterop)
-        m_nvidiaInterop->UnmapFrame();
+                m_nvidiaInterop->MapFrame();
+                glViewport(0, 0, width, height);
+                glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+                m_nvidiaInterop->UnmapFrame();
+                m_shader->release();
+            }
+            FramebufferObject->release();
+        }
+        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+    }
 
     return true;
 }
@@ -824,9 +900,20 @@ void VideoVDPAU::TearDown(void)
         if (status != VDP_STATUS_OK)
             VDPAU_ERROR(status, "Failed to delete output surface");
     }
-    m_outputSurface = 0;
-    m_lastTexture   = 0;
-    m_lastTextureType = GL_TEXTURE_2D;
+    m_outputSurface  = 0;
+
+    // delete shader
+    delete m_shader;
+    m_shader = NULL;
+
+    // cleanup interop
+    if (m_interopTexture)
+    {
+        if (m_nvidiaInterop)
+            m_nvidiaInterop->Unregister();
+        glDeleteTextures(1, &m_interopTexture);
+    }
+    m_interopTexture = 0;
 
     // delete video mixer
     if (m_videoMixer && m_videoMixerDestroy)
@@ -953,8 +1040,7 @@ bool VideoVDPAU::HandlePreemption(void)
     m_device = 0;
     m_decoder = 0;
     m_vdpauContext->decoder = 0;
-    m_lastTexture = 0;
-    m_lastTextureType = GL_TEXTURE_2D;
+    m_interopTexture = 0;
     m_outputSurface = 0;
     m_videoMixer = 0;
 
@@ -1127,18 +1213,17 @@ class VDPAUFactory : public AccelerationFactory
         (void)ConversionContext;
     }
 
-    bool UpdateFrame(VideoFrame *Frame, VideoColourSpace *ColourSpace, void *Surface, void* SurfaceType)
+    bool UpdateFrame(VideoFrame *Frame, VideoColourSpace *ColourSpace, void *Surface, void*)
     {
         if (Frame && Surface && ColourSpace && Frame->m_acceleratedBuffer && Frame->m_pixelFormat == AV_PIX_FMT_VDPAU)
         {
             struct vdpau_render_state *render = (struct vdpau_render_state *)Frame->m_acceleratedBuffer;
-            GLuint                   *texture = static_cast<GLuint*>(Surface);
-            GLenum                      *type = static_cast<GLenum*>(SurfaceType);
+            QOpenGLFramebufferObject     *fbo = static_cast<QOpenGLFramebufferObject*>(Surface);
             VideoVDPAU                 *vdpau = reinterpret_cast<VideoVDPAU*>(Frame->m_priv[0]);
 
-            if (render && vdpau && texture)
+            if (render && vdpau && fbo)
             {
-                vdpau->RenderFrame(Frame, render, *texture, *type, ColourSpace);
+                vdpau->RenderFrame(Frame, render, fbo, ColourSpace);
 
                 if (vdpau->IsDeletingOrErrored())
                 {
@@ -1172,37 +1257,6 @@ class VDPAUFactory : public AccelerationFactory
         }
 
         return false;
-    }
-
-    bool MapFrame(VideoFrame *Frame, void *Surface, void *SurfaceType)
-    {
-        if (!Frame || !Surface || !SurfaceType)
-            return false;
-
-        if (!Frame->m_pixelFormat == AV_PIX_FMT_VDPAU)
-            return false;
-
-        VideoVDPAU *vdpau = reinterpret_cast<VideoVDPAU*>(Frame->m_priv[0]);
-        if (vdpau)
-            vdpau->MapFrame(Surface, SurfaceType);
-
-        return true;
-    }
-
-    bool UnmapFrame(VideoFrame *Frame, void *Surface, void *SurfaceType)
-    {
-        if (!Frame || !Surface || !SurfaceType)
-            return false;
-
-        if (!Frame->m_pixelFormat == AV_PIX_FMT_VDPAU)
-            return false;
-
-        VideoVDPAU *vdpau = reinterpret_cast<VideoVDPAU*>(Frame->m_priv[0]);
-        if (vdpau)
-            vdpau->UnmapFrame(Surface, SurfaceType);
-
-        return true;
-
     }
 
     bool NeedsCustomSurfaceFormat(VideoFrame *Frame, void *Format)
