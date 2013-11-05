@@ -53,7 +53,7 @@ class TorcMediaPeer
         if (!m_parent)
             return;
 
-        m_currentRequest = new TorcRPCRequest("/services/files/GetMediaVersion", m_parent);
+        m_currentRequest = new TorcRPCRequest("/services/files/Subscribe", m_parent);
         TorcNetworkedContext::RemoteRequest(m_uuid, m_currentRequest);
     }
 
@@ -107,10 +107,15 @@ class TorcMediaPeer
  * \sa TorcMediaSourceDirectory
  * \sa TorcNetworkedContext
  * \sa TorcNetworkService
+ *
+ * \todo Add state tracking/connection logic (query services, subscribe, unsibscribe...)
+ * \todo Listen for TorcNetwork events (Torc::NetworkAvailable etc), though investigate why PeerDisconnected not working.
 */
 TorcMediaSourcePeer::TorcMediaSourcePeer()
   : QObject()
 {
+    setObjectName("TorcMediaSourcePeer");
+
     // listen for peer (dis)connection signals
     if (gNetworkedContext)
     {
@@ -172,6 +177,11 @@ void TorcMediaSourcePeer::RequestReady(TorcRPCRequest *Request)
             return;
         }
     }
+}
+
+void TorcMediaSourcePeer::ServiceNotification(QString Method)
+{
+    LOG(VB_GENERAL, LOG_INFO, QString("ServiceNotification: '%1'").arg(Method));
 }
 
 /*! \class TorcMediaSourcePeerObject

@@ -19,9 +19,10 @@ class TorcMediaSourcePeer : public QObject
    ~TorcMediaSourcePeer();
 
   public slots:
-    void            PeerConnected     (QString Name, QString UUID);
-    void            PeerDisconnected  (QString Name, QString UUID);
-    void            RequestReady      (TorcRPCRequest *Request);
+    void            PeerConnected       (QString Name, QString UUID);
+    void            PeerDisconnected    (QString Name, QString UUID);
+    void            RequestReady        (TorcRPCRequest *Request);
+    void            ServiceNotification (QString Method);
 
   private:
     QMap<QString,TorcMediaPeer*> m_peers;
