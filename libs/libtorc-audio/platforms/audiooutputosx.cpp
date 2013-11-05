@@ -322,7 +322,7 @@ AudioDeviceID AudioOutputOSXPriv::GetDefaultOutputDevice(void)
 
     if (err == noErr)
     {
-        LOG(VB_AUDIO, LOG_INFO, QString("Default device ID: '%1'").arg(deviceID));
+        LOG(VB_AUDIO, LOG_INFO, QString("Default device ID: '%1' (%2)").arg(deviceID).arg(GetName(deviceID)));
     }
     else
     {
@@ -342,25 +342,31 @@ int AudioOutputOSXPriv::GetTotalOutputChannels(UInt32 DeviceID)
 
     if (AudioObjectHasProperty(DeviceID, &propertyAddress))
     {
-        UInt32 propertySize = 0;
-        OSStatus err = AudioObjectGetPropertyDataSize(DeviceID, &propertyAddress, 0, NULL, &propertySize);
+        UInt32 size = 0;
+        OSStatus err = AudioObjectGetPropertyDataSize(DeviceID, &propertyAddress, 0, NULL, &size);
 
-        if (err == noErr)
+        if ((err == noErr) && size)
         {
-            AudioBufferList *list = (AudioBufferList*) new unsigned char(propertySize);
-            err = AudioObjectGetPropertyData(DeviceID, &propertyAddress, 0, NULL, &propertySize, list);
+            QByteArray buffer(size, 0);
+            err = AudioObjectGetPropertyData(DeviceID, &propertyAddress, 0, NULL, &size, buffer.data());
 
-            if (err == noErr)
+            AudioBufferList *list = reinterpret_cast<AudioBufferList*>(buffer.data());
+            if ((err == noErr) && list)
             {
                 UInt32 channels = 0;
-                for (UInt32 buffer = 0; buffer < list->mNumberBuffers; buffer++)
-                    channels += list->mBuffers[buffer].mNumberChannels;
-                LOG(VB_AUDIO, LOG_INFO, QString("Found %1 channels in %2 buffers").arg(channels).arg(list->mNumberBuffers));
-                delete [] list;
+                for (UInt32 i = 0; i < list->mNumberBuffers; ++i)
+                    channels += list->mBuffers[i].mNumberChannels;
+                LOG(VB_AUDIO, LOG_INFO, QString("'%1': Channels %2 Buffers %3").arg(GetName(DeviceID)).arg(channels).arg(list->mNumberBuffers));
                 return channels;
             }
-
-            delete [] list;
+            else
+            {
+                LOG(VB_GENERAL, LOG_ERR, QString("Failed to retrieve stream configuration (Error: %1)").arg(UInt32ToFourCC(err)));
+            }
+        }
+        else
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Failed to retrieve stream configuration (Error: %1)").arg(UInt32ToFourCC(err)));
         }
     }
 
