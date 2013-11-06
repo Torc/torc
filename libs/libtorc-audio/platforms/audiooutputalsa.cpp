@@ -14,16 +14,15 @@
 #define CHANNELS_MIN 1
 #define CHANNELS_MAX 8
 
-#define OPEN_FLAGS (SND_PCM_NO_AUTO_RESAMPLE|SND_PCM_NO_AUTO_FORMAT|    \
-                    SND_PCM_NO_AUTO_CHANNELS)
+#define OPEN_FLAGS (SND_PCM_NO_AUTO_RESAMPLE | SND_PCM_NO_AUTO_FORMAT | SND_PCM_NO_AUTO_CHANNELS)
 
-#define FILTER_FLAGS ~(SND_PCM_NO_AUTO_FORMAT)
+#define FILTER_FLAGS (~(SND_PCM_NO_AUTO_FORMAT))
 
 #define AERROR(str)   LOG(VB_GENERAL, LOG_ERR, str + QString(": %1").arg(snd_strerror(err)))
 #define CHECKERR(str) { if (err < 0) { AERROR(str); return err; } }
 
-AudioOutputALSA::AudioOutputALSA(const AudioSettings &Settings, AudioWrapper *Parent) :
-    AudioOutput(Settings, Parent),
+AudioOutputALSA::AudioOutputALSA(const AudioSettings &Settings, AudioWrapper *Parent)
+  : AudioOutput(Settings, Parent),
     m_pcmHandle(NULL),
     m_preallocBufferSize(-1),
     m_card(-1),
@@ -47,21 +46,20 @@ AudioOutputALSA::AudioOutputALSA(const AudioSettings &Settings, AudioWrapper *Pa
         int len = m_passthroughDevice.length();
         int args = m_passthroughDevice.indexOf(":");
 
-            /*
-             * AES description:
+            /* AES description:
              * AES0=6 AES1=0x82 AES2=0x00 AES3=0x01.
              * AES0 = NON_AUDIO | PRO_MODE
              * AES1 = original stream, original PCM coder
              * AES2 = source and channel unspecified
              * AES3 = sample rate unspecified
-             */
+            */
         bool s48k = gLocalContext->GetSetting("SPDIFRateOverride", false);
         QString iecarg = QString("AES0=6,AES1=0x82,AES2=0x00")  + (s48k ? QString() : QString(",AES3=0x01"));
         QString iecarg2 = QString("AES0=6 AES1=0x82 AES2=0x00") + (s48k ? QString() : QString(" AES3=0x01"));
 
         if (args < 0)
         {
-            /* no existing parameters: add it behind device name */
+            // no existing parameters: add it behind device name
             m_passthroughDevice += ":" + iecarg;
         }
         else
@@ -72,17 +70,17 @@ AudioOutputALSA::AudioOutputALSA(const AudioSettings &Settings, AudioWrapper *Pa
                    m_passthroughDevice[args].isSpace());
             if (args == m_passthroughDevice.length())
             {
-                /* ":" but no parameters */
+                // ":" but no parameters
                 m_passthroughDevice += iecarg;
             }
             else if (m_passthroughDevice[args] != '{')
             {
-                /* a simple list of parameters: add it at the end of the list */
+                // a simple list of parameters: add it at the end of the list
                 m_passthroughDevice += "," + iecarg;
             }
             else
             {
-                /* parameters in config syntax: add it inside the { } block */
+                // parameters in config syntax: add it inside the { } block
                 do
                     --len;
                 while (len > 0 && m_passthroughDevice[len].isSpace());
@@ -128,10 +126,7 @@ int AudioOutputALSA::TryOpenDevice(int Mode, int TryAC3)
             return error;
 
         if (error < 0)
-        {
-            LOG(VB_AUDIO, LOG_INFO, QString("Auto setting passthrough failed (%1), defaulting "
-                            "to main device").arg(snd_strerror(error)));
-        }
+            LOG(VB_AUDIO, LOG_INFO, QString("Auto setting passthrough failed (%1), defaulting to main device").arg(snd_strerror(error)));
     }
 
     if (!TryAC3 || error < 0)
@@ -139,8 +134,7 @@ int AudioOutputALSA::TryOpenDevice(int Mode, int TryAC3)
         // passthrough open failed, retry default device
         LOG(VB_AUDIO, LOG_INFO, QString("OpenDevice %1").arg(m_mainDevice));
         device = m_mainDevice.toLatin1();
-        error = snd_pcm_open(&m_pcmHandle, device.constData(),
-                           SND_PCM_STREAM_PLAYBACK, Mode);
+        error = snd_pcm_open(&m_pcmHandle, device.constData(), SND_PCM_STREAM_PLAYBACK, Mode);
         m_lastdevice = m_mainDevice;
     }
 
@@ -198,8 +192,7 @@ bool AudioOutputALSA::IncPreallocBufferSize(int Requested, int BufferTime)
     if (GetPCMInfo(card, device, subdevice) < 0)
         return false;
 
-    const QString pf = QString("/proc/asound/card%1/pcm%2p/sub%3/prealloc")
-                       .arg(card).arg(device).arg(subdevice);
+    const QString pf = QString("/proc/asound/card%1/pcm%2p/sub%3/prealloc").arg(card).arg(device).arg(subdevice);
 
     QFile pfile(pf);
     QFile mfile(pf + "_max");
@@ -219,11 +212,9 @@ bool AudioOutputALSA::IncPreallocBufferSize(int Requested, int BufferTime)
     int cur  = pfile.readAll().trimmed().toInt();
     int max  = mfile.readAll().trimmed().toInt();
 
-    int size = ((int)(cur * (float)Requested / (float)BufferTime)
-                / 64 + 1) * 64;
+    int size = ((int)(cur * (float)Requested / (float)BufferTime) / 64 + 1) * 64;
 
-    LOG(VB_AUDIO, LOG_INFO, QString("Hardware audio buffer cur: %1 need: %2 max allowed: %3")
-            .arg(cur).arg(size).arg(max));
+    LOG(VB_AUDIO, LOG_INFO, QString("Hardware audio buffer cur: %1 need: %2 max allowed: %3").arg(cur).arg(size).arg(max));
 
     if (cur == max)
     {
@@ -239,8 +230,7 @@ bool AudioOutputALSA::IncPreallocBufferSize(int Requested, int BufferTime)
     pfile.close();
     mfile.close();
 
-    LOG(VB_GENERAL, LOG_ERR, QString("Try to manually increase audio buffer with: echo %1 "
-                    "| sudo tee %2").arg(size).arg(pf));
+    LOG(VB_GENERAL, LOG_ERR, QString("Try to manually increase audio buffer with: echo %1 | sudo tee %2").arg(size).arg(pf));
     return false;
 }
 
@@ -264,22 +254,16 @@ QByteArray AudioOutputALSA::GetELD(int Card, int Device, int Subdevice)
     snd_ctl_elem_id_set_name(id, "ELD");
     snd_ctl_elem_id_set_device(id, Device);
 
-    if ((err = snd_hctl_open(&hctl,
-                             QString("hw:%1").arg(Card).toLatin1().constData(),
-                             0)) < 0)
+    if ((err = snd_hctl_open(&hctl, QString("hw:%1").arg(Card).toLatin1().constData(), 0)) < 0)
     {
-        LOG(VB_AUDIO, LOG_INFO, QString("Control %1 open error: %2")
-                .arg(Card)
-                .arg(snd_strerror(err)));
+        LOG(VB_AUDIO, LOG_INFO, QString("Control %1 open error: %2").arg(Card).arg(snd_strerror(err)));
         return result;
     }
 
     if ((err = snd_hctl_load(hctl)) < 0)
     {
-        LOG(VB_AUDIO, LOG_INFO, QString("Control %1 load error: %2")
-                .arg(Card)
-                .arg(snd_strerror(err)));
-        /* frees automatically the control which cannot be added. */
+        LOG(VB_AUDIO, LOG_INFO, QString("Control %1 load error: %2").arg(Card).arg(snd_strerror(err)));
+        // frees automatically the control which cannot be added
         return result;
     }
 
@@ -288,9 +272,7 @@ QByteArray AudioOutputALSA::GetELD(int Card, int Device, int Subdevice)
     {
         if ((err = snd_hctl_elem_info(elem, info)) < 0)
         {
-            LOG(VB_AUDIO, LOG_INFO, QString("Control %1 snd_hctl_elem_info error: %2")
-                    .arg(Card)
-                    .arg(snd_strerror(err)));
+            LOG(VB_AUDIO, LOG_INFO, QString("Control %1 snd_hctl_elem_info error: %2").arg(Card).arg(snd_strerror(err)));
             snd_hctl_close(hctl);
             return result;
         }
@@ -299,25 +281,21 @@ QByteArray AudioOutputALSA::GetELD(int Card, int Device, int Subdevice)
         type = snd_ctl_elem_info_get_type(info);
         if (!snd_ctl_elem_info_is_readable(info))
         {
-            LOG(VB_AUDIO, LOG_INFO, QString("Control %1 element info is not readable")
-                    .arg(Card));
+            LOG(VB_AUDIO, LOG_INFO, QString("Control %1 element info is not readable").arg(Card));
             snd_hctl_close(hctl);
             return result;
         }
 
         if ((err = snd_hctl_elem_read(elem, control)) < 0)
         {
-            LOG(VB_AUDIO, LOG_INFO, QString("Control %1 element read error: %2")
-                    .arg(Card)
-                    .arg(snd_strerror(err)));
+            LOG(VB_AUDIO, LOG_INFO, QString("Control %1 element read error: %2").arg(Card).arg(snd_strerror(err)));
             snd_hctl_close(hctl);
             return result;
         }
 
         if (type != SND_CTL_ELEM_TYPE_BYTES)
         {
-            LOG(VB_AUDIO, LOG_INFO, QString("Control %1 element is of the wrong type")
-                    .arg(Card));
+            LOG(VB_AUDIO, LOG_INFO, QString("Control %1 element is of the wrong type").arg(Card));
             snd_hctl_close(hctl);
             return result;
         }
@@ -425,14 +403,12 @@ AudioOutputSettings* AudioOutputALSA::GetOutputSettings(bool Passthrough)
     QMap<QString, QString> alsadevs = GetDevices("pcm");
     while(1)
     {
-        QString realdevice = ((Passthrough && m_discreteDigital) ?
-                               m_passthroughDevice : m_mainDevice);
+        QString realdevice = (Passthrough && m_discreteDigital) ? m_passthroughDevice : m_mainDevice;
 
         QString desc = alsadevs.value(realdevice);
 
         settings->SetPassthrough(PassthroughYes);
-        if (realdevice.contains("digital", Qt::CaseInsensitive) ||
-            desc.contains("digital", Qt::CaseInsensitive))
+        if (realdevice.contains("digital", Qt::CaseInsensitive) || desc.contains("digital", Qt::CaseInsensitive))
             break;
         if (realdevice.contains("iec958", Qt::CaseInsensitive))
             break;
@@ -443,14 +419,11 @@ AudioOutputSettings* AudioOutputALSA::GetOutputSettings(bool Passthrough)
 
         settings->SetPassthrough(PassthroughNo);
         // PulseAudio does not support passthrough
-        if (realdevice.contains("pulse", Qt::CaseInsensitive) ||
-            desc.contains("pulse", Qt::CaseInsensitive))
+        if (realdevice.contains("pulse", Qt::CaseInsensitive) || desc.contains("pulse", Qt::CaseInsensitive))
             break;
-        if (realdevice.contains("analog", Qt::CaseInsensitive) ||
-            desc.contains("analog", Qt::CaseInsensitive))
+        if (realdevice.contains("analog", Qt::CaseInsensitive) || desc.contains("analog", Qt::CaseInsensitive))
             break;
-        if (realdevice.contains("surround", Qt::CaseInsensitive) ||
-            desc.contains("surround", Qt::CaseInsensitive))
+        if (realdevice.contains("surround", Qt::CaseInsensitive) || desc.contains("surround", Qt::CaseInsensitive))
             break;
 
         settings->SetPassthrough(PassthroughUnknown); // maybe
@@ -496,8 +469,7 @@ bool AudioOutputALSA::OpenDevice()
 
     period_time = 4; // aim for an interrupt every (1/4th of buffer_time)
 
-    err = SetParameters(m_pcmHandle, format, m_channels, m_samplerate,
-                        buffer_time, period_time);
+    err = SetParameters(m_pcmHandle, format, m_channels, m_samplerate, buffer_time, period_time);
     if (err < 0)
     {
         AERROR("Unable to set ALSA parameters");
@@ -517,6 +489,7 @@ void AudioOutputALSA::CloseDevice()
     if (m_mixer.handle)
         snd_mixer_close(m_mixer.handle);
     m_mixer.handle = NULL;
+
     if (m_pcmHandle)
     {
         snd_pcm_close(m_pcmHandle);
@@ -544,8 +517,7 @@ static inline void _ReorderSmpteToAlsa(AudioDataType *buf, uint frames,
     }
 }
 
-static inline void ReorderSmpteToAlsa(void *buf, uint frames,
-                                      AudioFormat format, uint extrach)
+static inline void ReorderSmpteToAlsa(void *buf, uint frames, AudioFormat format, uint extrach)
 {
     switch(AudioOutputSettings::FormatToBits(format))
     {
@@ -568,13 +540,9 @@ void AudioOutputALSA::WriteAudio(unsigned char *Buffer, int Size)
 
     //Audio received is in SMPTE channel order, reorder to ALSA unless passthru
     if (!m_passthrough && (m_channels  == 6 || m_channels == 8))
-    {
         ReorderSmpteToAlsa(Buffer, frames, m_outputFormat, m_channels - 6);
-    }
 
-    LOG(VB_AUDIO | VB_TIMESTAMP, LOG_INFO,
-            QString("WriteAudio: Preparing %1 bytes (%2 frames)")
-            .arg(Size).arg(frames));
+    LOG(VB_AUDIO | VB_TIMESTAMP, LOG_INFO, QString("WriteAudio: Preparing %1 bytes (%2 frames)").arg(Size).arg(frames));
 
     while (frames > 0)
     {
@@ -583,8 +551,7 @@ void AudioOutputALSA::WriteAudio(unsigned char *Buffer, int Size)
         if (lw >= 0)
         {
             if ((uint)lw < frames)
-                LOG(VB_AUDIO, LOG_INFO, QString("WriteAudio: short write %1 bytes (ok)")
-                        .arg(lw * m_outputBytesPerFrame));
+                LOG(VB_AUDIO, LOG_INFO, QString("WriteAudio: short write %1 bytes (ok)").arg(lw * m_outputBytesPerFrame));
 
             frames -= lw;
             tmpbuf += lw * m_outputBytesPerFrame; // bytes
@@ -646,21 +613,17 @@ int AudioOutputALSA::GetBufferedOnSoundcard(void) const
 
     snd_pcm_sframes_t delay = 0;
 
-    /* Delay is the total delay from writing to the pcm until the samples
-       hit the DAC - includes buffered samples and any fixed latencies */
+    // Delay is the total delay from writing to the pcm until the samples
+    // hit the DAC - includes buffered samples and any fixed latencies
     if (snd_pcm_delay(m_pcmHandle, &delay) < 0)
         return 0;
 
     snd_pcm_state_t state = snd_pcm_state(m_pcmHandle);
 
     if (state == SND_PCM_STATE_RUNNING || state == SND_PCM_STATE_DRAINING)
-    {
         delay *= m_outputBytesPerFrame;
-    }
     else
-    {
         delay = 0;
-    }
 
     return delay;
 }
@@ -682,10 +645,8 @@ int AudioOutputALSA::SetParameters(snd_pcm_t *Handle, snd_pcm_format_t Format,
     snd_pcm_uframes_t     period_size, period_size_min, period_size_max;
     snd_pcm_uframes_t     buffer_size, buffer_size_min, buffer_size_max;
 
-    LOG(VB_AUDIO, LOG_INFO, QString("SetParameters(format=%1, channels=%2, rate=%3, "
-                    "buffer_time=%4, period_time=%5)")
-            .arg(Format).arg(Channels).arg(Rate).arg(BufferTime)
-            .arg(PeriodTime));
+    LOG(VB_AUDIO, LOG_INFO, QString("SetParameters(format=%1, channels=%2, rate=%3, buffer_time=%4, period_time=%5)")
+            .arg(Format).arg(Channels).arg(Rate).arg(BufferTime).arg(PeriodTime));
 
     if (Handle == NULL)
     {
@@ -701,8 +662,7 @@ int AudioOutputALSA::SetParameters(snd_pcm_t *Handle, snd_pcm_format_t Format,
     CHECKERR("No playback configurations available");
 
     /* set the interleaved read/write format */
-    err = snd_pcm_hw_params_set_access(Handle, params,
-                                       SND_PCM_ACCESS_RW_INTERLEAVED);
+    err = snd_pcm_hw_params_set_access(Handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
     CHECKERR(QString("Interleaved RW audio not available"));
 
     /* set the sample format */
@@ -725,8 +685,7 @@ int AudioOutputALSA::SetParameters(snd_pcm_t *Handle, snd_pcm_format_t Format,
 
         if (rrate != Rate)
         {
-            LOG(VB_GENERAL, LOG_ERR, QString("Rate doesn't match (requested %1Hz, got %2Hz)")
-                    .arg(Rate).arg(err));
+            LOG(VB_GENERAL, LOG_ERR, QString("Rate doesn't match (requested %1Hz, got %2Hz)").arg(Rate).arg(err));
             return err;
         }
     }
@@ -741,18 +700,13 @@ int AudioOutputALSA::SetParameters(snd_pcm_t *Handle, snd_pcm_format_t Format,
     err = snd_pcm_hw_params_get_buffer_size_max(params, &buffer_size_max);
     err = snd_pcm_hw_params_get_period_size_min(params, &period_size_min, NULL);
     err = snd_pcm_hw_params_get_period_size_max(params, &period_size_max, NULL);
-    LOG(VB_AUDIO, LOG_INFO, QString("Buffer size range from %1 to %2")
-            .arg(buffer_size_min)
-            .arg(buffer_size_max));
-    LOG(VB_AUDIO, LOG_INFO, QString("Period size range from %1 to %2")
-            .arg(period_size_min)
-            .arg(period_size_max));
+    LOG(VB_AUDIO, LOG_INFO, QString("Buffer size range from %1 to %2").arg(buffer_size_min).arg(buffer_size_max));
+    LOG(VB_AUDIO, LOG_INFO, QString("Period size range from %1 to %2").arg(period_size_min).arg(period_size_max));
 
     /* set the buffer time */
     uint originalbuffertime = BufferTime;
     bool canincrease = true;
-    err = snd_pcm_hw_params_set_buffer_time_near(Handle, params,
-                                                 &BufferTime, NULL);
+    err = snd_pcm_hw_params_set_buffer_time_near(Handle, params, &BufferTime, NULL);
     if (err < 0)
     {
         int dir             = -1;
@@ -760,19 +714,14 @@ int AudioOutputALSA::SetParameters(snd_pcm_t *Handle, snd_pcm_format_t Format,
         int attempt         = 0;
         do
         {
-            err = snd_pcm_hw_params_set_buffer_time_near(Handle, params,
-                                                         &BufferTime, &dir);
+            err = snd_pcm_hw_params_set_buffer_time_near(Handle, params, &BufferTime, &dir);
             if (err < 0)
             {
-                AERROR(QString("Unable to set buffer time to %1us, retrying")
-                       .arg(BufferTime));
-                    /*
-                     * with some drivers, snd_pcm_hw_params_set_buffer_time_near
-                     * only works once, if that's the case no point trying with
-                     * different values
-                     */
-                if ((BufferTime <= 100000) ||
-                    (attempt > 0 && BufferTime == buftmp))
+                AERROR(QString("Unable to set buffer time to %1us, retrying").arg(BufferTime));
+                    // with some drivers, snd_pcm_hw_params_set_buffer_time_near
+                    // only works once, if that's the case no point trying with
+                    // different values
+                if ((BufferTime <= 100000) || (attempt > 0 && BufferTime == buftmp))
                 {
                     LOG(VB_GENERAL, LOG_ERR, "Couldn't set buffer time, giving up");
                     return err;
@@ -789,49 +738,44 @@ int AudioOutputALSA::SetParameters(snd_pcm_t *Handle, snd_pcm_format_t Format,
        If buffer_time is too small we could underrun - make 10% difference ok */
     if (BufferTime * 1.10f < (float)originalbuffertime)
     {
-        LOG(VB_GENERAL, LOG_ERR, QString("Requested %1us got %2 buffer time")
-                .arg(originalbuffertime).arg(BufferTime));
+        LOG(VB_GENERAL, LOG_ERR, QString("Requested %1us got %2 buffer time").arg(originalbuffertime).arg(BufferTime));
         // We need to increase preallocated buffer size in the driver
         if (canincrease && m_preallocBufferSize < 0)
-        {
             IncPreallocBufferSize(originalbuffertime, BufferTime);
-        }
     }
 
     LOG(VB_AUDIO, LOG_INFO, QString("Buffer time = %1 us").arg(BufferTime));
 
-    /* set the period time */
-    err = snd_pcm_hw_params_set_periods_near(Handle, params,
-                                             &PeriodTime, NULL);
+    // set the period time
+    err = snd_pcm_hw_params_set_periods_near(Handle, params, &PeriodTime, NULL);
     CHECKERR(QString("Unable to set period time %1").arg(PeriodTime));
     LOG(VB_AUDIO, LOG_INFO, QString("Period time = %1 periods").arg(PeriodTime));
 
-    /* write the parameters to device */
+    // write the parameters to device
     err = snd_pcm_hw_params(Handle, params);
     CHECKERR("Unable to set hw params for playback");
 
     err = snd_pcm_get_params(Handle, &buffer_size, &period_size);
     CHECKERR("Unable to get PCM params");
-    LOG(VB_AUDIO, LOG_INFO, QString("Buffer size = %1 | Period size = %2")
-            .arg(buffer_size).arg(period_size));
+    LOG(VB_AUDIO, LOG_INFO, QString("Buffer size = %1 | Period size = %2").arg(buffer_size).arg(period_size));
 
-    /* set member variables */
+    // set member variables
     m_soundcardBufferSize = buffer_size * m_outputBytesPerFrame;
     m_fragmentSize = (period_size >> 1) * m_outputBytesPerFrame;
 
-    /* get the current swparams */
+    // get the current swparams
     err = snd_pcm_sw_params_current(Handle, swparams);
     CHECKERR("Unable to get current swparams");
 
-    /* start the transfer after period_size */
+    // start the transfer after period_size
     err = snd_pcm_sw_params_set_start_threshold(Handle, swparams, period_size);
     CHECKERR("Unable to set start threshold");
 
-    /* allow the transfer when at least period_size samples can be processed */
+    // allow the transfer when at least period_size samples can be processed */
     err = snd_pcm_sw_params_set_avail_min(Handle, swparams, period_size);
     CHECKERR("Unable to set avail min");
 
-    /* write the parameters to the playback device */
+    // write the parameters to the playback device
     err = snd_pcm_sw_params(Handle, swparams);
     CHECKERR("Unable to set sw params");
 
@@ -854,24 +798,17 @@ int AudioOutputALSA::GetVolumeChannel(int Channel) const
 
     long mixervol;
     int chk;
-    if ((chk = snd_mixer_selem_get_playback_volume(m_mixer.elem,
-                                                   chan,
-                                                   &mixervol)) < 0)
+    if ((chk = snd_mixer_selem_get_playback_volume(m_mixer.elem, chan, &mixervol)) < 0)
     {
-        LOG(VB_GENERAL, LOG_ERR, QString("failed to get channel %1 volume, mixer %2/%3: %4")
-                .arg(Channel).arg(m_mixer.device)
-                .arg(m_mixer.control)
-                .arg(snd_strerror(chk)));
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to get channel %1 volume, mixer %2/%3: %4")
+                .arg(Channel).arg(m_mixer.device).arg(m_mixer.control).arg(snd_strerror(chk)));
     }
     else
     {
-        retvol = (m_mixer.volrange != 0L) ? (mixervol - m_mixer.volmin) *
-                                            100.0f / m_mixer.volrange + 0.5f
-                                            : 0;
+        retvol = (m_mixer.volrange != 0L) ? ((mixervol - m_mixer.volmin) * 100.0f / m_mixer.volrange + 0.5f) : 0;
         retvol = std::max(retvol, 0);
         retvol = std::min(retvol, 100);
-        LOG(VB_AUDIO, LOG_INFO, QString("get volume channel %1: %2")
-                .arg(Channel).arg(retvol));
+        LOG(VB_AUDIO, LOG_INFO, QString("Get volume channel %1: %2").arg(Channel).arg(retvol));
     }
     return retvol;
 }
@@ -887,17 +824,16 @@ void AudioOutputALSA::SetVolumeChannel(int Channel, int Volume)
 
     snd_mixer_selem_channel_id_t chan = (snd_mixer_selem_channel_id_t) Channel;
     if (snd_mixer_selem_set_playback_volume(m_mixer.elem, chan, mixervol) < 0)
-        LOG(VB_GENERAL, LOG_ERR, QString("failed to set channel %1 volume").arg(Channel));
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to set channel %1 volume").arg(Channel));
     else
-        LOG(VB_AUDIO, LOG_INFO, QString("channel %1 volume set %2 => %3")
-                .arg(Channel).arg(Volume).arg(mixervol));
+        LOG(VB_AUDIO, LOG_INFO, QString("Channel %1 volume set %2 => %3").arg(Channel).arg(Volume).arg(mixervol));
 }
 
 bool AudioOutputALSA::OpenMixer(void)
 {
     if (!m_pcmHandle)
     {
-        LOG(VB_GENERAL, LOG_ERR, "mixer setup without a pcm");
+        LOG(VB_GENERAL, LOG_ERR, "Mixer setup without a pcm");
         return false;
     }
     m_mixer.device = gLocalContext->GetSetting("MixerDevice", "default");
@@ -912,21 +848,18 @@ bool AudioOutputALSA::OpenMixer(void)
     int chk;
     if ((chk = snd_mixer_open(&m_mixer.handle, 0)) < 0)
     {
-        LOG(VB_GENERAL, LOG_ERR, QString("failed to open mixer device %1: %2")
-                .arg(mixer_device_tag).arg(snd_strerror(chk)));
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to open mixer device %1: %2").arg(mixer_device_tag).arg(snd_strerror(chk)));
         return false;
     }
 
     QByteArray dev_ba = m_mixer.device.toLatin1();
-    struct snd_mixer_selem_regopt regopts =
-        {1, SND_MIXER_SABSTRACT_NONE, dev_ba.constData(), NULL, NULL};
+    struct snd_mixer_selem_regopt regopts = {1, SND_MIXER_SABSTRACT_NONE, dev_ba.constData(), NULL, NULL};
 
     if ((chk = snd_mixer_selem_register(m_mixer.handle, &regopts, NULL)) < 0)
     {
         snd_mixer_close(m_mixer.handle);
         m_mixer.handle = NULL;
-        LOG(VB_GENERAL, LOG_ERR, QString("failed to register %1: %2")
-                .arg(mixer_device_tag).arg(snd_strerror(chk)));
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to register '%1': %2").arg(mixer_device_tag).arg(QString::fromLocal8Bit(snd_strerror(chk))));
         return false;
     }
 
@@ -934,8 +867,7 @@ bool AudioOutputALSA::OpenMixer(void)
     {
         snd_mixer_close(m_mixer.handle);
         m_mixer.handle = NULL;
-        LOG(VB_GENERAL, LOG_ERR, QString("failed to load %1: %2")
-                .arg(mixer_device_tag).arg(snd_strerror(chk)));
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to load %1: %2").arg(mixer_device_tag).arg(snd_strerror(chk)));
         return false;
     }
 
@@ -952,9 +884,7 @@ bool AudioOutputALSA::OpenMixer(void)
             snd_mixer_selem_is_active(elx))
         {
             m_mixer.elem = elx;
-            LOG(VB_AUDIO, LOG_INFO, QString("found playback control %1 on %2")
-                    .arg(m_mixer.control)
-                    .arg(mixer_device_tag));
+            LOG(VB_AUDIO, LOG_INFO, QString("Found playback control %1 on %2").arg(m_mixer.control).arg(mixer_device_tag));
             break;
         }
         elx = snd_mixer_elem_next(elx);
@@ -963,8 +893,7 @@ bool AudioOutputALSA::OpenMixer(void)
     {
         snd_mixer_close(m_mixer.handle);
         m_mixer.handle = NULL;
-        LOG(VB_GENERAL, LOG_ERR, QString("no playback control %1 found on %2")
-                .arg(m_mixer.control).arg(mixer_device_tag));
+        LOG(VB_GENERAL, LOG_ERR, QString("No playback control %1 found on %2").arg(m_mixer.control).arg(mixer_device_tag));
         return false;
     }
     if ((snd_mixer_selem_get_playback_volume_range(m_mixer.elem,
@@ -973,26 +902,19 @@ bool AudioOutputALSA::OpenMixer(void)
     {
         snd_mixer_close(m_mixer.handle);
         m_mixer.handle = NULL;
-        LOG(VB_GENERAL, LOG_ERR, QString("failed to get volume range on %1/%2")
-                .arg(mixer_device_tag).arg(m_mixer.control));
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to get volume range on %1/%2").arg(mixer_device_tag).arg(m_mixer.control));
         return false;
     }
 
     m_mixer.volrange = m_mixer.volmax - m_mixer.volmin;
-    LOG(VB_AUDIO, LOG_INFO, QString("mixer volume range on %1/%2 - min %3, max %4, range %5")
-            .arg(mixer_device_tag).arg(m_mixer.control)
-            .arg(m_mixer.volmin).arg(m_mixer.volmax).arg(m_mixer.volrange));
-    LOG(VB_AUDIO, LOG_INFO, QString("%1/%2 set up successfully")
-            .arg(mixer_device_tag)
-            .arg(m_mixer.control));
+    LOG(VB_AUDIO, LOG_INFO, QString("Mixer volume range on %1/%2 - min %3, max %4, range %5").arg(mixer_device_tag).arg(m_mixer.control).arg(m_mixer.volmin).arg(m_mixer.volmax).arg(m_mixer.volrange));
+    LOG(VB_AUDIO, LOG_INFO, QString("%1/%2 set up successfully").arg(mixer_device_tag).arg(m_mixer.control));
 
     if (m_setInitialVolume)
     {
-        int initial_vol;
-        if (m_mixer.control == "PCM")
-            initial_vol = gLocalContext->GetSetting("PCMMixerVolume", 80);
-        else
-            initial_vol = gLocalContext->GetSetting("MasterMixerVolume", 80);
+        int initial_vol = (m_mixer.control == "PCM") ? gLocalContext->GetSetting("PCMMixerVolume", 80) :
+                                                       initial_vol = gLocalContext->GetSetting("MasterMixerVolume", 80);
+
         for (int ch = 0; ch < m_channels; ++ch)
             SetVolumeChannel(ch, initial_vol);
     }
@@ -1038,8 +960,7 @@ QMap<QString, QString> AudioOutputALSA::GetDevices(const char* Type)
         }
         else
         {
-            LOG(VB_GENERAL, LOG_ERR, QString("Failed to get device hints for card %1, error %2")
-                    .arg(card).arg(error));
+            LOG(VB_GENERAL, LOG_ERR, QString("Failed to get device hints for card %1, error %2").arg(card).arg(error));
         }
     }
 
