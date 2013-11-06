@@ -561,10 +561,9 @@ void AudioOutput::Reconfigure(const AudioSettings &Settings)
 
     m_outputBytesPerFrame = m_channels * m_outputSettings->SampleSize(m_outputFormat);
 
-    LOG(VB_GENERAL, LOG_INFO,
-        QString("Opening audio device '%1' ch %2(%3) sr %4 sf %5 reenc %6")
-        .arg(m_mainDevice).arg(m_channels).arg(m_sourceChannels).arg(m_samplerate)
-        .arg(m_outputSettings->FormatToString(m_outputFormat)).arg(m_reencode));
+    LOG(VB_GENERAL, LOG_INFO,QString("Opening audio device '%1': Channels %2->%3 Samplerate %4->%5 Format '%6'->'%7' Reencode '%8'")
+        .arg(m_mainDevice).arg(m_sourceChannels).arg(m_channels).arg(m_sourceSamplerate) .arg(m_samplerate)
+        .arg(AudioOutputSettings::FormatToString(m_format)).arg(AudioOutputSettings::FormatToString(m_outputFormat)).arg(m_reencode));
 
     m_audioBufferTimecode = m_timecode = m_framesBuffered = 0;
     m_currentSeconds = m_sourceBitrate = -1;
