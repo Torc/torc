@@ -53,7 +53,7 @@ AudioOutputALSA::AudioOutputALSA(const AudioSettings &Settings, AudioWrapper *Pa
              * AES2 = source and channel unspecified
              * AES3 = sample rate unspecified
             */
-        bool s48k = gLocalContext->GetSetting("SPDIFRateOverride", false);
+        bool s48k = gLocalContext->GetSetting("SPDIFRateOverride", (bool)false);
         QString iecarg = QString("AES0=6,AES1=0x82,AES2=0x00")  + (s48k ? QString() : QString(",AES3=0x01"));
         QString iecarg2 = QString("AES0=6 AES1=0x82 AES2=0x00") + (s48k ? QString() : QString(" AES3=0x01"));
 
@@ -836,12 +836,12 @@ bool AudioOutputALSA::OpenMixer(void)
         LOG(VB_GENERAL, LOG_ERR, "Mixer setup without a pcm");
         return false;
     }
-    m_mixer.device = gLocalContext->GetSetting("MixerDevice", "default");
+    m_mixer.device = gLocalContext->GetSetting("MixerDevice", QString("default"));
     m_mixer.device = m_mixer.device.remove(QString("ALSA:"));
     if (m_mixer.device.toLower() == "software")
         return true;
 
-    m_mixer.control = gLocalContext->GetSetting("MixerControl", "PCM");
+    m_mixer.control = gLocalContext->GetSetting("MixerControl", QString("PCM"));
 
     QString mixer_device_tag = QString("mixer device %1").arg(m_mixer.device);
 
@@ -913,7 +913,7 @@ bool AudioOutputALSA::OpenMixer(void)
     if (m_setInitialVolume)
     {
         int initial_vol = (m_mixer.control == "PCM") ? gLocalContext->GetSetting("PCMMixerVolume", 80) :
-                                                       initial_vol = gLocalContext->GetSetting("MasterMixerVolume", 80);
+                                                       gLocalContext->GetSetting("MasterMixerVolume", 80);
 
         for (int ch = 0; ch < m_channels; ++ch)
             SetVolumeChannel(ch, initial_vol);
