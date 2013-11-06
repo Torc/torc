@@ -123,8 +123,7 @@ class VideoVDPAU : protected TorcReferenceCounter
     QList<struct vdpau_render_state*> m_createdVideoSurfaces;
     QList<struct vdpau_render_state*> m_allocatedVideoSurfaces;
 
-    QOpenGLShaderProgram             *m_shader;
-    GLuint                            m_interopTexture;
+    QOpenGLFramebufferObject         *m_interopFramebuffer;
     VdpOutputSurface                  m_outputSurface;
     VdpVideoMixer                     m_videoMixer;
     QList<VdpVideoMixerAttribute>     m_supportedMixerAttributes;

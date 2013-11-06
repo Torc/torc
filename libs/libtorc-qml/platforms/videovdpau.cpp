@@ -240,8 +240,7 @@ VideoVDPAU::VideoVDPAU(AVCodecContext *Context)
     m_device(0),
     m_featureSet(Set_Unknown),
     m_decoder(0),
-    m_shader(NULL),
-    m_interopTexture(0),
+    m_interopFramebuffer(NULL),
     m_outputSurface(0),
     m_videoMixer(0),
     m_getErrorString(&GetErrorString),
@@ -383,7 +382,7 @@ void VideoVDPAU::Wake(void)
 
 bool VideoVDPAU::Dereference(void)
 {
-    if (!IsShared() && !TorcQThread::IsMainThread())
+    if (!IsShared() && (QThread::currentThread()->objectName() != QTRENDER_THREAD))
     {
         // destroy from the Qt render thread. No need to wait for completion
         TorcQMLEventProxy *proxy = dynamic_cast<TorcQMLEventProxy*>(gLocalContext->GetUIObject());
@@ -423,77 +422,22 @@ bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, QOpe
 
         if (m_nvidiaInterop->IsValid())
         {
-            // create a texture to map the output surface to
-            glGenTextures(1, &m_interopTexture);
-            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, m_interopTexture);
+            // create a framebuffer object. We will map our VDPAU output surface to its texture buffer
+            delete m_interopFramebuffer;
+            m_interopFramebuffer = new QOpenGLFramebufferObject(FramebufferObject->size(), GL_TEXTURE_RECTANGLE_ARB);
+            GLuint texture = m_interopFramebuffer->texture();
+            glBindTexture(GL_TEXTURE_RECTANGLE_ARB, texture);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
             glTexImage2D(GL_TEXTURE_RECTANGLE_ARB, 0, GL_RGBA, m_avContext->width, m_avContext->height, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
             glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
-
-            // create a shader to render the texture to a framebuffer object
-            // N.B. the following shaders assume rectangular textures and desktop OpenGL
-            static QByteArray vertex("#version 110\n"
-                                     "attribute vec4 VERTEX;\n"
-                                     "attribute vec2 TEXCOORDIN;\n"
-                                     "varying   vec2 TEXCOORDOUT;\n"
-                                     "uniform   mat4 MATRIX;\n"
-                                     "void main() {\n"
-                                     "    gl_Position = MATRIX * VERTEX;\n"
-                                     "    TEXCOORDOUT = TEXCOORDIN;\n"
-                                     "}\n");
-
-            static QByteArray frag  ("#version 110\n"
-                                     "#extension GL_ARB_texture_rectangle : enable\n"
-                                     "uniform sampler2DRect s_texture0;\n"
-                                     "varying vec2 TEXCOORDOUT;\n"
-                                     "void main(void)\n"
-                                     "{\n"
-                                     "    gl_FragColor = vec4(texture2DRect(s_texture0, TEXCOORDOUT).rgb, 1.0);\n"
-                                     "}\n");
-
-            QOpenGLShaderProgram *shader = new QOpenGLShaderProgram();
-            if (shader->addShaderFromSourceCode(QOpenGLShader::Vertex, vertex))
-            {
-                if (shader->addShaderFromSourceCode(QOpenGLShader::Fragment, frag))
-                {
-                    if (shader->link())
-                    {
-                        m_shader = shader;
-
-                        // set the matrix
-                        QRect ortho(0, 0, m_avContext->width, m_avContext->height);
-                        QMatrix4x4 matrix;
-                        matrix.ortho(ortho);
-                        m_shader->bind();
-                        m_shader->setUniformValue("MATRIX", matrix);
-                        m_shader->release();
-                        LOG(VB_GENERAL, LOG_INFO, "Created simple VDPAU shader");
-                    }
-                    else
-                    {
-                        LOG(VB_GENERAL, LOG_ERR, QString("Shader link error: '%1'").arg(shader->log()));
-                    }
-                }
-                else
-                {
-                    LOG(VB_GENERAL, LOG_ERR, QString("Fragment shader error: '%1'").arg(shader->log()));
-                }
-            }
-            else
-            {
-                LOG(VB_GENERAL, LOG_ERR, QString("Vertex shader error: '%1'").arg(shader->log()));
-            }
-
-            if (m_shader != shader)
-                delete shader;
         }
     }
 
     // create an output surface if needed
-    if (!m_outputSurface && m_outputSurfaceCreate && m_interopTexture)
+    if (!m_outputSurface && m_outputSurfaceCreate && m_interopFramebuffer)
     {
         VdpStatus status = m_outputSurfaceCreate(m_device, VDP_RGBA_FORMAT_B8G8R8A8, m_avContext->width, m_avContext->height, &m_outputSurface);
         if (status != VDP_STATUS_OK)
@@ -502,7 +446,8 @@ bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, QOpe
         }
         else
         {
-            m_nvidiaInterop->Register((void*)m_outputSurface, GL_TEXTURE_RECTANGLE_ARB, &m_interopTexture);
+            GLuint texture = m_interopFramebuffer->texture();
+            m_nvidiaInterop->Register((void*)m_outputSurface, GL_TEXTURE_RECTANGLE_ARB, &texture);
         }
     }
 
@@ -545,42 +490,12 @@ bool VideoVDPAU::RenderFrame(VideoFrame *Frame, vdpau_render_state *Render, QOpe
             VDPAU_ERROR(status, "Video mixing error");
     }
 
-    // copy frame to FramebufferObject
-    if (m_interopTexture && m_outputSurface && FramebufferObject && m_shader)
+    // blit frame from internal to external framebuffer object
+    if (m_interopFramebuffer && m_outputSurface && FramebufferObject && QOpenGLFramebufferObject::hasOpenGLFramebufferBlit())
     {
-        GLfloat width  = (GLfloat)m_avContext->width;
-        GLfloat height = (GLfloat)m_avContext->height;
-
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, m_interopTexture);
-        if (FramebufferObject->bind())
-        {
-            if (m_shader->bind())
-            {
-                // vertices
-                m_shader->enableAttributeArray("VERTEX");
-                GLfloat const vertices[] = { 0.0f,  height, 0.0f,
-                                             0.0f,  0.0f,   0.0f,
-                                             width, height, 0.0f,
-                                             width, 0.0f,   0.0f };
-                m_shader->setAttributeArray("VERTEX", vertices, 3);
-
-                // texture
-                m_shader->enableAttributeArray("TEXCOORDIN");
-                GLfloat const texcoord[] = { 0.0f,  0.0f,
-                                             0.0f,  height,
-                                             width, 0.0f,
-                                             width, height };
-                m_shader->setAttributeArray("TEXCOORDIN", texcoord, 2);
-
-                m_nvidiaInterop->MapFrame();
-                glViewport(0, 0, width, height);
-                glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-                m_nvidiaInterop->UnmapFrame();
-                m_shader->release();
-            }
-            FramebufferObject->release();
-        }
-        glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+        m_nvidiaInterop->MapFrame();
+        QOpenGLFramebufferObject::blitFramebuffer(FramebufferObject, m_interopFramebuffer);
+        m_nvidiaInterop->UnmapFrame();
     }
 
     return true;
@@ -902,18 +817,17 @@ void VideoVDPAU::TearDown(void)
     }
     m_outputSurface  = 0;
 
-    // delete shader
-    delete m_shader;
-    m_shader = NULL;
-
     // cleanup interop
-    if (m_interopTexture)
+    if (m_interopFramebuffer)
     {
         if (m_nvidiaInterop)
+        {
             m_nvidiaInterop->Unregister();
-        glDeleteTextures(1, &m_interopTexture);
+            m_nvidiaInterop->Deinitialise();
+        }
+        delete m_interopFramebuffer;
     }
-    m_interopTexture = 0;
+    m_interopFramebuffer = NULL;
 
     // delete video mixer
     if (m_videoMixer && m_videoMixerDestroy)
@@ -1010,7 +924,7 @@ bool VideoVDPAU::HandlePreemption(void)
     if (m_preempted.fetchAndAddOrdered(0) < 1)
         return true;
 
-    if (!TorcQThread::IsMainThread())
+    if (QThread::currentThread()->objectName() != QTRENDER_THREAD)
     {
         TorcQMLEventProxy *proxy = dynamic_cast<TorcQMLEventProxy*>(gLocalContext->GetUIObject());
         if (proxy)
@@ -1034,13 +948,20 @@ bool VideoVDPAU::HandlePreemption(void)
     bool result = false;
 
     if (m_nvidiaInterop)
+    {
+        m_nvidiaInterop->Unregister();
         m_nvidiaInterop->Deinitialise();
+    }
+
+    delete m_nvidiaInterop;
+    delete m_interopFramebuffer;
 
     ResetProcs();
     m_device = 0;
     m_decoder = 0;
     m_vdpauContext->decoder = 0;
-    m_interopTexture = 0;
+    m_interopFramebuffer = NULL;
+    m_nvidiaInterop = NULL;
     m_outputSurface = 0;
     m_videoMixer = 0;
 
