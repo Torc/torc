@@ -185,13 +185,15 @@ static void TorcAVLogCallback(void* Object, int Level, const char* Format, va_li
             mask |= VB_LIBAV;
             break;
         case AV_LOG_DEBUG:
-        case AV_LOG_VERBOSE:
-        case AV_LOG_INFO:
             level = LOG_DEBUG;
             mask |= VB_LIBAV;
             break;
         case AV_LOG_WARNING:
             mask |= VB_LIBAV;
+            break;
+        case AV_LOG_VERBOSE:
+        case AV_LOG_INFO:
+            level = LOG_INFO;
             break;
         default:
             return;
@@ -207,9 +209,19 @@ static void TorcAVLogCallback(void* Object, int Level, const char* Format, va_li
         header.sprintf("[%s@%p] ", avclass->item_name(Object), avclass);
     }
 
-    QString message;
-    message.sprintf(Format, List);
-    LOG(mask, level, header + message);
+    static const int length = 255;
+
+    char message[length + 1];
+    int used = vsnprintf(message, length + 1, Format, List);
+
+    if (used > length)
+    {
+        message[length - 3] = '.';
+        message[length - 2] = '.';
+        message[length - 1] = '\n';
+    }
+
+    LOG(mask, level, header + QString::fromLocal8Bit(message).trimmed());
 }
 
 static AVPacket gFlushCodec;
