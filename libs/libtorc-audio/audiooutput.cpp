@@ -426,7 +426,7 @@ void AudioOutput::Reconfigure(const AudioSettings &Settings)
         return;
     }
 
-    LOG(VB_AUDIO, LOG_INFO,  QString("Original codec was %1, %2, %3 kHz, %4 channels")
+    LOG(VB_AUDIO, LOG_INFO, QString("Original codec was %1, %2, %3 kHz, %4 channels")
             .arg(AVCodecToString(m_codec))
             .arg(m_outputSettings->FormatToString(m_format))
             .arg(m_samplerate / 1000)
@@ -439,7 +439,7 @@ void AudioOutput::Reconfigure(const AudioSettings &Settings)
         return;
     }
 
-    LOG(VB_AUDIO, LOG_INFO,  QString("enc(%1), passthrough(%2), features (%3) "
+    LOG(VB_AUDIO, LOG_INFO, QString("enc(%1), passthrough(%2), features (%3) "
                     "configured_channels(%4), %5 channels supported(%6) "
                     "max_channels(%7)")
             .arg(m_encode)
@@ -458,7 +458,7 @@ void AudioOutput::Reconfigure(const AudioSettings &Settings)
          gLocalContext->GetSetting(TORC_AUDIO + "Audio48kOverride", false)) ||
          (m_encode && (m_samplerate > 48000)))
     {
-        LOG(VB_AUDIO, LOG_INFO,  "Forcing resample to 48 kHz");
+        LOG(VB_AUDIO, LOG_INFO, "Forcing resample to 48 kHz");
         if (m_srcQuality < 0)
             m_srcQuality = QUALITY_MEDIUM;
         m_needResampler = true;
@@ -477,37 +477,33 @@ void AudioOutput::Reconfigure(const AudioSettings &Settings)
         int error;
         m_samplerate = dest_rate;
 
-        LOG(VB_GENERAL, LOG_INFO,   QString("Resampling from %1 kHz to %2 kHz with quality %3")
-                .arg(settings.m_samplerate / 1000).arg(m_samplerate / 1000)
-                .arg(QualityToString(m_srcQuality)));
+        LOG(VB_GENERAL, LOG_INFO, QString("Resampling from %1Hz to %2Hz with quality %3").arg(settings.m_samplerate).arg(m_samplerate).arg(QualityToString(m_srcQuality)));
 
         int chans = m_needsDownmix ? m_configuredChannels : m_sourceChannels;
 
         m_sourceState = src_new(2 - m_srcQuality, chans, &error);
         if (error)
         {
-            LOG(VB_GENERAL, LOG_ERR, QString("Error creating resampler: %1")
-                  .arg(src_strerror(error)));
+            LOG(VB_GENERAL, LOG_ERR, QString("Error creating resampler: %1").arg(src_strerror(error)));
             m_sourceState = NULL;
             return;
         }
 
         m_sourceData.src_ratio = (double)m_samplerate / settings.m_samplerate;
         m_sourceData.data_in   = m_sourceInput;
-        int newsize        = (int)(kAudioSRCInputSize * m_sourceData.src_ratio + 15)
-                             & ~0xf;
+        int newsize        = (int)(kAudioSRCInputSize * m_sourceData.src_ratio + 15) & ~0xf;
 
         if (m_sourceOutputSize < newsize)
         {
             m_sourceOutputSize = newsize;
-            LOG(VB_AUDIO, LOG_INFO,  QString("Resampler allocating %1").arg(newsize));
+            LOG(VB_AUDIO, LOG_INFO, QString("Resampler allocating %1").arg(newsize));
             if (m_sourceOutput)
                 delete [] m_sourceOutput;
             m_sourceOutput = new float[m_sourceOutputSize];
         }
         m_sourceData.data_out       = m_sourceOutput;
         m_sourceData.output_frames  = m_sourceOutputSize / chans;
-        m_sourceData.end_of_input = 0;
+        m_sourceData.end_of_input   = 0;
     }
 
     if (m_encode)
@@ -515,8 +511,7 @@ void AudioOutput::Reconfigure(const AudioSettings &Settings)
         if (m_reencode)
             LOG(VB_AUDIO, LOG_INFO,  "Reencoding decoded AC-3/DTS to AC-3");
 
-        LOG(VB_AUDIO, LOG_INFO,  QString("Creating AC-3 Encoder with sr = %1, ch = %2")
-                .arg(m_samplerate).arg(m_configuredChannels));
+        LOG(VB_AUDIO, LOG_INFO, QString("Creating AC-3 Encoder: samplerate '%1' channels '%2'").arg(m_samplerate).arg(m_configuredChannels));
 
         m_digitalEncoder = new AudioOutputDigitalEncoder();
         if (!m_digitalEncoder->Init(AV_CODEC_ID_AC3, 448000, m_samplerate,
@@ -550,7 +545,7 @@ void AudioOutput::Reconfigure(const AudioSettings &Settings)
         (m_encode && m_outputFormat != FORMAT_S16) ||
         !OutputSettings(m_encode || m_passthrough)->IsSupportedFormat(m_outputFormat))
     {
-        LOG(VB_AUDIO, LOG_INFO,  "Audio processing enabled");
+        LOG(VB_AUDIO, LOG_INFO, "Audio processing enabled");
         m_processing  = true;
         if (m_encode)
             m_outputFormat = FORMAT_S16;  // Output s16le for AC-3 encoder
