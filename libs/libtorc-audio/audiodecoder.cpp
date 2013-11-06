@@ -1128,6 +1128,8 @@ int AudioDecoderPriv::DecodeAudioPacket(AVCodecContext *Context, quint8 *Buffer,
                                         int &DataSize, AVPacket *Packet)
 {
     AVFrame frame;
+    avcodec_get_frame_defaults(&frame);
+
     int gotframe = 0;
 
     int result = avcodec_decode_audio4(Context, &frame, &gotframe, Packet);
