@@ -1627,6 +1627,9 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
             *state = TorcDecoder::Errored;
             return false;
         }
+
+        // perform any post-initialisation
+        m_priv->m_buffer->InitialiseAVContext(m_priv->m_avFormatContext);
     }
 
     // Scan programs

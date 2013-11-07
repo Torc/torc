@@ -17,6 +17,14 @@ void* TorcCDBuffer::RequiredAVFormat(void)
     return m_input;
 }
 
+void TorcCDBuffer::InitialiseAVContext(void* Context)
+{
+    // with FFmpeg 1.2, cd playback fails as the dts is not set. This affects ffplay as well.
+    AVFormatContext* context = static_cast<AVFormatContext*>(Context);
+    if (context && context->nb_streams > 0)
+        context->streams[0]->cur_dts = 0;
+}
+
 QString TorcCDBuffer::GetFilteredUri(void)
 {
     return m_uri.mid(3);

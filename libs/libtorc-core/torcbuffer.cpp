@@ -108,6 +108,15 @@ void* TorcBuffer::RequiredAVContext(void)
     return NULL;
 }
 
+/*! \brief Process any additional post initialisation required by the AVFormatContext.
+ *
+ * \note Currently required to fix libcdio input device that was broken in ffmpeg 1.2 update.
+*/
+void TorcBuffer::InitialiseAVContext(void* Context)
+{
+    (void)Context;
+}
+
 /*! \fn    TorcBuffer::RequiredAVFormat
  *  \brief This buffer object has its own AVFormat.
  *

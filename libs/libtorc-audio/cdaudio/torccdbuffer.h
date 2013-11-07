@@ -14,19 +14,20 @@ class TorcCDBuffer : public TorcBuffer
     explicit TorcCDBuffer(const QString &URI, int *Abort);
     ~TorcCDBuffer();
 
-    bool       Open               (void);
-    void       Close              (void);
-    void*      RequiredAVFormat   (void);
-    QString    GetFilteredUri     (void);
-    int        Read               (quint8 *Buffer, qint32 BufferSize);
-    int        Peek               (quint8 *Buffer, qint32 BufferSize);
-    int        Write              (quint8 *Buffer, qint32 BufferSize);
-    int64_t    Seek               (int64_t  Offset, int Whence);
-    qint64     GetSize            (void);
-    qint64     GetPosition        (void);
-    bool       IsSequential       (void);
-    qint64     BytesAvailable     (void);
-    int        BestBufferSize     (void);
+    bool       Open                 (void);
+    void       Close                (void);
+    void*      RequiredAVFormat     (void);
+    void       InitialiseAVContext  (void* Context);
+    QString    GetFilteredUri       (void);
+    int        Read                 (quint8 *Buffer, qint32 BufferSize);
+    int        Peek                 (quint8 *Buffer, qint32 BufferSize);
+    int        Write                (quint8 *Buffer, qint32 BufferSize);
+    int64_t    Seek                 (int64_t  Offset, int Whence);
+    qint64     GetSize              (void);
+    qint64     GetPosition          (void);
+    bool       IsSequential         (void);
+    qint64     BytesAvailable       (void);
+    int        BestBufferSize       (void);
 
   private:
     AVInputFormat *m_input;
