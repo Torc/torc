@@ -244,6 +244,8 @@ void TorcNVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
     {
         QByteArray data((const char*)modelines, modelinelength);
         QList<QByteArray> lines = data.split('\0');
+        LOG(VB_GENERAL, LOG_INFO, QString("Retrieved %1 raw modelines").arg(lines.size()));
+
         foreach (QByteArray line, lines)
         {
             QString modeline = QString::fromLatin1(line.data()).simplified();
@@ -266,12 +268,14 @@ void TorcNVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
             {
                 rate = (clock * 1000000) / rate;
                 bool interlaced = false;
+
                 if (modeline.contains("interlace", Qt::CaseInsensitive))
                 {
                     rate *= 2.0f;
                     interlaced = true;
                 }
-                if (rate > 20.0f && rate < 121.0f)
+
+                if (rate > 10.0f)
                 {
                     rates.insert(name, rate);
                     if (interlaced)
@@ -287,6 +291,8 @@ void TorcNVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
         return;
     }
 
+    LOG(VB_GENERAL, LOG_INFO, QString("Parsed %1 modelines").arg(rates.size()));
+
     // retrieve the list of metamodes
     unsigned char* metamodes = NULL;
     int metamodelength = 0;
@@ -294,6 +300,9 @@ void TorcNVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
     {
         QByteArray data((const char*)metamodes, metamodelength);
         QList<QByteArray> lines = data.split('\0');
+
+        LOG(VB_GENERAL, LOG_INFO, QString("Retrieved %1 raw metamodes").arg(lines.size()));
+
         foreach (QByteArray line, lines)
         {
             QString metamode = QString::fromLatin1(line.data());
@@ -334,14 +343,14 @@ void TorcNVControl::InitialiseMetaModes(Display *XDisplay, int Screen)
         }
     }
 
-    LOG(VB_GENERAL, LOG_INFO, QString("Found %1 metamode rates").arg(gMetaModeMap.size()));
+    LOG(VB_GENERAL, LOG_INFO, QString("Parsed %1 metamode rates").arg(gMetaModeMap.size()));
 
     if (gLogLevel & LOG_DEBUG)
     {
         QMap<int,MetaRate>::iterator it = gMetaModeMap.begin();
         for (int i = 1; it != gMetaModeMap.end(); ++it, ++i)
         {
-            LOG(VB_GUI, LOG_DEBUG, QString("Metamode #%1: metarate %2 real rate %3%4")
+            LOG(VB_GUI, LOG_INFO, QString("Metamode #%1: metarate %2 real rate %3%4")
                 .arg(i).arg(it.key()).arg(it.value().m_rate).arg(it.value().m_interlaced ? " Interlaced" : ""));
         }
     }

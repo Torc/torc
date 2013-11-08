@@ -339,6 +339,9 @@ void TorcQMLDisplayX11::RefreshScreenModes(void)
 
     if (TorcXRandr.m_valid)
     {
+        // initialise TorcNVControl if available
+        TorcNVControl::InitialiseMetaModes(display, DefaultScreen(display));
+
         XRRScreenResources *resources = TorcXRandr.m_getScreenResources(display, RootWindow(display, screen));
         if (resources)
         {
@@ -368,7 +371,7 @@ void TorcQMLDisplayX11::RefreshScreenModes(void)
                     ignore = !sizematch;
                     current = sizematch && qFuzzyCompare(realrate + 1.0f, screenRefreshRate + 1.0f) && (realinterlaced == interlaced);
                     LOG(VB_GENERAL, LOG_INFO, QString("nvidia Mode %1: %2x%3@%4%5%6%7")
-                        .arg(mode.name).arg(mode.width).arg(mode.height).arg(moderate)
+                        .arg(mode.name).arg(mode.width).arg(mode.height).arg(realrate)
                         .arg(realinterlaced ? QString(" Interlaced") : "")
                         .arg(ignore ? QString(" Ignoring") : "")
                         .arg(current ? QString(" Current") : ""));
