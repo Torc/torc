@@ -113,19 +113,8 @@ class TorcVideoPlayerSettings : public TorcAdminObject
 
 } TorcVideoPlayerSettings;
 
-#define BLACKLIST QString("SetPropertyAvailable,SetPropertyUnavailable,StartRefreshTimer,StopRefreshTimer")
-
-VideoPlayer::VideoPlayer(QObject *Parent, const QMetaObject &MetaObject, const QString &Blacklist, int PlaybackFlags, int DecodeFlags)
-  : TorcPlayer(Parent, MetaObject, Blacklist + BLACKLIST, PlaybackFlags, DecodeFlags),
-    m_audioWrapper(new AudioWrapper(this)),
-    m_reset(false)
-{
-    setObjectName("Player");
-    m_buffers.SetDisplayFormat(AV_PIX_FMT_YUV420P);
-}
-
 VideoPlayer::VideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
-  : TorcPlayer(Parent, VideoPlayer::staticMetaObject, BLACKLIST, PlaybackFlags, DecodeFlags),
+  : TorcPlayer(Parent, PlaybackFlags, DecodeFlags),
     m_audioWrapper(new AudioWrapper(this)),
     m_reset(false)
 {

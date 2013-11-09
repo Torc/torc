@@ -13,7 +13,7 @@ class TorcHTTPServer;
 class TorcHTTPRequest;
 class TorcHTTPConnection;
 
-class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public TorcHTTPService
+class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public QObject, public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",        "1.0.0")
@@ -27,12 +27,15 @@ class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public TorcHTTPService
 
   public:
     TorcHTMLServicesHelp(TorcHTTPServer *Server);
+    virtual ~TorcHTMLServicesHelp();
+
     void ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection* Connection);
 
   signals:
     void           ServiceListChanged   (void);
 
   public slots:
+    void           SubscriberDeleted    (QObject *Subscriber);
     QVariantMap    GetDetails           (void);
     QVariantMap    GetServiceList       (void);
     qint64         GetStartTime         (void);

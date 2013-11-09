@@ -77,8 +77,11 @@ class TorcMediaDirectory
     QStringList m_knownDirectories;
 };
 
+#define BLACKLIST QString("SetMediaVersion")
+
 TorcMediaSourceDirectory::TorcMediaSourceDirectory()
-  : TorcHTTPService(this, "files", tr("Files"), TorcMediaSourceDirectory::staticMetaObject),
+  : QObject(),
+    TorcHTTPService(this, "files", tr("Files"), TorcMediaSourceDirectory::staticMetaObject, BLACKLIST),
     mediaVersion(1),
     realMediaVersion(1),
     m_enabled(false),
@@ -136,6 +139,11 @@ TorcMediaSourceDirectory::~TorcMediaSourceDirectory()
     delete m_addedPathsLock;
     delete m_removedPathsLock;
     delete m_updatedPathsLock;
+}
+
+void TorcMediaSourceDirectory::SubscriberDeleted(QObject *Subscriber)
+{
+    TorcHTTPService::HandleSubscriberDeleted(Subscriber);
 }
 
 void TorcMediaSourceDirectory::AddPath(const QString &Path, bool Recursive)

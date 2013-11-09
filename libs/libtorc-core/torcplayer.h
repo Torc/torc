@@ -15,19 +15,11 @@
 
 class TorcDecoder;
 
-class TORC_CORE_PUBLIC TorcPlayer : public TorcHTTPService
+class TORC_CORE_PUBLIC TorcPlayer : public QObject
 {
     Q_OBJECT
     Q_ENUMS(PlayerState)
     Q_ENUMS(PlayerProperty)
-    Q_CLASSINFO("Version",     "1.0.0")
-    Q_CLASSINFO("Play",        "methods=PUT")
-    Q_CLASSINFO("Pause",       "methods=PUT")
-    Q_CLASSINFO("Unpause",     "methods=PUT")
-    Q_CLASSINFO("TogglePause", "methods=PUT")
-    Q_CLASSINFO("Stop",        "methods=PUT")
-    Q_CLASSINFO("PlayMedia",   "methods=PUT")
-
 
   public:
     enum PlayerFlags
@@ -78,7 +70,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public TorcHTTPService
     static QString     PropertyToString    (PlayerProperty Property);
     static PlayerProperty StringToProperty (const QString &Property);
 
-    virtual ~TorcPlayer();
+    virtual                               ~TorcPlayer();
 
     virtual bool    Refresh                (quint64 TimeNow, const QSizeF &Size, bool Visible);
     virtual void    Render                 (quint64 TimeNow);
@@ -116,7 +108,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public TorcHTTPService
     void            PropertyUnavailable    (TorcPlayer::PlayerProperty Property);
 
   protected:
-    TorcPlayer(QObject *Parent, const QMetaObject &MetaObject, const QString &Blacklist, int PlaybackFlags, int DecoderFlags);
+    TorcPlayer                             (QObject *Parent, int PlaybackFlags, int DecoderFlags);
     virtual void    Teardown               (void);
 
   protected:
@@ -170,10 +162,10 @@ class TORC_CORE_PUBLIC PlayerFactory
     PlayerFactory*        nextPlayerFactory;
 };
 
-class TORC_CORE_PUBLIC  TorcPlayerInterface
+class TORC_CORE_PUBLIC  TorcPlayerInterface : public TorcHTTPService
 {
   public:
-    TorcPlayerInterface(bool Standalone);
+    TorcPlayerInterface(QObject* Derived, const QMetaObject &MetaObject, const QString &Blacklist, bool Standalone);
     virtual ~TorcPlayerInterface();
 
     virtual bool   InitialisePlayer   (void) = 0;

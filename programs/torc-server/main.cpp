@@ -41,8 +41,7 @@ int main(int argc, char **argv)
     if (!gTorcMediaMaster)
         LOG(VB_GENERAL, LOG_WARNING, "TorcMediaMaster not available");
 
-    QObject dummy;
-    AudioInterface* interface = new AudioInterface(&dummy, true);
+    AudioInterface* interface = new AudioInterface(true);
     if (interface->InitialisePlayer())
         ret = qApp->exec();
     delete interface;

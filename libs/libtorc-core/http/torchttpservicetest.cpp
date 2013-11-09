@@ -32,8 +32,14 @@
  * \todo Only build in debug mode.
 */
 TorcHTTPServiceTest::TorcHTTPServiceTest()
-  : TorcHTTPService(this, "test", tr("Test"), TorcHTTPServiceTest::staticMetaObject)
+  : QObject(),
+    TorcHTTPService(this, "test", tr("Test"), TorcHTTPServiceTest::staticMetaObject)
 {
+}
+
+void TorcHTTPServiceTest::SubscriberDeleted(QObject *Subscriber)
+{
+    TorcHTTPService::HandleSubscriberDeleted(Subscriber);
 }
 
 ///\brief Returns a void.

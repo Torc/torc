@@ -16,7 +16,7 @@
 
 class TorcMediaDirectory;
 
-class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public TorcHTTPService
+class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QObject, public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",            "1.0.0")
@@ -32,6 +32,8 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public TorcHTTPService
     Q_PROPERTY(int         mediaVersion    READ GetMediaVersion    WRITE SetMediaVersion NOTIFY mediaVersionChanged)
 
   public slots:
+    void            SubscriberDeleted       (QObject *Subscriber);
+
     void            AddPath                 (const QString &Path, bool Recursive);
     void            RemovePath              (const QString &Path);
     QStringList     GetConfiguredPaths      (void);

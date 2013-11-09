@@ -216,7 +216,8 @@ void TorcPower::TearDown(void)
 }
 
 TorcPower::TorcPower()
-  : TorcHTTPService(this, "power", tr("Power"), TorcPower::staticMetaObject, "ShuttingDown,Suspending,Hibernating,Restarting,WokeUp,LowBattery,Refresh"),
+  : QObject(),
+    TorcHTTPService(this, "power", tr("Power"), TorcPower::staticMetaObject, "ShuttingDown,Suspending,Hibernating,Restarting,WokeUp,LowBattery,Refresh"),
     m_lastBatteryLevel(UnknownPower),
     m_priv(TorcPowerPriv::Create(this))
 {
@@ -363,6 +364,11 @@ bool TorcPower::Hibernate(void)
 bool TorcPower::Restart(void)
 {
     return (m_allowRestart->GetValue().toBool() && m_allowRestart->IsActive()) ? m_priv->Restart() : false;
+}
+
+void TorcPower::SubscriberDeleted(QObject *Subscriber)
+{
+    TorcHTTPService::HandleSubscriberDeleted(Subscriber);
 }
 
 bool TorcPower::GetCanShutdown(void)

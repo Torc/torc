@@ -83,7 +83,7 @@ class TORC_CORE_PUBLIC TorcUSBDeviceHandler
 
 class TorcUSBPriv;
 
-class TORC_CORE_PUBLIC TorcUSB : public TorcHTTPService
+class TORC_CORE_PUBLIC TorcUSB : public QObject, public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",    "1.0.0")
@@ -94,6 +94,8 @@ class TORC_CORE_PUBLIC TorcUSB : public TorcHTTPService
     virtual ~TorcUSB();
 
   public slots:
+    void         SubscriberDeleted (QObject *Subscriber);
+
     QVariantMap  GetDevices     (void);
 
   public:

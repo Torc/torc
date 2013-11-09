@@ -31,7 +31,7 @@ int TorcUtils::Play(const QString &URI)
 {
     int result = GENERIC_EXIT_OK;
 
-    AudioInterface* interface = new AudioInterface(NULL, true);
+    AudioInterface* interface = new AudioInterface(true);
     if (interface->InitialisePlayer())
     {
         interface->SetURI(URI);

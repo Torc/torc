@@ -11,15 +11,17 @@
 class TORC_AUDIO_PUBLIC AudioInterface : public QObject, public TorcPlayerInterface
 {
     Q_OBJECT
+    Q_CLASSINFO("Version",    "1.0.0")
 
   public:
-    AudioInterface(QObject *Parent, bool Standalone);
+    AudioInterface(bool Standalone);
     virtual ~AudioInterface();
 
     bool  event              (QEvent *Event);
     bool  InitialisePlayer   (void);
 
   public slots:
+    void  SubscriberDeleted  (QObject *Subscriber);
     void  PlayerStateChanged (TorcPlayer::PlayerState NewState);
 };
 

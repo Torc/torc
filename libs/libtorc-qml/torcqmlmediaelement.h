@@ -15,6 +15,7 @@ class TorcSGVideoProvider;
 class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem, public TorcPlayerInterface
 {
     Q_OBJECT
+    Q_CLASSINFO("Version",    "1.0.0")
 
   public:
     explicit TorcQMLMediaElement(QQuickItem *Parent = NULL);
@@ -25,6 +26,7 @@ class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem, public TorcPlayer
   signals:
     
   public slots:
+    void                 SubscriberDeleted        (QObject *Subscriber);
     bool                 InitialisePlayer         (void);
 
   protected slots:

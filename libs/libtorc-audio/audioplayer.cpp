@@ -31,13 +31,10 @@
 #include "audiowrapper.h"
 #include "audioplayer.h"
 
-#define BLACKLIST QString("SetPropertyAvailable,SetPropertyUnavailable,StartRefreshTimer,StopRefreshTimer")
-
 AudioPlayer::AudioPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
-  : TorcPlayer(Parent, AudioPlayer::staticMetaObject, BLACKLIST, PlaybackFlags, DecodeFlags),
+  : TorcPlayer(Parent, PlaybackFlags, DecodeFlags),
     m_audioWrapper(new AudioWrapper(this))
 {
-    setObjectName("Player");
 }
 
 AudioPlayer::~AudioPlayer()

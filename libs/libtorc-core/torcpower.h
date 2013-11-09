@@ -57,7 +57,7 @@ class TORC_CORE_PUBLIC PowerFactory
     PowerFactory*        nextPowerFactory;
 };
 
-class TORC_CORE_PUBLIC TorcPower : public TorcHTTPService
+class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",   "1.0.0")
@@ -88,6 +88,8 @@ class TORC_CORE_PUBLIC TorcPower : public TorcHTTPService
     void BatteryUpdated  (int Level);
 
   public slots:
+    void SubscriberDeleted (QObject *Subscriber);
+
     bool GetCanShutdown  (void);
     bool GetCanSuspend   (void);
     bool GetCanHibernate (void);

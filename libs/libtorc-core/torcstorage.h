@@ -29,7 +29,7 @@ class TorcStoragePriv : public QObject
     virtual bool ReallyEject (const QString &Disk) = 0;
 };
 
-class TORC_CORE_PUBLIC TorcStorage : public TorcHTTPService
+class TORC_CORE_PUBLIC TorcStorage : public QObject, public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",  "1.0.0")
@@ -44,7 +44,9 @@ class TORC_CORE_PUBLIC TorcStorage : public TorcHTTPService
     static bool DiskIsMounted (const QString &Disk);
 
   public slots:
-    QVariantMap GetDisks (void);
+    void        SubscriberDeleted (QObject *Subscriber);
+
+    QVariantMap GetDisks      (void);
     bool        Mount         (const QString &Disk);
     bool        Unmount       (const QString &Disk);
     bool        Eject         (const QString &Disk);

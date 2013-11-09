@@ -305,6 +305,8 @@ TorcHTTPServer::TorcHTTPServer()
 
 TorcHTTPServer::~TorcHTTPServer()
 {
+    disconnect();
+
     delete m_defaultHandler;
     delete m_servicesHelpHandler;
     delete m_staticContent;

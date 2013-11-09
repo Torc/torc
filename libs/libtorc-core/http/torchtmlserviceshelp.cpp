@@ -33,12 +33,16 @@
 #include "torchttpservice.h"
 #include "torchtmlserviceshelp.h"
 
-
 TorcHTMLServicesHelp::TorcHTMLServicesHelp(TorcHTTPServer *Server)
-  : TorcHTTPService(this, "", tr("Services"), TorcHTMLServicesHelp::staticMetaObject, QString("HandlersChanged"))
+  : QObject(),
+    TorcHTTPService(this, "", tr("Services"), TorcHTMLServicesHelp::staticMetaObject, QString("HandlersChanged"))
 {
     connect(Server, SIGNAL(HandlersChanged()), this, SLOT(HandlersChanged()));
     serviceList = TorcHTTPServer::GetServiceHandlers();
+}
+
+TorcHTMLServicesHelp::~TorcHTMLServicesHelp()
+{
 }
 
 void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection* Connection)
@@ -89,6 +93,11 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTP
     Request->SetStatus(HTTP_OK);
     Request->SetResponseType(HTTPResponseHTML);
     Request->SetResponseContent(result);
+}
+
+void TorcHTMLServicesHelp::SubscriberDeleted(QObject *Subscriber)
+{
+    TorcHTTPService::HandleSubscriberDeleted(Subscriber);
 }
 
 /*! \brief Return complete application information.

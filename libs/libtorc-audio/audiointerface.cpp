@@ -29,9 +29,11 @@
 #include "audioplayer.h"
 #include "audiointerface.h"
 
-AudioInterface::AudioInterface(QObject *Parent, bool Standalone)
-  : QObject(Parent),
-    TorcPlayerInterface(Standalone)
+#define BLACKLIST QString("PlayerStateChanged")
+
+AudioInterface::AudioInterface(bool Standalone)
+  : QObject(),
+    TorcPlayerInterface(this, AudioInterface::staticMetaObject, BLACKLIST, Standalone)
 {
     gLocalContext->AddObserver(this);
 }
@@ -64,10 +66,15 @@ bool AudioInterface::InitialisePlayer(void)
     return m_player;
 }
 
+void AudioInterface::SubscriberDeleted(QObject *Subscriber)
+{
+    TorcHTTPService::HandleSubscriberDeleted(Subscriber);
+}
+
 void AudioInterface::PlayerStateChanged(TorcPlayer::PlayerState NewState)
 {
     LOG(VB_GENERAL, LOG_INFO, QString("Player state '%1'").arg(TorcPlayer::StateToString(NewState)));
 
-    if ((NewState == TorcPlayer::Stopped || NewState == TorcPlayer::Errored) && !parent())
+    if ((NewState == TorcPlayer::Stopped || NewState == TorcPlayer::Errored) && m_standalone)
         QCoreApplication::quit();
 }

@@ -46,11 +46,13 @@
  *
  * \todo Add playabck properties.
  * \todo Optimise or do away with the refresh timer.
- * \todo Register the Qt render thread for logging and database access.
 */
+
+#define BLACKLIST QString("InitialisePlayer,update")
+
 TorcQMLMediaElement::TorcQMLMediaElement(QQuickItem *Parent)
   : QQuickItem(Parent),
-    TorcPlayerInterface(false),
+    TorcPlayerInterface(this, TorcQMLMediaElement::staticMetaObject, BLACKLIST, false),
     m_videoColourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED)),
     m_videoProvider(NULL),
     m_refreshTimer(NULL),
@@ -195,6 +197,11 @@ bool TorcQMLMediaElement::event(QEvent *Event)
         return HandleEvent(Event);
 
     return false;
+}
+
+void TorcQMLMediaElement::SubscriberDeleted(QObject *Subscriber)
+{
+    TorcHTTPService::HandleSubscriberDeleted(Subscriber);
 }
 
 ///\brief Creates a TorcPlayer instance suitable for presenting video as well as audio.

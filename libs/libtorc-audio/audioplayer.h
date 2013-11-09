@@ -6,7 +6,6 @@
 
 // Torc
 #include "torcplayer.h"
-#include "http/torchttpservice.h"
 
 class AudioWrapper;
 

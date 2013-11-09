@@ -157,8 +157,8 @@ TorcPlayer::PlayerProperty TorcPlayer::StringToProperty(const QString &Property)
     return (PlayerProperty)metaEnum.keyToValue(Property.toLatin1());
 }
 
-TorcPlayer::TorcPlayer(QObject *Parent, const QMetaObject &MetaObject, const QString &Blacklist, int PlaybackFlags, int DecoderFlags)
-  : TorcHTTPService(this, "player", tr("Player"), MetaObject, Blacklist),
+TorcPlayer::TorcPlayer(QObject *Parent, int PlaybackFlags, int DecoderFlags)
+  : QObject(),
     m_parent(Parent),
     m_playerFlags(PlaybackFlags),
     m_decoderFlags(DecoderFlags),
@@ -706,8 +706,9 @@ PlayerFactory* PlayerFactory::NextFactory(void) const
     return nextPlayerFactory;
 }
 
-TorcPlayerInterface::TorcPlayerInterface(bool Standalone)
-  : m_uri(QString()),
+TorcPlayerInterface::TorcPlayerInterface(QObject* Derived, const QMetaObject &MetaObject, const QString &Blacklist, bool Standalone)
+  : TorcHTTPService(Derived, "player", QObject::tr("Player"), MetaObject, Blacklist),
+    m_uri(QString()),
     m_player(NULL),
     m_standalone(Standalone),
     m_pausedForSuspend(false),

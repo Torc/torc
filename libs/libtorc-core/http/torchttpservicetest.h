@@ -10,7 +10,7 @@
 // Torc
 #include "torchttpservice.h"
 
-class TorcHTTPServiceTest : public TorcHTTPService
+class TorcHTTPServiceTest : public QObject, public TorcHTTPService
 {
     Q_OBJECT
     Q_CLASSINFO("Version",              "1.0.0")
@@ -25,6 +25,7 @@ class TorcHTTPServiceTest : public TorcHTTPService
     TorcHTTPServiceTest();
 
   public slots:
+    void                SubscriberDeleted      (QObject *Subscriber);
     void                GetVoid                (void);
     int                 EchoInt                (int  Value);
     bool                EchoBool               (bool Value);

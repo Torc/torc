@@ -17,33 +17,29 @@ class MethodParameters;
 
 #define SERVICES_DIRECTORY QString("/services/")
 
-class TORC_CORE_PUBLIC TorcHTTPService : public QObject, public TorcHTTPHandler
+class TORC_CORE_PUBLIC TorcHTTPService : public TorcHTTPHandler
 {
-    Q_OBJECT
-
   public:
     TorcHTTPService(QObject *Parent, const QString &Signature, const QString &Name,
                     const QMetaObject &MetaObject, const QString &Blacklist = QString(""));
     virtual ~TorcHTTPService();
 
-    void         ProcessHTTPRequest    (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
-    QVariantMap  ProcessRequest        (const QString &Method, const QVariant &Parameters, QObject *Connection);
-    QString      GetMethod             (int Index);
-
-  public slots:
-    void         SubscriberDeleted     (QObject* Subscriber);
+    void         ProcessHTTPRequest       (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
+    QVariantMap  ProcessRequest           (const QString &Method, const QVariant &Parameters, QObject *Connection);
+    QString      GetMethod                (int Index);
 
   protected:
-    void         UserHelp              (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
+    void         UserHelp                 (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
+    void         HandleSubscriberDeleted  (QObject* Subscriber);
 
   private:
-    QObject                        *m_parent;
-    QString                         m_version;
-    QMetaObject                     m_metaObject;
-    QMap<QString,MethodParameters*> m_methods;
-    QMap<int,int>                   m_properties;
-    QList<QObject*>                 m_subscribers;
-    QMutex                         *m_subscriberLock;
+    QObject                               *m_parent;
+    QString                                m_version;
+    QMetaObject                            m_metaObject;
+    QMap<QString,MethodParameters*>        m_methods;
+    QMap<int,int>                          m_properties;
+    QList<QObject*>                        m_subscribers;
+    QMutex                                *m_subscriberLock;
 };
 
 Q_DECLARE_METATYPE(TorcHTTPService*);
