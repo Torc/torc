@@ -169,10 +169,6 @@ int TorcMediaSourceDirectory::GetMediaVersion(void)
     return realMediaVersion.fetchAndAddOrdered(0);
 }
 
-void TorcMediaSourceDirectory::SetMediaVersion(int Version)
-{
-}
-
 void TorcMediaSourceDirectory::IncrementVersion(void)
 {
     realMediaVersion.ref();

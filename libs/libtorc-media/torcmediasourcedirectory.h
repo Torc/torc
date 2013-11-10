@@ -29,7 +29,7 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QObject, public TorcHT
     virtual ~TorcMediaSourceDirectory();
 
     Q_PROPERTY(QStringList configuredPaths READ GetConfiguredPaths NOTIFY configuredPathsChanged)
-    Q_PROPERTY(int         mediaVersion    READ GetMediaVersion    WRITE SetMediaVersion NOTIFY mediaVersionChanged)
+    Q_PROPERTY(int         mediaVersion    READ GetMediaVersion    NOTIFY mediaVersionChanged)
 
   public slots:
     void            SubscriberDeleted       (QObject *Subscriber);
@@ -38,7 +38,6 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QObject, public TorcHT
     void            RemovePath              (const QString &Path);
     QStringList     GetConfiguredPaths      (void);
     int             GetMediaVersion         (void);
-    void            SetMediaVersion         (int Version);
 
   signals:
     void            mediaVersionChanged     (void);
