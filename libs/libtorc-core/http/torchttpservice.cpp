@@ -238,7 +238,7 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
     m_parent->setObjectName(Name);
 
     // the parent MUST implement SubscriberDeleted.
-    if (m_parent->metaObject()->indexOfSlot("SubscriberDeleted(QObject*)") < 0)
+    if (MetaObject.indexOfSlot(QMetaObject::normalizedSignature("SubscriberDeleted(QObject*)")) < 0)
     {
         LOG(VB_GENERAL, LOG_ERR, QString("Service '%1' disabled - no SubscriberDeleted slot").arg(Name));
         return;
