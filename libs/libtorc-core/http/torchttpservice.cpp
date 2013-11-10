@@ -69,8 +69,14 @@ class MethodParameters
         // discard slots with an unsupported return type
         if (unsupportedtypes.contains(returntype))
         {
-            LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' has unsupported return type '%2'")
-                .arg(Method.name().data()).arg(Method.typeName()));
+            LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' has unsupported return type '%2'").arg(Method.name().data()).arg(Method.typeName()));
+            return;
+        }
+
+        // discard overly complicated slots not supported by QMetaMethod
+        if (Method.parameterCount() > 10)
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' takes more than 10 parameters - ignoring").arg(Method.name().data()));
             return;
         }
 
@@ -79,12 +85,6 @@ class MethodParameters
 
         QList<QByteArray> names = Method.parameterNames();
         QList<QByteArray> types = Method.parameterTypes();
-
-        if (names.size() > 10)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("Method '%1' takes more than 10 parameters - ignoring").arg(Method.name().data()));
-            return;
-        }
 
         // add type/value for each method parameter
         for (int i = 0; i < names.size(); ++i)
@@ -222,7 +222,6 @@ class MethodParameters
 
 /*! \class TorcHTTPService
  *
- * \todo Support for ordered (non-named) parameters via RPC
  * \todo Support for complex parameter types via RPC (e.g. array etc)
 */
 TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, const QString &Name,
@@ -456,7 +455,16 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
             }
             else if (Parameters.type() == QVariant::List)
             {
-                LOG(VB_GENERAL, LOG_ERR, "Ordered parameters not yet supported");
+                QVariantList list = Parameters.toList();
+                if (list.size() <= (*it)->m_names.size())
+                {
+                    for (int i = 0; i < list.size(); ++i)
+                        params.insert((*it)->m_names[i], list[i].toString());
+                }
+                else
+                {
+                    LOG(VB_GENERAL, LOG_ERR, "Too many parameters");
+                }
             }
             else if (!Parameters.isNull())
             {
