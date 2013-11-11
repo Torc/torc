@@ -34,7 +34,7 @@ class TORC_CORE_PUBLIC TorcCommandLine
     TorcCommandLine(TorcCommandLine::Options Flags);
     ~TorcCommandLine();
 
-    static void   RegisterEnvironmentVariable  (const QString &Var, const QString &Description);
+    static bool   RegisterEnvironmentVariable  (const QString &Var, const QString &Description);
 
     int           Evaluate                     (int argc, const char * const * argv, bool &Exit);
     void          Add                          (const QString Keys, const QVariant &Default, const QString &HelpText, bool ExitImmediately = false);

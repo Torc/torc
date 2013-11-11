@@ -390,10 +390,12 @@ QVariant TorcCommandLine::GetValue(const QString &Key)
 }
 
 ///\brief Register an environment variable for display via the help option.
-void TorcCommandLine::RegisterEnvironmentVariable(const QString &Var, const QString &Description)
+bool TorcCommandLine::RegisterEnvironmentVariable(const QString &Var, const QString &Description)
 {
     QMutexLocker locker(gEnvVarLock);
 
     if (!gEnvVars.contains(Var))
         gEnvVars.insert(Var, Description);
+
+    return true;
 }
