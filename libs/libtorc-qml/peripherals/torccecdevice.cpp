@@ -22,7 +22,6 @@
 
 // Qt
 #include <QGuiApplication>
-#include <QLibrary>
 #include <QKeyEvent>
 
 // Torc
@@ -32,6 +31,7 @@
 #include "torcqthread.h"
 #include "torcadminthread.h"
 #include "torcusb.h"
+#include "torclibrary.h"
 #include "torcedid.h"
 #include "torcqmleventproxy.h"
 #include "torcqmldisplay.h"
@@ -107,14 +107,13 @@ class TorcCECDevicePriv
     bool Open(void)
     {
         // load the library
-        QLibrary libcec("libcec", 2);
+        TorcLibrary libcec("libcec", 2);
 
         LibCecInitialise cecinitialise = (LibCecInitialise)libcec.resolve("CECInitialise");
         DestroyLibCec  destroylibcec   = (DestroyLibCec)libcec.resolve("CECDestroy");
 
         if (!cecinitialise || !destroylibcec)
         {
-            LOG(VB_GENERAL, LOG_INFO, QString("Qt: '%1'").arg(libcec.errorString()));
             LOG(VB_GENERAL, LOG_WARNING, "Failed to load libcec (need at least version 2.0.0)");
             return false;
         }
@@ -268,7 +267,7 @@ class TorcCECDevicePriv
 
     void Close(bool Reinitialising, bool Suspending)
     {
-        QLibrary libcec("libcec", 2);
+        TorcLibrary libcec("libcec", 2);
         DestroyLibCec destroylibcec = (DestroyLibCec)libcec.resolve("CECDestroy");
 
         if (!Reinitialising)
