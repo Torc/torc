@@ -28,12 +28,22 @@
 // register use of fallback directory
 static bool registered = TorcCommandLine::RegisterEnvironmentVariable("TORC_RUNTIME_LIBS", "Search for dynamically loaded libraries in this directory.");
 
+/*! \class TorcLibrary
+ *  \brief A convenience wrapper around QLibrary
+ *
+ * TorcLibrary will attemp to dynamically load a library in a platform independent manner. If the library cannot
+ * be loaded using the current system paths, it will attempt to fallback to a user defined directory that can be set
+ * with the environment variable TORC_RUNTIME_LIBS.
+*/
+
+///brief Load the given library and require the given Version.
 TorcLibrary::TorcLibrary(const QString &FileName, int Version)
   : QLibrary(FileName, Version)
 {
     Load();
 }
 
+///brief Load the given library using any available version.
 TorcLibrary::TorcLibrary(const QString &FileName)
   : QLibrary(FileName)
 {
@@ -48,7 +58,7 @@ void TorcLibrary::Load(void)
 {
     if (!load())
     {
-        LOG(VB_GENERAL, LOG_WARNING, QString("Failed to load '%1' from system directories (Error: '%2')").arg(fileName()).arg(errorString()));
+        LOG(VB_GENERAL, LOG_WARNING, QString("Failed to load '%1' using system paths (Error: '%2')").arg(fileName()).arg(errorString()));
 
         // try the fallback
         QString dir = qgetenv("TORC_RUNTIME_LIBS");
