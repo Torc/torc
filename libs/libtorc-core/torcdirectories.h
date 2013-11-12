@@ -7,8 +7,9 @@
 // Torc
 #include "torccoreexport.h"
 
-TORC_CORE_PUBLIC void    InitialiseTorcDirectories(void);
-TORC_CORE_PUBLIC QString GetTorcConfigDir(void);
-TORC_CORE_PUBLIC QString GetTorcShareDir(void);
+TORC_CORE_PUBLIC void      InitialiseTorcDirectories (void);
+TORC_CORE_PUBLIC QString   GetTorcConfigDir          (void);
+TORC_CORE_PUBLIC QString   GetTorcShareDir           (void);
+TORC_CORE_PUBLIC QString   GetTorcPluginDir          (void);
 
 #endif // TORCDIRECTORIES_H
