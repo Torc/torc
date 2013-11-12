@@ -5,6 +5,10 @@
 #ifndef __COMPAT_H__
 #define __COMPAT_H__
 
+#ifndef APIENTRY
+#define APIENTRY
+#endif
+
 #ifdef _MSC_VER
 #undef USING_MINGW
 #include <time.h>
