@@ -41,6 +41,7 @@
 #include "torcexitcodes.h"
 #include "torcsqlitedb.h"
 #include "torcadminthread.h"
+#include "torcplugin.h"
 #include "torcpower.h"
 #include "torcstoragedevice.h"
 #include "torclocalcontext.h"
@@ -87,6 +88,7 @@ class TorcLocalContextPriv
     TorcLanguage          m_language;
     QUuid                 m_uuid;
     QString               m_uuidString;
+    TorcPlugin           *m_plugins;
 };
 
 TorcLocalContextPriv::TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFlags, TorcCommandLine *CommandLine)
@@ -97,7 +99,8 @@ TorcLocalContextPriv::TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFla
     m_preferencesLock(new QReadWriteLock(QReadWriteLock::Recursive)),
     m_UIObject(NULL),
     m_adminThread(NULL),
-    m_uuid(QUuid::createUuid())
+    m_uuid(QUuid::createUuid()),
+    m_plugins(NULL)
 {
     // clean up the UUID
     m_uuidString = m_uuid.toString();
@@ -124,6 +127,10 @@ TorcLocalContextPriv::~TorcLocalContextPriv()
     {
         TorcAdminObject::DestroyObjects();
     }
+
+    // unload plugins
+    delete m_plugins;
+    m_plugins = NULL;
 
     // wait for threads to exit
     QThreadPool::globalInstance()->waitForDone();
@@ -217,6 +224,9 @@ bool TorcLocalContextPriv::Init(void)
 
     // Load language preferences
     m_language.LoadPreferences();
+
+    // Load any plugins (MUST happen before TorcAdminThread initialisation)
+    m_plugins = new TorcPlugin();
 
     // create an admin thread (and associated objects). This is only
     // required if the UI runs in the main thread.
