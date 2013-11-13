@@ -165,7 +165,7 @@ TorcPowerUnixDBus::TorcPowerUnixDBus(TorcPower *Parent)
     if (!QDBusConnection::systemBus().connect(
          "org.freedesktop.UPower", "/org/freedesktop/UPower",
          "org.freedesktop.UPower", "DeviceRemoved", "o",
-         this, SLOT(DeviceAdded(QDBusObjectPath))))
+         this, SLOT(DeviceRemoved(QDBusObjectPath))))
     {
         LOG(VB_GENERAL, LOG_ERR, "Failed to register for DeviceRemoved");
     }
