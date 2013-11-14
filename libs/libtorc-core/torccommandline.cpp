@@ -36,8 +36,27 @@
 
 #include <iostream>
 
-QMutex *gEnvVarLock = new QMutex();
-QMap<QString,QString> gEnvVars;
+/*! \class TorcEnvironmentVariable
+ *  \brief A simple private linked list to manage registered environment variables.
+*/
+class TorcEnvironmentVariable
+{
+  public:
+    TorcEnvironmentVariable(const QString &Var, const QString &Description)
+      : m_variable(Var),
+        m_description(Description)
+    {
+        nextEnvironmentVariable = gEnvironmentVariable;
+        gEnvironmentVariable = this;
+    }
+
+    static TorcEnvironmentVariable* gEnvironmentVariable;
+    TorcEnvironmentVariable*        nextEnvironmentVariable;
+    QString                         m_variable;
+    QString                         m_description;
+};
+
+TorcEnvironmentVariable* TorcEnvironmentVariable::gEnvironmentVariable = NULL;
 
 /*! \class TorcArgument
  *  \brief Simple wrapper around a command line argument.
@@ -311,18 +330,17 @@ int TorcCommandLinePriv::Evaluate(int argc, const char * const *argv, bool &Exit
         std::cout << std::endl << "All options may be preceeded by '-' or '--'" << std::endl;
 
         {
-            QMutexLocker locker(gEnvVarLock);
-
-            if (!gEnvVars.isEmpty())
+            TorcEnvironmentVariable* variable = TorcEnvironmentVariable::gEnvironmentVariable;
+            if (variable)
             {
                 std::cout << std::endl << "The following environment variables may be useful:" << std::endl;
 
-                QMap<QString,QString>::const_iterator it = gEnvVars.constBegin();
-                for ( ; it != gEnvVars.constEnd(); ++it)
+                while (variable)
                 {
-                    QByteArray var(it.key().toLocal8Bit().constData());
+                    QByteArray var(variable->m_variable.toLocal8Bit().constData());
                     QByteArray padding(m_maxLength - var.size(), 32);
-                    std::cout << var.constData() << padding.constData() << it.value().toLocal8Bit().constData() << std::endl;
+                    std::cout << var.constData() << padding.constData() << variable->m_description.toLocal8Bit().constData() << std::endl;
+                    variable = variable->nextEnvironmentVariable;
                 }
             }
         }
@@ -392,10 +410,5 @@ QVariant TorcCommandLine::GetValue(const QString &Key)
 ///\brief Register an environment variable for display via the help option.
 bool TorcCommandLine::RegisterEnvironmentVariable(const QString &Var, const QString &Description)
 {
-    QMutexLocker locker(gEnvVarLock);
-
-    if (!gEnvVars.contains(Var))
-        gEnvVars.insert(Var, Description);
-
-    return true;
+    return (bool)new TorcEnvironmentVariable(Var, Description);
 }
