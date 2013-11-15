@@ -27,6 +27,16 @@
 // Torc
 #include "torcobservable.h"
 
+/*! \class TorcObservable
+ *  \brief TorcObservable will send event notifcations to registered 'listeners'.
+ *
+ * Classes that inherit from TorcObserval can notify registered listeners of important
+ * events via the Notify method.
+ *
+ * This should only be used by classes that expect a more complex interaction with dependent objects. For
+ * simple use cases (i.e. a small number of events and/or a small number of listeners), direct eventing or
+ * the signal/slot mechanism should be used.
+*/
 TorcObservable::TorcObservable()
   : m_observerLock(new QMutex(QMutex::Recursive))
 {
@@ -37,6 +47,7 @@ TorcObservable::~TorcObservable()
     delete m_observerLock;
 }
 
+///brief Register the given object to receive events.
 void TorcObservable::AddObserver(QObject *Observer)
 {
     QMutexLocker locker(m_observerLock);
@@ -45,6 +56,7 @@ void TorcObservable::AddObserver(QObject *Observer)
     m_observers.append(Observer);
 }
 
+///brief Deregister the given object.
 void TorcObservable::RemoveObserver(QObject *Observer)
 {
     QMutexLocker locker(m_observerLock);
@@ -52,6 +64,7 @@ void TorcObservable::RemoveObserver(QObject *Observer)
         m_observers.removeOne(Observer);
 }
 
+///Brief Send the given event to each registered listener/observer.
 void TorcObservable::Notify(const TorcEvent &Event)
 {
     QMutexLocker locker(m_observerLock);
