@@ -26,6 +26,9 @@
 // Torc
 #include "torcstoragedevice.h"
 
+/*! \class TorcStorageDevice
+ *  \brief A platform independent description of a storage device (hard disk drive, optical drive etc)
+*/
 TorcStorageDevice::TorcStorageDevice(StorageType Type, int Properties,
                                      const QString &Name,
                                      const QString &SystemName,
@@ -48,6 +51,7 @@ TorcStorageDevice::~TorcStorageDevice()
 {
 }
 
+///brief Return a human readable string for the given type.
 QString TorcStorageDevice::TypeToString(StorageType Type)
 {
     switch (Type)
@@ -65,6 +69,7 @@ QString TorcStorageDevice::TypeToString(StorageType Type)
     return QString("Unknown");
 }
 
+///brief Create a QVariantMap that describes this device.
 QVariantMap TorcStorageDevice::ToMap(void)
 {
     QVariantMap result;
@@ -81,31 +86,37 @@ QVariantMap TorcStorageDevice::ToMap(void)
     return result;
 }
 
+///brief Return the type of this storage device.
 TorcStorageDevice::StorageType TorcStorageDevice::GetType(void)
 {
     return m_type;
 }
 
+///brief Return the properties for this device (ejectable, mountable etc)
 int TorcStorageDevice::GetProperties(void)
 {
     return m_properties;
 }
 
+///brief Return the user friendly name for this device.
 QString TorcStorageDevice::GetName(void)
 {
     return m_name;
 }
 
+///brief Return the platform specfic identifier for this device.
 QString TorcStorageDevice::GetSystemName(void)
 {
     return m_systemName;
 }
 
+///brief Return the device description.
 QString TorcStorageDevice::GetDescription(void)
 {
     return m_description;
 }
 
+///brief Return true if this device is an optical drive, false otherwise.
 bool TorcStorageDevice::IsOpticalDisk(void)
 {
     return m_type == CD || m_type == BD || m_type == DVD || m_type == HDDVD || m_type == Optical;
