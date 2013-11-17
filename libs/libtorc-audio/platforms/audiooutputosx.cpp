@@ -128,7 +128,7 @@ class AudioOutputOSXPriv
     AudioOutputOSXPriv(AudioOutputOSX *Parent);
     AudioOutputOSXPriv(AudioOutputOSX *Parent, QString DeviceName);
 
-    static QVector<AudioDeviceID> GetDevices     (void);
+    static QVector<AudioDeviceID> GetDevices     (bool Input = false);
     static int      GetTotalOutputChannels       (UInt32 DeviceID);
     static QString  GetName                      (UInt32 DeviceID);
 
@@ -501,11 +501,11 @@ bool AudioOutputOSXPriv::SetHogStatus(bool Hog)
     return true;
 }
 
-QVector<AudioDeviceID> AudioOutputOSXPriv::GetDevices(void)
+QVector<AudioDeviceID> AudioOutputOSXPriv::GetDevices(bool Input /*=false*/)
 {
     AudioObjectPropertyAddress propertyAddress;
     propertyAddress.mSelector = kAudioHardwarePropertyDevices;
-    propertyAddress.mScope    = kAudioObjectPropertyScopeGlobal;
+    propertyAddress.mScope    = Input ? kAudioObjectPropertyScopeInput : kAudioObjectPropertyScopeOutput;
     propertyAddress.mElement  = kAudioObjectPropertyElementMaster;
     UInt32 size = 0;
 
