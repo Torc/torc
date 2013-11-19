@@ -384,9 +384,14 @@ void VideoBuffers::ReleaseFrameFromDisplaying(VideoFrame *Frame, bool InUseForDe
     QMutexLocker locker(m_lock);
 
     if (m_displaying.contains(Frame))
+    {
         m_displaying.removeOne(Frame);
+    }
     else
+    {
         LOG(VB_GENERAL, LOG_ERR, "Display releasing unknown frame");
+        return;
+    }
 
     if (InUseForDeinterlacer)
     {
@@ -407,9 +412,14 @@ void VideoBuffers::ReleaseFrameFromDisplayed(VideoFrame *Frame)
     QMutexLocker locker(m_lock);
 
     if (m_displayed.contains(Frame))
+    {
         m_displayed.removeOne(Frame);
+    }
     else
+    {
         LOG(VB_GENERAL, LOG_ERR, "Display releasing unknown frame");
+        return;
+    }
 
     m_reference.append(Frame);
     CheckDecodedFrames();
@@ -440,3 +450,4 @@ void VideoBuffers::CheckDecodedFrames(void)
         }
     }
 }
+
