@@ -18,7 +18,7 @@
 */
 
 // Torc
-#include "torcdecoder.h"
+#include "videodecoder.h"
 #include "videoframe.h"
 #include "videocolourspace.h"
 #include "torcsgvideoprovider.h"
@@ -228,6 +228,27 @@ bool TorcSGVideoPlayer::Refresh(quint64 TimeNow, const QSizeF &Size, bool Visibl
                 m_videoProvider->Refresh(m_currentFrame, Size, TimeNow, m_resetVideoProvider);
                 m_resetVideoProvider = false;
             }
+        }
+    }
+
+    // check whether the demuxer was waiting for the buffers to drain (Bluray, DVD etc)
+    if (m_decoder && m_buffers.GetNumberReadyFrames() < 1)
+    {
+        VideoDecoder *decoder = static_cast<VideoDecoder*>(m_decoder);
+        if (decoder && decoder->GetDemuxerState() == TorcDecoder::DemuxerWaiting)
+        {
+            LOG(VB_GENERAL, LOG_INFO, "No more video frames - unpausing demuxer");
+
+            // NB the demuxer may flush itself once back in the 'ready' state, so release current frame
+            if (m_currentFrame)
+                m_buffers.ReleaseFrameFromDisplaying(m_currentFrame, false);
+            m_currentFrame = NULL;
+
+            // release the demuxer again
+            decoder->SetDemuxerState(TorcDecoder::DemuxerReady);
+
+            // and enusure a smooth av sync for the new sequence
+            m_audioWrapper->ClearAudioTime();
         }
     }
 
