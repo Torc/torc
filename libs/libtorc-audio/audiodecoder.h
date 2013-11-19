@@ -49,6 +49,8 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
     bool             HandleAction       (int Action);
     bool             Open               (void);
     TorcDecoder::DecoderState GetState  (void);
+    TorcDecoder::DemuxerState GetDemuxerState (void);
+    void             SetDemuxerState    (TorcDecoder::DemuxerState State);
     void             Start              (void);
     void             Pause              (void);
     void             Stop               (void);

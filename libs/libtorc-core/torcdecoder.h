@@ -47,6 +47,13 @@ class TORC_CORE_PUBLIC TorcDecoder
         Stopped
     } DecoderState;
 
+    typedef enum DemuxerState
+    {
+        DemuxerReady = 0,
+        DemuxerWaiting,
+        DemuxerFlush
+    } DemuxerState;
+
     virtual ~TorcDecoder();
     static TorcDecoder*  Create           (int DecodeFlags, const QString &URI, TorcPlayer *Parent);
     virtual bool         HandleAction     (int Action) = 0;

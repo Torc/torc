@@ -35,7 +35,7 @@ class TORC_CORE_PUBLIC TorcBuffer
 
   public:
     virtual ~TorcBuffer();
-    static TorcBuffer* Create             (const QString &URI, int *Abort, bool Media = false);
+    static TorcBuffer* Create             (void* Parent, const QString &URI, int *Abort, bool Media = false);
     static int         StaticRead         (void* Object, quint8* Buffer, qint32 BufferSize);
     static int         StaticWrite        (void* Object, quint8* Buffer, qint32 BufferSize);
     static int64_t     StaticSeek         (void* Object, int64_t Offset, int Whence);
@@ -63,12 +63,14 @@ class TORC_CORE_PUBLIC TorcBuffer
     virtual QString    GetPath            (void);
     QString            GetURI             (void);
     bool               GetPaused          (void);
+    void*              GetParent          (void);
     void               SetBitrate         (int Bitrate, int Factor);
 
   protected:
-    explicit           TorcBuffer(const QString &URI, int *Abort);
+    explicit           TorcBuffer(void* Parent, const QString &URI, int *Abort);
 
   protected:
+    void              *m_parent;
     QString            m_uri;
     QString            m_path;
     BufferState        m_state;
@@ -89,7 +91,8 @@ class TORC_CORE_PUBLIC TorcBufferFactory
                                                      const QUrl    &URL,
                                                      int           &Score,
                                                      const bool    &Media) = 0;
-    virtual TorcBuffer*       Create                (const QString &URI,
+    virtual TorcBuffer*       Create                (void          *Parent,
+                                                     const QString &URI,
                                                      const QUrl    &URL,
                                                      const int     &Score,
                                                      int           *Abort,

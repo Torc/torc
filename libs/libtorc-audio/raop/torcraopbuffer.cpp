@@ -72,8 +72,8 @@ static int ReadRAOPPacket(AVFormatContext *s, AVPacket *pkt)
  * \todo DACP
 */
 
-TorcRAOPBuffer::TorcRAOPBuffer(const QString &URI, const QUrl &URL, int *Abort)
-  : TorcBuffer(URI, Abort),
+TorcRAOPBuffer::TorcRAOPBuffer(void *Parent, const QString &URI, const QUrl &URL, int *Abort)
+  : TorcBuffer(Parent, URI, Abort),
     m_url(URL),
     m_streamId(0),
     m_frameSize(-1),
@@ -317,10 +317,10 @@ class TorcRAOPBufferFactory : TorcBufferFactory
             Score = 50;
     }
 
-    TorcBuffer* Create(const QString &URI, const QUrl &URL, const int &Score, int *Abort, const bool &Media)
+    TorcBuffer* Create(void *Parent, const QString &URI, const QUrl &URL, const int &Score, int *Abort, const bool &Media)
     {
         if (Media && URI.startsWith("raop:", Qt::CaseInsensitive) && Score <= 50)
-            return new TorcRAOPBuffer(URI, URL, Abort);
+            return new TorcRAOPBuffer(Parent, URI, URL, Abort);
 
         return NULL;
     }

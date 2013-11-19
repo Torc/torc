@@ -20,7 +20,7 @@ class TORC_CORE_PUBLIC TorcNetworkBuffer : public TorcBuffer
     };
 
   public:
-    explicit TorcNetworkBuffer(const QString &URI, bool Media, int *Abort);
+    explicit TorcNetworkBuffer(void *Parent, const QString &URI, bool Media, int *Abort);
     ~TorcNetworkBuffer();
 
     bool     Open            (void);

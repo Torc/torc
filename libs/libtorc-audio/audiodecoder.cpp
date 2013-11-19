@@ -326,6 +326,7 @@ class TorcDecoderThread : public TorcQThread
         m_threadRunning(false),
         m_state(TorcDecoder::None),
         m_requestedState(TorcDecoder::None),
+        m_demuxerState(TorcDecoder::DemuxerReady),
         m_internalBufferEmpty(true)
     {
     }
@@ -408,6 +409,7 @@ class TorcDecoderThread : public TorcQThread
     bool                       m_threadRunning;
     TorcDecoder::DecoderState  m_state;
     TorcDecoder::DecoderState  m_requestedState;
+    TorcDecoder::DemuxerState  m_demuxerState;
     bool                       m_internalBufferEmpty;
 };
 
@@ -649,6 +651,16 @@ bool AudioDecoder::Open(void)
 TorcDecoder::DecoderState AudioDecoder::GetState(void)
 {
     return m_priv->m_demuxerThread->m_state;
+}
+
+TorcDecoder::DemuxerState AudioDecoder::GetDemuxerState(void)
+{
+    return m_priv->m_demuxerThread->m_demuxerState;
+}
+
+void AudioDecoder::SetDemuxerState(TorcDecoder::DemuxerState State)
+{
+    m_priv->m_demuxerThread->m_demuxerState = State;
 }
 
 void AudioDecoder::Start(void)
@@ -1501,7 +1513,7 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
     m_interruptDecoder = 0;
 
     // Create Torc buffer
-    m_priv->m_buffer = TorcBuffer::Create(m_uri, &m_interruptDecoder, true);
+    m_priv->m_buffer = TorcBuffer::Create(this, m_uri, &m_interruptDecoder, true);
     if (!m_priv->m_buffer)
     {
         CloseDemuxer(Thread);
@@ -2032,6 +2044,16 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
 
             QThread::usleep(50000);
             continue;
+        }
+
+        // if the demuxer has been waiting for player buffers to drain, it may need to be flushed BEFORE
+        // we process any more packets
+        if (m_priv->m_demuxerThread->m_demuxerState == TorcDecoder::DemuxerFlush)
+        {
+            Thread->m_videoThread->m_queue->Flush(true, true);
+            Thread->m_audioThread->m_queue->Flush(true, true);
+            Thread->m_subtitleThread->m_queue->Flush(true, true);
+            m_priv->m_demuxerThread->m_demuxerState = TorcDecoder::DemuxerReady;
         }
 
         if (packet->stream_index == videoindex)

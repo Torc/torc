@@ -26,8 +26,8 @@
 #include "torctimer.h"
 #include "torcnetworkbuffer.h"
 
-TorcNetworkBuffer::TorcNetworkBuffer(const QString &URI, bool Media, int *Abort)
-  : TorcBuffer(URI, Abort),
+TorcNetworkBuffer::TorcNetworkBuffer(void *Parent, const QString &URI, bool Media, int *Abort)
+  : TorcBuffer(Parent, URI, Abort),
     m_media(Media),
     m_type(Media ? Buffered : Unbuffered),
     m_request(NULL)
@@ -279,14 +279,14 @@ class TorcNetworkBufferFactory : public TorcBufferFactory
         }
     }
 
-    TorcBuffer* Create(const QString &URI, const QUrl &URL, const int &Score, int *Abort, const bool &Media)
+    TorcBuffer* Create(void *Parent, const QString &URI, const QUrl &URL, const int &Score, int *Abort, const bool &Media)
     {
         if ((QString::compare(URL.scheme(), "http",  Qt::CaseInsensitive) == 0 ||
              QString::compare(URL.scheme(), "https", Qt::CaseInsensitive) == 0 ||
              QString::compare(URL.scheme(), "ftp",   Qt::CaseInsensitive) == 0) &&
             Score <= 50 && TorcNetwork::IsAllowedOutbound())
         {
-            return new TorcNetworkBuffer(URI, Media, Abort);
+            return new TorcNetworkBuffer(Parent, URI, Media, Abort);
         }
 
         return NULL;

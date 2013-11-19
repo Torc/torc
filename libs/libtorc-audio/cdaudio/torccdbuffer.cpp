@@ -31,8 +31,8 @@
  *
  * \sa TorcBuffer
 */
-TorcCDBuffer::TorcCDBuffer(const QString &URI, int *Abort)
-  : TorcBuffer(URI, Abort),
+TorcCDBuffer::TorcCDBuffer(void *Parent, const QString &URI, int *Abort)
+  : TorcBuffer(Parent, URI, Abort),
     m_input(NULL)
 {
 }
@@ -137,10 +137,10 @@ static class TorcCDBufferFactory : public TorcBufferFactory
             Score = 20;
     }
 
-    TorcBuffer* Create(const QString &URI, const QUrl &URL, const int &Score, int *Abort, const bool &Media)
+    TorcBuffer* Create(void *Parent, const QString &URI, const QUrl &URL, const int &Score, int *Abort, const bool &Media)
     {
         if (Media && URI.startsWith("cd:", Qt::CaseInsensitive) && Score <= 20)
-            return new TorcCDBuffer(URI, Abort);
+            return new TorcCDBuffer(Parent, URI, Abort);
 
         return NULL;
     }

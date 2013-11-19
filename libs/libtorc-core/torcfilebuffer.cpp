@@ -42,9 +42,9 @@
  * \sa TorcNetworkBuffer
 */
 
-TorcFileBuffer::TorcFileBuffer(const QString &URI, int *Abort)
+TorcFileBuffer::TorcFileBuffer(void *Parent, const QString &URI, int *Abort)
   : QFile(URI),
-    TorcBuffer(URI, Abort)
+    TorcBuffer(Parent, URI, Abort)
 {
     QFileInfo info(m_uri);
     m_path = info.dir().path();
@@ -239,10 +239,10 @@ static class TorcFileBufferFactory : public TorcBufferFactory
             Score = 10;
     }
 
-    TorcBuffer* Create(const QString &URI, const QUrl &URL, const int &Score, int *Abort, const bool &Media)
+    TorcBuffer* Create(void* Parent, const QString &URI, const QUrl &URL, const int &Score, int *Abort, const bool &Media)
     {
         if ((URL.scheme().size() < 2) && URL.port() < 0 && Score <= 10)
-            return new TorcFileBuffer(URI, Abort);
+            return new TorcFileBuffer(Parent, URI, Abort);
 
         return NULL;
     }

@@ -11,7 +11,7 @@ extern "C" {
 class TorcCDBuffer : public TorcBuffer
 {
   public:
-    explicit TorcCDBuffer(const QString &URI, int *Abort);
+    explicit TorcCDBuffer(void *Parent, const QString &URI, int *Abort);
     ~TorcCDBuffer();
 
     bool       Open                 (void);

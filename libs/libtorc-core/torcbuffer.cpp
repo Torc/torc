@@ -40,8 +40,9 @@
  *
  * Protected to enforce creation through the factory classes via TorcBuffer::Create
 */
-TorcBuffer::TorcBuffer(const QString &URI, int *Abort)
-  : m_uri(URI),
+TorcBuffer::TorcBuffer(void *Parent, const QString &URI, int *Abort)
+  : m_parent(Parent),
+    m_uri(URI),
     m_path(URI),
     m_state(Status_Created),
     m_paused(true),
@@ -62,30 +63,34 @@ TorcBuffer::~TorcBuffer()
  * attempt to Create and Open the most suitable TorcBuffer subclass that can handle the media
  * described by URI.
  *
- * \param URI   A Uniform Resource Identifier pointing to the object to be opened.
- * \param Abort A flag to indicate to the buffer object that it should cease as soon as possible.
- * \param Media Set to true to hint to the buffer that this is a media (audio/video) file and may require special treatment.
+ * \param Parent The owner of this buffer.
+ * \param URI    A Uniform Resource Identifier pointing to the object to be opened.
+ * \param Abort  A flag to indicate to the buffer object that it should cease as soon as possible.
+ * \param Media  Set to true to hint to the buffer that this is a media (audio/video) file and may require special treatment.
 */
-TorcBuffer* TorcBuffer::Create(const QString &URI, int *Abort, bool Media)
+TorcBuffer* TorcBuffer::Create(void *Parent, const QString &URI, int *Abort, bool Media)
 {
     TorcBuffer* buffer = NULL;
     QUrl url(URI);
 
-    int score = 0;
-    TorcBufferFactory* factory = TorcBufferFactory::GetTorcBufferFactory();
-    for ( ; factory; factory = factory->NextTorcBufferFactory())
-        (void)factory->Score(URI, url, score, Media);
-
-    factory = TorcBufferFactory::GetTorcBufferFactory();
-    for ( ; factory; factory = factory->NextTorcBufferFactory())
+    if (Parent && Abort)
     {
-        buffer = factory->Create(URI, url, score, Abort, Media);
-        if (buffer)
+        int score = 0;
+        TorcBufferFactory* factory = TorcBufferFactory::GetTorcBufferFactory();
+        for ( ; factory; factory = factory->NextTorcBufferFactory())
+            (void)factory->Score(URI, url, score, Media);
+
+        factory = TorcBufferFactory::GetTorcBufferFactory();
+        for ( ; factory; factory = factory->NextTorcBufferFactory())
         {
-            if (buffer->Open())
-                break;
-            delete buffer;
-            buffer = NULL;
+            buffer = factory->Create(Parent, URI, url, score, Abort, Media);
+            if (buffer)
+            {
+                if (buffer->Open())
+                    break;
+                delete buffer;
+                buffer = NULL;
+            }
         }
     }
 
@@ -285,6 +290,12 @@ bool TorcBuffer::TogglePause(void)
 bool TorcBuffer::GetPaused(void)
 {
     return m_paused;
+}
+
+///brief Returnn the parent object for this buffer.
+void* TorcBuffer::GetParent(void)
+{
+    return m_parent;
 }
 
 /*! \fn    TorcBuffer::SetBitrate
