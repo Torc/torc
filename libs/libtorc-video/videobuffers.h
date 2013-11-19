@@ -34,6 +34,7 @@ class VideoBuffers
     void               ReleaseFrameFromDisplaying (VideoFrame *Frame, bool InUseForDeinterlacer);
     void               ReleaseFrameFromDisplayed  (VideoFrame *Frame);
     void               CheckDecodedFrames         (void);
+    int                GetNumberReadyFrames       (void);
 
   private:
     void               SetFormat                  (AVPixelFormat Format, int Width, int Height);

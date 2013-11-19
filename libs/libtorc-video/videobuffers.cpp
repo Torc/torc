@@ -451,3 +451,10 @@ void VideoBuffers::CheckDecodedFrames(void)
     }
 }
 
+int VideoBuffers::GetNumberReadyFrames(void)
+{
+    m_lock->lock();
+    int result = m_ready.size();
+    m_lock->unlock();
+    return result;
+}
