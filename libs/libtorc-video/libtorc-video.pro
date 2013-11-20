@@ -144,13 +144,13 @@ contains(CONFIG_BLURAYJAVA, yes) {
     SOURCES += libbluray/src/libbluray/bdj/native/org_videolan_Logger.c
     SOURCES += libbluray/src/libbluray/bdj/native/register_native.c
 
-    #FIXME
-    DEFINES += JAVA_ARCH=\\\"\\\"
+    DEFINES += JAVA_ARCH=\\\"$$QT_ARCH\\\"
     DEFINES += USING_BDJAVA=1
     DEFINES += BDJ_BOOTCLASSPATH=\\\"\\\"
-    ANTBIN = /usr/bin/ant
 
     macx {
+        #TODO these paths need to be set properly
+        ANTBIN          = /usr/bin/ant
         DEFINES        += JDK_HOME=\\\"System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Home\\\"
         INCLUDEPATH    += /System/Library/Frameworks/JavaVM.framework/Headers
         QMAKE_CXXFLAGS += -F/System/Library/Frameworks/JavaVM.framework/Frameworks
@@ -158,11 +158,19 @@ contains(CONFIG_BLURAYJAVA, yes) {
         SOURCES        += libbluray/src/file/dirs_darwin.c
     }
 
-    QMAKE_POST_LINK=$${ANTBIN} -v -f libbluray/src/libbluray/bdj/build.xml -Dsrc_awt=:java-j2se; $${ANTBIN} -f libbluray/src/libbluray/bdj/build.xml clean
-    installjar.path = $${PREFIX}/share/$${PROJECTNAME}/jars
+    unix {
+        ANTBIN          = /usr/bin/ant
+        DEFINES        += JDK_HOME=\\\"/usr/lib/jvm/default-java\\\"
+        INCLUDEPATH    += /usr/lib/jvm/java-7-openjdk-i386/include
+        SOURCES        += libbluray/src/file/dirs_xdg.c
+    }
+
+    QMAKE_POST_LINK  = $${ANTBIN} -v -f libbluray/src/libbluray/bdj/build.xml -Dsrc_awt=:java-j2se; $${ANTBIN} -f libbluray/src/libbluray/bdj/build.xml clean
+    installjar.path  = $${PREFIX}/share/$${PROJECTNAME}/jars
     installjar.files = libbluray/src/.libs/libbluray.jar
-    INSTALLS += installjar
-    QMAKE_CLEAN += libbluray.jar
+    DEFINES         += TORC_LIBBLURAY_JAR_LOCATION=\\\"$${PREFIX}/share/$${PROJECTNAME}/jars/libbluray.jar\\\"
+    INSTALLS        += installjar
+    QMAKE_CLEAN     += libbluray.jar
 }
 
 contains(CONFIG_VDA, yes) {
