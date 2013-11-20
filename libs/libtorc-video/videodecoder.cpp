@@ -515,6 +515,8 @@ void VideoDecoder::CleanupVideoDecoder(AVStream *Stream)
 
 void VideoDecoder::FlushVideoBuffers(bool Stopped)
 {
+    LOG(VB_GENERAL, LOG_INFO, "Flush video buffers");
+
     ResetPTSTracker();
 
     if (Stopped)
