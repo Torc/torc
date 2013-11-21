@@ -11,6 +11,10 @@ extern "C" {
 #include "libavcodec/avcodec.h"
 }
 
+#define TORC_AVERROR_RESET (-MKTAG('R','S','e','T'))
+#define TORC_AVERROR_FLUSH (-MKTAG('F','l','S','H'))
+#define TORC_AVERROR_IDLE  (-MKTAG('I','d','L','e'))
+
 QString         TORC_AUDIO_PUBLIC AVCodecToString            (int    Codec);
 QString         TORC_AUDIO_PUBLIC AVMediaTypeToString        (int    Type);
 QString         TORC_AUDIO_PUBLIC AVErrorToString            (int    Error);
