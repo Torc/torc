@@ -1524,46 +1524,18 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
     // create AVFormatContext
     if (!CreateAVFormatContext(Thread))
     {
-        LOG(VB_GENERAL, LOG_INFO, "Failed to create AVFormatContext");
+        LOG(VB_GENERAL, LOG_ERR, "Failed to create AVFormatContext");
         CloseDemuxer(Thread);
         *state = TorcDecoder::Errored;
         return false;
     }
 
-    // Scan programs
-    if (!ScanPrograms())
+    if (!ScanStreams(Thread))
     {
-        // This is currently most likely to happen with MHEG only streams
-        // TODO add some libav stream debugging
-        LOG(VB_GENERAL, LOG_ERR, "Failed to find any valid programs");
+        LOG(VB_GENERAL, LOG_ERR, "Failed to scan streams");
         CloseDemuxer(Thread);
         *state = TorcDecoder::Errored;
-        return false;
     }
-
-    // Get the bitrate
-    UpdateBitrate();
-
-    // Select a program
-    (void)SelectProgram(0);
-
-    // Select streams
-    (void)SelectStreams();
-
-    // Open decoders
-    if (!OpenDecoders())
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to open decoders");
-        CloseDemuxer(Thread);
-        *state = TorcDecoder::Errored;
-        return false;
-    }
-
-    // Parse chapters
-    ScanChapters();
-
-    // Debug!
-    DebugPrograms();
 
     // Ready
     *state = TorcDecoder::Paused;
@@ -1710,8 +1682,6 @@ bool AudioDecoder::PauseDecoderThreads(TorcDemuxerThread* Thread)
  * If the buffer has signalled that there is a break in the stream (e.g. new title, sequence etc), then we need
  * to recreate our AVFormatContext and probe the stream again. Otherwise ffmpeg/libav will just add new streams on top of the old ones,
  * which are likely to now be empty/broken/redundant.
- *
- * \todo Refactor duplicated code.
 */
 bool AudioDecoder::ResetDemuxer(TorcDemuxerThread *Thread)
 {
@@ -1739,34 +1709,8 @@ bool AudioDecoder::ResetDemuxer(TorcDemuxerThread *Thread)
     if (!CreateAVFormatContext(Thread))
         return false;
 
-    // Scan programs
-    if (!ScanPrograms())
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to find any valid programs");
+    if (!ScanStreams(Thread))
         return false;
-    }
-
-    // Get the bitrate
-    UpdateBitrate();
-
-    // Select a program
-    (void)SelectProgram(0);
-
-    // Select streams
-    (void)SelectStreams();
-
-    // Open decoders
-    if (!OpenDecoders())
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to open decoders");
-        return false;
-    }
-
-    // Parse chapters
-    ScanChapters();
-
-    // Debug!
-    DebugPrograms();
 
     // ensure the demuxer is primed again
     Thread->m_state = oldstate;
@@ -1787,7 +1731,6 @@ bool AudioDecoder::ResetDemuxer(TorcDemuxerThread *Thread)
  * FFmpeg/libav will never remove streams but new streams may be added (usually for PIDs that were not
  * found in the initial probe).
  *
- * \todo Refactor to avoid code duplication with OpenDemuxer and CloseDemuxer
  * \todo This may be too heavy handed. If we've done everything else correctly, this should only need to action the new streams.
 */
 bool AudioDecoder::UpdateDemuxer(TorcDemuxerThread *Thread)
@@ -1822,34 +1765,8 @@ bool AudioDecoder::UpdateDemuxer(TorcDemuxerThread *Thread)
     // (re)perform any post-initialisation
     m_priv->m_buffer->InitialiseAVContext(m_priv->m_avFormatContext);
 
-    // Scan programs
-    if (!ScanPrograms())
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to find any valid programs");
+    if (!ScanStreams(Thread))
         return false;
-    }
-
-    // Get the bitrate
-    UpdateBitrate();
-
-    // Select a program
-    (void)SelectProgram(0);
-
-    // Select streams
-    (void)SelectStreams();
-
-    // Open decoders
-    if (!OpenDecoders())
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to open decoders");
-        return false;
-    }
-
-    // Parse chapters
-    ScanChapters();
-
-    // Debug!
-    DebugPrograms();
 
     // ensure the demuxer is primed again
     Thread->m_state = oldstate;
@@ -2055,6 +1972,43 @@ void AudioDecoder::ResetStreams(TorcDemuxerThread *Thread)
     m_duration = 0.0;
     m_bitrate = 0;
     m_bitrateFactor = 1;
+}
+
+bool AudioDecoder::ScanStreams(TorcDemuxerThread *Thread)
+{
+    (void)Thread;
+
+    // Scan programs
+    if (!ScanPrograms())
+    {
+        // This is currently most likely to happen with MHEG only streams
+        LOG(VB_GENERAL, LOG_ERR, "Failed to find any valid programs");
+        return false;
+    }
+
+    // Get the bitrate
+    UpdateBitrate();
+
+    // Select a program
+    (void)SelectProgram(0);
+
+    // Select streams
+    (void)SelectStreams();
+
+    // Open decoders
+    if (!OpenDecoders())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to open decoders");
+        return false;
+    }
+
+    // Parse chapters
+    ScanChapters();
+
+    // Debug!
+    DebugPrograms();
+
+    return true;
 }
 
 void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
