@@ -1521,127 +1521,13 @@ bool AudioDecoder::OpenDemuxer(TorcDemuxerThread *Thread)
         return false;
     }
 
-    AVInputFormat *format = NULL;
-    bool needbuffer = true;
-
-    if (m_priv->m_buffer->RequiredAVContext())
+    // create AVFormatContext
+    if (!CreateAVFormatContext(Thread))
     {
-        AVFormatContext *required = (AVFormatContext*)m_priv->m_buffer->RequiredAVContext();
-        if (required)
-        {
-            m_priv->m_avFormatContext = required;
-            m_priv->m_createdAVFormatContext = false;
-            LOG(VB_GENERAL, LOG_INFO, "Buffer has already allocated decoder context");
-        }
-    }
-
-    if (!m_priv->m_avFormatContext)
-    {
-        if (m_priv->m_buffer->RequiredAVFormat())
-        {
-            AVInputFormat *required = (AVInputFormat*)m_priv->m_buffer->RequiredAVFormat();
-            if (required)
-            {
-                format = required;
-                needbuffer = false;
-                LOG(VB_GENERAL, LOG_INFO, QString("Demuxer required by buffer '%1'").arg(format->name));
-            }
-        }
-
-        m_priv->m_createdAVFormatContext = true;
-
-        if (!format)
-        {
-            // probe (only necessary for some files)
-            int probesize = PROBE_BUFFER_SIZE;
-            if (!m_priv->m_buffer->IsSequential() && m_priv->m_buffer->BytesAvailable() < probesize)
-                probesize = m_priv->m_buffer->BytesAvailable();
-            probesize += AVPROBE_PADDING_SIZE;
-
-            QByteArray *probebuffer = new QByteArray(probesize, 0);
-            AVProbeData probe;
-            probe.filename = m_uri.toLocal8Bit().constData();
-            probe.buf_size = m_priv->m_buffer->Peek((quint8*)probebuffer->data(), probesize);
-            probe.buf      = (unsigned char*)probebuffer->data();
-            format = av_probe_input_format(&probe, 0);
-            delete probebuffer;
-
-            if (format)
-                format->flags &= ~AVFMT_NOFILE;
-        }
-
-        // Allocate AVFormatContext
-        m_priv->m_avFormatContext = avformat_alloc_context();
-        if (!m_priv->m_avFormatContext)
-        {
-            LOG(VB_GENERAL, LOG_ERR, "Failed to allocate format context.");
-            CloseDemuxer(Thread);
-            *state = TorcDecoder::Errored;
-            return false;
-        }
-    }
-
-    // abort callback
-    m_priv->m_avFormatContext->interrupt_callback.opaque = (void*)&m_interruptDecoder;
-    m_priv->m_avFormatContext->interrupt_callback.callback = AudioDecoder::DecoderInterrupt;
-
-    if (needbuffer)
-    {
-        // Create libav buffer
-        if (m_priv->m_libavBuffer)
-            av_free(m_priv->m_libavBuffer);
-
-        m_priv->m_libavBufferSize = m_priv->m_buffer->BestBufferSize();
-        if (!m_priv->m_buffer->IsSequential() && m_priv->m_buffer->BytesAvailable() < m_priv->m_libavBufferSize)
-            m_priv->m_libavBufferSize = m_priv->m_buffer->BytesAvailable();
-        m_priv->m_libavBuffer = (unsigned char*)av_mallocz(m_priv->m_libavBufferSize + FF_INPUT_BUFFER_PADDING_SIZE);
-
-        if (!m_priv->m_libavBuffer)
-        {
-            CloseDemuxer(Thread);
-            *state = TorcDecoder::Errored;
-            return false;
-        }
-
-        LOG(VB_GENERAL, LOG_INFO, QString("Input buffer size: %1 bytes").arg(m_priv->m_libavBufferSize));
-
-        // Create libav byte context
-        m_priv->m_avFormatContext->pb = avio_alloc_context(m_priv->m_libavBuffer,
-                                                           m_priv->m_libavBufferSize,
-                                                           0, m_priv->m_buffer,
-                                                           &TorcBuffer::StaticRead,
-                                                           &TorcBuffer::StaticWrite,
-                                                           &TorcBuffer::StaticSeek);
-
-        m_priv->m_avFormatContext->pb->seekable = !m_priv->m_buffer->IsSequential();
-    }
-
-    // Open
-    if (m_priv->m_createdAVFormatContext)
-    {
-        int err = 0;
-        QString uri = m_priv->m_buffer->GetFilteredUri();
-        if ((err = avformat_open_input(&m_priv->m_avFormatContext, uri.toLocal8Bit().constData(), format, NULL)) < 0)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("Failed to open AVFormatContext - error '%1' (%2)")
-                .arg(AVErrorToString(err)).arg(uri));
-            CloseDemuxer(Thread);
-            *state = TorcDecoder::Errored;
-            return false;
-        }
-
-        // Scan for streams
-        if ((err = avformat_find_stream_info(m_priv->m_avFormatContext, NULL)) < 0)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("Failed to find streams - error '%1'")
-                .arg(AVErrorToString(err)));
-            CloseDemuxer(Thread);
-            *state = TorcDecoder::Errored;
-            return false;
-        }
-
-        // perform any post-initialisation
-        m_priv->m_buffer->InitialiseAVContext(m_priv->m_avFormatContext);
+        LOG(VB_GENERAL, LOG_INFO, "Failed to create AVFormatContext");
+        CloseDemuxer(Thread);
+        *state = TorcDecoder::Errored;
+        return false;
     }
 
     // Scan programs
@@ -1790,6 +1676,196 @@ void AudioDecoder::TearDown(void)
     m_priv->m_demuxerThread->Wait(1000);
 }
 
+/*! \brief Pause all decoding threads and wait for them to pause.
+ *
+ * Certain demuxer level operations require all processing to be paused.
+*/
+bool AudioDecoder::PauseDecoderThreads(TorcDemuxerThread* Thread)
+{
+    if (!Thread)
+        return false;
+
+    // pause
+    Thread->m_videoThread->Pause();
+    Thread->m_audioThread->Pause();
+    Thread->m_subtitleThread->Pause();
+
+    // and wait for pause
+    int count = 0;
+    while (!(Thread->m_videoThread->IsPaused() && Thread->m_audioThread->IsPaused() && Thread->m_subtitleThread->IsPaused()))
+    {
+        QThread::usleep(50000);
+        if (count > 20)
+        {
+            LOG(VB_GENERAL, LOG_WARNING, "Waited too long for decoder threads to pause. Continuing");
+            continue;
+        }
+    }
+
+    return Thread->m_videoThread->IsPaused() && Thread->m_audioThread->IsPaused() && Thread->m_subtitleThread->IsPaused();
+}
+
+/*! \brief Reset the demuxer.
+ *
+ * If the buffer has signalled that there is a break in the stream (e.g. new title, sequence etc), then we need
+ * to recreate our AVFormatContext and probe the stream again. Otherwise ffmpeg/libav will just add new streams on top of the old ones,
+ * which are likely to now be empty/broken/redundant.
+ *
+ * \todo Refactor duplicated code.
+*/
+bool AudioDecoder::ResetDemuxer(TorcDemuxerThread *Thread)
+{
+    if (!Thread)
+        return false;
+
+    LOG(VB_GENERAL, LOG_INFO, "Resetting demuxer for new sequence/clip");
+
+    if (!PauseDecoderThreads(Thread))
+        return false;
+
+    // flush queues
+    Thread->m_videoThread->m_queue->Flush(true, false);
+    Thread->m_audioThread->m_queue->Flush(true, false);
+    Thread->m_subtitleThread->m_queue->Flush(true, false);
+
+    // mark this (demuxer) as paused
+    TorcDecoder::DecoderState oldstate = Thread->m_state;
+    Thread->m_state = TorcDecoder::Paused;
+
+    ResetStreams(Thread);
+
+    DeleteAVFormatContext(Thread);
+
+    if (!CreateAVFormatContext(Thread))
+        return false;
+
+    // Scan programs
+    if (!ScanPrograms())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to find any valid programs");
+        return false;
+    }
+
+    // Get the bitrate
+    UpdateBitrate();
+
+    // Select a program
+    (void)SelectProgram(0);
+
+    // Select streams
+    (void)SelectStreams();
+
+    // Open decoders
+    if (!OpenDecoders())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to open decoders");
+        return false;
+    }
+
+    // Parse chapters
+    ScanChapters();
+
+    // Debug!
+    DebugPrograms();
+
+    // ensure the demuxer is primed again
+    Thread->m_state = oldstate;
+
+    // restart decoding threads
+    Thread->m_videoThread->Unpause();
+    Thread->m_audioThread->Unpause();
+    Thread->m_subtitleThread->Unpause();
+
+    // testing
+    LOG(VB_GENERAL, LOG_INFO, "Resetting audio");
+    SetupAudio(Thread->m_audioThread);
+    return true;
+}
+
+/*! \brief Update the demuxer for new streams.
+ *
+ * FFmpeg/libav will never remove streams but new streams may be added (usually for PIDs that were not
+ * found in the initial probe).
+ *
+ * \todo Refactor to avoid code duplication with OpenDemuxer and CloseDemuxer
+ * \todo This may be too heavy handed. If we've done everything else correctly, this should only need to action the new streams.
+*/
+bool AudioDecoder::UpdateDemuxer(TorcDemuxerThread *Thread)
+{
+    if (!Thread)
+        return false;
+
+    LOG(VB_GENERAL, LOG_INFO, "Updating demuxer for new streams");
+
+    if (!PauseDecoderThreads(Thread))
+        return false;
+
+    // flush queues (no point in flushing the codec as the threads are paused)
+    Thread->m_videoThread->m_queue->Flush(true, false);
+    Thread->m_audioThread->m_queue->Flush(true, false);
+    Thread->m_subtitleThread->m_queue->Flush(true, false);
+
+    // flush codec internal buffers
+    for (uint i = 0; i < m_priv->m_avFormatContext->nb_streams; i++)
+    {
+        AVCodecContext *codec = m_priv->m_avFormatContext->streams[i]->codec;
+        if (codec->codec)
+            avcodec_flush_buffers(codec);
+    }
+
+    // mark this (demuxer) as paused
+    TorcDecoder::DecoderState oldstate = Thread->m_state;
+    Thread->m_state = TorcDecoder::Paused;
+
+    ResetStreams(Thread);
+
+    // (re)perform any post-initialisation
+    m_priv->m_buffer->InitialiseAVContext(m_priv->m_avFormatContext);
+
+    // Scan programs
+    if (!ScanPrograms())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to find any valid programs");
+        return false;
+    }
+
+    // Get the bitrate
+    UpdateBitrate();
+
+    // Select a program
+    (void)SelectProgram(0);
+
+    // Select streams
+    (void)SelectStreams();
+
+    // Open decoders
+    if (!OpenDecoders())
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to open decoders");
+        return false;
+    }
+
+    // Parse chapters
+    ScanChapters();
+
+    // Debug!
+    DebugPrograms();
+
+    // ensure the demuxer is primed again
+    Thread->m_state = oldstate;
+
+    // restart decoding threads
+    Thread->m_videoThread->Unpause();
+    Thread->m_audioThread->Unpause();
+    Thread->m_subtitleThread->Unpause();
+
+    // testing
+    LOG(VB_GENERAL, LOG_INFO, "Resetting audio");
+    SetupAudio(Thread->m_audioThread);
+
+    return true;
+}
+
 void AudioDecoder::CloseDemuxer(TorcDemuxerThread *Thread)
 {
     // Stop the consumer threads
@@ -1802,6 +1878,161 @@ void AudioDecoder::CloseDemuxer(TorcDemuxerThread *Thread)
         Thread->m_audioThread->Wait(1000);
         Thread->m_subtitleThread->Wait(1000);
     }
+
+    ResetStreams(Thread);
+    DeleteAVFormatContext(Thread);
+
+    // Delete Torc buffer
+    delete m_priv->m_buffer;
+    m_priv->m_buffer = NULL;
+}
+
+bool AudioDecoder::CreateAVFormatContext(TorcDemuxerThread *Thread)
+{
+    if (!Thread || !m_priv || !m_priv->m_buffer)
+        return false;
+
+    DeleteAVFormatContext(Thread);
+
+    AVInputFormat *format = NULL;
+    bool needbuffer = true;
+
+    if (m_priv->m_buffer->RequiredAVContext())
+    {
+        AVFormatContext *required = (AVFormatContext*)m_priv->m_buffer->RequiredAVContext();
+        if (required)
+        {
+            m_priv->m_avFormatContext = required;
+            m_priv->m_createdAVFormatContext = false;
+            LOG(VB_GENERAL, LOG_INFO, "Buffer has already allocated decoder context");
+        }
+    }
+
+    if (!m_priv->m_avFormatContext)
+    {
+        if (m_priv->m_buffer->RequiredAVFormat())
+        {
+            AVInputFormat *required = (AVInputFormat*)m_priv->m_buffer->RequiredAVFormat();
+            if (required)
+            {
+                format = required;
+                needbuffer = false;
+                LOG(VB_GENERAL, LOG_INFO, QString("Demuxer required by buffer '%1'").arg(format->name));
+            }
+        }
+
+        m_priv->m_createdAVFormatContext = true;
+
+        if (!format)
+        {
+            // probe (only necessary for some files)
+            int probesize = PROBE_BUFFER_SIZE;
+            if (!m_priv->m_buffer->IsSequential() && m_priv->m_buffer->BytesAvailable() < probesize)
+                probesize = m_priv->m_buffer->BytesAvailable();
+            probesize += AVPROBE_PADDING_SIZE;
+
+            QByteArray *probebuffer = new QByteArray(probesize, 0);
+            AVProbeData probe;
+            probe.filename = m_uri.toLocal8Bit().constData();
+            probe.buf_size = m_priv->m_buffer->Peek((quint8*)probebuffer->data(), probesize);
+            probe.buf      = (unsigned char*)probebuffer->data();
+            format = av_probe_input_format(&probe, 0);
+            delete probebuffer;
+
+            if (format)
+                format->flags &= ~AVFMT_NOFILE;
+        }
+
+        // Allocate AVFormatContext
+        m_priv->m_avFormatContext = avformat_alloc_context();
+        if (!m_priv->m_avFormatContext)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Failed to allocate format context.");
+            return false;
+        }
+    }
+
+    // abort callback
+    m_priv->m_avFormatContext->interrupt_callback.opaque = (void*)&m_interruptDecoder;
+    m_priv->m_avFormatContext->interrupt_callback.callback = AudioDecoder::DecoderInterrupt;
+
+    if (needbuffer)
+    {
+        // Create libav buffer
+        if (m_priv->m_libavBuffer)
+            av_free(m_priv->m_libavBuffer);
+
+        m_priv->m_libavBufferSize = m_priv->m_buffer->BestBufferSize();
+        if (!m_priv->m_buffer->IsSequential() && m_priv->m_buffer->BytesAvailable() < m_priv->m_libavBufferSize)
+            m_priv->m_libavBufferSize = m_priv->m_buffer->BytesAvailable();
+        m_priv->m_libavBuffer = (unsigned char*)av_mallocz(m_priv->m_libavBufferSize + FF_INPUT_BUFFER_PADDING_SIZE);
+
+        if (!m_priv->m_libavBuffer)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Failed to create ffmpeg buffer");
+            return false;
+        }
+
+        LOG(VB_GENERAL, LOG_INFO, QString("Input buffer size: %1 bytes").arg(m_priv->m_libavBufferSize));
+
+        // Create libav byte context
+        m_priv->m_avFormatContext->pb = avio_alloc_context(m_priv->m_libavBuffer,
+                                                           m_priv->m_libavBufferSize,
+                                                           0, m_priv->m_buffer,
+                                                           &TorcBuffer::StaticRead,
+                                                           &TorcBuffer::StaticWrite,
+                                                           &TorcBuffer::StaticSeek);
+
+        m_priv->m_avFormatContext->pb->seekable = !m_priv->m_buffer->IsSequential();
+    }
+
+    // Open
+    if (m_priv->m_createdAVFormatContext)
+    {
+        int err = 0;
+        QString uri = m_priv->m_buffer->GetFilteredUri();
+        if ((err = avformat_open_input(&m_priv->m_avFormatContext, uri.toLocal8Bit().constData(), format, NULL)) < 0)
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Failed to open AVFormatContext - error '%1' (%2)").arg(AVErrorToString(err)).arg(uri));
+            return false;
+        }
+
+        // Scan for streams
+        if ((err = avformat_find_stream_info(m_priv->m_avFormatContext, NULL)) < 0)
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Failed to find streams - error '%1'").arg(AVErrorToString(err)));
+            return false;
+        }
+
+        // perform any post-initialisation
+        m_priv->m_buffer->InitialiseAVContext(m_priv->m_avFormatContext);
+    }
+
+    return true;
+}
+
+///brief Delete AVFormatContext if we created it
+void AudioDecoder::DeleteAVFormatContext(TorcDemuxerThread *Thread)
+{
+    (void)Thread;
+
+    // Delete AVFormatContext (and byte context)
+    if (m_priv->m_avFormatContext && m_priv->m_createdAVFormatContext)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Deleting AVFormatContext");
+        avformat_close_input(&m_priv->m_avFormatContext);
+    }
+    m_priv->m_avFormatContext = NULL;
+    m_priv->m_createdAVFormatContext = false;
+
+    // NB this should have been deleted in avformat_close_input
+    m_priv->m_libavBuffer = NULL;
+    m_priv->m_libavBufferSize = 0;
+}
+
+void AudioDecoder::ResetStreams(TorcDemuxerThread *Thread)
+{
+    (void)Thread;
 
     // Reset stream selection
     {
@@ -1819,27 +2050,11 @@ void AudioDecoder::CloseDemuxer(TorcDemuxerThread *Thread)
     // Clear chapters
     ResetChapters();
 
-    // Delete AVFormatContext (and byte context)
-    if (m_priv->m_avFormatContext && m_priv->m_createdAVFormatContext)
-    {
-        LOG(VB_GENERAL, LOG_INFO, "Deleting AVFormatContext");
-        avformat_close_input(&m_priv->m_avFormatContext);
-    }
-    m_priv->m_avFormatContext = NULL;
-
-    // NB this should have been deleted in avformat_close_input
-    m_priv->m_libavBuffer = NULL;
-    m_priv->m_libavBufferSize = 0;
-
-    // Delete Torc buffer
-    delete m_priv->m_buffer;
-    m_priv->m_buffer = NULL;
-
+    // reset some internals
     m_seek = false;
     m_duration = 0.0;
     m_bitrate = 0;
     m_bitrateFactor = 1;
-    m_currentProgram = 0;
 }
 
 void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
@@ -2025,35 +2240,95 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
             }
         }
 
+        uint oldstreamcount = m_priv->m_avFormatContext->nb_streams;
+
         int error;
         if ((error = av_read_frame(m_priv->m_avFormatContext, packet)) < 0)
         {
-            if (error == AVERROR_EOF || m_priv->m_avFormatContext->pb->eof_reached)
+            // the buffer has reached the end of a sequence/clip and needs to syncronise with the player
+            if (m_priv->m_demuxerThread->m_demuxerState == TorcDecoder::DemuxerWaiting && (error == TORC_AVERROR_FLUSH || error == TORC_AVERROR_RESET))
             {
-                LOG(VB_GENERAL, LOG_INFO, "End of file");
-                eof = true;
+                // unset eof
+                m_priv->m_avFormatContext->pb->eof_reached = 0;
+
+                LOG(VB_GENERAL, LOG_INFO, "Waiting for player buffers to drain");
+
+                int count = 0;
+                while (!m_interruptDecoder && m_priv->m_demuxerThread->m_demuxerState == TorcDecoder::DemuxerWaiting)
+                {
+                    if (count++ > 400)
+                    {
+                        LOG(VB_GENERAL, LOG_WARNING, "Waited 20 seconds for player to drain buffers - continuing");
+                        m_priv->m_demuxerThread->m_demuxerState == TorcDecoder::DemuxerReady;
+                        break;
+                    }
+
+                    QThread::usleep(50000);
+                }
+            }
+            else if (error == TORC_AVERROR_IDLE)
+            {
+                m_priv->m_avFormatContext->pb->eof_reached = 0;
+                QThread::usleep(50000);
                 continue;
             }
-
-            if (m_priv->m_avFormatContext->pb->error)
+            else
             {
-                LOG(VB_GENERAL, LOG_ERR, QString("libav io error (%1)").arg(m_priv->m_avFormatContext->pb->error));
-                demuxererror = true;
-                break;
-            }
+                if (error == AVERROR_EOF || m_priv->m_avFormatContext->pb->eof_reached)
+                {
+                    LOG(VB_GENERAL, LOG_INFO, "End of file");
+                    eof = true;
+                    continue;
+                }
 
-            QThread::usleep(50000);
-            continue;
+                if (m_priv->m_avFormatContext->pb->error)
+                {
+                    LOG(VB_GENERAL, LOG_ERR, QString("libav io error (%1)").arg(m_priv->m_avFormatContext->pb->error));
+                    demuxererror = true;
+                    break;
+                }
+
+                QThread::usleep(50000);
+                continue;
+            }
         }
 
         // if the demuxer has been waiting for player buffers to drain, it may need to be flushed BEFORE
         // we process any more packets
-        if (m_priv->m_demuxerThread->m_demuxerState == TorcDecoder::DemuxerFlush)
+        if (error == TORC_AVERROR_FLUSH)
         {
             Thread->m_videoThread->m_queue->Flush(true, true);
             Thread->m_audioThread->m_queue->Flush(true, true);
             Thread->m_subtitleThread->m_queue->Flush(true, true);
-            m_priv->m_demuxerThread->m_demuxerState = TorcDecoder::DemuxerReady;
+        }
+
+        if (Q_UNLIKELY(error == TORC_AVERROR_RESET || ((oldstreamcount != m_priv->m_avFormatContext->nb_streams) && (m_priv->m_avFormatContext->ctx_flags & AVFMTCTX_NOHEADER))))
+        {
+            uint newstreamcount = m_priv->m_avFormatContext->nb_streams;
+            LOG(VB_GENERAL, LOG_INFO, QString("Stream count changed %1->%2").arg(oldstreamcount).arg(newstreamcount));
+
+            if (newstreamcount == 0)
+            {
+                LOG(VB_GENERAL, LOG_ERR, "No streams found. Exiting");
+                *nextstate = TorcDecoder::Stopped;
+                continue;
+            }
+
+            if (error == TORC_AVERROR_RESET)
+            {
+                if (!ResetDemuxer(Thread))
+                {
+                    LOG(VB_GENERAL, LOG_ERR, "Failed to reset demuxer. Exiting");
+                    *nextstate = TorcDecoder::Stopped;
+                    continue;
+                }
+            }
+            else if (!UpdateDemuxer(Thread))
+            {
+                LOG(VB_GENERAL, LOG_ERR, "Failed to update demuxer. Exiting");
+                *nextstate = TorcDecoder::Stopped;
+                continue;
+            }
         }
 
         if (packet->stream_index == videoindex)

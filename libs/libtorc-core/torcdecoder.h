@@ -50,8 +50,7 @@ class TORC_CORE_PUBLIC TorcDecoder
     typedef enum DemuxerState
     {
         DemuxerReady = 0,
-        DemuxerWaiting,
-        DemuxerFlush
+        DemuxerWaiting
     } DemuxerState;
 
     virtual ~TorcDecoder();

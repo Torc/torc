@@ -235,7 +235,7 @@ bool TorcSGVideoPlayer::Refresh(quint64 TimeNow, const QSizeF &Size, bool Visibl
     if (m_decoder && m_buffers.GetNumberReadyFrames() < 1)
     {
         VideoDecoder *decoder = static_cast<VideoDecoder*>(m_decoder);
-        if (decoder && decoder->GetDemuxerState() == TorcDecoder::DemuxerWaiting)
+        if (decoder && decoder->GetDemuxerState() != TorcDecoder::DemuxerReady)
         {
             LOG(VB_GENERAL, LOG_INFO, "No more video frames - unpausing demuxer");
 
