@@ -63,6 +63,7 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
     void             SetupAudio         (TorcAudioThread    *Thread);
     bool             PauseDecoderThreads(TorcDemuxerThread  *Thread);
     void             ResetStreams       (TorcDemuxerThread  *Thread);
+    bool             ScanStreams        (TorcDemuxerThread  *Thread);
     bool             CreateAVFormatContext (TorcDemuxerThread *Thread);
     void             DeleteAVFormatContext (TorcDemuxerThread *Thread);
     bool             OpenDemuxer        (TorcDemuxerThread  *Thread);
