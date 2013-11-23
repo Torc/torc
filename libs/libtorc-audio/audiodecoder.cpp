@@ -2215,7 +2215,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
                     if (count++ > 400)
                     {
                         LOG(VB_GENERAL, LOG_WARNING, "Waited 20 seconds for player to drain buffers - continuing");
-                        m_priv->m_demuxerThread->m_demuxerState == TorcDecoder::DemuxerReady;
+                        m_priv->m_demuxerThread->m_demuxerState = TorcDecoder::DemuxerReady;
                         break;
                     }
 
