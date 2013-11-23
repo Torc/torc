@@ -692,8 +692,10 @@ int AudioDecoder::GetCurrentStream(TorcStreamTypes Type)
 
 int AudioDecoder::GetStreamCount(TorcStreamTypes Type)
 {
+    int result = 0;
     m_streamLock->lockForRead();
-    int result = m_programs[m_currentProgram]->m_streams[Type].size();
+    if (!m_programs.isEmpty())
+        result = m_programs[m_currentProgram]->m_streams[Type].size();
     m_streamLock->unlock();
     return result;
 }
@@ -1332,7 +1334,7 @@ bool AudioDecoder::SelectProgram(int Index)
         return false;
     }
 
-    if (!m_priv->m_avFormatContext || Index >= m_programs.size() || Index < 0)
+    if (!m_priv->m_avFormatContext || Index >= m_programs.size() || Index < 0 || m_programs.isEmpty())
         return false;
 
     if (!m_priv->m_avFormatContext->nb_programs)
@@ -1549,7 +1551,7 @@ bool AudioDecoder::OpenDecoders(void)
     // Start afresh
     CloseDecoders();
 
-    if (!m_priv->m_avFormatContext)
+    if (!m_priv->m_avFormatContext || m_programs.isEmpty())
         return false;
 
     if (m_flags & TorcDecoder::DecodeNone)
@@ -1916,10 +1918,7 @@ bool AudioDecoder::CreateAVFormatContext(TorcDemuxerThread *Thread)
 
         // Scan for streams
         if ((err = avformat_find_stream_info(m_priv->m_avFormatContext, NULL)) < 0)
-        {
-            LOG(VB_GENERAL, LOG_ERR, QString("Failed to find streams - error '%1'").arg(AVErrorToString(err)));
-            return false;
-        }
+            LOG(VB_GENERAL, LOG_WARNING, QString("Failed to find streams - error '%1'").arg(AVErrorToString(err)));
 
         // perform any post-initialisation
         m_priv->m_buffer->InitialiseAVContext(m_priv->m_avFormatContext);
@@ -1981,32 +1980,35 @@ bool AudioDecoder::ScanStreams(TorcDemuxerThread *Thread)
     // Scan programs
     if (!ScanPrograms())
     {
-        // This is currently most likely to happen with MHEG only streams
-        LOG(VB_GENERAL, LOG_ERR, "Failed to find any valid programs");
-        return false;
+        // This is currently most likely to happen with MHEG only streams, BDJ menus etc
+        LOG(VB_GENERAL, LOG_WARNING, "Failed to find any valid programs");
     }
-
-    // Get the bitrate
-    UpdateBitrate();
-
-    // Select a program
-    (void)SelectProgram(0);
-
-    // Select streams
-    (void)SelectStreams();
-
-    // Open decoders
-    if (!OpenDecoders())
+    else
     {
-        LOG(VB_GENERAL, LOG_ERR, "Failed to open decoders");
-        return false;
+        // Get the bitrate
+        UpdateBitrate();
+
+        // Select a program
+        if (SelectProgram(0))
+        {
+            // Select streams
+            if (SelectStreams())
+            {
+                // Open decoders
+                if (!OpenDecoders())
+                {
+                    LOG(VB_GENERAL, LOG_ERR, "Failed to open decoders");
+                    return false;
+                }
+
+                // Parse chapters
+                ScanChapters();
+
+                // Debug!
+                DebugPrograms();
+            }
+        }
     }
-
-    // Parse chapters
-    ScanChapters();
-
-    // Debug!
-    DebugPrograms();
 
     return true;
 }
@@ -2566,6 +2568,9 @@ void AudioDecoder::ResetChapters(void)
 bool AudioDecoder::SelectStream(TorcStreamTypes Type)
 {
     QWriteLocker locker(m_streamLock);
+
+    if (m_programs.isEmpty())
+        return false;
 
     int current  = m_currentStreams[Type];
     int selected = -1;
