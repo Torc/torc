@@ -16,7 +16,6 @@ typedef enum TorcStreamTypes
     StreamTypeAudio = StreamTypeStart,
     StreamTypeVideo,
     StreamTypeSubtitle,
-    StreamTypeRawText,
     StreamTypeAttachment,
     StreamTypeEnd
 } TorcStreamTypes;

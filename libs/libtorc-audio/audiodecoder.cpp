@@ -135,7 +135,6 @@ QString AudioDecoder::StreamTypeToString(TorcStreamTypes Type)
         case StreamTypeAudio:      return QString("Audio");
         case StreamTypeVideo:      return QString("Video");
         case StreamTypeSubtitle:   return QString("Subtitle");
-        case StreamTypeRawText:    return QString("RawText");
         case StreamTypeAttachment: return QString("Attachment");
         default: break;
     }
@@ -827,40 +826,34 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
     *state = TorcDecoder::Stopped;
 }
 
-bool AudioDecoder::VideoBufferStatus(int &Unused, int &Inuse, int &Held)
+bool AudioDecoder::VideoBufferStatus(int&, int&, int&)
 {
-    (void)Unused;
-    (void)Inuse;
-    (void)Held;
     return true;
 }
 
-void AudioDecoder::ProcessVideoPacket(AVFormatContext *Context, AVStream *Stream, AVPacket *Packet)
+void AudioDecoder::ProcessVideoPacket(AVFormatContext*, AVStream*, AVPacket*)
 {
-    (void)Stream;
-    (void)Packet;
 }
 
-AVCodec* AudioDecoder::PreInitVideoDecoder(AVFormatContext *Context, AVStream *Stream)
+AVCodec* AudioDecoder::PreInitVideoDecoder(AVFormatContext*, AVStream*)
 {
-    (void)Context;
-    (void)Stream;
     return NULL;
 }
 
-void AudioDecoder::PostInitVideoDecoder(AVCodecContext *Context)
+void AudioDecoder::PostInitVideoDecoder(AVCodecContext*)
 {
-    (void)Context;
 }
 
-void AudioDecoder::CleanupVideoDecoder(AVStream *Stream)
+void AudioDecoder::CleanupVideoDecoder(AVStream*)
 {
-    (void)Stream;
 }
 
-void AudioDecoder::FlushVideoBuffers(bool Stopped)
+void AudioDecoder::FlushVideoBuffers(bool)
 {
-    (void)Stopped;
+}
+
+void AudioDecoder::ProcessSubtitlePacket(AVFormatContext*, AVStream*, AVPacket*)
+{
 }
 
 void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
@@ -1284,17 +1277,19 @@ void AudioDecoder::DecodeSubtitles(TorcSubtitleThread *Thread)
         {
             m_streamLock->lockForRead();
 
-            int index = m_currentStreams[StreamTypeSubtitle];
-            AVCodecContext *context = index > -1 ? m_priv->m_avFormatContext->streams[index]->codec : NULL;
-
             if (packet == &gFlushCodec)
             {
-                if (context)
-                    avcodec_flush_buffers(context);
+                uint numberstreams = m_priv->m_avFormatContext->nb_streams;
+                for (uint i = 0; (numberstreams && (i < numberstreams)); ++i)
+                    if (m_priv->m_avFormatContext->streams[i]->codec)
+                        avcodec_flush_buffers(m_priv->m_avFormatContext->streams[i]->codec);
+
                 packet = NULL;
             }
             else
             {
+                ProcessSubtitlePacket(m_priv->m_avFormatContext, m_priv->m_avFormatContext->streams[packet->stream_index], packet);
+
                 av_free_packet(packet);
                 delete packet;
                 packet = NULL;
@@ -1361,8 +1356,6 @@ bool AudioDecoder::SelectStreams(void)
     {
         SelectStream(StreamTypeAudio);
         SelectStream(StreamTypeVideo);
-        SelectStream(StreamTypeSubtitle);
-        SelectStream(StreamTypeRawText);
 
         return true;
     }
@@ -1564,8 +1557,7 @@ bool AudioDecoder::OpenDecoders(void)
             continue;
         }
 
-        if ((StreamTypeVideo == i || StreamTypeSubtitle == i || StreamTypeRawText == i) &&
-            !(m_flags & TorcDecoder::DecodeVideo))
+        if ((StreamTypeVideo == i || StreamTypeSubtitle == i) && !(m_flags & TorcDecoder::DecodeVideo))
         {
             continue;
         }
@@ -2141,7 +2133,6 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
         // N.B. no need to lock m_streamLock for read from demux thread
         int videoindex = m_currentStreams[StreamTypeVideo];
         int audioindex = m_currentStreams[StreamTypeAudio];
-        int subindex   = m_currentStreams[StreamTypeSubtitle];
 
         if (eof)
         {
@@ -2291,7 +2282,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
             Thread->m_videoThread->m_queue->Push(packet);
         else if (packet->stream_index == audioindex)
             Thread->m_audioThread->m_queue->Push(packet);
-        else if (packet->stream_index == subindex)
+        else if (m_priv->m_avFormatContext->streams[packet->stream_index]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE)
             Thread->m_subtitleThread->m_queue->Push(packet);
         else
             av_free_packet(packet);
@@ -2482,10 +2473,7 @@ TorcStreamData* AudioDecoder::ScanStream(uint Index)
     }
     else
     {
-        AVMediaType mediatype = avstream->codec->codec_type;
-        AVCodecID   codecid   = avstream->codec->codec_id;
-
-        switch (mediatype)
+        switch (avstream->codec->codec_type)
         {
             case AVMEDIA_TYPE_VIDEO:
                 stream->m_type = StreamTypeVideo;
@@ -2495,10 +2483,7 @@ TorcStreamData* AudioDecoder::ScanStream(uint Index)
                 stream->m_originalChannels = avstream->codec->channels;
                 break;
             case AVMEDIA_TYPE_SUBTITLE:
-                if (codecid == AV_CODEC_ID_TEXT || codecid == AV_CODEC_ID_SRT)
-                    stream->m_type = StreamTypeRawText;
-                else
-                    stream->m_type = StreamTypeSubtitle;
+                stream->m_type = StreamTypeSubtitle;
                 break;
             case AVMEDIA_TYPE_ATTACHMENT:
                 stream->m_type = StreamTypeAttachment;
@@ -2576,7 +2561,7 @@ bool AudioDecoder::SelectStream(TorcStreamTypes Type)
     int selected = -1;
     int count    = m_programs[m_currentProgram]->m_streams[Type].size();
     bool ignore = (Type == StreamTypeAudio && !FlagIsSet(DecodeAudio)) ||
-                  ((Type == StreamTypeVideo || Type == StreamTypeSubtitle || Type == StreamTypeRawText) && !FlagIsSet(DecodeVideo));
+                  ((Type == StreamTypeVideo || Type == StreamTypeSubtitle) && !FlagIsSet(DecodeVideo));
 
     // no streams available
     if (count < 1 || ignore)
@@ -2710,7 +2695,6 @@ void AudioDecoder::DebugPrograms(void)
         DebugStreams(m_programs[i]->m_streams[StreamTypeVideo]);
         DebugStreams(m_programs[i]->m_streams[StreamTypeAudio]);
         DebugStreams(m_programs[i]->m_streams[StreamTypeSubtitle]);
-        DebugStreams(m_programs[i]->m_streams[StreamTypeRawText]);
         DebugStreams(m_programs[i]->m_streams[StreamTypeAttachment]);
     }
 }
