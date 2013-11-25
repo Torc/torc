@@ -100,6 +100,11 @@ TorcQMLDisplay* TorcQMLEventProxy::GetDisplay(void)
     return m_display;
 }
 
+QWindow* TorcQMLEventProxy::GetWindow(void)
+{
+    return m_window;
+}
+
 bool TorcQMLEventProxy::event(QEvent *Event)
 {
     if (Event->type() == TorcEvent::TorcEventType)

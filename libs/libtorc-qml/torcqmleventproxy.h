@@ -42,6 +42,7 @@ class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
     void                      RegisterCallback         (RenderCallback Function, void* Object, int Parameter);
     void                      ProcessCallbacks         (void);
     TorcQMLDisplay*           GetDisplay               (void);
+    QWindow*                  GetWindow                (void);
 
   protected:
     bool                      event                    (QEvent *Event);
