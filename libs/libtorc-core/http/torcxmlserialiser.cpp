@@ -23,6 +23,13 @@
 // Torc
 #include "torcxmlserialiser.h"
 
+/*! \class TorcXMLSerialiser
+ *  \brief A serialiser for XML formatted output.
+ *
+ * TorcXMLSerialiser uses QXmlStreamWriter for the bulk of the serialisation overhead.
+ *
+ * \todo Ensure complete consistency and interopability with all other serialisers.
+*/
 TorcXMLSerialiser::TorcXMLSerialiser()
   : TorcSerialiser(),
     m_xmlStream(NULL)
