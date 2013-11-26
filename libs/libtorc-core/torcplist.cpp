@@ -17,15 +17,6 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 */
 
-/**
- * \class TorcPList
- *  A parser for binary property lists, using QVariant for internal
- *  storage. Values can be queried using GetValue and the structure
- *  can be exported to Xml with ToXml().
- *
- *  Support for importing Xml formatted property lists will be added.
- */
-
 // Qt
 #include <QtEndian>
 #include <QDateTime>
@@ -49,24 +40,6 @@
 #define TRAILER_ROOTOBJ_INDEX  10
 #define TRAILER_OFFTAB_INDEX   18
 
-enum
-{
-    BPLIST_NULL    = 0x00,
-    BPLIST_FALSE   = 0x08,
-    BPLIST_TRUE    = 0x09,
-    BPLIST_FILL    = 0x0F,
-    BPLIST_UINT    = 0x10,
-    BPLIST_REAL    = 0x20,
-    BPLIST_DATE    = 0x30,
-    BPLIST_DATA    = 0x40,
-    BPLIST_STRING  = 0x50,
-    BPLIST_UNICODE = 0x60,
-    BPLIST_UID     = 0x70,
-    BPLIST_ARRAY   = 0xA0,
-    BPLIST_SET     = 0xC0,
-    BPLIST_DICT    = 0xD0
-};
-
 // NB Do not call this twice on the same data
 static void convert_float(quint8 *p, quint8 s)
 {
@@ -83,6 +56,14 @@ static void convert_float(quint8 *p, quint8 s)
 #endif
 }
 
+/*! \class TorcPList
+ *  \brief A parser for binary property lists
+ *
+ *  TorcPList uses QVariant for internal storage. Values can be queried using GetValue
+ *  and the structure can be exported to Xml with ToXml().
+ *
+ *  \todo Support for importing Xml formatted property lists.
+ */
 TorcPList::TorcPList(const QByteArray &Data)
   : m_data(NULL),
     m_offsetTable(NULL),
@@ -95,6 +76,7 @@ TorcPList::TorcPList(const QByteArray &Data)
     ParseBinaryPList(Data);
 }
 
+///brief Return the value for the given Key.
 QVariant TorcPList::GetValue(const QString &Key)
 {
     if ((int)m_result.type() != QMetaType::QVariantMap)
@@ -111,6 +93,7 @@ QVariant TorcPList::GetValue(const QString &Key)
     return QVariant();
 }
 
+///brief Return the complete plist in formatted XML.
 QString TorcPList::ToString(void)
 {
     QByteArray res;
@@ -121,6 +104,7 @@ QString TorcPList::ToString(void)
     return QString::fromUtf8(res.data());
 }
 
+///brief Convert the parsed plist to XML.
 bool TorcPList::ToXML(QIODevice *Device)
 {
     QXmlStreamWriter XML(Device);
@@ -138,6 +122,7 @@ bool TorcPList::ToXML(QIODevice *Device)
     return success;
 }
 
+///brief Convert the given parsed Data element to valid XML.
 bool TorcPList::ToXML(const QVariant &Data, QXmlStreamWriter &XML)
 {
     switch (Data.type())
@@ -179,6 +164,7 @@ bool TorcPList::ToXML(const QVariant &Data, QXmlStreamWriter &XML)
     return true;
 }
 
+///brief Convert the given dictionary data element to valid XML.
 void TorcPList::DictToXML(const QVariant &Data, QXmlStreamWriter &XML)
 {
     XML.writeStartElement("dict");
@@ -195,6 +181,7 @@ void TorcPList::DictToXML(const QVariant &Data, QXmlStreamWriter &XML)
     XML.writeEndElement();
 }
 
+///brief Convert the given array data element to valid XML.
 void TorcPList::ArrayToXML(const QVariant &Data, QXmlStreamWriter &XML)
 {
     XML.writeStartElement("array");
@@ -206,6 +193,7 @@ void TorcPList::ArrayToXML(const QVariant &Data, QXmlStreamWriter &XML)
     XML.writeEndElement();
 }
 
+///brief Parse the binary plist contained in Data.
 void TorcPList::ParseBinaryPList(const QByteArray &Data)
 {
     // reset

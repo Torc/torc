@@ -11,6 +11,25 @@
 class TORC_CORE_PUBLIC TorcPList
 {
   public:
+    enum
+    {
+        BPLIST_NULL    = 0x00,
+        BPLIST_FALSE   = 0x08,
+        BPLIST_TRUE    = 0x09,
+        BPLIST_FILL    = 0x0F,
+        BPLIST_UINT    = 0x10,
+        BPLIST_REAL    = 0x20,
+        BPLIST_DATE    = 0x30,
+        BPLIST_DATA    = 0x40,
+        BPLIST_STRING  = 0x50,
+        BPLIST_UNICODE = 0x60,
+        BPLIST_UID     = 0x70,
+        BPLIST_ARRAY   = 0xA0,
+        BPLIST_SET     = 0xC0,
+        BPLIST_DICT    = 0xD0
+    };
+
+  public:
     TorcPList       (const QByteArray &Data);
 
     QVariant        GetValue           (const QString &Key);
