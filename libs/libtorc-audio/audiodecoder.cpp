@@ -1288,7 +1288,11 @@ void AudioDecoder::DecodeSubtitles(TorcSubtitleThread *Thread)
             }
             else
             {
-                ProcessSubtitlePacket(m_priv->m_avFormatContext, m_priv->m_avFormatContext->streams[packet->stream_index], packet);
+                AVCodecID codecid =m_priv->m_avFormatContext->streams[packet->stream_index]->codec->codec_id;
+
+                // teletext not supported (and may never be...)
+                if (codecid != AV_CODEC_ID_DVB_TELETEXT)
+                    ProcessSubtitlePacket(m_priv->m_avFormatContext, m_priv->m_avFormatContext->streams[packet->stream_index], packet);
 
                 av_free_packet(packet);
                 delete packet;
