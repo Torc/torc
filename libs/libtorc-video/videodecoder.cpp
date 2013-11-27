@@ -20,6 +20,9 @@
 * USA.
 */
 
+// Qt
+#include <QThread>
+
 // Torc
 #include "torclogging.h"
 #include "torccoreutils.h"
@@ -27,6 +30,7 @@
 #include "audiodecoder.h"
 #include "torcavutils.h"
 #include "videoframe.h"
+#include "torcvideooverlay.h"
 #include "videodecoder.h"
 
 #define SANE_ASPECT_RATIO(Val) (Val > 0.1f && Val < 10.0f)
@@ -533,6 +537,46 @@ void VideoDecoder::FlushVideoBuffers(bool Stopped)
         m_firstVideoTimecode = AV_NOPTS_VALUE;
     }
     m_streamLock->unlock();
+}
+
+void VideoDecoder::ProcessSubtitlePacket(AVFormatContext *Context, AVStream *Stream, AVPacket *Packet)
+{
+    (void)Context;
+
+    if(!Stream || !Packet)
+        return;
+
+    if (!Stream->codec)
+        return;
+
+    int gotsubtitle = 0;
+    AVSubtitle *subtitle = new AVSubtitle();
+    memset(subtitle, 0, sizeof(AVSubtitle));
+
+    int error = avcodec_decode_subtitle2(Stream->codec, subtitle, &gotsubtitle, Packet);
+
+    if (error < 0)
+    {
+        LOG(VB_GENERAL, LOG_ERR, QString("Error decoding subtitle: %1").arg(AVErrorToString(error)));
+        delete subtitle;
+        return;
+    }
+
+    if (gotsubtitle)
+    {
+        TorcVideoOverlayItem *overlay = new TorcVideoOverlayItem((void*)subtitle, QLocale::English, Stream->disposition,
+                                                                 Stream->codec->codec_id == AV_CODEC_ID_XSUB);
+
+        if (overlay->IsValid())
+        {
+            m_videoParent->AddOverlay(overlay);
+            return;
+        }
+
+        delete overlay;
+    }
+
+    delete subtitle;
 }
 
 void VideoDecoder::SetFormat(AVPixelFormat Format, int Width, int Height, int References, bool UpdateParent)

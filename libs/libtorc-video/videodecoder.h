@@ -42,6 +42,7 @@ class VideoDecoder : public AudioDecoder
     void         PostInitVideoDecoder(AVCodecContext *Context);
     void         CleanupVideoDecoder (AVStream *Stream);
     void         FlushVideoBuffers   (bool Stopped);
+    void         ProcessSubtitlePacket(AVFormatContext *Context, AVStream *Stream, AVPacket *Packet);
 
     void         SetFormat           (AVPixelFormat Format, int Width, int Height, int References, bool UpdateParent);
 
