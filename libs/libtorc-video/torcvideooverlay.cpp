@@ -136,7 +136,7 @@ void TorcVideoOverlay::AddOverlay(TorcVideoOverlayItem *Item)
     // by default overlays are ignored and deleted
     if (m_ignoreOverlays)
     {
-        delete item;
+        delete Item;
         return;
     }
 
