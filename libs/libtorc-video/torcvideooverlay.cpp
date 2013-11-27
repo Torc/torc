@@ -111,7 +111,8 @@ bool TorcVideoOverlayItem::IsValid(void)
  * \sa TorcVideoOverlayItem
  */
 TorcVideoOverlay::TorcVideoOverlay()
-  : m_overlaysLock(new QMutex())
+  : m_ignoreOverlays(true),
+    m_overlaysLock(new QMutex())
 {
 }
 
@@ -128,6 +129,9 @@ TorcVideoOverlay::~TorcVideoOverlay()
 */
 void TorcVideoOverlay::AddOverlay(TorcVideoOverlayItem *Item)
 {
+    if (m_ignoreOverlays)
+        return;
+
     QMutexLocker locker(m_overlaysLock);
 
     // NB we use insertMulti to handle duplicated keys (i.e. same pts)

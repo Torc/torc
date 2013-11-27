@@ -68,6 +68,7 @@ class TORC_VIDEO_PUBLIC TorcVideoOverlay
     QList<TorcVideoOverlayItem*>        GetNewOverlays     (qint64 VideoPts);
 
   protected:
+    bool                                m_ignoreOverlays;
     QMap<qint64, TorcVideoOverlayItem*> m_overlays;
     QMutex                             *m_overlaysLock;
 };
