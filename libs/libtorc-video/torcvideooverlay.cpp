@@ -108,6 +108,10 @@ bool TorcVideoOverlayItem::IsValid(void)
 /*! \class TorcVideoOverlay
  *  \brief Maintains an ordered list of queued overlay items, sorted by presentation timestamp.
  *
+ * TorcVideoOverlay is intended to be incorporated into another object (e.g. a media player).
+ *
+ * \note Overlays are disabled by default. Set m_ignoreOverlays to false to enable.
+ *
  * \sa TorcVideoOverlayItem
  */
 TorcVideoOverlay::TorcVideoOverlay()
@@ -129,8 +133,12 @@ TorcVideoOverlay::~TorcVideoOverlay()
 */
 void TorcVideoOverlay::AddOverlay(TorcVideoOverlayItem *Item)
 {
+    // by default overlays are ignored and deleted
     if (m_ignoreOverlays)
+    {
+        delete item;
         return;
+    }
 
     QMutexLocker locker(m_overlaysLock);
 
