@@ -21,6 +21,7 @@
 */
 
 // Torc
+#include "torccommandline.h"
 #include "torclogging.h"
 #include "videoplayer.h"
 #include "videodecoder.h"

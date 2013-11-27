@@ -18,6 +18,8 @@
 */
 
 // Torc
+#include "torclogging.h"
+#include "audiowrapper.h"
 #include "videodecoder.h"
 #include "videoframe.h"
 #include "videocolourspace.h"
