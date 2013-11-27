@@ -6,12 +6,14 @@
 
 // Torc
 #include "torcsetting.h"
-#include "audiowrapper.h"
 #include "torcvideoexport.h"
 #include "videobuffers.h"
+#include "torcvideooverlay.h"
 #include "torcplayer.h"
 
-class VideoPlayer : public TorcPlayer
+class AudioWrapper;
+
+class VideoPlayer : public TorcPlayer, public TorcVideoOverlay
 {
     Q_OBJECT
 

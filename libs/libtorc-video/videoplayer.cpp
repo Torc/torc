@@ -24,6 +24,7 @@
 #include "torcadminthread.h"
 #include "torclogging.h"
 #include "torcdecoder.h"
+#include "audiowrapper.h"
 #include "videoframe.h"
 #include "videoplayer.h"
 
@@ -115,6 +116,7 @@ class TorcVideoPlayerSettings : public TorcAdminObject
 
 VideoPlayer::VideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : TorcPlayer(Parent, PlaybackFlags, DecodeFlags),
+    TorcVideoOverlay(),
     m_audioWrapper(new AudioWrapper(this)),
     m_reset(false)
 {

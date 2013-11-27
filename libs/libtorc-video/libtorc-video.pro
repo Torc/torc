@@ -32,12 +32,14 @@ HEADERS += videodecoder.h
 HEADERS += videoframe.h
 HEADERS += videobuffers.h
 HEADERS += videocolourspace.h
+HEADERS += torcvideooverlay.h
 
 SOURCES += videoplayer.cpp
 SOURCES += videodecoder.cpp
 SOURCES += videoframe.cpp
 SOURCES += videobuffers.cpp
 SOURCES += videocolourspace.cpp
+SOURCES += torcvideooverlay.cpp
 
 #libbluray
 DEFINES     += HAVE_CONFIG_H DLOPEN_CRYPTO_LIBS HAVE_PTHREAD_H HAVE_DIRENT_H HAVE_STRINGS_H
