@@ -26,6 +26,7 @@
 #include <QOpenGLFramebufferObject>
 
 // Torc
+#include "torclocalcontext.h"
 #include "torcqmleventproxy.h"
 #include "torclogging.h"
 #include "torcqthread.h"
