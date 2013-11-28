@@ -564,6 +564,10 @@ void VideoDecoder::ProcessSubtitlePacket(AVFormatContext *Context, AVStream *Str
 
     if (gotsubtitle)
     {
+        qint64 pts = Packet->dts == (int64_t)AV_NOPTS_VALUE ? 0 : (long long)(av_q2d(Stream->time_base) * Packet->dts * 1000);
+        subtitle->start_display_time += pts;
+        subtitle->end_display_time   += pts;
+
         TorcVideoOverlayItem *overlay = new TorcVideoOverlayItem((void*)subtitle, QLocale::English, Stream->disposition,
                                                                  Stream->codec->codec_id == AV_CODEC_ID_XSUB);
 

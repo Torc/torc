@@ -56,8 +56,8 @@ TorcVideoOverlayItem::TorcVideoOverlayItem(void *Buffer, QLocale::Language Langu
     AVSubtitle *subtitle = static_cast<AVSubtitle*>(Buffer);
     if (subtitle)
     {
-        m_startPts = subtitle->pts + subtitle->start_display_time;
-        m_endPts   = subtitle->pts + subtitle->end_display_time;
+        m_startPts = subtitle->start_display_time;
+        m_endPts   = subtitle->end_display_time;
         m_valid    = true;
     }
     else
@@ -194,7 +194,7 @@ QList<TorcVideoOverlayItem*> TorcVideoOverlay::GetNewOverlays(qint64 VideoPts)
     }
 
     // and remove them from the master list (this should work fine with duplicated pts keys)
-    foreach (TorcVideoOverlayItem* overlay, m_overlays)
+    foreach (TorcVideoOverlayItem* overlay, overlays)
         m_overlays.remove(overlay->m_startPts);
 
     // and pass them back
