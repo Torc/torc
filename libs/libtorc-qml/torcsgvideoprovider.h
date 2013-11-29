@@ -29,6 +29,9 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
 
     bool                Refresh               (VideoFrame* Frame, const QSizeF &Size, quint64 TimeNow, bool ResetVideo);
     void                Reset                 (void);
+    qreal               GetVideoAspectRatio   (void);
+    QSizeF              GetVideoSize          (void);
+    QRectF              GetCachedGeometry     (void);
     QRectF              GetGeometry           (const QRectF &ParentGeometry, qreal DisplayAspectRatio);
     bool                GetDirtyGeometry      (void);
 
@@ -84,6 +87,8 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
     VideoColourSpace   *m_videoColourSpace;
     SwsContext         *m_conversionContext;
     QByteArray          m_conversionBuffer;
+
+    QRectF              m_cachedVideoGeometry;
 };
 
 

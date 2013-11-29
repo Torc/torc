@@ -285,6 +285,8 @@ void TorcSGVideoProvider::Reset(void)
 
     m_conversionBuffer.resize(0);
 
+    m_cachedVideoGeometry = QRectF();
+
     CustomiseTextures();
 }
 
@@ -298,6 +300,24 @@ bool TorcSGVideoProvider::GetDirtyGeometry(void)
     }
 
     return false;
+}
+
+///brief Return the last known video aspect ratio.
+qreal TorcSGVideoProvider::GetVideoAspectRatio(void)
+{
+    return m_lastFrameAspectRatio;
+}
+
+///brief Return the last known video size.
+QSizeF TorcSGVideoProvider::GetVideoSize(void)
+{
+    return QSizeF(m_lastFrameWidth, m_lastFrameHeight);
+}
+
+///brief Return the last known valid video geometry.
+QRectF TorcSGVideoProvider::GetCachedGeometry(void)
+{
+    return m_cachedVideoGeometry;
 }
 
 /*! \brief Provide the subrect of ParentGeometry in which the current video frame should be displayed.
@@ -327,7 +347,9 @@ QRectF TorcSGVideoProvider::GetGeometry(const QRectF &ParentGeometry, qreal Disp
         left = (ParentGeometry.width() - width) / 2.0f;
     }
 
-    return QRectF(left , m_lastFrameInverted ? top + height : top, width, m_lastFrameInverted ? -height : height);
+    m_cachedVideoGeometry = QRectF(left , m_lastFrameInverted ? top + height : top, width, m_lastFrameInverted ? -height : height);
+
+    return m_cachedVideoGeometry;
 }
 
 /*! \brief Setup specific texture requirements.
