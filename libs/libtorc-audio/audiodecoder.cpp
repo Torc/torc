@@ -72,6 +72,7 @@ class TorcStreamData
       : m_type(StreamTypeUnknown),
         m_index(-1),
         m_id(-1),
+        m_codecID(AV_CODEC_ID_NONE),
         m_secondaryIndex(-1),
         m_avDisposition(AV_DISPOSITION_DEFAULT),
         m_language(DEFAULT_QT_LANGUAGE),
@@ -89,6 +90,7 @@ class TorcStreamData
     TorcStreamTypes       m_type;
     int                   m_index;
     int                   m_id;
+    AVCodecID             m_codecID;
     int                   m_secondaryIndex;
     int                   m_avDisposition;
     QLocale::Language     m_language;
@@ -96,6 +98,8 @@ class TorcStreamData
     int                   m_width;
     int                   m_height;
     QMap<QString,QString> m_avMetaData;
+    QByteArray            m_attachment;
+    QByteArray            m_subtitleHeader;
 };
 
 class TorcProgramData
@@ -684,8 +688,59 @@ void AudioDecoder::Seek(void)
         m_seek = true;
 }
 
+/*! \brief Return the attachment for the given stream.
+ *
+ * The stream must be an attachment stream and the codec id must match the Type (there can be various types of
+ * attachment streams in any given file). If there is a valid filename in the streams metadata, it will be used
+ * to populate Name.
+ *
+ * An empty QByteArray is returned if the stream does not exist, the type does not match or there is no attachment.
+*/
+QByteArray AudioDecoder::GetAttachment(int Index, AVCodecID Type, QString &Name)
+{
+    QReadLocker locker(m_streamLock);
+
+    if (m_programs.isEmpty())
+        return QByteArray();
+
+    // the underlying stream may have gone/moved...
+    if (Index < 0 || Index >= m_programs[m_currentProgram]->m_streams[StreamTypeAttachment].size())
+        return QByteArray();
+
+    // don't return an unknown attachment type
+    if (m_programs[m_currentProgram]->m_streams[StreamTypeAttachment][Index]->m_codecID != Type)
+        return QByteArray();
+
+    // fill in file name if known
+    if (m_programs[m_currentProgram]->m_streams[StreamTypeAttachment][Index]->m_avMetaData.contains("filename"))
+        Name = m_programs[m_currentProgram]->m_streams[StreamTypeAttachment][Index]->m_avMetaData.value("filename");
+
+    return m_programs[m_currentProgram]->m_streams[StreamTypeAttachment][Index]->m_attachment;
+}
+
+/*! \brief Return the subtitle header for the subtitle stream referenced by Index.
+ *
+ * This is usually the ASS header.
+ *
+ * An empty QByteArray is returned if Index is invalid or there is no header.
+*/
+QByteArray AudioDecoder::GetSubtitleHeader(int Index)
+{
+    QReadLocker locker(m_streamLock);
+
+    if (m_programs.isEmpty())
+        return QByteArray();
+
+    // the underlying stream may have gone/moved...
+    if (Index < 0 || Index >= m_programs[m_currentProgram]->m_streams[StreamTypeSubtitle].size())
+        return QByteArray();
+
+    return m_programs[m_currentProgram]->m_streams[StreamTypeSubtitle][Index]->m_subtitleHeader;
+}
+
 int AudioDecoder::GetCurrentStream(TorcStreamTypes Type)
 {
+    QReadLocker locker(m_streamLock);
     return m_currentStreams[Type];
 }
 
@@ -2452,11 +2507,12 @@ TorcStreamData* AudioDecoder::ScanStream(uint Index)
     if (Index >= m_priv->m_avFormatContext->nb_streams)
         return NULL;
 
-    TorcStreamData* stream = new TorcStreamData();
-    AVStream* avstream     = m_priv->m_avFormatContext->streams[Index];
+    TorcStreamData* stream  = new TorcStreamData();
+    AVStream* avstream      = m_priv->m_avFormatContext->streams[Index];
     stream->m_index         = Index;
     stream->m_id            = avstream->id;
     stream->m_avDisposition = avstream->disposition;
+    stream->m_codecID       = avstream->codec->codec_id;
 
     // Metadata
     if (avstream->metadata && av_dict_count(avstream->metadata))
@@ -2488,9 +2544,11 @@ TorcStreamData* AudioDecoder::ScanStream(uint Index)
                 break;
             case AVMEDIA_TYPE_SUBTITLE:
                 stream->m_type = StreamTypeSubtitle;
+                stream->m_subtitleHeader = QByteArray((char *)avstream->codec->subtitle_header, avstream->codec->subtitle_header_size);
                 break;
             case AVMEDIA_TYPE_ATTACHMENT:
                 stream->m_type = StreamTypeAttachment;
+                stream->m_attachment = QByteArray((char *)avstream->codec->extradata, avstream->codec->extradata_size);
                 break;
             case AVMEDIA_TYPE_DATA:
                 stream->m_type = StreamTypeUnknown;

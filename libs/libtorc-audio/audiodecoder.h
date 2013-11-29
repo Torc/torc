@@ -55,6 +55,8 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
     void             Pause              (void);
     void             Stop               (void);
     void             Seek               (void);
+    QByteArray       GetAttachment      (int Index, AVCodecID Type, QString &Name);
+    QByteArray       GetSubtitleHeader  (int Index);
     int              GetCurrentStream   (TorcStreamTypes Type);
     int              GetStreamCount     (TorcStreamTypes Type);
 
