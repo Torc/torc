@@ -754,6 +754,29 @@ int AudioDecoder::GetStreamCount(TorcStreamTypes Type)
     return result;
 }
 
+/*! \brief Translate the given FFmpeg stream index to a Torc index for the current program and stream type.
+*/
+int AudioDecoder::GetTorcStreamIndex(int AvStreamIndex, TorcStreamTypes Type)
+{
+    int result = -1;
+
+    QReadLocker locker(m_streamLock);
+
+    if (m_programs.isEmpty())
+        return result;
+
+    for (int i = 0; i < m_programs[m_currentProgram]->m_streams[Type].size(); ++i)
+    {
+        if (m_programs[m_currentProgram]->m_streams[Type].at(i)->m_index == AvStreamIndex)
+        {
+            result = i;
+            break;
+        }
+    }
+
+    return result;
+}
+
 void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
 {
     if (!Thread)
