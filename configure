@@ -2217,6 +2217,7 @@ enable x11base
 enable vaapi
 enable vdpau
 enable avresample
+enable libass
 
 # Torc configurable options
 enable libcrypto
