@@ -153,8 +153,12 @@ void VideoPlayer::Render(quint64 TimeNow)
 
 void VideoPlayer::Reset(void)
 {
+    // reset video buffers
     m_buffers.Reset(true);
     m_reset = false;
+
+    // reset overlays
+    ClearAllOverlays();
 }
 
 void* VideoPlayer::GetAudio(void)
