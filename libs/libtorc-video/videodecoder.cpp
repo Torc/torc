@@ -263,6 +263,11 @@ void VideoDecoder::ReleaseAVBuffer(AVCodecContext *Context, AVFrame *Frame)
         Frame->data[i] = NULL;
 }
 
+VideoPlayer* VideoDecoder::GetPlayerParent(void)
+{
+    return m_videoParent;
+}
+
 static AVPixelFormat GetFormat(AVCodecContext *Context, const AVPixelFormat *Formats)
 {
     if (!Context || !Formats)
@@ -568,7 +573,8 @@ void VideoDecoder::ProcessSubtitlePacket(AVFormatContext *Context, AVStream *Str
         subtitle->start_display_time += pts;
         subtitle->end_display_time   += pts;
 
-        TorcVideoOverlayItem *overlay = new TorcVideoOverlayItem((void*)subtitle, QLocale::English, Stream->disposition,
+        int index = GetTorcStreamIndex(Stream->index, StreamTypeSubtitle);
+        TorcVideoOverlayItem *overlay = new TorcVideoOverlayItem((void*)subtitle, index, QLocale::English, Stream->disposition,
                                                                  Stream->codec->codec_id == AV_CODEC_ID_XSUB);
 
         if (overlay->IsValid())

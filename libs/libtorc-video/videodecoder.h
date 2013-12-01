@@ -29,26 +29,27 @@ class VideoDecoder : public AudioDecoder
   public:
     ~VideoDecoder();
     AVPixelFormat AgreePixelFormat    (AVCodecContext *Context, const AVPixelFormat *Formats);
-    int          GetAVBuffer         (AVCodecContext *Context, AVFrame* Frame);
-    void         ReleaseAVBuffer     (AVCodecContext *Context, AVFrame* Frame);
+    int          GetAVBuffer          (AVCodecContext *Context, AVFrame* Frame);
+    void         ReleaseAVBuffer      (AVCodecContext *Context, AVFrame* Frame);
+    VideoPlayer* GetPlayerParent      (void);
 
   protected:
     explicit VideoDecoder (const QString &URI, TorcPlayer *Parent, int Flags);
 
-    bool         FilterAudioFrames   (qint64 Timecode);
-    bool         VideoBufferStatus   (int &Unused, int &Inuse, int &Held);
-    void         ProcessVideoPacket  (AVFormatContext *Context, AVStream *Stream, AVPacket *Packet);
-    AVCodec*     PreInitVideoDecoder (AVFormatContext *Context, AVStream *Stream);
-    void         PostInitVideoDecoder(AVCodecContext *Context);
-    void         CleanupVideoDecoder (AVStream *Stream);
-    void         FlushVideoBuffers   (bool Stopped);
+    bool         FilterAudioFrames    (qint64 Timecode);
+    bool         VideoBufferStatus    (int &Unused, int &Inuse, int &Held);
+    void         ProcessVideoPacket   (AVFormatContext *Context, AVStream *Stream, AVPacket *Packet);
+    AVCodec*     PreInitVideoDecoder  (AVFormatContext *Context, AVStream *Stream);
+    void         PostInitVideoDecoder (AVCodecContext *Context);
+    void         CleanupVideoDecoder  (AVStream *Stream);
+    void         FlushVideoBuffers    (bool Stopped);
     void         ProcessSubtitlePacket(AVFormatContext *Context, AVStream *Stream, AVPacket *Packet);
 
-    void         SetFormat           (AVPixelFormat Format, int Width, int Height, int References, bool UpdateParent);
+    void         SetFormat            (AVPixelFormat Format, int Width, int Height, int References, bool UpdateParent);
 
   private:
-    void         ResetPTSTracker     (void);
-    int64_t      GetValidTimestamp   (int64_t PTS, int64_t DTS);
+    void         ResetPTSTracker      (void);
+    int64_t      GetValidTimestamp    (int64_t PTS, int64_t DTS);
 
   private:
     bool         m_keyframeSeen;
