@@ -25,22 +25,27 @@
 #include "torclogging.h"
 #include "torcvideooverlay.h"
 
-// FFmpeg
+// FFmpeg/libbluray
 extern "C"
 {
 #include "libavformat/avformat.h"
 #include "libavcodec/avcodec.h"
+#include "libbluray/src/libbluray/decoders/overlay.h"
 }
 
-#define MAX_QUEUED_OVERLAYS 50
+#define MAX_QUEUED_OVERLAYS 200
 
 /*! \class TorcVideoOverlayItem
  *  \brief A wrapper around different types of subtitles, captions, menus and other video graphics.
  *
  * \todo Add bluray overlays.
+ * \todo Now that stream index has been added, can probably remove language, flags etc
 */
-TorcVideoOverlayItem::TorcVideoOverlayItem(void *Buffer, QLocale::Language Language, int Flags, bool FixPosition)
+
+///brief Construct a TorcVideoOverlayItem that wraps an AVSubtitle.
+TorcVideoOverlayItem::TorcVideoOverlayItem(void *Buffer, int Index, QLocale::Language Language, int Flags, bool FixPosition)
   : m_valid(false),
+    m_streamIndex(Index),
     m_type(Subtitle),
     m_bufferType(FFmpegSubtitle),
     m_flags(Flags),
@@ -53,17 +58,50 @@ TorcVideoOverlayItem::TorcVideoOverlayItem(void *Buffer, QLocale::Language Langu
     m_endPts(AV_NOPTS_VALUE),
     m_buffer((void*)Buffer)
 {
-    AVSubtitle *subtitle = static_cast<AVSubtitle*>(Buffer);
-    if (subtitle)
+    // we need the stream index to fetch metadata/attachments etc at a later time
+    if (Index < 0)
     {
-        m_startPts = subtitle->start_display_time;
-        m_endPts   = subtitle->end_display_time;
-        m_valid    = true;
+        LOG(VB_GENERAL, LOG_ERR, "Invalid overlay - invalid stream index");
+        return;
     }
-    else
+
+    // is this a valid AVSubtitle?
+    AVSubtitle *subtitle = static_cast<AVSubtitle*>(Buffer);
+    if (!subtitle)
     {
         LOG(VB_GENERAL, LOG_ERR, "Invalid overlay item (buffer is not AVSubtitle)");
+        return;
     }
+
+    m_startPts = subtitle->start_display_time;
+    m_endPts   = subtitle->end_display_time;
+    m_valid    = true;
+}
+
+///brief Construct a TorcVideoOverlayItem that wraps a list of bd_overlay_s structures.
+TorcVideoOverlayItem::TorcVideoOverlayItem(void *Buffer)
+  : m_valid(false),
+    m_streamIndex(-1),
+    m_type(Subtitle),
+    m_bufferType(BDOverlay),
+    m_flags(0),
+    m_language(QLocale::English),
+    m_subRectType(SubRectVideo),
+    m_displayRect(),
+    m_displaySubRect(),
+    m_fixRect(false),
+    m_startPts(AV_NOPTS_VALUE),
+    m_endPts(AV_NOPTS_VALUE),
+    m_buffer((void*)Buffer)
+{
+    QList<bd_overlay_s*> *overlays = static_cast<QList<bd_overlay_s*> *>(m_buffer);
+    if (!overlays)
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Invalid overlay item (not a bluray overlay buffer)");
+        return;
+    }
+
+    m_valid    = true;
 }
 
 TorcVideoOverlayItem::TorcVideoOverlayItem()
@@ -93,6 +131,32 @@ TorcVideoOverlayItem::~TorcVideoOverlayItem()
                 if (subtitle->num_rects > 0)
                     av_free(subtitle->rects);
             }
+        }
+        else if (m_bufferType == BDOverlay)
+        {
+            QList<bd_overlay_s*> *overlays = static_cast<QList<bd_overlay_s*> *>(m_buffer);
+
+            if (overlays)
+            {
+                while (!overlays->isEmpty())
+                {
+                    bd_overlay_s* overlay = overlays->takeFirst();
+
+                    if (overlay->palette)
+                        delete [] overlay->palette;
+
+                    if (overlay->img)
+                        bd_refcnt_dec(overlay->img);
+
+                    delete overlay;
+                }
+
+                delete overlays;
+            }
+        }
+        else
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Uknown buffer type - leaking");
         }
 
         m_buffer = NULL;
@@ -142,19 +206,28 @@ void TorcVideoOverlay::AddOverlay(TorcVideoOverlayItem *Item)
 
     QMutexLocker locker(m_overlaysLock);
 
-    // NB we use insertMulti to handle duplicated keys (i.e. same pts)
     if (Item)
-        m_overlays.insertMulti(Item->m_startPts, Item);
-
-    if (m_overlays.size() > MAX_QUEUED_OVERLAYS)
     {
-        LOG(VB_GENERAL, LOG_INFO, QString("%1 overlays queued - deleting the oldest").arg(m_overlays.size()));
-
-        while (!m_overlays.isEmpty() && m_overlays.size() > MAX_QUEUED_OVERLAYS)
+        if (Item->m_bufferType == TorcVideoOverlayItem::BDOverlay)
         {
-            QMap<qint64, TorcVideoOverlayItem*>::iterator it = m_overlays.begin();
+            m_menuOverlays.append(Item);
+        }
+        else
+        {
+            // NB we use insertMulti to handle duplicated keys (i.e. same pts)
+            m_timedOverlays.insertMulti(Item->m_startPts, Item);
+        }
+    }
+
+    if (m_timedOverlays.size() > MAX_QUEUED_OVERLAYS)
+    {
+        LOG(VB_GENERAL, LOG_INFO, QString("%1 overlays queued - deleting the oldest").arg(m_timedOverlays.size()));
+
+        while (!m_timedOverlays.isEmpty() && m_timedOverlays.size() > MAX_QUEUED_OVERLAYS)
+        {
+            QMap<qint64, TorcVideoOverlayItem*>::iterator it = m_timedOverlays.begin();
             delete it.value();
-            m_overlays.erase(it);
+            m_timedOverlays.erase(it);
         }
     }
 }
@@ -164,11 +237,14 @@ void TorcVideoOverlay::ClearAllOverlays(void)
 {
     QMutexLocker locker(m_overlaysLock);
 
-    QMap<qint64, TorcVideoOverlayItem*>::const_iterator it = m_overlays.constBegin();
-    for ( ; it != m_overlays.constEnd(); ++it)
+    while (!m_menuOverlays.isEmpty())
+        delete m_menuOverlays.takeFirst();
+
+    QMap<qint64, TorcVideoOverlayItem*>::const_iterator it = m_timedOverlays.constBegin();
+    for ( ; it != m_timedOverlays.constEnd(); ++it)
         delete it.value();
 
-    m_overlays.clear();
+    m_timedOverlays.clear();
 }
 
 /*! \brief Return an ordered list of overlays that are older than VideoPts.
@@ -184,9 +260,13 @@ QList<TorcVideoOverlayItem*> TorcVideoOverlay::GetNewOverlays(qint64 VideoPts)
 
     QList<TorcVideoOverlayItem*> overlays;
 
-    // create the list
-    QMap<qint64, TorcVideoOverlayItem*>::const_iterator it = m_overlays.constBegin();
-    for ( ; it != m_overlays.constEnd(); ++it)
+    // create the list - all menu (non-timed) overlays first
+    while (!m_menuOverlays.isEmpty())
+        overlays.append(m_menuOverlays.takeFirst());
+
+    // and then timed overlays that match the pts
+    QMap<qint64, TorcVideoOverlayItem*>::const_iterator it = m_timedOverlays.constBegin();
+    for ( ; it != m_timedOverlays.constEnd(); ++it)
     {
         if (it.key() > VideoPts)
             break;
@@ -195,7 +275,7 @@ QList<TorcVideoOverlayItem*> TorcVideoOverlay::GetNewOverlays(qint64 VideoPts)
 
     // and remove them from the master list (this should work fine with duplicated pts keys)
     foreach (TorcVideoOverlayItem* overlay, overlays)
-        m_overlays.remove(overlay->m_startPts);
+        m_timedOverlays.remove(overlay->m_startPts);
 
     // and pass them back
     return overlays;

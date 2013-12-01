@@ -34,13 +34,15 @@ class TORC_VIDEO_PUBLIC TorcVideoOverlayItem
     } OverlayBufferType;
 
   public:
-    TorcVideoOverlayItem (void *Buffer, QLocale::Language Language, int Flags, bool FixPosition);
+    TorcVideoOverlayItem (void *Buffer, int Index, QLocale::Language Language, int Flags, bool FixPosition);
+    TorcVideoOverlayItem (void *Buffer);
    ~TorcVideoOverlayItem ();
 
     bool                 IsValid       (void);
 
   public:
     bool                 m_valid;
+    int                  m_streamIndex;
     OverlayType          m_type;
     OverlayBufferType    m_bufferType;
     int                  m_flags;
@@ -69,7 +71,8 @@ class TORC_VIDEO_PUBLIC TorcVideoOverlay
 
   protected:
     bool                                m_ignoreOverlays;
-    QMap<qint64, TorcVideoOverlayItem*> m_overlays;
+    QMap<qint64, TorcVideoOverlayItem*> m_timedOverlays;
+    QList<TorcVideoOverlayItem*>        m_menuOverlays;
     QMutex                             *m_overlaysLock;
 };
 
