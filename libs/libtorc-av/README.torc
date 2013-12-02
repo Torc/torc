@@ -2,18 +2,9 @@ libtorc-av is a clone of FFmpeg version 1.2
 
 git://git.videolan.org/ffmpeg.git
 
-The following files have been modified for Torc:
-
-common.mak
-library.mak
-
-The latest diff against upstream FFmpeg can be found in:
-
-torc.diff
-
-If any changes are made to the FFmpeg version, this file and torc.diff MUST be updated.
-This file and torc.diff MUST be updated after a resync with upstream FFmpeg.
+For local modifications see the patches directory. Any modifications to FFmpeg must include an associated
+patch to ensure changes can be easily re-applied after a resync with the upstream version.
 
 The Torc configure script (in the root directory) is a modified version of the FFmpeg configure script and
-it must be updated following any resync. Changes are tracked in configure.diff in the root directory.
+it must be also updated following any resync. Changes are tracked in configure.diff in the root directory.
 

@@ -1,7 +1,7 @@
-diff --git a/common.mak b/common.mak
+diff --git a/libs/libtorc-av/common.mak b/libs/libtorc-av/common.mak
 index dd9f4cb..07ecaa1 100644
---- a/common.mak
-+++ b/common.mak
+--- a/libs/libtorc-av/common.mak
++++ b/libs/libtorc-av/common.mak
 @@ -12,7 +12,7 @@ FFLIBS    := $(FFLIBS-yes) $(FFLIBS)
  TESTPROGS += $(TESTPROGS-yes)
  
@@ -11,10 +11,10 @@ index dd9f4cb..07ecaa1 100644
  
  EXAMPLES  := $(EXAMPLES:%=$(SUBDIR)%-example$(EXESUF))
  OBJS      := $(sort $(OBJS:%=$(SUBDIR)%))
-diff --git a/library.mak b/library.mak
+diff --git a/libs/libtorc-av/library.mak b/libs/libtorc-av/library.mak
 index d89050e..0e479ec 100644
---- a/library.mak
-+++ b/library.mak
+--- a/libs/libtorc-av/library.mak
++++ b/libs/libtorc-av/library.mak
 @@ -28,7 +28,7 @@ $(SUBDIR)$(LIBNAME): $(OBJS)
  	$(AR) rc $@ $^ $(EXTRAOBJS)
  	$(RANLIB) $@
