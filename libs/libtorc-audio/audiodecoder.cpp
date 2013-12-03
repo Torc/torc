@@ -860,7 +860,7 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
 
             if (packet == &gFlushCodec)
             {
-                if (context)
+                if (context && context->codec)
                     avcodec_flush_buffers(context);
                 FlushVideoBuffers(false);
                 packet = NULL;
@@ -1019,7 +1019,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
 
             if (packet == &gFlushCodec)
             {
-                if (context)
+                if (context && context->codec)
                     avcodec_flush_buffers(context);
                 if (m_audio)
                     m_audio->Reset();
@@ -1359,8 +1359,10 @@ void AudioDecoder::DecodeSubtitles(TorcSubtitleThread *Thread)
             {
                 uint numberstreams = m_priv->m_avFormatContext->nb_streams;
                 for (uint i = 0; (numberstreams && (i < numberstreams)); ++i)
-                    if (m_priv->m_avFormatContext->streams[i]->codec && m_priv->m_avFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE)
-                        avcodec_flush_buffers(m_priv->m_avFormatContext->streams[i]->codec);
+                    if (m_priv->m_avFormatContext->streams[i]->codec)
+                        if (m_priv->m_avFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE)
+                            if (m_priv->m_avFormatContext->streams[i]->codec->codec)
+                                avcodec_flush_buffers(m_priv->m_avFormatContext->streams[i]->codec);
 
                 packet = NULL;
             }
@@ -1828,7 +1830,7 @@ bool AudioDecoder::UpdateDemuxer(TorcDemuxerThread *Thread)
     for (uint i = 0; i < m_priv->m_avFormatContext->nb_streams; i++)
     {
         AVCodecContext *codec = m_priv->m_avFormatContext->streams[i]->codec;
-        if (codec->codec)
+        if (codec && codec->codec)
             avcodec_flush_buffers(codec);
     }
 
