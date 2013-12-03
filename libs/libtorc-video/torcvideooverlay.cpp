@@ -30,7 +30,6 @@ extern "C"
 {
 #include "libavformat/avformat.h"
 #include "libavcodec/avcodec.h"
-#include "libbluray/src/libbluray/decoders/overlay.h"
 }
 
 #define MAX_QUEUED_OVERLAYS 200
@@ -79,7 +78,7 @@ TorcVideoOverlayItem::TorcVideoOverlayItem(void *Buffer, int Index, QLocale::Lan
 }
 
 ///brief Construct a TorcVideoOverlayItem that wraps a list of bd_overlay_s structures.
-TorcVideoOverlayItem::TorcVideoOverlayItem(void *Buffer)
+TorcVideoOverlayItem::TorcVideoOverlayItem(QList<bd_overlay_s *> *Overlays)
   : m_valid(false),
     m_streamIndex(-1),
     m_type(Subtitle),
@@ -92,16 +91,28 @@ TorcVideoOverlayItem::TorcVideoOverlayItem(void *Buffer)
     m_fixRect(false),
     m_startPts(AV_NOPTS_VALUE),
     m_endPts(AV_NOPTS_VALUE),
-    m_buffer((void*)Buffer)
+    m_buffer((void*)Overlays)
 {
-    QList<bd_overlay_s*> *overlays = static_cast<QList<bd_overlay_s*> *>(m_buffer);
-    if (!overlays)
-    {
-        LOG(VB_GENERAL, LOG_ERR, "Invalid overlay item (not a bluray overlay buffer)");
-        return;
-    }
+    m_valid = m_buffer;
+}
 
-    m_valid    = true;
+///brief Construct a TorcVideoOverlayItem that wraps a list of bd_overlay_s structures.
+TorcVideoOverlayItem::TorcVideoOverlayItem(QList<bd_argb_overlay_s *> *Overlays)
+  : m_valid(false),
+    m_streamIndex(-1),
+    m_type(Subtitle),
+    m_bufferType(BDARGBOverlay),
+    m_flags(0),
+    m_language(QLocale::English),
+    m_subRectType(SubRectVideo),
+    m_displayRect(),
+    m_displaySubRect(),
+    m_fixRect(false),
+    m_startPts(AV_NOPTS_VALUE),
+    m_endPts(AV_NOPTS_VALUE),
+    m_buffer((void*)Overlays)
+{
+    m_valid = m_buffer;
 }
 
 TorcVideoOverlayItem::TorcVideoOverlayItem()
@@ -146,7 +157,26 @@ TorcVideoOverlayItem::~TorcVideoOverlayItem()
                         delete [] overlay->palette;
 
                     if (overlay->img)
-                        bd_refcnt_dec(overlay->img);
+                        delete [] overlay->img;
+
+                    delete overlay;
+                }
+
+                delete overlays;
+            }
+        }
+        else if (m_bufferType == BDARGBOverlay)
+        {
+            QList<bd_argb_overlay_s*> *overlays = static_cast<QList<bd_argb_overlay_s*> *>(m_buffer);
+
+            if (overlays)
+            {
+                while (!overlays->isEmpty())
+                {
+                    bd_argb_overlay_s* overlay = overlays->takeFirst();
+
+                    if (overlay->argb)
+                        delete [] overlay->argb;
 
                     delete overlay;
                 }
@@ -177,6 +207,8 @@ bool TorcVideoOverlayItem::IsValid(void)
  * \note Overlays are disabled by default. Set m_ignoreOverlays to false to enable.
  *
  * \sa TorcVideoOverlayItem
+ *
+ * /todo TorcVideoOverlayItem needs a rethink.
  */
 TorcVideoOverlay::TorcVideoOverlay()
   : m_ignoreOverlays(true),
@@ -208,7 +240,8 @@ void TorcVideoOverlay::AddOverlay(TorcVideoOverlayItem *Item)
 
     if (Item)
     {
-        if (Item->m_bufferType == TorcVideoOverlayItem::BDOverlay)
+        if (Item->m_bufferType == TorcVideoOverlayItem::BDOverlay ||
+            Item->m_bufferType == TorcVideoOverlayItem::BDARGBOverlay)
         {
             m_menuOverlays.append(Item);
         }

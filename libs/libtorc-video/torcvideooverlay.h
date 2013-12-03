@@ -8,6 +8,7 @@
 #include <QLocale>
 
 // Torc
+#include "libbluray/src/libbluray/decoders/overlay.h"
 #include "torcvideoexport.h"
 
 class TORC_VIDEO_PUBLIC TorcVideoOverlayItem
@@ -30,12 +31,14 @@ class TORC_VIDEO_PUBLIC TorcVideoOverlayItem
     {
         BDOverlay,
         RawUTF8,
-        FFmpegSubtitle
+        FFmpegSubtitle,
+        BDARGBOverlay
     } OverlayBufferType;
 
   public:
     TorcVideoOverlayItem (void *Buffer, int Index, QLocale::Language Language, int Flags, bool FixPosition);
-    TorcVideoOverlayItem (void *Buffer);
+    TorcVideoOverlayItem (QList<bd_overlay_s*> *Overlays);
+    TorcVideoOverlayItem (QList<bd_argb_overlay_s*> *Overlays);
    ~TorcVideoOverlayItem ();
 
     bool                 IsValid       (void);
