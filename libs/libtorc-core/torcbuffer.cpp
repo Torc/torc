@@ -208,6 +208,16 @@ void TorcBuffer::Close(void)
     LOG(VB_GENERAL, LOG_INFO, QString("Closing '%1'").arg(m_uri));
 }
 
+/*! \brief Should end of file errors be ignored at this time.
+ *
+ * Certain buffer implementations will handle their own state internally but may return EOF for
+ * underlying files they are accessing.
+*/
+bool TorcBuffer::IgnoreEOF(void)
+{
+    return false;
+}
+
 /*! \fn    TorcBuffer::HandleAction
  *  \brief Process events relevant to this buffer.
  *

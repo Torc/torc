@@ -42,6 +42,7 @@ class TORC_CORE_PUBLIC TorcBuffer
 
     virtual bool       Open               (void);
     virtual void       Close              (void);
+    virtual bool       IgnoreEOF          (void);
     virtual bool       HandleAction       (int Action);
     virtual void*      RequiredAVContext  (void);
     virtual void       InitialiseAVContext(void* Context);
