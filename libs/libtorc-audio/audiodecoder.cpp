@@ -497,7 +497,7 @@ class TorcDemuxerThread : public TorcDecoderThread
 
         if (m_parent)
             if (m_parent->OpenDemuxer(this))
-                    m_parent->DemuxPackets(this);
+                m_parent->DemuxPackets(this);
 
         LOG(VB_GENERAL, LOG_INFO, "Demuxer thread stopping");
     }
@@ -1366,7 +1366,7 @@ void AudioDecoder::DecodeSubtitles(TorcSubtitleThread *Thread)
             }
             else
             {
-                AVCodecID codecid =m_priv->m_avFormatContext->streams[packet->stream_index]->codec->codec_id;
+                AVCodecID codecid = m_priv->m_avFormatContext->streams[packet->stream_index]->codec->codec_id;
 
                 // teletext not supported (and may never be...)
                 if (codecid != AV_CODEC_ID_DVB_TELETEXT)
@@ -2274,7 +2274,7 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
         int error;
         if ((error = av_read_frame(m_priv->m_avFormatContext, packet)) < 0)
         {
-            // the buffer has reached the end of a sequence/clip and needs to syncronise with the player
+            // the buffer has reached the end of a sequence/clip and needs to synchronise with the player
             if (m_priv->m_demuxerThread->m_demuxerState == TorcDecoder::DemuxerWaiting && (error == TORC_AVERROR_FLUSH || error == TORC_AVERROR_RESET))
             {
                 // unset eof
@@ -2294,6 +2294,10 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
 
                     QThread::usleep(50000);
                 }
+
+                // exit immediately if needed
+                if (m_interruptDecoder)
+                    break;
             }
             else if (error == TORC_AVERROR_IDLE)
             {
