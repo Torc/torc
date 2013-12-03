@@ -1903,15 +1903,11 @@ bool AudioDecoder::CreateAVFormatContext(TorcDemuxerThread *Thread)
 
     if (!m_priv->m_avFormatContext)
     {
-        if (m_priv->m_buffer->RequiredAVFormat())
+        AVInputFormat *required = (AVInputFormat*)m_priv->m_buffer->RequiredAVFormat(needbuffer);
+        if (required)
         {
-            AVInputFormat *required = (AVInputFormat*)m_priv->m_buffer->RequiredAVFormat();
-            if (required)
-            {
-                format = required;
-                needbuffer = false;
-                LOG(VB_GENERAL, LOG_INFO, QString("Demuxer required by buffer '%1'").arg(format->name));
-            }
+            format = required;
+            LOG(VB_GENERAL, LOG_INFO, QString("Demuxer required by buffer '%1'").arg(format->name));
         }
 
         m_priv->m_createdAVFormatContext = true;

@@ -127,10 +127,13 @@ void TorcBuffer::InitialiseAVContext(void* Context)
  *
  * TorcBuffer subclasses that have their own AVFormat should reimplement this method.
  *
+ * If an input buffer is NOT required, then set BufferRequired to false. Otherwise ignore.
+ *
  * \sa RequiredAVContext
 */
-void* TorcBuffer::RequiredAVFormat(void)
+void* TorcBuffer::RequiredAVFormat(bool& BufferRequired)
 {
+    (void)BufferRequired;
     return NULL;
 }
 

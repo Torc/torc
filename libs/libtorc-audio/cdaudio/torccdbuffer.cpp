@@ -41,8 +41,9 @@ TorcCDBuffer::~TorcCDBuffer()
 {
 }
 
-void* TorcCDBuffer::RequiredAVFormat(void)
+void* TorcCDBuffer::RequiredAVFormat(bool &BufferRequired)
 {
+    BufferRequired = false;
     return m_input;
 }
 

@@ -16,7 +16,7 @@ class TorcCDBuffer : public TorcBuffer
 
     bool       Open                 (void);
     void       Close                (void);
-    void*      RequiredAVFormat     (void);
+    void*      RequiredAVFormat     (bool &BufferRequired);
     void       InitialiseAVContext  (void* Context);
     QString    GetFilteredUri       (void);
     int        Read                 (quint8 *Buffer, qint32 BufferSize);
