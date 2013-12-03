@@ -888,7 +888,7 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
 
         int index = m_currentStreams[StreamTypeVideo];
         AVStream *stream = index > -1 ? m_priv->m_avFormatContext->streams[index] : NULL;
-        if (stream && stream->codec)
+        if (stream && stream->codec && stream->codec->codec)
             avcodec_flush_buffers(stream->codec);
         CleanupVideoDecoder(stream);
     }
