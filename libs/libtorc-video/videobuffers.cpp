@@ -294,9 +294,14 @@ void VideoBuffers::ReleaseFrameFromDecoding(VideoFrame *Frame)
     QMutexLocker locker(m_lock);
 
     if (m_decoding.contains(Frame))
+    {
         m_decoding.removeOne(Frame);
+    }
     else
+    {
         LOG(VB_GENERAL, LOG_ERR, "Decoder releasing unknown frame");
+        return;
+    }
 
     m_decoded.append(Frame);
     m_ready.append(Frame);
