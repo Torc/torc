@@ -1723,7 +1723,7 @@ bool AudioDecoder::OpenDecoders(const QList<TorcStreamData*> &Streams)
 void AudioDecoder::TearDown(void)
 {
     Stop();
-    m_priv->m_demuxerThread->Wait(1000);
+    m_priv->m_demuxerThread->Wait(10000);
 }
 
 /*! \brief Pause all decoding threads and wait for them to pause.
