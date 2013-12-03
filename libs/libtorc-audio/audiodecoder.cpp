@@ -2314,9 +2314,14 @@ void AudioDecoder::DemuxPackets(TorcDemuxerThread *Thread)
 
                 if (m_priv->m_avFormatContext->pb->error)
                 {
-                    LOG(VB_GENERAL, LOG_ERR, QString("libav io error (%1)").arg(m_priv->m_avFormatContext->pb->error));
-                    demuxererror = true;
-                    break;
+                    int ioerror = m_priv->m_avFormatContext->pb->error;
+
+                    if (!(ioerror == TORC_AVERROR_FLUSH || ioerror == TORC_AVERROR_IDLE || ioerror == TORC_AVERROR_RESET))
+                    {
+                        LOG(VB_GENERAL, LOG_ERR, QString("libav io error (%1)").arg(AVErrorToString(ioerror)));
+                        demuxererror = true;
+                        break;
+                    }
                 }
 
                 QThread::usleep(50000);
