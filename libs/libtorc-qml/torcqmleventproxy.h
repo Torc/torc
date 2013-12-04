@@ -44,6 +44,8 @@ class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
     TorcQMLDisplay*           GetDisplay               (void);
     QWindow*                  GetWindow                (void);
 
+    bool                      eventFilter              (QObject *Object, QEvent *Event);
+
   protected:
     bool                      event                    (QEvent *Event);
 
@@ -59,6 +61,7 @@ class TORC_QML_PUBLIC TorcQMLEventProxy : public QObject
     QMutex                   *m_callbackLock;
     QList<TorcRenderCallback> m_callbacks;
     QTimer                   *m_mouseTimer;
+    bool                      m_mouseHidden;
     TorcQMLDisplay           *m_display;
 };
 

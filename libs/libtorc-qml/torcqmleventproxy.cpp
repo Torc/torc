@@ -34,12 +34,14 @@ TorcQMLEventProxy::TorcQMLEventProxy(QWindow *Window, bool Hidemouse /*= false*/
     m_window(Window),
     m_callbackLock(new QMutex()),
     m_mouseTimer(NULL),
+    m_mouseHidden(false),
     m_display(TorcQMLDisplay::Create(Window))
 {
     gLocalContext->SetUIObject(this);
 
     if (m_window)
     {
+        m_window->installEventFilter(this);
         gLocalContext->AddObserver(this);
 
         QQuickWindow *window = dynamic_cast<QQuickWindow*>(m_window);
@@ -53,7 +55,6 @@ TorcQMLEventProxy::TorcQMLEventProxy(QWindow *Window, bool Hidemouse /*= false*/
 
     if (Hidemouse)
     {
-        HideMouse();
         m_mouseTimer = new QTimer();
         connect(m_mouseTimer, SIGNAL(timeout()), this, SLOT(HideMouse()));
         m_mouseTimer->setTimerType(Qt::VeryCoarseTimer);
@@ -67,7 +68,10 @@ TorcQMLEventProxy::~TorcQMLEventProxy()
     delete m_mouseTimer;
 
     if (m_window)
+    {
         gLocalContext->RemoveObserver(this);
+        m_window->removeEventFilter(this);
+    }
 
     gLocalContext->SetUIObject(NULL);
 }
@@ -121,6 +125,18 @@ bool TorcQMLEventProxy::event(QEvent *Event)
     return false;
 }
 
+bool TorcQMLEventProxy::eventFilter(QObject *Object, QEvent *Event)
+{
+    if (Event && Object && Object == m_window && QEvent::MouseMove == Event->type() && m_mouseHidden && m_mouseTimer)
+    {
+        m_mouseHidden = false;
+        m_mouseTimer->start();
+        QGuiApplication::restoreOverrideCursor();
+    }
+
+    return false;
+}
+
 void TorcQMLEventProxy::SceneGraphInitialized(void)
 {
     QThread::currentThread()->setObjectName(QTRENDER_THREAD);
@@ -130,5 +146,7 @@ void TorcQMLEventProxy::SceneGraphInitialized(void)
 
 void TorcQMLEventProxy::HideMouse(void)
 {
-    QGuiApplication::setOverrideCursor(QCursor(Qt::BlankCursor));
+    if (!m_mouseHidden)
+        QGuiApplication::setOverrideCursor(QCursor(Qt::BlankCursor));
+    m_mouseHidden = true;
 }
