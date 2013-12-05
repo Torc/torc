@@ -64,6 +64,17 @@ bool TorcSGVideoPlayer::HandleAction(int Action)
     return VideoPlayer::HandleAction(Action);
 }
 
+///brief Handle mouse events within the video frame area.
+void TorcSGVideoPlayer::HandleMouseEvent(QMouseEvent *Event, const QRectF &BoundingRect)
+{
+    if (Event && m_videoProvider)
+    {
+        QPointF translated = m_videoProvider->MapPointToVideo(Event->localPos(), BoundingRect);
+
+        LOG(VB_GENERAL, LOG_DEBUG, QString("video point %1+%2").arg(translated.x()).arg(translated.y()));
+    }
+}
+
 void TorcSGVideoPlayer::SetVideoProvider(TorcSGVideoProvider *Provider)
 {
     if (m_videoProvider)

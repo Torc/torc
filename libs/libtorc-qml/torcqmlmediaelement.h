@@ -10,6 +10,7 @@
 #include "torcqmlexport.h"
 
 class VideoColourSpace;
+class TorcSGVideoPlayer;
 class TorcSGVideoProvider;
 
 class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem, public TorcPlayerInterface
@@ -22,8 +23,6 @@ class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem, public TorcPlayer
     virtual ~TorcQMLMediaElement();
 
     QSGNode*             updatePaintNode          (QSGNode* Node, UpdatePaintNodeData*);
-
-  signals:
     
   public slots:
     void                 SubscriberDeleted        (QObject *Subscriber);
@@ -39,13 +38,21 @@ class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem, public TorcPlayer
 
   protected:
     bool                 event                    (QEvent *Event);
+    void                 mousePressEvent          (QMouseEvent *Event);
+    void                 mouseReleaseEvent        (QMouseEvent *Event);
+    void                 mouseDoubleClickEvent    (QMouseEvent *Event);
+    void                 mouseMoveEvent           (QMouseEvent *Event);
 
   private:
     VideoColourSpace    *m_videoColourSpace;
+    TorcSGVideoPlayer   *m_videoPlayer;
     TorcSGVideoProvider *m_videoProvider;
     QTimer              *m_refreshTimer;
     bool                 m_textureStale;
     bool                 m_geometryStale;
+
+    QRectF               m_boundingRect;
+    QRectF               m_mediaRect;
 };
 
 #endif // TORCQMLMEDIAELEMENT_H

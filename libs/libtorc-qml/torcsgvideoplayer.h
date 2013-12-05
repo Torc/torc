@@ -2,6 +2,7 @@
 #define TORCSGVIDEOPLAYER_H
 
 // Qt
+#include <QMouseEvent>
 #include <QElapsedTimer>
 
 // Torc
@@ -32,6 +33,7 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
     void                   Reset                  (void);
     bool                   HandleAction           (int Action);
     void                   SetVideoProvider       (TorcSGVideoProvider *Provider);
+    void                   HandleMouseEvent       (QMouseEvent *Event, const QRectF &BoundingRect);
 
   signals:
     void                   ResetRequest           (void);

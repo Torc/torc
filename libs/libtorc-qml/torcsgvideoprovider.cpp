@@ -291,7 +291,7 @@ void TorcSGVideoProvider::Reset(void)
 }
 
 ///\brief Inform the parent that the video geometry needs updating
-bool TorcSGVideoProvider::GetDirtyGeometry(void)
+bool TorcSGVideoProvider::GeometryIsDirty(void)
 {
     if (m_dirtyGeometry)
     {
@@ -350,6 +350,22 @@ QRectF TorcSGVideoProvider::GetGeometry(const QRectF &ParentGeometry, qreal Disp
     m_cachedVideoGeometry = QRectF(left , m_lastFrameInverted ? top + height : top, width, m_lastFrameInverted ? -height : height);
 
     return m_cachedVideoGeometry;
+}
+
+/*! \brief Map the given point in screen space to the currently displaying video frame.
+ *
+ * \note TorcQMLMediaElement will already have filtered out mouse events that lie outside of the video frame.
+*/
+QPointF TorcSGVideoProvider::MapPointToVideo(const QPointF &Point, const QRectF &ParentGeometry)
+{
+    // translate Point from the parent's 'space' into video 'space'
+    QPointF translated(Point - m_cachedVideoGeometry.topLeft());
+
+    // and scale. These factors are the inverse of those calculated in GetGeometry
+    qreal widthfactor  = (m_lastFrameHeight * m_lastFrameAspectRatio) / ParentGeometry.width();
+    qreal heightfactor = m_lastFrameHeight / ParentGeometry.height();
+
+    return QPointF(translated.x() * widthfactor, translated.y() * heightfactor);
 }
 
 /*! \brief Setup specific texture requirements.

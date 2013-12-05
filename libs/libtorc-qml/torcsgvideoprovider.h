@@ -33,7 +33,8 @@ class TORC_QML_PUBLIC TorcSGVideoProvider : public QSGTexture, public QSGTexture
     QSizeF              GetVideoSize          (void);
     QRectF              GetCachedGeometry     (void);
     QRectF              GetGeometry           (const QRectF &ParentGeometry, qreal DisplayAspectRatio);
-    bool                GetDirtyGeometry      (void);
+    QPointF             MapPointToVideo       (const QPointF &Point, const QRectF &ParentGeometry);
+    bool                GeometryIsDirty       (void);
 
     // QSGTextureProvider
     QSGTexture*         texture               (void) const;

@@ -55,6 +55,7 @@ TorcQMLMediaElement::TorcQMLMediaElement(QQuickItem *Parent)
     TorcPlayerInterface(this, TorcQMLMediaElement::staticMetaObject, BLACKLIST, false),
     m_videoColourSpace(new VideoColourSpace(AVCOL_SPC_UNSPECIFIED)),
     m_videoProvider(NULL),
+    m_videoPlayer(NULL),
     m_refreshTimer(NULL),
     m_textureStale(false),
     m_geometryStale(true)
@@ -76,6 +77,9 @@ TorcQMLMediaElement::TorcQMLMediaElement(QQuickItem *Parent)
 
     // testing only - remove
     SetURI("/Users/mark/Dropbox/Videos/pioneer.ts");
+
+    // request mouse events
+    setAcceptedMouseButtons(Qt::AllButtons);
 }
 
 TorcQMLMediaElement::~TorcQMLMediaElement()
@@ -127,13 +131,12 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
         connect(dynamic_cast<QSGTextureProvider*>(m_videoProvider), SIGNAL(textureChanged()), this, SLOT(TextureChanged()), Qt::DirectConnection);
 
         // tell the player about the provider
-        TorcSGVideoPlayer *player = dynamic_cast<TorcSGVideoPlayer*>(m_player);
-        if (player)
+        if (m_videoPlayer)
         {
-            player->SetVideoProvider(m_videoProvider);
+            m_videoPlayer->SetVideoProvider(m_videoProvider);
 
             // testing - remove
-            player->PlayMedia(m_uri, false);
+            m_videoPlayer->PlayMedia(m_uri, false);
         }
     }
 
@@ -153,7 +156,7 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
     bool dirtyframe = false;
 
     if (m_player)
-        dirtyframe = m_player->Refresh(TorcCoreUtils::GetMicrosecondCount(), boundingRect().size(), true);
+        dirtyframe = m_player->Refresh(TorcCoreUtils::GetMicrosecondCount(), m_boundingRect.size(), true);
 
     if (node && m_videoProvider)
     {
@@ -164,9 +167,10 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
             m_textureStale = false;
         }
 
-        if (m_geometryStale || m_videoProvider->GetDirtyGeometry())
+        if (m_geometryStale || m_videoProvider->GeometryIsDirty())
         {
-            node->setRect(m_videoProvider->GetGeometry(boundingRect(), 1.0f));
+            m_mediaRect = m_videoProvider->GetGeometry(m_boundingRect, 1.0f);
+            node->setRect(m_mediaRect);
             m_geometryStale = false;
             node->markDirty(QSGNode::DirtyGeometry);
         }
@@ -185,18 +189,48 @@ void TorcQMLMediaElement::TextureChanged(void)
 
 void TorcQMLMediaElement::geometryChanged(const QRectF &NewGeometry, const QRectF &OldGeometry)
 {
-    if (NewGeometry != OldGeometry)
+    if (NewGeometry != m_boundingRect)
+    {
+        m_boundingRect = NewGeometry;
         m_geometryStale = true;
+    }
 
     QQuickItem::geometryChanged(NewGeometry, OldGeometry);
 }
 
 bool TorcQMLMediaElement::event(QEvent *Event)
 {
-    if (Event->type() == TorcEvent::TorcEventType)
+    if (!Event)
+        return false;
+
+    if (TorcEvent::TorcEventType == Event->type())
         return HandleEvent(Event);
 
     return false;
+}
+
+void TorcQMLMediaElement::mousePressEvent(QMouseEvent *Event)
+{
+    if (Event && m_videoPlayer && m_mediaRect.contains(Event->localPos()))
+        m_videoPlayer->HandleMouseEvent(Event, m_boundingRect);
+}
+
+void TorcQMLMediaElement::mouseReleaseEvent(QMouseEvent *Event)
+{
+    if (Event && m_videoPlayer && m_mediaRect.contains(Event->localPos()))
+        m_videoPlayer->HandleMouseEvent(Event, m_boundingRect);
+}
+
+void TorcQMLMediaElement::mouseMoveEvent(QMouseEvent *Event)
+{
+    if (Event && m_videoPlayer && m_mediaRect.contains(Event->localPos()))
+        m_videoPlayer->HandleMouseEvent(Event, m_boundingRect);
+}
+
+void TorcQMLMediaElement::mouseDoubleClickEvent(QMouseEvent *Event)
+{
+    if (Event && m_videoPlayer && m_mediaRect.contains(Event->localPos()))
+        m_videoPlayer->HandleMouseEvent(Event, m_boundingRect);
 }
 
 void TorcQMLMediaElement::SubscriberDeleted(QObject *Subscriber)
@@ -214,6 +248,8 @@ bool TorcQMLMediaElement::InitialisePlayer(void)
     {
         connect(m_player, SIGNAL(StateChanged(TorcPlayer::PlayerState)),
                 this, SLOT(PlayerStateChanged(TorcPlayer::PlayerState)));
+
+        m_videoPlayer = static_cast<TorcSGVideoPlayer*>(m_player);
 
         LOG(VB_GENERAL, LOG_INFO, "Player created (UI video and audio)");
     }
@@ -233,9 +269,8 @@ void TorcQMLMediaElement::PlayerStateChanged(TorcPlayer::PlayerState State)
 void TorcQMLMediaElement::Cleanup(void)
 {
     // the video provider is created in the Qt render thread and must be deleted there
-    TorcSGVideoPlayer *player = dynamic_cast<TorcSGVideoPlayer*>(m_player);
-    if (player)
-        player->SetVideoProvider(NULL);
+    if (m_videoPlayer)
+        m_videoPlayer->SetVideoProvider(NULL);
 
     delete m_videoProvider;
     m_videoProvider = NULL;
