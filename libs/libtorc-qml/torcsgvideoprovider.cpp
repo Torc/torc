@@ -364,8 +364,9 @@ QPointF TorcSGVideoProvider::MapPointToVideo(const QPointF &Point, const QRectF 
     // and scale. These factors are the inverse of those calculated in GetGeometry
     qreal widthfactor  = (m_lastFrameHeight * m_lastFrameAspectRatio) / ParentGeometry.width();
     qreal heightfactor = m_lastFrameHeight / ParentGeometry.height();
+    qreal factor = (widthfactor > heightfactor) ? widthfactor : heightfactor;
 
-    return QPointF(translated.x() * widthfactor, translated.y() * heightfactor);
+    return QPointF(translated.x() * factor, translated.y() * factor);
 }
 
 /*! \brief Setup specific texture requirements.
