@@ -117,7 +117,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
     void            KillTimer              (int &Timer);
     void            DestroyNextDecoder     (void);
     void            DestroyOldDecoder      (void);
-    bool            event                  (QEvent* Event);
+    virtual bool    event                  (QEvent* Event);
 
   protected:
     QObject        *m_parent;

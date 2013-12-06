@@ -62,7 +62,9 @@ void TorcSGVideoPlayer::Teardown(void)
     VideoPlayer::Teardown();
 }
 
-/*! \brief Handle mouse events within the video frame area.
+/*! \brief Handle events associated with the player.
+ *
+ * Mouse Events
  *
  * A click is detected as a mouse button press followed by a release at the same point with no other
  * intervening events.
@@ -70,36 +72,53 @@ void TorcSGVideoPlayer::Teardown(void)
  * \note The mouse button is currently ignored. All buttons are used and potentially a click could be detected using different butons.
  * \note Double clicks are currently ignored.
 */
-void TorcSGVideoPlayer::HandleMouseEvent(QMouseEvent *Event, const QRectF &BoundingRect)
+bool TorcSGVideoPlayer::event(QEvent *Event)
 {
-    if (Event && m_videoProvider)
+    if (!Event)
+        return false;
+
+    int type = Event->type();
+
+    if (QEvent::MouseButtonPress == type || QEvent::MouseButtonRelease == type || QEvent::MouseMove == type)
     {
-        int type = Event->type();
+        QMouseEvent *event = static_cast<QMouseEvent*>(Event);
 
-        if (QEvent::MouseButtonPress == type)
+        if (event && m_videoProvider && !m_parentGeometry.isNull())
         {
-            m_mousePress = Event->localPos();
-        }
-        else if (QEvent::MouseButtonRelease == type)
-        {
-            if (m_mousePress == Event->localPos())
+            if (QEvent::MouseButtonPress == type)
             {
-                QPointF translated = m_videoProvider->MapPointToVideo(Event->localPos(), BoundingRect);
-                LOG(VB_GENERAL, LOG_INFO, QString("Mouse click %1+%2").arg(translated.x()).arg(translated.y()));
+                m_mousePress = event->localPos();
             }
+            else if (QEvent::MouseButtonRelease == type)
+            {
+                if (m_mousePress == event->localPos())
+                {
+                    QPointF translated = m_videoProvider->MapPointToVideo(event->localPos(), m_parentGeometry);
+                    LOG(VB_GENERAL, LOG_INFO, QString("Mouse click %1+%2").arg(translated.x()).arg(translated.y()));
+                }
 
-            // reset
-            m_mousePress = QPointF(-1, 1);
-        }
-        else if (QEvent::MouseMove == type)
-        {
-            // reset click detection
-            m_mousePress = QPointF(-1, 1);
+                // reset
+                m_mousePress = QPointF(-1, 1);
+            }
+            else if (QEvent::MouseMove == type)
+            {
+                // reset click detection
+                m_mousePress = QPointF(-1, 1);
 
-            QPointF translated = m_videoProvider->MapPointToVideo(Event->localPos(), BoundingRect);
-            LOG(VB_GENERAL, LOG_INFO, QString("Mouse move %1+%2").arg(translated.x()).arg(translated.y()));
+                QPointF translated = m_videoProvider->MapPointToVideo(event->localPos(), m_parentGeometry);
+                LOG(VB_GENERAL, LOG_INFO, QString("Mouse move %1+%2").arg(translated.x()).arg(translated.y()));
+            }
         }
+
+        return true;
     }
+
+    return VideoPlayer::event(Event);
+}
+
+void TorcSGVideoPlayer::SetParentGeometry(const QRectF &NewGeometry)
+{
+    m_parentGeometry = NewGeometry;
 }
 
 void TorcSGVideoPlayer::SetVideoProvider(TorcSGVideoProvider *Provider)

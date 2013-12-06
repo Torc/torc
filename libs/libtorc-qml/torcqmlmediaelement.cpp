@@ -156,7 +156,7 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
     bool dirtyframe = false;
 
     if (m_player)
-        dirtyframe = m_player->Refresh(TorcCoreUtils::GetMicrosecondCount(), m_boundingRect.size(), true);
+        dirtyframe = m_player->Refresh(TorcCoreUtils::GetMicrosecondCount(), boundingRect().size(), true);
 
     if (node && m_videoProvider)
     {
@@ -169,7 +169,7 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
 
         if (m_geometryStale || m_videoProvider->GeometryIsDirty())
         {
-            m_mediaRect = m_videoProvider->GetGeometry(m_boundingRect, 1.0f);
+            m_mediaRect = m_videoProvider->GetGeometry(boundingRect(), 1.0f);
             node->setRect(m_mediaRect);
             m_geometryStale = false;
             node->markDirty(QSGNode::DirtyGeometry);
@@ -189,9 +189,10 @@ void TorcQMLMediaElement::TextureChanged(void)
 
 void TorcQMLMediaElement::geometryChanged(const QRectF &NewGeometry, const QRectF &OldGeometry)
 {
-    if (NewGeometry != m_boundingRect)
+    if (NewGeometry != OldGeometry)
     {
-        m_boundingRect = NewGeometry;
+        if (m_videoPlayer)
+            m_videoPlayer->SetParentGeometry(NewGeometry);
         m_geometryStale = true;
     }
 
@@ -212,25 +213,25 @@ bool TorcQMLMediaElement::event(QEvent *Event)
 void TorcQMLMediaElement::mousePressEvent(QMouseEvent *Event)
 {
     if (Event && m_videoPlayer && m_mediaRect.contains(Event->localPos()))
-        m_videoPlayer->HandleMouseEvent(Event, m_boundingRect);
+        m_videoPlayer->event(Event);
 }
 
 void TorcQMLMediaElement::mouseReleaseEvent(QMouseEvent *Event)
 {
     if (Event && m_videoPlayer && m_mediaRect.contains(Event->localPos()))
-        m_videoPlayer->HandleMouseEvent(Event, m_boundingRect);
+        m_videoPlayer->event(Event);
 }
 
 void TorcQMLMediaElement::mouseMoveEvent(QMouseEvent *Event)
 {
     if (Event && m_videoPlayer && m_mediaRect.contains(Event->localPos()))
-        m_videoPlayer->HandleMouseEvent(Event, m_boundingRect);
+        m_videoPlayer->event(Event);
 }
 
 void TorcQMLMediaElement::mouseDoubleClickEvent(QMouseEvent *Event)
 {
     if (Event && m_videoPlayer && m_mediaRect.contains(Event->localPos()))
-        m_videoPlayer->HandleMouseEvent(Event, m_boundingRect);
+        m_videoPlayer->event(Event);
 }
 
 void TorcQMLMediaElement::SubscriberDeleted(QObject *Subscriber)
@@ -250,6 +251,8 @@ bool TorcQMLMediaElement::InitialisePlayer(void)
                 this, SLOT(PlayerStateChanged(TorcPlayer::PlayerState)));
 
         m_videoPlayer = static_cast<TorcSGVideoPlayer*>(m_player);
+        if (m_videoPlayer)
+            m_videoPlayer->SetParentGeometry(boundingRect());
 
         LOG(VB_GENERAL, LOG_INFO, "Player created (UI video and audio)");
     }

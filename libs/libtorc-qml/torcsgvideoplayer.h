@@ -32,7 +32,10 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
     void                   Render                 (quint64 TimeNow);
     void                   Reset                  (void);
     void                   SetVideoProvider       (TorcSGVideoProvider *Provider);
-    void                   HandleMouseEvent       (QMouseEvent *Event, const QRectF &BoundingRect);
+    bool                   event                  (QEvent *Event);
+
+  public slots:
+    void                   SetParentGeometry      (const QRectF &NewGeometry);
 
   signals:
     void                   ResetRequest           (void);
@@ -53,6 +56,7 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
     WaitState              m_waitState;
     QElapsedTimer          m_waitTimer;
 
+    QRectF                 m_parentGeometry;
     QPointF                m_mousePress;
 };
 

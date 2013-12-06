@@ -51,7 +51,6 @@ class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem, public TorcPlayer
     bool                 m_textureStale;
     bool                 m_geometryStale;
 
-    QRectF               m_boundingRect;
     QRectF               m_mediaRect;
 };
 
