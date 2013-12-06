@@ -32,7 +32,8 @@
  * \sa TorcPlayer
  * \sa VideoPlayer
  *
- * \todo Review TorcPlayer interface for changes post move to QML (e.g. Render)
+ * \todo Review TorcPlayer interface for changes post move to QML (e.g. Render).
+ * \todo Add wheel event support.
 */
 TorcSGVideoPlayer::TorcSGVideoPlayer(QObject *Parent, int PlaybackFlags, int DecodeFlags)
   : VideoPlayer(Parent, PlaybackFlags, DecodeFlags),
@@ -111,6 +112,11 @@ bool TorcSGVideoPlayer::event(QEvent *Event)
         }
 
         return true;
+    }
+    else if (QEvent::Wheel == type)
+    {
+        // handling not yet implemented
+        Event->ignore();
     }
 
     return VideoPlayer::event(Event);

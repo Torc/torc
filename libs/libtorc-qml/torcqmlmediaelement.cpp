@@ -228,6 +228,12 @@ void TorcQMLMediaElement::mouseMoveEvent(QMouseEvent *Event)
         m_videoPlayer->event(Event);
 }
 
+void TorcQMLMediaElement::wheelEvent(QWheelEvent *Event)
+{
+    if (Event && m_videoPlayer)
+        m_videoPlayer->event(Event);
+}
+
 void TorcQMLMediaElement::mouseDoubleClickEvent(QMouseEvent *Event)
 {
     if (Event && m_videoPlayer && m_mediaRect.contains(Event->localPos()))
