@@ -804,7 +804,7 @@ bool TorcPlayerInterface::HandleEvent(QEvent *Event)
         case Torc::Hibernating:
             {
                 TorcEvent e(Torc::Pause);
-                m_pausedForSuspend = HandlePlayerEvent(&t);
+                m_pausedForSuspend = HandlePlayerEvent(&e);
                 if (m_pausedForSuspend)
                     LOG(VB_GENERAL, LOG_INFO, "Playback paused while suspending");
             }
