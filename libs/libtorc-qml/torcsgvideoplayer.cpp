@@ -40,7 +40,8 @@ TorcSGVideoPlayer::TorcSGVideoPlayer(QObject *Parent, int PlaybackFlags, int Dec
     m_videoProvider(NULL),
     m_currentFrame(NULL),
     m_manualAVSyncAdjustment(0),
-    m_waitState(WaitStateNone)
+    m_waitState(WaitStateNone),
+    m_mousePress(-1, -1)
 {
     connect(this, SIGNAL(ResetRequest()), this, SLOT(HandleReset()));
 }
@@ -64,14 +65,43 @@ bool TorcSGVideoPlayer::HandleAction(int Action)
     return VideoPlayer::HandleAction(Action);
 }
 
-///brief Handle mouse events within the video frame area.
+/*! \brief Handle mouse events within the video frame area.
+ *
+ * A click is detected as a mouse button press followed by a release at the same point with no other
+ * intervening events.
+ *
+ * \note The mouse button is currently ignored. All buttons are used and potentially a click could be detected using different butons.
+ * \note Double clicks are currently ignored.
+*/
 void TorcSGVideoPlayer::HandleMouseEvent(QMouseEvent *Event, const QRectF &BoundingRect)
 {
     if (Event && m_videoProvider)
     {
-        QPointF translated = m_videoProvider->MapPointToVideo(Event->localPos(), BoundingRect);
+        int type = Event->type();
 
-        LOG(VB_GENERAL, LOG_DEBUG, QString("video point %1+%2").arg(translated.x()).arg(translated.y()));
+        if (QEvent::MouseButtonPress == type)
+        {
+            m_mousePress = Event->localPos();
+        }
+        else if (QEvent::MouseButtonRelease == type)
+        {
+            if (m_mousePress == Event->localPos())
+            {
+                QPointF translated = m_videoProvider->MapPointToVideo(Event->localPos(), BoundingRect);
+                LOG(VB_GENERAL, LOG_INFO, QString("Mouse click %1+%2").arg(translated.x()).arg(translated.y()));
+            }
+
+            // reset
+            m_mousePress = QPointF(-1, 1);
+        }
+        else if (QEvent::MouseMove == type)
+        {
+            // reset click detection
+            m_mousePress = QPointF(-1, 1);
+
+            QPointF translated = m_videoProvider->MapPointToVideo(Event->localPos(), BoundingRect);
+            LOG(VB_GENERAL, LOG_INFO, QString("Mouse move %1+%2").arg(translated.x()).arg(translated.y()));
+        }
     }
 }
 

@@ -51,6 +51,8 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
     int                    m_manualAVSyncAdjustment;
     WaitState              m_waitState;
     QElapsedTimer          m_waitTimer;
+
+    QPointF                m_mousePress;
 };
 
 #endif // TORCSGVIDEOPLAYER_H
