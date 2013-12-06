@@ -9,6 +9,8 @@
 #include "torccompat.h"
 #include "torccoreexport.h"
 
+class QEvent;
+
 // this avoids a dependancy on libavformat
 #ifndef AVSEEK_SIZE
 #define AVSEEK_SIZE 0x10000
@@ -43,7 +45,7 @@ class TORC_CORE_PUBLIC TorcBuffer
     virtual bool       Open               (void);
     virtual void       Close              (void);
     virtual bool       IgnoreEOF          (void);
-    virtual bool       HandleAction       (int Action);
+    virtual bool       HandleEvent        (QEvent *Event);
     virtual void*      RequiredAVContext  (void);
     virtual void       InitialiseAVContext(void* Context);
     virtual void*      RequiredAVFormat   (bool &BufferRequired);

@@ -282,8 +282,12 @@ bool TorcPlayer::HandleEvent(QEvent *Event)
 bool TorcPlayer::HandleAction(int Action)
 {
     // dvd and bluray
-    if (m_decoder && m_decoder->HandleAction(Action))
-        return true;
+    if (m_decoder)
+    {
+        TorcEvent event(Action);
+        if (m_decoder->HandleEvent(&event))
+            return true;
+    }
 
     return false;
 }

@@ -633,9 +633,9 @@ AudioDecoder::~AudioDecoder()
     delete m_priv;
 }
 
-bool AudioDecoder::HandleAction(int Action)
+bool AudioDecoder::HandleEvent(QEvent *Event)
 {
-    if (m_priv->m_buffer && m_priv->m_buffer->HandleAction(Action))
+    if (Event && m_priv->m_buffer && m_priv->m_buffer->HandleEvent(Event))
         return true;
 
     return false;

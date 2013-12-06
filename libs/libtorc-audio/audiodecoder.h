@@ -46,7 +46,7 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
     virtual         ~AudioDecoder       ();
 
     // Public API
-    bool             HandleAction       (int Action);
+    bool             HandleEvent        (QEvent *Event);
     bool             Open               (void);
     TorcDecoder::DecoderState GetState  (void);
     TorcDecoder::DemuxerState GetDemuxerState (void);

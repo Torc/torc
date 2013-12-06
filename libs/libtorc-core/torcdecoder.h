@@ -7,6 +7,7 @@
 // Torc
 #include "torccoreexport.h"
 
+class QEvent;
 class TorcPlayer;
 
 typedef enum TorcStreamTypes
@@ -54,7 +55,7 @@ class TORC_CORE_PUBLIC TorcDecoder
 
     virtual ~TorcDecoder();
     static TorcDecoder*  Create           (int DecodeFlags, const QString &URI, TorcPlayer *Parent);
-    virtual bool         HandleAction     (int Action) = 0;
+    virtual bool         HandleEvent      (QEvent *Event) = 0;
     virtual bool         Open             (void) = 0;
     virtual DecoderState GetState         (void) = 0;
     virtual void         Start            (void) = 0;

@@ -218,17 +218,16 @@ bool TorcBuffer::IgnoreEOF(void)
     return false;
 }
 
-/*! \fn    TorcBuffer::HandleAction
- *  \brief Process events relevant to this buffer.
+/*! \brief Process events relevant to this buffer.
  *
- * Buffer objects may be passed Torc actions. As an example, a DVD buffer may receive keypress related
+ * Buffer objects may be passed events. As an example, a DVD buffer may receive keypress related
  * actions passed from the UI to the player to the decoder and ultimately to the underlying buffer.
  *
  * N.B. This method is not thread safe and concrete subclasses should take appropriate measures.
  *
- * \returns True if this buffer has handled the action, otherwise false.
+ * \returns True if this buffer has handled the event, otherwise false.
 */
-bool TorcBuffer::HandleAction(int Action)
+bool TorcBuffer::HandleEvent(QEvent*)
 {
     return false;
 }
