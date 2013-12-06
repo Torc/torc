@@ -39,6 +39,8 @@ TorcSGVideoPlayer::TorcSGVideoPlayer(QObject *Parent, int PlaybackFlags, int Dec
     m_resetVideoProvider(false),
     m_videoProvider(NULL),
     m_currentFrame(NULL),
+    m_currentVideoPts(AV_NOPTS_VALUE),
+    m_currentFrameRate(0),
     m_manualAVSyncAdjustment(0),
     m_waitState(WaitStateNone),
     m_mousePress(-1, -1)
@@ -128,6 +130,10 @@ void TorcSGVideoPlayer::HandleReset(void)
     if (m_currentFrame)
         m_buffers.ReleaseFrameFromDisplaying(m_currentFrame, false);
     m_currentFrame = NULL;
+
+    // reset video data
+    m_currentVideoPts  = AV_NOPTS_VALUE;
+    m_currentFrameRate = 0;
 
     // this needs to be processed in the Qt render thread
     m_resetVideoProvider = true;
@@ -264,6 +270,10 @@ bool TorcSGVideoPlayer::Refresh(quint64 TimeNow, const QSizeF &Size, bool Visibl
 
         if (m_currentFrame && m_videoProvider)
         {
+            // update video tracking data
+            m_currentVideoPts  = m_currentFrame->m_pts;
+            m_currentFrameRate = m_currentFrame->m_frameRate;
+
             if (m_state == Paused  || m_state == Starting ||
                 m_state == Playing || m_state == Searching ||
                 m_state == Pausing || m_state == Stopping)

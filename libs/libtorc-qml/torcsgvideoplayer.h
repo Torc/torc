@@ -48,6 +48,8 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
     bool                   m_resetVideoProvider;
     TorcSGVideoProvider   *m_videoProvider;
     VideoFrame            *m_currentFrame;
+    qint64                 m_currentVideoPts;
+    double                 m_currentFrameRate;
     int                    m_manualAVSyncAdjustment;
     WaitState              m_waitState;
     QElapsedTimer          m_waitTimer;
