@@ -78,8 +78,8 @@ TorcDecoder::~TorcDecoder()
  *  \var TorcDecoder::DecoderState TorcDecoder::Stopped
  *  The decode is stopped (prior to deletion).
  *
- *  \fn    TorcDecoder::HandleAction
- *  \brief Handle TorcEvent type actions
+ *  \fn    TorcDecoder::HandleEvent
+ *  \brief Handle QEvent and TorcEvent events.
  *
  * Implementations should first pass actions to any relevant child classes (such as
  * TorcBuffer).
