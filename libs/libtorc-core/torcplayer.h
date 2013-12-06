@@ -80,7 +80,7 @@ class TORC_CORE_PUBLIC TorcPlayer : public QObject
 
     void            Reset                  (void);
     bool            HandleEvent            (QEvent *Event);
-    virtual bool    HandleAction           (int Action);
+    bool            HandleDecoderEvent     (QEvent *Event);
     bool            IsSwitching            (void);
     PlayerState     GetState               (void);
     PlayerState     GetNextState           (void);
@@ -169,7 +169,7 @@ class TORC_CORE_PUBLIC  TorcPlayerInterface : public TorcHTTPService
     virtual ~TorcPlayerInterface();
 
     virtual bool   InitialisePlayer   (void) = 0;
-    virtual bool   HandlePlayerAction (int   Action);
+    virtual bool   HandlePlayerEvent  (QEvent *Event);
     virtual bool   HandleEvent        (QEvent *Event);
     virtual bool   PlayMedia          (bool Paused);
 

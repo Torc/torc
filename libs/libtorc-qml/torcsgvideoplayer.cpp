@@ -62,11 +62,6 @@ void TorcSGVideoPlayer::Teardown(void)
     VideoPlayer::Teardown();
 }
 
-bool TorcSGVideoPlayer::HandleAction(int Action)
-{
-    return VideoPlayer::HandleAction(Action);
-}
-
 /*! \brief Handle mouse events within the video frame area.
  *
  * A click is detected as a mouse button press followed by a release at the same point with no other

@@ -279,15 +279,12 @@ bool TorcPlayer::HandleEvent(QEvent *Event)
     return false;
 }
 
-bool TorcPlayer::HandleAction(int Action)
+bool TorcPlayer::HandleDecoderEvent(QEvent *Event)
 {
     // dvd and bluray
-    if (m_decoder)
-    {
-        TorcEvent event(Action);
-        if (m_decoder->HandleEvent(&event))
+    if (m_decoder && Event)
+        if (m_decoder->HandleEvent(Event))
             return true;
-    }
 
     return false;
 }
@@ -724,14 +721,23 @@ TorcPlayerInterface::~TorcPlayerInterface()
 {
 }
 
-bool TorcPlayerInterface::HandlePlayerAction(int Action)
+bool TorcPlayerInterface::HandlePlayerEvent(QEvent *Event)
 {
-    if (!m_player)
+    if (!m_player || !Event)
         return false;
+
+    int action = Torc::None;
+    TorcEvent *torcevent = NULL;
+
+    if (Event->type() == TorcEvent::TorcEventType)
+    {
+        torcevent = static_cast<TorcEvent*>(Event);
+        action = torcevent->GetEvent();
+    }
 
     TorcPlayer::PlayerState state  = m_player->GetState();
 
-    if (Action == Torc::Play && (state == TorcPlayer::Stopped || m_player->GetState() == TorcPlayer::None))
+    if (action == Torc::Play && (state == TorcPlayer::Stopped || m_player->GetState() == TorcPlayer::None))
     {
         m_player->Reset();
         PlayMedia(false);
@@ -744,31 +750,31 @@ bool TorcPlayerInterface::HandlePlayerAction(int Action)
         return false;
     }
 
-    if (m_player->HandleAction(Action))
+    if (m_player->HandleDecoderEvent(Event))
         return true;
 
-    if (Action == Torc::Play)
+    if (action == Torc::Play)
     {
         m_player->Play();
         return true;
     }
-    else if (Action == Torc::Pause)
+    else if (action == Torc::Pause)
     {
         if (!(state == TorcPlayer::Paused || state == TorcPlayer::Pausing || state == TorcPlayer::Opening))
             return m_player->Pause();
         return false;
     }
-    else if (Action == Torc::Stop)
+    else if (action == Torc::Stop)
     {
         m_player->Stop();
         return true;
     }
-    else if (Action == Torc::Unpause)
+    else if (action == Torc::Unpause)
     {
         m_player->Unpause();
         return true;
     }
-    else if (Action == Torc::TogglePlayPause)
+    else if (action == Torc::TogglePlayPause)
     {
         m_player->TogglePause();
         return true;
@@ -796,21 +802,29 @@ bool TorcPlayerInterface::HandleEvent(QEvent *Event)
             break;
         case Torc::Suspending:
         case Torc::Hibernating:
-            m_pausedForSuspend = HandlePlayerAction(Torc::Pause);
-            if (m_pausedForSuspend)
-                LOG(VB_GENERAL, LOG_INFO, "Playback paused while suspending");
+            {
+                TorcEvent e(Torc::Pause);
+                m_pausedForSuspend = HandlePlayerEvent(&t);
+                if (m_pausedForSuspend)
+                    LOG(VB_GENERAL, LOG_INFO, "Playback paused while suspending");
+            }
             break;
         case Torc::WokeUp:
             if (m_pausedForSuspend)
             {
-                HandlePlayerAction(Torc::Unpause);
+                TorcEvent e(Torc::Unpause);
+                HandlePlayerEvent(&e);
                 LOG(VB_GENERAL, LOG_INFO, "Playback unpaused after suspension");
                 m_pausedForSuspend = false;
             }
             break;
         case Torc::ShuttingDown:
         case Torc::Restarting:
-            HandlePlayerAction(Torc::Stop);
+            {
+                TorcEvent e(Torc::Stop);
+                HandlePlayerEvent(&e);
+            }
+
             break;
         case Torc::PlayMedia:
             if (data.contains("uri"))
@@ -820,8 +834,8 @@ bool TorcPlayerInterface::HandleEvent(QEvent *Event)
                 PlayMedia(paused);
             }
             break;
-         case Torc::DisplayDeviceReset:
-            HandlePlayerAction(event);
+         case Torc::DisplayDeviceReset: // is this needed anymore?
+            HandlePlayerEvent(Event);
             break;
         default: break;
     }

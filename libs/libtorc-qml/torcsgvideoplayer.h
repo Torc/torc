@@ -31,7 +31,6 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
     bool                   Refresh                (quint64 TimeNow, const QSizeF &Size, bool Visible);
     void                   Render                 (quint64 TimeNow);
     void                   Reset                  (void);
-    bool                   HandleAction           (int Action);
     void                   SetVideoProvider       (TorcSGVideoProvider *Provider);
     void                   HandleMouseEvent       (QMouseEvent *Event, const QRectF &BoundingRect);
 
