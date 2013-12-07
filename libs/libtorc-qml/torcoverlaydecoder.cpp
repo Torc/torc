@@ -662,7 +662,6 @@ void TorcOverlayDecoder::DecodeASSSubtitle(const QRectF &VideoBounds, qint64 Vid
         }
     }
 #else
-    (void)Images;
     (void)VideoBounds;
     (void)VideoPts;
 #endif // CONFIG_LIBASS
