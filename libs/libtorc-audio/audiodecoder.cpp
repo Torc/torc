@@ -1909,6 +1909,7 @@ bool AudioDecoder::CreateAVFormatContext(TorcDemuxerThread *Thread)
         if (required)
         {
             format = required;
+            format->flags &= ~AVFMT_NOFILE;
             LOG(VB_GENERAL, LOG_INFO, QString("Demuxer required by buffer '%1'").arg(format->name));
         }
 
