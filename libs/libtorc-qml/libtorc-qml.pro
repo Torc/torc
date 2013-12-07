@@ -38,6 +38,7 @@ HEADERS += torcqmlframerate.h
 HEADERS += torcqmlmediaelement.h
 HEADERS += torcsgvideoprovider.h
 HEADERS += torcsgvideoplayer.h
+HEADERS += torcoverlaydecoder.h
 HEADERS += torcqmlopengldefs.h
 HEADERS += torcedid.h
 HEADERS += torcqmldisplay.h
@@ -48,6 +49,7 @@ SOURCES += torcqmlframerate.cpp
 SOURCES += torcqmlmediaelement.cpp
 SOURCES += torcsgvideoprovider.cpp
 SOURCES += torcsgvideoplayer.cpp
+SOURCES += torcoverlaydecoder.cpp
 SOURCES += torcedid.cpp
 SOURCES += torcqmldisplay.cpp
 

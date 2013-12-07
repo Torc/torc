@@ -2,17 +2,20 @@
 #define TORCSGVIDEOPLAYER_H
 
 // Qt
+#include <QSGNode>
 #include <QMouseEvent>
+#include <QQuickWindow>
 #include <QElapsedTimer>
 
 // Torc
 #include "torcqmlexport.h"
+#include "torcoverlaydecoder.h"
 #include "videoplayer.h"
 
 class VideoColourSpace;
 class TorcSGVideoProvider;
 
-class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
+class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer, public TorcOverlayDecoder
 {
     Q_OBJECT
 
@@ -36,6 +39,8 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
 
   public slots:
     void                   SetParentGeometry      (const QRectF &NewGeometry);
+    void                   SetWindow              (QQuickWindow *Window);
+    void                   RefreshOverlays        (QSGNode* Root);
 
   signals:
     void                   ResetRequest           (void);
@@ -49,6 +54,7 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer
   private:
     bool                   m_resetVideoProvider;
     TorcSGVideoProvider   *m_videoProvider;
+    QQuickWindow          *m_window;
     VideoFrame            *m_currentFrame;
     qint64                 m_currentVideoPts;
     double                 m_currentFrameRate;

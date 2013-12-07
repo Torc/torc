@@ -39,6 +39,7 @@ TorcSGVideoPlayer::TorcSGVideoPlayer(QObject *Parent, int PlaybackFlags, int Dec
   : VideoPlayer(Parent, PlaybackFlags, DecodeFlags),
     m_resetVideoProvider(false),
     m_videoProvider(NULL),
+    m_window(NULL),
     m_currentFrame(NULL),
     m_currentVideoPts(AV_NOPTS_VALUE),
     m_currentFrameRate(0),
@@ -47,6 +48,9 @@ TorcSGVideoPlayer::TorcSGVideoPlayer(QObject *Parent, int PlaybackFlags, int Dec
     m_mousePress(-1, -1)
 {
     connect(this, SIGNAL(ResetRequest()), this, SLOT(HandleReset()));
+
+    // enable overlays
+    m_ignoreOverlays = false;
 }
 
 TorcSGVideoPlayer::~TorcSGVideoPlayer()
@@ -56,6 +60,7 @@ TorcSGVideoPlayer::~TorcSGVideoPlayer()
 
 void TorcSGVideoPlayer::Teardown(void)
 {
+    // release any outstanding frames
     if (m_currentFrame)
         m_buffers.ReleaseFrameFromDisplaying(m_currentFrame, false);
     m_currentFrame = NULL;
@@ -135,6 +140,12 @@ void TorcSGVideoPlayer::SetVideoProvider(TorcSGVideoProvider *Provider)
     m_videoProvider = Provider;
 }
 
+void TorcSGVideoPlayer::SetWindow(QQuickWindow *Window)
+{
+    m_window = Window;
+    SetOverlayWindow(m_window);
+}
+
 void TorcSGVideoPlayer::Render(quint64 TimeNow)
 {
     (void)TimeNow;
@@ -147,6 +158,7 @@ void TorcSGVideoPlayer::Reset(void)
 
 void TorcSGVideoPlayer::HandleReset(void)
 {
+    // release any frame we may be holding
     if (m_currentFrame)
         m_buffers.ReleaseFrameFromDisplaying(m_currentFrame, false);
     m_currentFrame = NULL;
@@ -155,10 +167,41 @@ void TorcSGVideoPlayer::HandleReset(void)
     m_currentVideoPts  = AV_NOPTS_VALUE;
     m_currentFrameRate = 0;
 
+    // reset overlay decoder (e.g. libass state)
+    ResetOverlays();
+
     // this needs to be processed in the Qt render thread
     m_resetVideoProvider = true;
 
     VideoPlayer::Reset();
+}
+
+void TorcSGVideoPlayer::RefreshOverlays(QSGNode *Root)
+{
+    // don't process until we have valid video information
+    //if (m_currentVideoPts == AV_NOPTS_VALUE || !m_videoProvider)
+    //    return;
+
+    // generate list of new overlays
+    QList<TorcVideoOverlayItem*> overlays = GetNewOverlays(m_currentVideoPts);
+
+    // return asap if necessary
+    if(overlays.isEmpty())
+        return;
+
+    // decode overlays to images and add to scene graph
+    qreal  videoaspect = m_videoProvider->GetVideoAspectRatio();
+    QRectF videobounds = m_videoProvider->GetCachedGeometry();
+    QSizeF videosize   = m_videoProvider->GetVideoSize();
+    videosize = QSizeF(videosize.height() * videoaspect, videosize.height());
+
+    VideoDecoder *decoder = static_cast<VideoDecoder*>(m_decoder);
+    foreach (TorcVideoOverlayItem *overlay, overlays)
+    {
+        if (decoder)
+            GetOverlayImages(decoder, overlay, videobounds, videosize, m_currentFrameRate, m_currentVideoPts, Root);
+        delete overlay;
+    }
 }
 
 /*! \brief Refresh the currently playing media.

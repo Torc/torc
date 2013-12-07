@@ -19,8 +19,9 @@
 
 // Qt
 #include <QImage>
-#include <QtQuick/QQuickWindow>
-#include <QtQuick/QSGSimpleTextureNode>
+#include <QQuickWindow>
+#include <QSGSimpleTextureNode>
+
 
 // Torc
 #include "torclogging.h"
@@ -115,7 +116,13 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
     if (proxy)
         proxy->ProcessCallbacks();
 
-    QSGSimpleTextureNode *node = static_cast<QSGSimpleTextureNode*>(Node);
+    // root node is a plain QSGNode
+    QSGNode *root = Node;
+    if (!root)
+    {
+        root = new QSGNode();
+        m_geometryStale = true;
+    }
 
     // create video texture provider
     if (!m_videoProvider)
@@ -134,52 +141,63 @@ QSGNode* TorcQMLMediaElement::updatePaintNode(QSGNode *Node, UpdatePaintNodeData
         if (m_videoPlayer)
         {
             m_videoPlayer->SetVideoProvider(m_videoProvider);
+            m_videoPlayer->SetWindow(static_cast<QQuickWindow*>(proxy->GetWindow()));
 
             // testing - remove
             m_videoPlayer->PlayMedia(m_uri, false);
         }
     }
 
-
-    if (!node && m_videoProvider)
+    // video node should always be the first in the list of child nodes
+    QSGSimpleTextureNode *video = NULL;
+    if (root->childCount() == 0 && m_videoProvider)
     {
-        // create node
-        node = new QSGSimpleTextureNode();
-        node->setTexture(m_videoProvider->texture());
+        video = new QSGSimpleTextureNode();
+        video->setTexture(m_videoProvider->texture());
+        root->appendChildNode(video);
 
-        m_textureStale  = false;
+        m_textureStale      = false;
         m_geometryStale = true;
+    }
+    else
+    {
+        video = static_cast<QSGSimpleTextureNode*>(root->firstChild());
     }
 
     // NB although the player resides in the main thread, the main thread is blocked while the scenegraph is updated,
     // so this should be thread safe.
     bool dirtyframe = false;
 
+    // update video
     if (m_player)
         dirtyframe = m_player->Refresh(TorcCoreUtils::GetMicrosecondCount(), boundingRect().size(), true);
 
-    if (node && m_videoProvider)
+    if (video && m_videoProvider)
     {
         if (m_textureStale)
         {
-            node->setTexture(NULL);
-            node->setTexture(m_videoProvider->texture());
+            video->setTexture(NULL);
+            video->setTexture(m_videoProvider->texture());
             m_textureStale = false;
         }
 
         if (m_geometryStale || m_videoProvider->GeometryIsDirty())
         {
             m_mediaRect = m_videoProvider->GetGeometry(boundingRect(), 1.0f);
-            node->setRect(m_mediaRect);
+            video->setRect(m_mediaRect);
             m_geometryStale = false;
-            node->markDirty(QSGNode::DirtyGeometry);
+            video->markDirty(QSGNode::DirtyGeometry);
         }
 
         if (dirtyframe)
-            node->markDirty(QSGNode::DirtyMaterial);
+            video->markDirty(QSGNode::DirtyMaterial);
     }
 
-    return node;
+    // update overlays
+    if (m_videoPlayer)
+        m_videoPlayer->RefreshOverlays(root);
+
+    return root;
 }
 
 void TorcQMLMediaElement::TextureChanged(void)
