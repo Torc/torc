@@ -100,7 +100,9 @@ bool TorcSGVideoPlayer::event(QEvent *Event)
                 if (m_mousePress == event->localPos())
                 {
                     QPointF translated = m_videoProvider->MapPointToVideo(event->localPos(), m_parentGeometry);
-                    LOG(VB_GENERAL, LOG_INFO, QString("Mouse click %1+%2").arg(translated.x()).arg(translated.y()));
+                    QMouseEvent newevent(event->type(), translated, event->windowPos(),
+                                         event->screenPos(), event->button(), event->buttons(), event->modifiers());
+                    return HandleDecoderEvent(&newevent);
                 }
 
                 // reset
@@ -112,11 +114,24 @@ bool TorcSGVideoPlayer::event(QEvent *Event)
                 m_mousePress = QPointF(-1, 1);
 
                 QPointF translated = m_videoProvider->MapPointToVideo(event->localPos(), m_parentGeometry);
-                LOG(VB_GENERAL, LOG_INFO, QString("Mouse move %1+%2").arg(translated.x()).arg(translated.y()));
+                QMouseEvent newevent(event->type(), translated, event->windowPos(),
+                                     event->screenPos(), event->button(), event->buttons(), event->modifiers());
+                return HandleDecoderEvent(&newevent);
             }
         }
 
         return true;
+    }
+    else if (QEvent::HoverMove)
+    {
+        QHoverEvent *event = static_cast<QHoverEvent*>(Event);
+
+        if (event && m_videoProvider && !m_parentGeometry.isNull())
+        {
+            QPointF translated = m_videoProvider->MapPointToVideo(event->posF(), m_parentGeometry);
+            QHoverEvent newevent(event->type(), translated, event->oldPosF(), event->modifiers());
+            return HandleDecoderEvent(&newevent);
+        }
     }
     else if (QEvent::Wheel == type)
     {

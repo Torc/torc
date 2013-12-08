@@ -81,6 +81,7 @@ TorcQMLMediaElement::TorcQMLMediaElement(QQuickItem *Parent)
 
     // request mouse events
     setAcceptedMouseButtons(Qt::AllButtons);
+    setAcceptHoverEvents(true);
 }
 
 TorcQMLMediaElement::~TorcQMLMediaElement()
@@ -249,6 +250,12 @@ void TorcQMLMediaElement::mouseMoveEvent(QMouseEvent *Event)
 void TorcQMLMediaElement::wheelEvent(QWheelEvent *Event)
 {
     if (Event && m_videoPlayer)
+        m_videoPlayer->event(Event);
+}
+
+void TorcQMLMediaElement::hoverMoveEvent(QHoverEvent *Event)
+{
+    if (Event && m_videoPlayer && m_mediaRect.contains(Event->posF()))
         m_videoPlayer->event(Event);
 }
 

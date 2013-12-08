@@ -43,6 +43,7 @@ class TORC_QML_PUBLIC TorcQMLMediaElement : public QQuickItem, public TorcPlayer
     void                 mouseDoubleClickEvent    (QMouseEvent *Event);
     void                 mouseMoveEvent           (QMouseEvent *Event);
     void                 wheelEvent               (QWheelEvent *Event);
+    void                 hoverMoveEvent           (QHoverEvent *Event);
 
   private:
     VideoColourSpace    *m_videoColourSpace;
