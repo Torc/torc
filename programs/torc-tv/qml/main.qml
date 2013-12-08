@@ -79,6 +79,11 @@ Rectangle {
         preferredHighlightEnd: width / 2
         highlightRangeMode: "StrictlyEnforceRange"
         highlightMoveVelocity: 1000
+        // this is needed to filter hover events from the media player
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+        }
 
         delegate: Text {
             anchors.verticalCenter: parent.verticalCenter
