@@ -346,7 +346,7 @@ void TorcOverlayDecoder::DecodeBDOverlay(VideoDecoder *Decoder, TorcVideoOverlay
 
             // see texture comments above for draw...
             texture->bind();
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, (int)m_bdOverlayRects[plane].width(), (int)m_bdOverlayRects[plane].width(), GL_BGRA, GL_UNSIGNED_BYTE, data.data());
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, (int)m_bdOverlayRects[plane].width(), (int)m_bdOverlayRects[plane].height(), GL_BGRA, GL_UNSIGNED_BYTE, data.data());
             node->markDirty(QSGNode::DirtyMaterial);
         }
     }
