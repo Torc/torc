@@ -64,6 +64,7 @@ class TORC_CORE_PUBLIC TorcDecoder
     virtual void         Seek             (void) = 0;
     virtual int          GetCurrentStream (TorcStreamTypes Type) = 0;
     virtual int          GetStreamCount   (TorcStreamTypes Type) = 0;
+    virtual TorcPlayer*  GetParent        (void) = 0;
 };
 
 class TORC_CORE_PUBLIC TorcDecoderFactory

@@ -59,6 +59,7 @@ class TORC_AUDIO_PUBLIC AudioDecoder : public TorcDecoder
     QByteArray       GetSubtitleHeader  (int Index);
     int              GetCurrentStream   (TorcStreamTypes Type);
     int              GetStreamCount     (TorcStreamTypes Type);
+    TorcPlayer*      GetParent          (void);
 
   protected:
     explicit         AudioDecoder       (const QString &URI, TorcPlayer *Parent, int Flags);

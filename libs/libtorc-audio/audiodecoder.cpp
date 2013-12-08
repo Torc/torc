@@ -754,6 +754,11 @@ int AudioDecoder::GetStreamCount(TorcStreamTypes Type)
     return result;
 }
 
+TorcPlayer* AudioDecoder::GetParent(void)
+{
+    return m_parent;
+}
+
 /*! \brief Translate the given FFmpeg stream index to a Torc index for the current program and stream type.
 */
 int AudioDecoder::GetTorcStreamIndex(int AvStreamIndex, TorcStreamTypes Type)
