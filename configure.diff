@@ -1,5 +1,5 @@
---- libs/libtorc-av/configure	2013-05-01 20:34:52.277266987 +0100
-+++ configure	2013-11-29 08:44:10.342194203 +0000
+--- libs/libtorc-av/configure	2013-05-01 10:16:11.000000000 +0100
++++ configure	2013-12-08 21:19:52.000000000 +0000
 @@ -1,6 +1,6 @@
  #!/bin/sh
  #
@@ -323,6 +323,15 @@
  
  atan2f_args=2
  ldexpf_args=2
+@@ -3890,7 +3974,7 @@
+ enabled gnutls     && require_pkg_config gnutls gnutls/gnutls.h gnutls_global_init
+ enabled libiec61883 && require libiec61883 libiec61883/iec61883.h iec61883_cmp_connect -lraw1394 -lavc1394 -lrom1394 -liec61883
+ enabled libaacplus && require  "libaacplus >= 2.0.0" aacplus.h aacplusEncOpen -laacplus
+-enabled libass     && require_pkg_config libass ass/ass.h ass_library_init
++enabled libass     && check_pkg_config libass ass/ass.h ass_library_init || disable libass
+ enabled libbluray  && require libbluray libbluray/bluray.h bd_open -lbluray
+ enabled libcelt    && require libcelt celt/celt.h celt_decode -lcelt0 &&
+                       { check_lib celt/celt.h celt_decoder_create_custom -lcelt0 ||
 @@ -3953,6 +4037,9 @@
                          check_lib openssl/ssl.h SSL_library_init -lssl32 -leay32 ||
                          check_lib openssl/ssl.h SSL_library_init -lssl -lcrypto -lws2_32 -lgdi32 ||
