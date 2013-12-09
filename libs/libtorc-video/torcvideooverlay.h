@@ -62,6 +62,8 @@ class TORC_VIDEO_PUBLIC TorcVideoOverlayItem
     TorcVideoOverlayItem ();
 };
 
+#define TORC_ALL_OVERLAYS (TorcVideoOverlayItem::Subtitle | TorcVideoOverlayItem::Graphics | TorcVideoOverlayItem::Menu)
+
 class TORC_VIDEO_PUBLIC TorcVideoOverlay
 {
   public:
@@ -69,7 +71,7 @@ class TORC_VIDEO_PUBLIC TorcVideoOverlay
     virtual ~TorcVideoOverlay();
 
     void                                AddOverlay         (TorcVideoOverlayItem *Item);
-    void                                ClearAllOverlays   (void);
+    void                                ClearQueuedOverlays(int Types = TORC_ALL_OVERLAYS);
     QList<TorcVideoOverlayItem*>        GetNewOverlays     (qint64 VideoPts);
 
   protected:

@@ -93,7 +93,11 @@ TorcVideoOverlayItem::TorcVideoOverlayItem(QList<bd_overlay_s *> *Overlays)
     m_endPts(AV_NOPTS_VALUE),
     m_buffer((void*)Overlays)
 {
-    m_valid = m_buffer;
+    if (!Overlays->isEmpty())
+    {
+        m_type = Overlays->at(0)->plane == 0 ? Graphics : Menu;
+        m_valid = m_buffer;
+    }
 }
 
 ///brief Construct a TorcVideoOverlayItem that wraps a list of bd_overlay_s structures.
@@ -112,7 +116,11 @@ TorcVideoOverlayItem::TorcVideoOverlayItem(QList<bd_argb_overlay_s *> *Overlays)
     m_endPts(AV_NOPTS_VALUE),
     m_buffer((void*)Overlays)
 {
-    m_valid = m_buffer;
+    if (!Overlays->isEmpty())
+    {
+        m_type = Overlays->at(0)->plane == 0 ? Graphics : Menu;
+        m_valid = m_buffer;
+    }
 }
 
 TorcVideoOverlayItem::TorcVideoOverlayItem()
@@ -218,7 +226,7 @@ TorcVideoOverlay::TorcVideoOverlay()
 
 TorcVideoOverlay::~TorcVideoOverlay()
 {
-    ClearAllOverlays();
+    ClearQueuedOverlays(/*TORC_ALL_OVERLAYS*/);
 }
 
 /*! \brief Add an overlay to the presentation queue.
@@ -265,19 +273,32 @@ void TorcVideoOverlay::AddOverlay(TorcVideoOverlayItem *Item)
     }
 }
 
-///brief Clear all existing overlays.
-void TorcVideoOverlay::ClearAllOverlays(void)
+///brief Clear queued overlays that match Type.
+void TorcVideoOverlay::ClearQueuedOverlays(int Type /*=TORC_ALL_OVERLAYS*/)
 {
     QMutexLocker locker(m_overlaysLock);
 
-    while (!m_menuOverlays.isEmpty())
-        delete m_menuOverlays.takeFirst();
+    QMutableListIterator<TorcVideoOverlayItem*> i(m_menuOverlays);
+    while (i.hasNext())
+    {
+        i.next();
+        if (i.value()->m_type & Type)
+        {
+            delete i.value();
+            i.remove();
+        }
+    }
 
-    QMap<qint64, TorcVideoOverlayItem*>::const_iterator it = m_timedOverlays.constBegin();
-    for ( ; it != m_timedOverlays.constEnd(); ++it)
-        delete it.value();
-
-    m_timedOverlays.clear();
+    QMutableMapIterator<qint64, TorcVideoOverlayItem*> it(m_timedOverlays);
+    while (it.hasNext())
+    {
+        it.next();
+        if (it.value()->m_type & Type)
+        {
+            delete it.value();
+            it.remove();
+        }
+    }
 }
 
 /*! \brief Return an ordered list of overlays that are older than VideoPts.

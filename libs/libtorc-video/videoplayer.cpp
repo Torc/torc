@@ -158,7 +158,7 @@ void VideoPlayer::Reset(void)
     m_reset = false;
 
     // reset overlays
-    ClearAllOverlays();
+    ClearQueuedOverlays(TorcVideoOverlayItem::Subtitle);
 }
 
 void* VideoPlayer::GetAudio(void)
