@@ -72,7 +72,7 @@ TorcOverlayDecoder::TorcOverlayDecoder()
 
 TorcOverlayDecoder::~TorcOverlayDecoder()
 {
-    ResetOverlays();
+    ResetOverlayDecoder();
 }
 
 /*! \brief Set the window within which the decoder is operating.
@@ -89,7 +89,7 @@ void TorcOverlayDecoder::SetOverlayWindow(QQuickWindow *Window)
  *
  * \not This is incomplete.
 */
-void TorcOverlayDecoder::ResetOverlays(void)
+void TorcOverlayDecoder::ResetOverlayDecoder(void)
 {
 #if defined(CONFIG_LIBASS) && CONFIG_LIBASS
     CleanupASSLibrary();

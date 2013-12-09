@@ -28,7 +28,7 @@ class TORC_QML_PUBLIC TorcOverlayDecoder
     virtual ~TorcOverlayDecoder();
 
     void                     SetOverlayWindow     (QQuickWindow *Window);
-    void                     ResetOverlays        (void);
+    void                     ResetOverlayDecoder  (void);
     void                     GetOverlayImages     (VideoDecoder *Decoder, TorcVideoOverlayItem *Overlay, const QRectF &VideoBounds,
                                                    const QSizeF &VideoSize, double VideoFrameRate, qint64 VideoPts, QSGNode* Root);
 

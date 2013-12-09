@@ -183,7 +183,7 @@ void TorcSGVideoPlayer::HandleReset(void)
     m_currentFrameRate = 0;
 
     // reset overlay decoder (e.g. libass state)
-    ResetOverlays();
+    ResetOverlayDecoder();
 
     // this needs to be processed in the Qt render thread
     m_resetVideoProvider = true;
