@@ -576,17 +576,16 @@ void TorcOverlayDecoder::DecodeAVSubtitle(VideoDecoder *Decoder, TorcVideoOverla
             {
                 LOG(VB_GENERAL, LOG_INFO, QString("text sub: '%1'").arg(avrect->text));
             }
-#if defined(CONFIG_LIBASS) && CONFIG_LIBASS
             else if (avrect->type == SUBTITLE_ASS && avrect->ass)
             {
                 LOG(VB_PLAYBACK, LOG_INFO, QString("libass sub: '%1'").arg(avrect->ass));
-
+#if defined(CONFIG_LIBASS) && CONFIG_LIBASS
                 QSizeF size = VideoBounds.size();
                 InitialiseASSTrack(Overlay->m_streamIndex, Decoder, size);
                 if (m_libassTrack)
                     ass_process_data(m_libassTrack, avrect->ass, strlen(avrect->ass));
-            }
 #endif // USING_LIBASS
+            }
         }
     }
 }
