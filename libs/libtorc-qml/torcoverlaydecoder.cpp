@@ -23,6 +23,7 @@
 // Torc
 #include "torclogging.h"
 #include "videodecoder.h"
+#include "torcqmlopengldefs.h"
 #include "torcoverlaydecoder.h"
 
 // FFmpeg/libbluray
