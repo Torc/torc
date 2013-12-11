@@ -802,7 +802,7 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
     {
         queue->m_lock->lock();
 
-        if (yield)
+        if (yield && queue->Length() < 1)
             queue->m_wait->wait(queue->m_lock);
         yield = true;
 
@@ -827,6 +827,7 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
         if (*state == TorcDecoder::Paused)
         {
             queue->m_lock->unlock();
+            QThread::usleep(10000);
             continue;
         }
 
@@ -841,7 +842,7 @@ void AudioDecoder::DecodeVideoFrames(TorcVideoThread *Thread)
             // TODO make this sleep dynamic
             queue->m_lock->unlock();
             QThread::usleep(4000);
-            yield = !queue->Length() && uptodate;
+            yield = false;
             continue;
         }
 
@@ -965,7 +966,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
     {
         queue->m_lock->lock();
 
-        if (yield)
+        if (yield && queue->Length() < 1)
             queue->m_wait->wait(queue->m_lock);
         yield = true;
 
@@ -990,6 +991,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
         if (*state == TorcDecoder::Paused)
         {
             queue->m_lock->unlock();
+            QThread::usleep(10000);
             continue;
         }
 
@@ -1000,7 +1002,7 @@ void AudioDecoder::DecodeAudioFrames(TorcAudioThread *Thread)
         {
             queue->m_lock->unlock();
             QThread::usleep(m_audioOut->m_bufferTime * 500);
-            yield = !queue->Length();
+            yield = false;
             continue;
         }
 
@@ -1324,7 +1326,7 @@ void AudioDecoder::DecodeSubtitles(TorcSubtitleThread *Thread)
     {
         queue->m_lock->lock();
 
-        if (yield)
+        if (yield && queue->Length() < 1)
             queue->m_wait->wait(queue->m_lock);
         yield = true;
 
@@ -1344,6 +1346,13 @@ void AudioDecoder::DecodeSubtitles(TorcSubtitleThread *Thread)
         {
             *nextstate = TorcDecoder::None;
             *state = TorcDecoder::Paused;
+        }
+
+        if (*state == TorcDecoder::Paused)
+        {
+            queue->m_lock->unlock();
+            QThread::usleep(10000);
+            continue;
         }
 
         AVPacket *packet = NULL;
