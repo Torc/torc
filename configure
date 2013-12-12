@@ -2218,6 +2218,7 @@ enable vaapi
 enable vdpau
 enable avresample
 enable libass
+enable libfreetype
 
 # Torc configurable options
 enable libcrypto
