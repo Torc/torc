@@ -98,7 +98,8 @@ bool TorcBlurayUIHandler::Open(void)
     {
         // register overlay callbacks
         bd_register_overlay_proc     (m_bluray, this, OverlayCallback);
-        bd_register_argb_overlay_proc(m_bluray, this, ARGBOverlayCallback, NULL);
+        if (m_hasBDJ && m_allowBDJ)
+            bd_register_argb_overlay_proc(m_bluray, this, ARGBOverlayCallback, NULL);
     }
 
     return true;
@@ -110,6 +111,7 @@ void TorcBlurayUIHandler::Close(void)
     {
         // deregister for overlay callbacks
         bd_register_overlay_proc     (m_bluray, this, NULL);
+        //if (m_hasBDJ && m_allowBDJ)
         //bd_register_argb_overlay_proc(m_bluray, this, NULL, NULL);
     }
 
