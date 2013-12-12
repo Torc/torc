@@ -39,6 +39,8 @@ HEADERS += torcqmlmediaelement.h
 HEADERS += torcsgvideoprovider.h
 HEADERS += torcsgvideoplayer.h
 HEADERS += torcoverlaydecoder.h
+HEADERS += torcblurayuibuffer.h
+HEADERS += torcblurayuihandler.h
 HEADERS += torcqmlopengldefs.h
 HEADERS += torcedid.h
 HEADERS += torcqmldisplay.h
@@ -50,14 +52,26 @@ SOURCES += torcqmlmediaelement.cpp
 SOURCES += torcsgvideoprovider.cpp
 SOURCES += torcsgvideoplayer.cpp
 SOURCES += torcoverlaydecoder.cpp
+SOURCES += torcblurayuibuffer.cpp
+SOURCES += torcblurayuihandler.cpp
 SOURCES += torcedid.cpp
 SOURCES += torcqmldisplay.cpp
+
+#libbluray
+DEFINES     += HAVE_CONFIG_H DLOPEN_CRYPTO_LIBS HAVE_PTHREAD_H HAVE_DIRENT_H HAVE_STRINGS_H
+DEPENDPATH  += ../libtorc-video/libbluray/src
+INCLUDEPATH += ../libtorc-video/libbluray/src
 
 #libCEC
 HEADERS += peripherals/cec/cec.h
 HEADERS += peripherals/cec/cectypes.h
 HEADERS += peripherals/torccecdevice.h
 SOURCES += peripherals/torccecdevice.cpp
+
+#make sure libass is linked
+contains(CONFIG_LIBASS, yes) {
+    LIBS += -lass
+}
 
 macx {
     LIBS    += -framework Cocoa
