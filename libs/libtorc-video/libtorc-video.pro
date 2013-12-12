@@ -8,6 +8,7 @@ CONFIG += thread dll
 target.path = $${LIBDIR}
 INSTALLS = target
 
+QT += xml
 QT -= gui
 
 DEPENDPATH  += ../libtorc-core
@@ -33,6 +34,9 @@ HEADERS += videoframe.h
 HEADERS += videobuffers.h
 HEADERS += videocolourspace.h
 HEADERS += torcvideooverlay.h
+HEADERS += torcbluraybuffer.h
+HEADERS += torcblurayhandler.h
+HEADERS += torcbluraymetadata.h
 
 SOURCES += videoplayer.cpp
 SOURCES += videodecoder.cpp
@@ -40,6 +44,9 @@ SOURCES += videoframe.cpp
 SOURCES += videobuffers.cpp
 SOURCES += videocolourspace.cpp
 SOURCES += torcvideooverlay.cpp
+SOURCES += torcbluraybuffer.cpp
+SOURCES += torcblurayhandler.cpp
+SOURCES += torcbluraymetadata.cpp
 
 #libbluray
 DEFINES     += HAVE_CONFIG_H DLOPEN_CRYPTO_LIBS HAVE_PTHREAD_H HAVE_DIRENT_H HAVE_STRINGS_H
@@ -125,7 +132,15 @@ SOURCES += libbluray/src/util/logging.c
 SOURCES += libbluray/src/util/refcnt.c
 SOURCES += libbluray/src/util/strutl.c
 
-contains(CONFIG_BLURAYJAVA, yes) {
+#uncomment for comparative testing of libbluray v internal metadata parsing
+#INCLUDEPATH += /usr/include/libxml2
+#DEFINES     += HAVE_LIBXML2
+#LIBS        += -lxml2
+
+#bd-j support needs libfreetype
+contains(CONFIG_LIBFREETYPE, yes):contains(CONFIG_BLURAYJAVA, yes) {
+{
+    DEFINES += HAVE_FT2
     HEADERS += libbluray/src/libbluray/bdj/bdj.h
     HEADERS += libbluray/src/libbluray/bdj/bdjo_parser.h
     HEADERS += libbluray/src/libbluray/bdj/bdj_private.h
