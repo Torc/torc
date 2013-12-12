@@ -24,6 +24,7 @@
 #include <QMouseEvent>
 
 // Torc
+#include "torccommandline.h"
 #include "torclogging.h"
 #include "torcdecoder.h"
 #include "torcplayer.h"
@@ -120,6 +121,13 @@ bool TorcBlurayUIBuffer::HandleEvent(QEvent *Event)
 */
 static class TorcBlurayUIBufferFactory : public TorcBufferFactory
 {
+  public:
+    TorcBlurayUIBufferFactory()
+    {
+        TorcCommandLine::RegisterEnvironmentVariable("TORC_NO_HDMV", "Disable bluray HDMV menu support.");
+        TorcCommandLine::RegisterEnvironmentVariable("TORC_NO_BDJ", "Disable bluray BD-J menu support.");
+    }
+
     void Score(const QString &URI, const QUrl &URL, int &Score, const bool &Media)
     {
         if (Media && URI.startsWith("bd:", Qt::CaseInsensitive) && Score <= 30)

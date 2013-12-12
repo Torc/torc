@@ -54,6 +54,12 @@ TorcBlurayUIHandler::TorcBlurayUIHandler(TorcBlurayBuffer *Parent, const QString
 {
     m_useMenus = true;
 
+    if (!qgetenv("TORC_NO_HDMV").isEmpty())
+    {
+        LOG(VB_GENERAL, LOG_INFO, "HDMV support disabled");
+        m_useMenus = false;
+    }
+
     m_decoder = static_cast<VideoDecoder*>(m_parent->GetParent());
     if (m_decoder)
         m_player = m_decoder->GetPlayerParent();
