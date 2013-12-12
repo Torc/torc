@@ -139,7 +139,6 @@ SOURCES += libbluray/src/util/strutl.c
 
 #bd-j support needs libfreetype
 contains(CONFIG_LIBFREETYPE, yes):contains(CONFIG_BLURAYJAVA, yes) {
-{
     DEFINES += HAVE_FT2
     HEADERS += libbluray/src/libbluray/bdj/bdj.h
     HEADERS += libbluray/src/libbluray/bdj/bdjo_parser.h
