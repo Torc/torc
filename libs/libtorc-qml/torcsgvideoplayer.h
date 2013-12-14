@@ -31,8 +31,8 @@ class TORC_QML_PUBLIC TorcSGVideoPlayer : public VideoPlayer, public TorcOverlay
     TorcSGVideoPlayer(QObject* Parent, int PlaybackFlags, int DecodeFlags);
     virtual ~TorcSGVideoPlayer();
 
-    bool                   Refresh                (quint64 TimeNow, const QSizeF &Size, bool Visible);
-    void                   Render                 (quint64 TimeNow);
+    virtual bool           Refresh                (quint64 TimeNow, const QSizeF &Size, bool Visible);
+    virtual void           Render                 (quint64 TimeNow);
     void                   Reset                  (void);
     void                   SetVideoProvider       (TorcSGVideoProvider *Provider);
     bool                   event                  (QEvent *Event);

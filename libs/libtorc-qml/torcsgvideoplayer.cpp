@@ -196,6 +196,8 @@ void TorcSGVideoPlayer::RefreshOverlays(QSGNode *Root)
     // don't process until we have valid video information
     //if (m_currentVideoPts == AV_NOPTS_VALUE || !m_videoProvider)
     //    return;
+    if (!m_videoProvider)
+        return;
 
     // generate list of new overlays
     QList<TorcVideoOverlayItem*> overlays = GetNewOverlays(m_currentVideoPts);

@@ -80,9 +80,12 @@ macx {
 }
 
 linux-rasp-pi-g++ {
-    #HEADERS += platforms/torcraspberrypi.h
-    #SOURCES += platforms/torcraspberrypi.cpp
-
+    HEADERS    += platforms/torcraspberrypi.h
+    HEADERS    += platforms/videodecoderomx.h
+    HEADERS    += platforms/torcomxvideoplayer.h
+    SOURCES    += platforms/torcraspberrypi.cpp
+    SOURCES    += platforms/videodecoderomx.cpp
+    SOURCES    += platforms/torcomxvideoplayer.cpp
     DEPENDPATH += ./openmax
     HEADERS    += openmax/torcomxcore.h
     HEADERS    += openmax/torcomxport.h
@@ -94,7 +97,7 @@ linux-rasp-pi-g++ {
     SOURCES    += openmax/torcomxcomponent.cpp
     inc.files  += openmax/torcomxcore.h
     inc.files  += openmax/torcomxport.h
-    inc.files  += openamx/torcomxtunnel.h
+    inc.files  += openmax/torcomxtunnel.h
     inc.files  += openmax/torcomxcomponent.h
 }
 

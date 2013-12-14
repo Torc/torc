@@ -26,7 +26,7 @@
 #include "torclogging.h"
 #include "torcadminthread.h"
 #include "torcusb.h"
-#include "uiedid.h"
+#include "torcedid.h"
 #include "torcraspberrypi.h"
 
 // Pi
