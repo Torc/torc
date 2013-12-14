@@ -103,9 +103,9 @@ static class TorcPiCEC : public TorcAdminObject
     }
 } TorcPiCEC;
 
-class EDIDFactoryRaspberryPi : public EDIDFactory
+class EDIDFactoryRaspberryPi : public TorcEDIDFactory
 {
-    void GetEDID(QMap<QPair<int,QString>,QByteArray > &EDIDMap, WId Window, int Screen)
+    void GetEDID(QMap<QPair<int,QString>,QByteArray > &EDIDMap, QWindow *Window, int Screen)
     {
         if (!InitialiseRaspberryPi())
             return;
