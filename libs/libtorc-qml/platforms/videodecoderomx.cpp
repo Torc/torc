@@ -130,7 +130,7 @@ void VideoDecoderOMX::ProcessVideoPacket(AVFormatContext *Context, AVStream *Str
     }
 }
 
-void VideoDecoderOMX::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stream)
+AVCodec* VideoDecoderOMX::PreInitVideoDecoder(AVFormatContext *Context, AVStream *Stream)
 {
     if (!Stream || (Stream && !Stream->codec))
         return;
@@ -152,7 +152,7 @@ void VideoDecoderOMX::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stre
     if (!m_core->IsValid())
     {
         LOG(VB_GENERAL, LOG_ERR, "OpenMax decoding not available");
-        return;
+        return NULL;
     }
 
     // decide OpenMax codec type
@@ -321,6 +321,8 @@ void VideoDecoderOMX::SetupVideoDecoder(AVFormatContext *Context, AVStream *Stre
         else
             LOG(VB_GENERAL, LOG_ERR, "Failed to send decoder configuration");
     }
+
+    return NULL;
 }
 
 

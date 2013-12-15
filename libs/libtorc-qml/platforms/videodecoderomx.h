@@ -26,7 +26,7 @@ class VideoDecoderOMX : public AudioDecoder
 
     bool              VideoBufferStatus     (int &Unused, int &Inuse, int &Held);
     void              ProcessVideoPacket    (AVFormatContext *Context, AVStream *Stream, AVPacket *Packet);
-    void              SetupVideoDecoder     (AVFormatContext *Context, AVStream *Stream);
+    AVCodec*          PreInitVideoDecoder   (AVFormatContext *Context, AVStream *Stream);
     void              CleanupVideoDecoder   (AVStream *Stream);
     void              FlushVideoBuffers     (bool Stopped);
     void              SetFormat             (PixelFormat Format, int Width, int Height, int References, bool UpdateParent);
