@@ -133,7 +133,7 @@ void VideoDecoderOMX::ProcessVideoPacket(AVFormatContext *Context, AVStream *Str
 AVCodec* VideoDecoderOMX::PreInitVideoDecoder(AVFormatContext *Context, AVStream *Stream)
 {
     if (!Stream || (Stream && !Stream->codec))
-        return;
+        return NULL;
 
     // setup libav parsing
     AVCodecContext *context        = Stream->codec;
