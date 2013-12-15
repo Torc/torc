@@ -79,9 +79,9 @@ OMX_ERRORTYPE TorcOMXTunnel::Create(void)
 
     QMutexLocker locker(m_lock);
     m_connected = false;
-    QString description = QString("Failed to create tunnel: %1:%2->%3:%4").arg(m_source->GetName()).arg(m_sourcePort).arg(m_destination->GetName()).arg(m_destinationPort);
+    QString description = QString("%1:%2->%3:%4").arg(m_source->GetName()).arg(m_sourcePort).arg(m_destination->GetName()).arg(m_destinationPort);
 
-    OMX_CHECK(m_core->m_omxSetupTunnel(m_source->GetHandle(), m_sourcePort, m_destination->GetHandle(), m_destinationPort), "", description);
+    OMX_CHECK(m_core->m_omxSetupTunnel(m_source->GetHandle(), m_sourcePort, m_destination->GetHandle(), m_destinationPort), "", QString("Failed to create tunnel: " + description));
 
     LOG(VB_GENERAL, LOG_INFO, QString("Created tunnel: %1").arg(description));
 
