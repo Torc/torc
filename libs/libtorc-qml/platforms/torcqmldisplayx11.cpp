@@ -313,10 +313,11 @@ void TorcQMLDisplayX11::RefreshScreenModes(void)
     if (XF86VidModeGetModeLine(display, screen, &dot_clock, &mode_line))
     {
         qreal currentrate = mode_line.htotal * mode_line.vtotal;
-        bool interlaced = false;
 
         if (currentrate > 0.0 && dot_clock > 0)
         {
+            bool interlaced = false;
+
             currentrate = (dot_clock * 1000.0) / currentrate;
             if (((mode_line.flags & V_INTERLACE) != 0) && currentrate > 24.5 && currentrate < 30.5)
             {
