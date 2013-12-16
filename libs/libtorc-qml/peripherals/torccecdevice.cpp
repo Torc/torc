@@ -987,6 +987,10 @@ void TorcCECThread::Finish(void)
 static class TorcCECDeviceHandler : public TorcUSBDeviceHandler
 {
   public:
+    TorcCECDeviceHandler() : TorcUSBDeviceHandler()
+    {
+    }
+
     bool DeviceAdded(const TorcUSBDevice &Device)
     {
         if (!(Device.m_vendorID  == 0x2548 && Device.m_productID == 0x1001))
