@@ -353,7 +353,7 @@ int TorcCommandLinePriv::Evaluate(int argc, const char * const *argv, bool &Exit
         std::cout << "QT Version : "   << QT_VERSION_STR << std::endl;
     }
 
-    return GENERIC_EXIT_OK;
+    return result;
 }
 
 /*! \class TorcCommandLine
