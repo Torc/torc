@@ -135,13 +135,20 @@ TorcBlurayMetadata::TorcBlurayMetadata(const QString &Path)
                             if (!href.isEmpty())
                                 metadata->thumbnails[k].path = strdup((const char*)href.toLocal8Bit().data());
 
-                            if (!size.isEmpty())
+                            QStringList values = size.split("x", QString::SkipEmptyParts);
+                            if (values.size() == 2)
                             {
-                                int x;
-                                int y;
-                                sscanf((const char*)size.toLocal8Bit().data(), "%ix%i", &x, &y);
-                                metadata->thumbnails[k].xres = x;
-                                metadata->thumbnails[k].yres = y;
+                                bool ok = false;
+                                int x = values[0].toInt(&ok);
+                                if (ok)
+                                {
+                                    int y = values[1].toInt(&ok);
+                                    if (ok)
+                                    {
+                                        metadata->thumbnails[k].xres = x;
+                                        metadata->thumbnails[k].yres = y;
+                                    }
+                                }
                             }
                             else
                             {
