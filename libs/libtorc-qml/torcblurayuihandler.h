@@ -31,6 +31,7 @@ class TORC_QML_PUBLIC TorcBlurayUIHandler : public TorcBlurayHandler
 
   protected:
     VideoPlayer              *m_player;
+    VideoDecoder             *m_decoder;
     qint32                    m_currentPlayList;
     quint32                   m_currentPlayItem;
     bool                      m_ignoreWaits;

@@ -31,7 +31,6 @@ class TORC_VIDEO_PUBLIC TorcBlurayHandler
     void                   ProcessTitleInfo     (void);
     qreal                  GetBlurayFramerate   (quint8 Rate);
 
-    VideoDecoder          *m_decoder;
     TorcBlurayBuffer      *m_parent;
     QString                m_path;
     int                   *m_abort;
