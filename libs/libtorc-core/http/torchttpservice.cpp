@@ -209,6 +209,8 @@ class MethodParameters
             return true;
         if (Value.compare("y", Qt::CaseInsensitive) == 0)
             return true;
+        if (Value.compare("yes", Qt::CaseInsensitive) == 0)
+            return true;
         return false;
     }
 
