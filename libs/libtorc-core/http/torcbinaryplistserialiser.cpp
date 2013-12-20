@@ -480,3 +480,30 @@ void TorcBinaryPListSerialiser::CountObjects(quint64 &Count, const QVariant &Val
 
     Count++;
 }
+
+class TorcBinaryPListSerialiserFactory : public TorcSerialiserFactory
+{
+  public:
+    TorcBinaryPListSerialiserFactory() : TorcSerialiserFactory("application/x-plist", "Binary PList")
+    {
+    }
+
+    TorcSerialiser* Create(void)
+    {
+        return new TorcBinaryPListSerialiser();
+    }
+} TorcBinaryPListSerialiserFactory;
+
+class TorcAppleBinaryPListSerialiserFactory : public TorcSerialiserFactory
+{
+  public:
+    TorcAppleBinaryPListSerialiserFactory() : TorcSerialiserFactory("application/x-apple-binary-plist", "Binary PList")
+    {
+    }
+
+    TorcSerialiser* Create(void)
+    {
+        return new TorcBinaryPListSerialiser();
+    }
+} TorcAppleBinaryPListSerialiserFactory;
+

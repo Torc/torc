@@ -8,11 +8,12 @@
 #include <QDateTime>
 
 // Torc
+#include "torccoreexport.h"
 #include "torchttprequest.h"
 
 #define QVARIANT_ERROR QString("Error: QVariantList must contain only one variant type")
 
-class TorcSerialiser
+class TORC_CORE_PUBLIC TorcSerialiser
 {
   public:
     TorcSerialiser();
@@ -29,6 +30,25 @@ class TorcSerialiser
 
   protected:
     QByteArray *m_content;
+};
+
+class TORC_CORE_PUBLIC TorcSerialiserFactory
+{
+  public:
+    TorcSerialiserFactory(const QString &Accepts, const QString &Description);
+    virtual ~TorcSerialiserFactory();
+
+    static TorcSerialiserFactory* GetTorcSerialiserFactory  (void);
+    TorcSerialiserFactory*        NextTorcSerialiserFactory (void) const;
+    virtual TorcSerialiser*       Create                    (void) = 0;
+    const QString&                Accepts                   (void) const;
+    const QString&                Description               (void) const;
+
+  protected:
+    static TorcSerialiserFactory* gTorcSerialiserFactory;
+    TorcSerialiserFactory*        m_nextTorcSerialiserFactory;
+    QString                       m_accepts;
+    QString                       m_description;
 };
 
 #endif // TORCSERIALISER_H

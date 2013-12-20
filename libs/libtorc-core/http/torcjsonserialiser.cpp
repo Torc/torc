@@ -64,3 +64,29 @@ void TorcJSONSerialiser::AddProperty(const QString &Name, const QVariant &Value)
 void TorcJSONSerialiser::End(void)
 {
 }
+
+class TorcJSONSerialiserFactory : public TorcSerialiserFactory
+{
+  public:
+    TorcJSONSerialiserFactory() : TorcSerialiserFactory("application/json", "JSON")
+    {
+    }
+
+    TorcSerialiser* Create(void)
+    {
+        return new TorcJSONSerialiser();
+    }
+} TorcJSONSerialiserFactory;
+
+class TorcJavascriptSerialiserFactory : public TorcSerialiserFactory
+{
+  public:
+    TorcJavascriptSerialiserFactory() : TorcSerialiserFactory("text/javascript", "JSON")
+    {
+    }
+
+    TorcSerialiser* Create(void)
+    {
+        return new TorcJSONSerialiser(true /*javascript*/);
+    }
+} TorcJavascriptSerialiserFactory;

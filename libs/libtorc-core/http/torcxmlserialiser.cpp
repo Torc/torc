@@ -134,3 +134,16 @@ void TorcXMLSerialiser::MapToXML(const QString &Name, const QVariantMap &Value)
         m_xmlStream->writeEndElement();
     }
 }
+
+class TorcXMLSerialiserFactory : public TorcSerialiserFactory
+{
+  public:
+    TorcXMLSerialiserFactory() : TorcSerialiserFactory("application/xml", "XML")
+    {
+    }
+
+    TorcSerialiser* Create(void)
+    {
+        return new TorcXMLSerialiser();
+    }
+} TorcXMLSerialiserFactory;

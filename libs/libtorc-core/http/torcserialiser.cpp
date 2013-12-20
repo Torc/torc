@@ -45,3 +45,38 @@ QByteArray* TorcSerialiser::Serialise(const QVariant &Data, const QString &Type)
     m_content = NULL;
     return result;
 }
+
+TorcSerialiserFactory* TorcSerialiserFactory::gTorcSerialiserFactory = NULL;
+
+TorcSerialiserFactory::TorcSerialiserFactory(const QString &Accepts, const QString &Description)
+  : m_accepts(Accepts),
+    m_description(Description)
+{
+    m_nextTorcSerialiserFactory = gTorcSerialiserFactory;
+    gTorcSerialiserFactory      = this;
+}
+
+TorcSerialiserFactory::~TorcSerialiserFactory()
+{
+}
+
+TorcSerialiserFactory* TorcSerialiserFactory::GetTorcSerialiserFactory(void)
+{
+    return gTorcSerialiserFactory;
+}
+
+TorcSerialiserFactory* TorcSerialiserFactory::NextTorcSerialiserFactory(void) const
+{
+    return m_nextTorcSerialiserFactory;
+}
+
+const QString& TorcSerialiserFactory::Accepts(void) const
+{
+    return m_accepts;
+}
+
+const QString& TorcSerialiserFactory::Description(void) const
+{
+    return m_description;
+}
+

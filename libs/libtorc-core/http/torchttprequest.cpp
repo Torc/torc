@@ -943,23 +943,11 @@ TorcSerialiser* TorcHTTPRequest::GetSerialiser(void)
 {
     QString accept = m_headers->value("Accept");
 
-    if (accept.contains("application/json", Qt::CaseInsensitive))
-        return new TorcJSONSerialiser();
+    TorcSerialiserFactory *factory = TorcSerialiserFactory::GetTorcSerialiserFactory();
+    for ( ; factory; factory = factory->NextTorcSerialiserFactory())
+        if (accept.contains(factory->Accepts(), Qt::CaseInsensitive))
+            return factory->Create();
 
-    if (accept.contains("text/javascript", Qt::CaseInsensitive))
-        return new TorcJSONSerialiser(true /*javascript*/);
-
-    if (accept.contains("text/x-apple-plist+xml", Qt::CaseInsensitive))
-        return new TorcPListSerialiser();
-
-    if (accept.contains("application/plist", Qt::CaseInsensitive))
-        return new TorcPListSerialiser();
-
-    if (accept.contains("application/x-plist", Qt::CaseInsensitive))
-        return new TorcBinaryPListSerialiser();
-
-    if (accept.contains("application/x-apple-binary-plist", Qt::CaseInsensitive))
-        return new TorcBinaryPListSerialiser();
-
+    LOG(VB_GENERAL, LOG_WARNING, QString("Failed to find serialiser for '%1' - defaulting to XML").arg(accept));
     return new TorcXMLSerialiser();
 }
