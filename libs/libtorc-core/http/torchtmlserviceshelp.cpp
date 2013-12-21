@@ -28,6 +28,7 @@
 
 // Torc
 #include "torclocalcontext.h"
+#include "torcserialiser.h"
 #include "torchttpserver.h"
 #include "torchttprequest.h"
 #include "torchttpservice.h"
@@ -87,6 +88,11 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTP
         for ( ; it != services.end(); ++it)
             stream << it.value() << " <a href='" << it.key() + "Help" << "'>" << it.key() << "</a><br>";
     }
+
+    stream << "<h3>" << QObject::tr("Supported return formats") << ":</h3>";
+    TorcSerialiserFactory *factory = TorcSerialiserFactory::GetTorcSerialiserFactory();
+    for ( ; factory; factory = factory->NextTorcSerialiserFactory())
+        stream << factory->Description() << " (" << factory->Accepts() << ")</br>";
 
     stream << "</body></html>";
     stream.flush();
