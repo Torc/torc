@@ -717,6 +717,21 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
         stream << "<p><h3>" << QObject::tr("Example usage:") << "</h3><p>" << usage;
     }
 
+    stream << "<h3>" << QObject::tr("Websocket methods") << "</h3>";
+    stream << "Subscribe()</br>";
+
+    if (!m_properties.isEmpty())
+    {
+        stream << "<h3>" << QObject::tr("Properties") << "</h3>";
+
+        QMap<int,int>::const_iterator it = m_properties.begin();
+        for ( ; it != m_properties.end(); ++it)
+        {
+            QMetaProperty property = m_parent->metaObject()->property(it.value());
+            stream << property.name() << "&nbsp(" << property.typeName() << ")</br>";
+        }
+    }
+
     stream << "</body></html>";
     stream.flush();
     Request->SetStatus(HTTP_OK);
