@@ -89,6 +89,8 @@ class TORC_CORE_PUBLIC TorcUSB : public QObject, public TorcHTTPService
     Q_CLASSINFO("Version",    "1.0.0")
     Q_CLASSINFO("GetDevices", "type=devices")
 
+    Q_PROPERTY(QVariantMap devices READ GetDevices NOTIFY DevicesChanged)
+
   public:
     TorcUSB();
     virtual ~TorcUSB();
@@ -97,6 +99,9 @@ class TORC_CORE_PUBLIC TorcUSB : public QObject, public TorcHTTPService
     void         SubscriberDeleted (QObject *Subscriber);
 
     QVariantMap  GetDevices     (void);
+
+  signals:
+    void         DevicesChanged (void);
 
   public:
     void         DeviceAdded    (const TorcUSBDevice &Device);
@@ -109,6 +114,7 @@ class TORC_CORE_PUBLIC TorcUSB : public QObject, public TorcHTTPService
     TorcUSBPriv *m_priv;
     QMap<QString,TorcUSBDevice> m_managedDevices;
     QMutex      *m_managedDevicesLock;
+    QVariantMap devices; // dummy
 };
 
 class TORC_CORE_PUBLIC TorcUSBPriv

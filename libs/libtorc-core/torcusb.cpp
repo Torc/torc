@@ -301,6 +301,7 @@ void TorcUSB::DeviceAdded(const TorcUSBDevice &Device)
     {
         QMutexLocker locker(m_managedDevicesLock);
         m_managedDevices.insert(Device.m_path, Device);
+        emit DevicesChanged();
     }
 }
 
@@ -314,6 +315,7 @@ void TorcUSB::DeviceRemoved(const TorcUSBDevice &Device)
         QMutexLocker locker(m_managedDevicesLock);
         while (m_managedDevices.contains(Device.m_path))
             (void)m_managedDevices.remove(Device.m_path);
+        emit DevicesChanged();
     }
 
 }
