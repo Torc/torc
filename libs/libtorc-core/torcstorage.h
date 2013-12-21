@@ -38,10 +38,15 @@ class TORC_CORE_PUBLIC TorcStorage : public QObject, public TorcHTTPService
     Q_CLASSINFO("Eject",    "methods=PUT")
     Q_CLASSINFO("GetDisks", "type=disks")
 
+    Q_PROPERTY(QVariantMap disks READ GetDisks NOTIFY DisksChanged)
+
   public:
     static void Create        (void);
     static void Destroy       (void);
     static bool DiskIsMounted (const QString &Disk);
+
+  signals:
+    void        DisksChanged  (void);
 
   public slots:
     void        SubscriberDeleted (QObject *Subscriber);
@@ -66,6 +71,7 @@ class TORC_CORE_PUBLIC TorcStorage : public QObject, public TorcHTTPService
     QMap<QString,TorcStorageDevice> m_disks;
     QMutex                         *m_disksLock;
     TorcStoragePriv                *m_priv;
+    QVariantMap                     disks; // dummy
 };
 
 extern TORC_CORE_PUBLIC TorcStorage *gStorage;

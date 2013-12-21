@@ -175,6 +175,7 @@ void TorcStorage::AddDisk(TorcStorageDevice &Disk)
                 .arg((bool)(p & TorcStorageDevice::Mounted)));
 
             m_disks.insert(Disk.GetSystemName(), Disk);
+            emit DisksChanged();
         }
     }
 }
@@ -191,6 +192,7 @@ void TorcStorage::RemoveDisk(TorcStorageDevice &Disk)
                 .arg(m_disks[Disk.GetSystemName()].GetName())
                 .arg(Disk.GetSystemName()));
             m_disks.remove(Disk.GetSystemName());
+            emit DisksChanged();
         }
     }
 }
@@ -211,11 +213,14 @@ void TorcStorage::ChangeDisk(TorcStorageDevice &Disk)
         return;
     }
 
+    bool changed = false;
+
     if ((*it).GetName() != Disk.GetName())
     {
         LOG(VB_GENERAL, LOG_INFO, QString("Disk '%1' changed name from '%2' to '%3'")
             .arg(name).arg((*it).GetName()).arg(Disk.GetName()));
         (*it).SetName(Disk.GetName());
+        changed = true;
     }
 
     if ((*it).GetType() != Disk.GetType())
@@ -225,15 +230,25 @@ void TorcStorage::ChangeDisk(TorcStorageDevice &Disk)
             .arg(TorcStorageDevice::TypeToString((*it).GetType()))
             .arg(TorcStorageDevice::TypeToString(Disk.GetType())));
         (*it).SetType(Disk.GetType());
+        changed = true;
     }
 
     bool wasmounted = (*it).GetProperties() & TorcStorageDevice::Mounted;
     bool ismounted  = Disk.GetProperties() & TorcStorageDevice::Mounted;
 
     if (ismounted && !wasmounted)
+    {
         DiskMounted(Disk);
+        changed = true;
+    }
     else if (wasmounted && !ismounted)
+    {
         DiskUnmounted(Disk);
+        changed = true;
+    }
+
+    if (changed)
+        emit DisksChanged();
 }
 
 void TorcStorage::DiskMounted(TorcStorageDevice &Disk)
