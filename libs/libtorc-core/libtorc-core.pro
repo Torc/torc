@@ -158,6 +158,7 @@ inc.files += torchtmlhandler.h
 inc.files += torchttpservice.h
 inf.files += torcwebsocket.h
 inc.files += torcssdp.h
+inc.files += torcserialiser.h
 
 unix:contains(CONFIG_LIBUDEV, yes) {
     HEADERS += platforms/torcusbprivunix.h
