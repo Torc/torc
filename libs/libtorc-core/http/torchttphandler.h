@@ -12,6 +12,8 @@ class TorcHTTPServer;
 class TorcHTTPConnection;
 class TorcHTTPRequest;
 
+#define STATIC_DIRECTORY QString("/html/")
+
 class TORC_CORE_PUBLIC TorcHTTPHandler
 {
   public:

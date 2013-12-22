@@ -2,7 +2,7 @@ include config.mak
 
 
 MAKE_SUBDIRS = libs/libtorc-av
-QT_SUBDIRS = libs programs
+QT_SUBDIRS = libs programs html
 
 SUBDIRS += $(MAKE_SUBDIRS) $(QT_SUBDIRS)
 

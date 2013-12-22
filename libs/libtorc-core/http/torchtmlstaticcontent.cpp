@@ -36,7 +36,7 @@
 */
 
 TorcHTMLStaticContent::TorcHTMLStaticContent()
-  : TorcHTTPHandler("/html", "static")
+  : TorcHTTPHandler(STATIC_DIRECTORY, "static")
 {
     m_recursive = true;
 }
