@@ -142,6 +142,21 @@ bool TorcNetwork::GetAsynchronous(TorcNetworkRequest *Request, QObject *Parent)
     return false;
 }
 
+/*! \brief Convert an IP address to a string literal.
+ *
+ * For an IPv4 address, this is a no-op. For IPv6 addresses, we need to remove the scope Id if present
+ * and wrap the remainder in braces.
+*/
+QString TorcNetwork::IPAddressToLiteral(const QHostAddress &Address)
+{
+    if (Address.protocol() == QAbstractSocket::IPv4Protocol)
+        return Address.toString();
+
+    QHostAddress address(Address);
+    address.setScopeId("");
+    return "[" + address.toString() +"]";
+}
+
 void TorcNetwork::Setup(bool Create)
 {
     QMutexLocker locker(gNetworkLock);
