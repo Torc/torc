@@ -30,6 +30,7 @@
 
 // Torc
 #include "torclogging.h"
+#include "torcnetwork.h"
 #include "torcnetworkedcontext.h"
 #include "torchttpconnection.h"
 #include "torchttprequest.h"
@@ -1148,9 +1149,11 @@ void TorcWebSocket::Connected(void)
     QString key = QString(nonce.data()) + QLatin1String("258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
     m_challengeResponse = QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toBase64();
 
+    QHostAddress host(m_address);
+
     stream << "GET / HTTP/1.1\r\n";
     stream << "User-Agent: " << TorcHTTPServer::PlatformName() << "\r\n";
-    stream << "Host: " << m_address << ":" << QString::number(m_port) << "\r\n";
+    stream << "Host: " << TorcNetwork::IPAddressToLiteral(host) << ":" << QString::number(m_port) << "\r\n";
     stream << "Upgrade: WebSocket\r\n";
     stream << "Connection: Upgrade\r\n";
     stream << "Sec-WebSocket-Version: 13\r\n";
