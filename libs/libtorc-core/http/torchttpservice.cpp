@@ -31,6 +31,7 @@
 
 // Torc
 #include "torclogging.h"
+#include "torcnetwork.h"
 #include "torchttpconnection.h"
 #include "torchttpserver.h"
 #include "torcserialiser.h"
@@ -701,7 +702,7 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
         stream << method << ") (" << TorcHTTPRequest::AllowedToString(params->m_allowedRequestTypes) << ")<br>";
     }
 
-    QString url = Connection->GetSocket() ? QString("http://") + Connection->GetSocket()->localAddress().toString()
+    QString url = Connection->GetSocket() ? QString("http://") + TorcNetwork::IPAddressToLiteral(Connection->GetSocket()->localAddress())
                                             + ":" + QString::number(Connection->GetSocket()->localPort()) : QObject::tr("Error");
 
     if (example != m_methods.end())
