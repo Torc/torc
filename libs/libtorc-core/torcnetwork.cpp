@@ -149,6 +149,9 @@ bool TorcNetwork::GetAsynchronous(TorcNetworkRequest *Request, QObject *Parent)
 */
 QString TorcNetwork::IPAddressToLiteral(const QHostAddress &Address)
 {
+    if (Address.isLoopback())
+        return QString("localhost");
+
     if (Address.protocol() == QAbstractSocket::IPv4Protocol)
         return Address.toString();
 
