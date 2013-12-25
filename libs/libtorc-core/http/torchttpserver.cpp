@@ -48,7 +48,7 @@
 #endif
 
 QMap<QString,TorcHTTPHandler*> gHandlers;
-QMutex*                        gHandlersLock = new QMutex(QMutex::Recursive);
+QReadWriteLock*                gHandlersLock = new QReadWriteLock(QReadWriteLock::Recursive);
 QString                        gServicesDirectory(SERVICES_DIRECTORY);
 
 void TorcHTTPServer::RegisterHandler(TorcHTTPHandler *Handler)
@@ -56,21 +56,26 @@ void TorcHTTPServer::RegisterHandler(TorcHTTPHandler *Handler)
     if (!Handler)
         return;
 
-    QMutexLocker locker(gHandlersLock);
+    bool changed = false;
 
-    QString signature = Handler->Signature();
-    if (gHandlers.contains(signature))
     {
-        LOG(VB_GENERAL, LOG_ERR, QString("Handler '%1' for '%2' already registered - ignoring").arg(Handler->Name()).arg(signature));
-    }
-    else if (!signature.isEmpty())
-    {
-        LOG(VB_GENERAL, LOG_DEBUG, QString("Added handler '%1' for %2").arg(Handler->Name()).arg(signature));
-        gHandlers.insert(signature, Handler);
+        QWriteLocker locker(gHandlersLock);
 
-        if (gWebServer)
-            emit gWebServer->HandlersChanged();
+        QString signature = Handler->Signature();
+        if (gHandlers.contains(signature))
+        {
+            LOG(VB_GENERAL, LOG_ERR, QString("Handler '%1' for '%2' already registered - ignoring").arg(Handler->Name()).arg(signature));
+        }
+        else if (!signature.isEmpty())
+        {
+            LOG(VB_GENERAL, LOG_DEBUG, QString("Added handler '%1' for %2").arg(Handler->Name()).arg(signature));
+            gHandlers.insert(signature, Handler);
+            changed = true;
+        }
     }
+
+    if (changed && gWebServer)
+        emit gWebServer->HandlersChanged();
 }
 
 void TorcHTTPServer::DeregisterHandler(TorcHTTPHandler *Handler)
@@ -78,23 +83,28 @@ void TorcHTTPServer::DeregisterHandler(TorcHTTPHandler *Handler)
     if (!Handler)
         return;
 
-    QMutexLocker locker(gHandlersLock);
+    bool changed = false;
 
-    QMap<QString,TorcHTTPHandler*>::iterator it = gHandlers.find(Handler->Signature());
-    if (it != gHandlers.end())
     {
-        gHandlers.erase(it);
+        QWriteLocker locker(gHandlersLock);
 
-        if (gWebServer)
-            emit gWebServer->HandlersChanged();
+        QMap<QString,TorcHTTPHandler*>::iterator it = gHandlers.find(Handler->Signature());
+        if (it != gHandlers.end())
+        {
+            gHandlers.erase(it);
+            changed = true;
+        }
     }
+
+    if (changed && gWebServer)
+        emit gWebServer->HandlersChanged();
 }
 
 void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPRequest *Request)
 {
     if (Request && Connection)
     {
-        QMutexLocker locker(gHandlersLock);
+        QReadLocker locker(gHandlersLock);
 
         QString path = Request->GetPath();
 
@@ -131,7 +141,7 @@ void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPReque
 */
 QVariantMap TorcHTTPServer::HandleRequest(const QString &Method, const QVariant &Parameters, QObject *Connection)
 {
-    QMutexLocker locker(gHandlersLock);
+    QReadLocker locker(gHandlersLock);
 
     QString path = "/";
     int index = Method.lastIndexOf("/");
@@ -159,7 +169,7 @@ QVariantMap TorcHTTPServer::HandleRequest(const QString &Method, const QVariant 
 
 QMap<QString,QString> TorcHTTPServer::GetServiceHandlers(void)
 {
-    QMutexLocker locker(gHandlersLock);
+    QReadLocker locker(gHandlersLock);
 
     QMap<QString,QString> result;
 
