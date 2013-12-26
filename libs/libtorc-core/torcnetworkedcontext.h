@@ -7,6 +7,7 @@
 
 // Torc
 #include "torccoreexport.h"
+#include "http/torchttpservice.h"
 #include "torclocalcontext.h"
 
 class TorcRPCRequest;
@@ -63,6 +64,7 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
     void                    CreateSocket      (TorcHTTPRequest *Request, QTcpSocket *Socket);
     void                    RemoteRequest     (TorcRPCRequest *Request);
     void                    CancelRequest     (TorcRPCRequest *Request);
+    QVariant                ToMap             (void);
 
   private:
     void                    ScheduleRetry     (void);
@@ -92,18 +94,23 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
 
 Q_DECLARE_METATYPE(TorcNetworkService*);
 
-class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel
+class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public TorcHTTPService
 {
     friend class TorcNetworkedContextObject;
     friend class TorcNetworkService;
 
     Q_OBJECT
+    Q_CLASSINFO("Version",    "1.0.0")
+    Q_CLASSINFO("GetPeers",   "type=peers")
+    Q_PROPERTY(QVariantList peers READ GetPeers NOTIFY PeersChanged)
 
   public:
     // QAbstractListModel
     QVariant                   data                (const QModelIndex &Index, int Role) const;
     QHash<int,QByteArray>      roleNames           (void) const;
     int                        rowCount            (const QModelIndex &Parent = QModelIndex()) const;
+
+    QVariantList               GetPeers            (void);
 
     // TorcWebSocket
     static void                UpgradeSocket       (TorcHTTPRequest *Request, QTcpSocket *Socket);
@@ -112,11 +119,15 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel
     static void                CancelRequest       (const QString &UUID, TorcRPCRequest *Request, int Wait = 1000);
 
   signals:
+    void                       PeersChanged        (void);
     void                       PeerConnected       (QString Name, QString UUID);
     void                       PeerDisconnected    (QString Name, QString UUID);
     void                       UpgradeRequest      (TorcHTTPRequest *Request, QTcpSocket *Socket);
     void                       NewRequest          (const QString &UUID, TorcRPCRequest *Request);
     void                       RequestCancelled    (const QString &UUID, TorcRPCRequest *Request);
+
+  public slots:
+    void                       SubscriberDeleted   (QObject *Subscriber);
 
   protected slots:
     void                       HandleUpgrade       (TorcHTTPRequest *Request, QTcpSocket *Socket);
@@ -137,8 +148,10 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel
 
   private:
     QList<TorcNetworkService*> m_discoveredServices;
+    QReadWriteLock            *m_discoveredServicesLock;
     QList<QString>             m_serviceList;
     quint32                    m_bonjourBrowserReference;
+    QVariantMap                peers; // dummy
 };
 
 extern TORC_CORE_PUBLIC TorcNetworkedContext *gNetworkedContext;

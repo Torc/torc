@@ -507,6 +507,17 @@ void TorcNetworkService::CancelRequest(TorcRPCRequest *Request)
         LOG(VB_GENERAL, LOG_ERR, "Cannot cancel request - not connected");
 }
 
+QVariant TorcNetworkService::ToMap(void)
+{
+    QVariantMap result;
+    result.insert("name", name);
+    result.insert("uuid", uuid);
+    result.insert("port", port);
+    result.insert("uiAddress", uiAddress);
+
+    return result;
+}
+
 QStringList TorcNetworkService::GetAddresses(void)
 {
     return m_addresses;
@@ -534,13 +545,24 @@ void TorcNetworkService::SetAPIVersion(const QString &Version)
 }
 
 /*! \class TorcNetworkedContext
+ *  \brief A class to discover and connect to other Torc applications.
  *
  * ![](../images/peer-decisiontree.svg) "Torc peer discovery and connection"
+ *
+ * TorcNetworkedContext searches for other Torc applications on the local network using UPnP and Bonjour (where available).
+ * When a new application is discovered, its details will be retrieved automatically and a websocket connection initiated
+ * if necessary.
+ *
+ * The list of detected peers is available to the local UI via QAbstractListModel and hence this object must sit in the
+ * main thread. The peer list is also available to remote UIs via TorcHTTPService, which will process requests from multiple
+ * threads, hence limited locking is required around the peer list (the remote UI cannot write to the peer list, only read).
  *
  * \sa TorcNetworkService
  */
 TorcNetworkedContext::TorcNetworkedContext()
   : QAbstractListModel(),
+    TorcHTTPService(this, "peers", tr("Peers"), TorcNetworkedContext::staticMetaObject),
+    m_discoveredServicesLock(new QReadWriteLock(QReadWriteLock::Recursive)),
     m_bonjourBrowserReference(0)
 {
     // listen for events
@@ -597,12 +619,27 @@ TorcNetworkedContext::~TorcNetworkedContext()
     TorcBonjour::TearDown();
 #endif
 
-    while (!m_discoveredServices.isEmpty())
-        delete m_discoveredServices.takeLast();
+    {
+        QWriteLocker locker(m_discoveredServicesLock);
+        while (!m_discoveredServices.isEmpty())
+            delete m_discoveredServices.takeLast();
+    }
+}
+
+QVariantList TorcNetworkedContext::GetPeers(void)
+{
+    QVariantList result;
+
+    QReadLocker locker(m_discoveredServicesLock);
+    foreach (TorcNetworkService* service, m_discoveredServices)
+        result.append(service->ToMap());
+
+    return result;
 }
 
 QVariant TorcNetworkedContext::data(const QModelIndex &Index, int Role) const
 {
+    // no locking required - discovered services are changed in this thread.
     int row = Index.row();
 
     if (row < 0 || row >= m_discoveredServices.size() || Role != Qt::DisplayRole)
@@ -623,6 +660,7 @@ QHash<int,QByteArray> TorcNetworkedContext::roleNames(void) const
 
 int TorcNetworkedContext::rowCount(const QModelIndex&) const
 {
+    // no locking required - discovered services are changed in this thread.
     return m_discoveredServices.size();
 }
 
@@ -778,6 +816,7 @@ void TorcNetworkedContext::HandleNewRequest(const QString &UUID, TorcRPCRequest 
 {
     if (!UUID.isEmpty() && m_serviceList.contains(UUID))
     {
+        // no locking required - discovered services are changed in this thread.
         for (int i = 0; i < m_discoveredServices.size(); ++i)
         {
             if (m_discoveredServices[i]->GetUuid() == UUID)
@@ -795,6 +834,7 @@ void TorcNetworkedContext::HandleCancelRequest(const QString &UUID, TorcRPCReque
 {
     if (!UUID.isEmpty() && m_serviceList.contains(UUID))
     {
+        // no locking required - discovered services are changed in this thread.
         for (int i = 0; i < m_discoveredServices.size(); ++i)
         {
             if (m_discoveredServices[i]->GetUuid() == UUID)
@@ -806,6 +846,11 @@ void TorcNetworkedContext::HandleCancelRequest(const QString &UUID, TorcRPCReque
     }
 
     LOG(VB_GENERAL, LOG_WARNING, QString("Connection identified by '%1' unknown").arg(UUID));
+}
+
+void TorcNetworkedContext::SubscriberDeleted(QObject *Subscriber)
+{
+    TorcHTTPService::HandleSubscriberDeleted(Subscriber);
 }
 
 void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *Socket)
@@ -820,6 +865,7 @@ void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *S
 
     if (!uuid.isEmpty() && m_serviceList.contains(uuid))
     {
+        // no locking required - discovered services are changed in this thread.
         for (int i = 0; i < m_discoveredServices.size(); ++i)
         {
             if (m_discoveredServices[i]->GetUuid() == uuid)
@@ -864,13 +910,16 @@ void TorcNetworkedContext::Add(TorcNetworkService *Peer)
 {
     if (Peer && !m_serviceList.contains(Peer->GetUuid()))
     {
-        int position = m_discoveredServices.size();
-        beginInsertRows(QModelIndex(), position, position);
-        m_discoveredServices.append(Peer);
-        endInsertRows();
+        {
+            QWriteLocker locker(m_discoveredServicesLock);
+            int position = m_discoveredServices.size();
+            beginInsertRows(QModelIndex(), position, position);
+            m_discoveredServices.append(Peer);
+            endInsertRows();
+        }
 
         m_serviceList.append(Peer->GetUuid());
-
+        emit PeersChanged();
         LOG(VB_GENERAL, LOG_INFO, QString("New Torc peer '%1'").arg(Peer->GetName()));
     }
 }
@@ -881,19 +930,23 @@ void TorcNetworkedContext::Delete(const QString &UUID)
     {
         (void)m_serviceList.removeAll(UUID);
 
-        for (int i = 0; i < m_discoveredServices.size(); ++i)
         {
-            if (m_discoveredServices.at(i)->GetUuid() == UUID)
+            QWriteLocker locker(m_discoveredServicesLock);
+            for (int i = 0; i < m_discoveredServices.size(); ++i)
             {
-                // remove the item from the model
-                beginRemoveRows(QModelIndex(), i, i);
-                delete m_discoveredServices.takeAt(i);
-                endRemoveRows();
+                if (m_discoveredServices.at(i)->GetUuid() == UUID)
+                {
+                    // remove the item from the model
+                    beginRemoveRows(QModelIndex(), i, i);
+                    delete m_discoveredServices.takeAt(i);
+                    endRemoveRows();
 
-                break;
+                    break;
+                }
             }
         }
 
+        emit PeersChanged();
         LOG(VB_GENERAL, LOG_INFO, QString("Torc peer %1 went away").arg(UUID));
     }
 }
