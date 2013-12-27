@@ -484,9 +484,9 @@ void TorcWebSocket::Start(void)
 
             m_upgradeRequest->Respond(m_socket, &m_abort);
 
-            LOG(VB_GENERAL, LOG_INFO, QString("Server WebSocket connected to '%1' (Subprotocol: %2)")
-                    .arg(m_socket->peerAddress().toString() + ":" + QString::number(m_socket->peerPort()))
-                    .arg(SubProtocolsToString(m_subProtocol)));
+            LOG(VB_GENERAL, LOG_INFO, "Server WebSocket connected to '" +
+                    (m_socket->peerAddress().toString() + ":" + QString::number(m_socket->peerPort())) +
+                    "' (Subprotocol: " + (SubProtocolsToString(m_subProtocol)) + ")");
 
             emit ConnectionEstablished();
             return;
