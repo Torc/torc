@@ -130,10 +130,11 @@ void TorcHTMLStaticContent::GetJavascriptConfiguration(TorcHTTPRequest *Request,
     {
         initialised = true;
 
-        statics.insert("ServerApplication", QCoreApplication::applicationName());
-        statics.insert("SocketNotConnected", QObject::tr("Not connected"));
-        statics.insert("SocketConnecting", QObject::tr("Connecting"));
-        statics.insert("SocketConnected", QObject::tr("Connected"));
+        statics.insert("ServerApplication",       QCoreApplication::applicationName());
+        statics.insert("SocketNotConnected",      QObject::tr("Not connected"));
+        statics.insert("SocketConnecting",        QObject::tr("Connecting"));
+        statics.insert("SocketConnected",         QObject::tr("Connected"));
+        statics.insert("SocketReady",             QObject::tr("Ready"));
         statics.insert("SocketReconnectAfterMs", "10000"); // try and reconnect every 10 seconds
     }
 
