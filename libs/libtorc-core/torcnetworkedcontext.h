@@ -110,8 +110,6 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public T
     QHash<int,QByteArray>      roleNames           (void) const;
     int                        rowCount            (const QModelIndex &Parent = QModelIndex()) const;
 
-    QVariantList               GetPeers            (void);
-
     // TorcWebSocket
     static void                UpgradeSocket       (TorcHTTPRequest *Request, QTcpSocket *Socket);
 
@@ -127,6 +125,7 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public T
     void                       RequestCancelled    (const QString &UUID, TorcRPCRequest *Request);
 
   public slots:
+    QVariantList               GetPeers            (void);
     void                       SubscriberDeleted   (QObject *Subscriber);
 
   protected slots:
