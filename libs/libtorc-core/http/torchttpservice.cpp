@@ -34,6 +34,7 @@
 #include "torcnetwork.h"
 #include "torchttpconnection.h"
 #include "torchttpserver.h"
+#include "torcjsonrpc.h"
 #include "torcserialiser.h"
 #include "torchttpservice.h"
 
@@ -225,7 +226,8 @@ class MethodParameters
 
 /*! \class TorcHTTPService
  *
- * \todo Support for complex parameter types via RPC (e.g. array etc)
+ * \todo Support for complex parameter types via RPC (e.g. array etc).
+ * \todo ProcessRequest implicitly assumes JSON-RPC (though applies to much of the RPC code).
 */
 TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, const QString &Name,
                                  const QMetaObject &MetaObject, const QString &Blacklist)
@@ -531,6 +533,8 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                     QVariantMap result;
                     QVariantMap details;
                     QVariantList properties;
+                    QVariantList methods;
+
                     QMap<int,int>::const_iterator it = m_properties.begin();
                     for ( ; it != m_properties.end(); ++it)
                     {
@@ -575,8 +579,40 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                         properties.append(map);
                     }
 
+                    QMap<QString,MethodParameters*>::const_iterator it2 = m_methods.begin();
+                    for ( ; it2 != m_methods.end(); ++it2)
+                    {
+                        QVariantMap map;
+                        map.insert("name", it2.key());
+                        QVariantList params;
+
+                        MethodParameters *parameters = it2.value();
+                        for (int i = 1; i < parameters->m_types.size(); ++i)
+                            params.append(parameters->m_names[i].data());
+                        map.insert("params", params);
+                        map.insert("returns", TorcJSONRPC::QMetaTypetoJavascriptType(parameters->m_types[0]));
+                        methods.append(map);
+                    }
+
+                    // and implicit Subscribe/Unsubscribe
+                    QVariantList params;
+                    QVariant returns("object");
+
+                    QVariantMap subscribe;
+                    subscribe.insert("name", "Subscribe");
+                    subscribe.insert("params", params);
+                    subscribe.insert("returns", returns);
+                    methods.append(subscribe);
+
+                    QVariantMap unsubscribe;
+                    unsubscribe.insert("name", "Unsubscribe");
+                    unsubscribe.insert("params", params);
+                    unsubscribe.insert("returns", returns);
+                    methods.append(unsubscribe);
+
                     details.insert("version", m_version);
                     details.insert("properties", properties);
+                    details.insert("methods", methods);
                     result.insert("result", details);
                     return result;
                 }
@@ -720,6 +756,7 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
 
     stream << "<h3>" << QObject::tr("Websocket methods") << "</h3>";
     stream << "Subscribe()</br>";
+    stream << "Unsubscribe()</br>";
 
     if (!m_properties.isEmpty())
     {
