@@ -561,7 +561,7 @@ void TorcNetworkService::SetAPIVersion(const QString &Version)
  */
 TorcNetworkedContext::TorcNetworkedContext()
   : QAbstractListModel(),
-    TorcHTTPService(this, "peers", tr("Peers"), TorcNetworkedContext::staticMetaObject),
+    TorcHTTPService(this, "peers", "peers", TorcNetworkedContext::staticMetaObject),
     m_discoveredServicesLock(new QReadWriteLock(QReadWriteLock::Recursive)),
     m_bonjourBrowserReference(0)
 {
@@ -624,6 +624,11 @@ TorcNetworkedContext::~TorcNetworkedContext()
         while (!m_discoveredServices.isEmpty())
             delete m_discoveredServices.takeLast();
     }
+}
+
+QString TorcNetworkedContext::GetUIName(void)
+{
+    return tr("Peers");
 }
 
 QVariantList TorcNetworkedContext::GetPeers(void)

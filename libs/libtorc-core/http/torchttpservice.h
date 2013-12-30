@@ -28,6 +28,8 @@ class TORC_CORE_PUBLIC TorcHTTPService : public TorcHTTPHandler
     QVariantMap  ProcessRequest           (const QString &Method, const QVariant &Parameters, QObject *Connection);
     QString      GetMethod                (int Index);
 
+    virtual QString GetUIName             (void);
+
   protected:
     void         UserHelp                 (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
     void         HandleSubscriberDeleted  (QObject* Subscriber);

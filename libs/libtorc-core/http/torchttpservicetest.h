@@ -23,6 +23,7 @@ class TorcHTTPServiceTest : public QObject, public TorcHTTPService
 
   public:
     TorcHTTPServiceTest();
+    QString            GetUIName               (void);
 
   public slots:
     void                SubscriberDeleted      (QObject *Subscriber);

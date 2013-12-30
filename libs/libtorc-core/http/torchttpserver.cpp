@@ -167,17 +167,24 @@ QVariantMap TorcHTTPServer::HandleRequest(const QString &Method, const QVariant 
     return result;
 }
 
-QMap<QString,QString> TorcHTTPServer::GetServiceHandlers(void)
+QVariantMap TorcHTTPServer::GetServiceHandlers(void)
 {
     QReadLocker locker(gHandlersLock);
 
-    QMap<QString,QString> result;
+    QVariantMap result;
 
     QMap<QString,TorcHTTPHandler*>::const_iterator it = gHandlers.begin();
     for ( ; it != gHandlers.end(); ++it)
-        if (it.key().startsWith(gServicesDirectory))
-            result.insert(it.key(), it.value()->Name());
-
+    {
+        TorcHTTPService *service = dynamic_cast<TorcHTTPService*>(it.value());
+        if (service)
+        {
+            QVariantMap map;
+            map.insert("path", it.key());
+            map.insert("name", service->GetUIName());
+            result.insert(it.value()->Name(), map);
+        }
+    }
     return result;
 }
 

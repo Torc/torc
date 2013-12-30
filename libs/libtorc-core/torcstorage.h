@@ -62,6 +62,7 @@ class TORC_CORE_PUBLIC TorcStorage : public QObject, public TorcHTTPService
     void        ChangeDisk    (TorcStorageDevice &Disk);
     void        DiskMounted   (TorcStorageDevice &Disk);
     void        DiskUnmounted (TorcStorageDevice &Disk);
+    QString     GetUIName     (void);
 
   protected:
     TorcStorage();

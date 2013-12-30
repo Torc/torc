@@ -116,6 +116,9 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public T
     static void                RemoteRequest       (const QString &UUID, TorcRPCRequest *Request);
     static void                CancelRequest       (const QString &UUID, TorcRPCRequest *Request, int Wait = 1000);
 
+    // TorcHTTPService
+    QString                    GetUIName           (void);
+
   signals:
     void                       PeersChanged        (void);
     void                       PeerConnected       (QString Name, QString UUID);

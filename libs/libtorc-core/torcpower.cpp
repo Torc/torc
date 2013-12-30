@@ -217,7 +217,7 @@ void TorcPower::TearDown(void)
 
 TorcPower::TorcPower()
   : QObject(),
-    TorcHTTPService(this, "power", tr("Power"), TorcPower::staticMetaObject, "ShuttingDown,Suspending,Hibernating,Restarting,WokeUp,LowBattery,Refresh"),
+    TorcHTTPService(this, "power", "power", TorcPower::staticMetaObject, "ShuttingDown,Suspending,Hibernating,Restarting,WokeUp,LowBattery,Refresh"),
     m_lastBatteryLevel(UnknownPower),
     m_priv(TorcPowerPriv::Create(this))
 {
@@ -325,6 +325,11 @@ TorcPower::~TorcPower()
     m_powerEnabled   = NULL;
     m_powerGroupItem = NULL;
     m_priv           = NULL;
+}
+
+QString TorcPower::GetUIName(void)
+{
+    return tr("Power");
 }
 
 void TorcPower::BatteryUpdated(int Level)

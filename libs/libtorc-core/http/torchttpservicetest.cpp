@@ -33,8 +33,13 @@
 */
 TorcHTTPServiceTest::TorcHTTPServiceTest()
   : QObject(),
-    TorcHTTPService(this, "test", tr("Test"), TorcHTTPServiceTest::staticMetaObject)
+    TorcHTTPService(this, "test", "test", TorcHTTPServiceTest::staticMetaObject)
 {
+}
+
+QString TorcHTTPServiceTest::GetUIName(void)
+{
+    return tr("Test");
 }
 
 void TorcHTTPServiceTest::SubscriberDeleted(QObject *Subscriber)

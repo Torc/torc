@@ -81,7 +81,7 @@ class TorcMediaDirectory
 
 TorcMediaSourceDirectory::TorcMediaSourceDirectory()
   : QObject(),
-    TorcHTTPService(this, "files", tr("Files"), TorcMediaSourceDirectory::staticMetaObject, BLACKLIST),
+    TorcHTTPService(this, "files", "files", TorcMediaSourceDirectory::staticMetaObject, BLACKLIST),
     mediaVersion(1),
     realMediaVersion(1),
     m_enabled(false),
@@ -203,6 +203,11 @@ TorcMedia::MediaType TorcMediaSourceDirectory::GuessFileType(const QString &Path
     }
 
     return TorcMedia::UnknownType;
+}
+
+QString TorcMediaSourceDirectory::GetUIName(void)
+{
+    return tr("Files");
 }
 
 void TorcMediaSourceDirectory::customEvent(QEvent *Event)

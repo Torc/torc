@@ -29,7 +29,8 @@ class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public QObject, public TorcHTTPSer
     TorcHTMLServicesHelp(TorcHTTPServer *Server);
     virtual ~TorcHTMLServicesHelp();
 
-    void ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection* Connection);
+    void           ProcessHTTPRequest   (TorcHTTPRequest *Request, TorcHTTPConnection* Connection);
+    QString        GetUIName            (void);
 
   signals:
     void           ServiceListChanged   (void);
@@ -44,7 +45,7 @@ class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public QObject, public TorcHTTPSer
     void           HandlersChanged      (void);
 
   private:
-    QMap<QString,QString> serviceList;
+    QVariantMap    serviceList; // dummy
 };
 
 #endif // TORCHTMLSERVICESHELP_H

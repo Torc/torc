@@ -106,6 +106,7 @@ class TORC_CORE_PUBLIC TorcUSB : public QObject, public TorcHTTPService
   public:
     void         DeviceAdded    (const TorcUSBDevice &Device);
     void         DeviceRemoved  (const TorcUSBDevice &Device);
+    QString      GetUIName      (void);
 
   protected:
     bool         event          (QEvent *Event);

@@ -708,7 +708,7 @@ PlayerFactory* PlayerFactory::NextFactory(void) const
 }
 
 TorcPlayerInterface::TorcPlayerInterface(QObject* Derived, const QMetaObject &MetaObject, const QString &Blacklist, bool Standalone)
-  : TorcHTTPService(Derived, "player", QObject::tr("Player"), MetaObject, Blacklist),
+  : TorcHTTPService(Derived, "player", "player", MetaObject, Blacklist),
     m_uri(QString()),
     m_player(NULL),
     m_standalone(Standalone),
@@ -857,4 +857,9 @@ bool TorcPlayerInterface::PlayMedia(bool Paused)
 void TorcPlayerInterface::SetURI(const QString &URI)
 {
     m_uri = URI;
+}
+
+QString TorcPlayerInterface::GetUIName(void)
+{
+    return QObject::tr("Player");
 }

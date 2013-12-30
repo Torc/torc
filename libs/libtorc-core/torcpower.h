@@ -86,6 +86,7 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
   public:
     virtual ~TorcPower();
     void BatteryUpdated  (int Level);
+    QString GetUIName    (void);
 
   public slots:
     void SubscriberDeleted (QObject *Subscriber);

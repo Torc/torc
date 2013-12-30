@@ -51,6 +51,7 @@ class TORC_MEDIA_PUBLIC TorcMediaSourceDirectory : public QObject, public TorcHT
 
   public:
     TorcMedia::MediaType GuessFileType      (const QString &Path);
+    QString         GetUIName               (void);
 
   protected:
     void            customEvent             (QEvent *Event);

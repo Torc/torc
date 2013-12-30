@@ -31,9 +31,8 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     static void    RegisterHandler    (TorcHTTPHandler *Handler);
     static void    DeregisterHandler  (TorcHTTPHandler *Handler);
     static void    HandleRequest      (TorcHTTPConnection *Connection, TorcHTTPRequest *Request);
-    static QVariantMap HandleRequest     (const QString &Method, const QVariant &Parameters, QObject *Connection);
-    static QMap<QString,QString>
-                   GetServiceHandlers (void);
+    static QVariantMap HandleRequest  (const QString &Method, const QVariant &Parameters, QObject *Connection);
+    static QVariantMap GetServiceHandlers (void);
 
     // WebSockets
     static void    UpgradeSocket      (TorcHTTPRequest *Request, QTcpSocket *Socket);

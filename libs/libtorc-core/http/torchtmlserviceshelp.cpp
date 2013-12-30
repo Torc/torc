@@ -36,14 +36,18 @@
 
 TorcHTMLServicesHelp::TorcHTMLServicesHelp(TorcHTTPServer *Server)
   : QObject(),
-    TorcHTTPService(this, "", tr("Services"), TorcHTMLServicesHelp::staticMetaObject, QString("HandlersChanged"))
+    TorcHTTPService(this, "", "services", TorcHTMLServicesHelp::staticMetaObject, QString("HandlersChanged"))
 {
     connect(Server, SIGNAL(HandlersChanged()), this, SLOT(HandlersChanged()));
-    serviceList = TorcHTTPServer::GetServiceHandlers();
 }
 
 TorcHTMLServicesHelp::~TorcHTMLServicesHelp()
 {
+}
+
+QString TorcHTMLServicesHelp::GetUIName(void)
+{
+    return tr("Services");
 }
 
 void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConnection* Connection)
@@ -71,11 +75,11 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTP
     QByteArray *result = new QByteArray();
     QTextStream stream(result);
 
-    QMap<QString,QString> services = TorcHTTPServer::GetServiceHandlers();
+    QVariantMap services = TorcHTTPServer::GetServiceHandlers();
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
     stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName();
-    stream << "<a> " << m_name << "</a></h1>";
+    stream << "<a> " << GetUIName() << "</a></h1>";
 
     if (services.isEmpty())
     {
@@ -84,9 +88,12 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTP
     else
     {
         stream << "<h3>" << QObject::tr("Available services") << "</h3>";
-        QMap<QString,QString>::iterator it = services.begin();
+        QVariantMap::iterator it = services.begin();
         for ( ; it != services.end(); ++it)
-            stream << it.value() << " <a href='" << it.key() + "Help" << "'>" << it.key() << "</a><br>";
+        {
+            QVariantMap map = it.value().toMap();
+            stream << map.value("name").toString() << " <a href='" << map.value("path").toString() + "Help" << "'>" << map.value("path").toString() << "</a><br>";
+        }
     }
 
     stream << "<h3>" << QObject::tr("Supported return formats") << ":</h3>";
@@ -128,14 +135,7 @@ QVariantMap TorcHTMLServicesHelp::GetDetails(void)
 
 QVariantMap TorcHTMLServicesHelp::GetServiceList(void)
 {
-    QVariantMap results;
-
-    QMap<QString,QString> services = TorcHTTPServer::GetServiceHandlers();
-    QMap<QString,QString>::const_iterator it = services.begin();
-    for ( ; it != services.end(); ++it)
-        results.insert(it.value(), QVariant(it.key()));
-
-    return results;
+    return TorcHTTPServer::GetServiceHandlers();
 }
 
 qint64 TorcHTMLServicesHelp::GetStartTime(void)
@@ -155,6 +155,5 @@ QString TorcHTMLServicesHelp::GetUuid(void)
 
 void TorcHTMLServicesHelp::HandlersChanged(void)
 {
-    serviceList = TorcHTTPServer::GetServiceHandlers();
     emit ServiceListChanged();
 }

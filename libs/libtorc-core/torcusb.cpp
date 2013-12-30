@@ -212,7 +212,7 @@ TorcUSBDeviceHandler* TorcUSBDeviceHandler::GetNextHandler(void)
 
 TorcUSB::TorcUSB()
   : QObject(),
-    TorcHTTPService(this, "usb", tr("USB"), TorcUSB::staticMetaObject),
+    TorcHTTPService(this, "usb", "usb", TorcUSB::staticMetaObject),
     m_priv(NULL),
     m_managedDevicesLock(new QMutex())
 {
@@ -242,6 +242,11 @@ TorcUSB::~TorcUSB()
 
     // delete lock
     delete m_managedDevicesLock;
+}
+
+QString TorcUSB::GetUIName(void)
+{
+    return tr("USB");
 }
 
 bool TorcUSB::event(QEvent *Event)

@@ -174,6 +174,7 @@ class TORC_CORE_PUBLIC  TorcPlayerInterface : public TorcHTTPService
     virtual bool   PlayMedia          (bool Paused);
 
     void           SetURI             (const QString &URI);
+    QString        GetUIName          (void);
 
   protected:
     QString        m_uri;

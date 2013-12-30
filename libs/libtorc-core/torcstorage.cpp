@@ -93,7 +93,7 @@ bool TorcStorage::DiskIsMounted(const QString &Disk)
 
 TorcStorage::TorcStorage()
   : QObject(),
-    TorcHTTPService(this, "storage", tr("Storage"), TorcStorage::staticMetaObject),
+    TorcHTTPService(this, "storage", "storage", TorcStorage::staticMetaObject),
     m_disksLock(new QMutex(QMutex::Recursive)),
     m_priv(NULL)
 {
@@ -114,6 +114,11 @@ TorcStorage::~TorcStorage()
     // delete the lock
     delete m_disksLock;
     m_disksLock = NULL;
+}
+
+QString TorcStorage::GetUIName(void)
+{
+    return tr("Storage");
 }
 
 void TorcStorage::SubscriberDeleted(QObject *Subscriber)
