@@ -1,0 +1,186 @@
+﻿/* TorcWebSocket
+*
+* This file is part of the Torc project.
+*
+* Copyright (C) Mark Kendall 2013
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+* USA.
+*/
+
+var TorcWebsocket = function ($, torc, socketStatusChanged) {
+    "use strict";
+
+    // initial socket state
+    if (typeof socketStatusChanged === 'function') { socketStatusChanged(torc.SocketConnecting); }
+
+    // current JSON-RPC Id
+    var currentRpcId = 1,
+    // current calls
+    currentCalls = [],
+    // event handlers for notifications
+    eventHandlers = {},
+    // interval timer to check for call expiry/failure
+    expireTimer,
+    // create the socket
+    url = 'ws://' + torc.ServerAuthority,
+    socket = (typeof MozWebSocket === 'function') ? new MozWebSocket(url, 'torc.json-rpc') : new WebSocket(url, 'torc.json-rpc');
+
+    // clear out any old remote calls (over 10 seconds) for which we did not receive a response
+    function expireCalls() {
+        var i,
+        timenow = new Date().getTime();
+
+        for (i = currentCalls.length - 1; i >= 0; i -= 1) {
+            if ((currentCalls[i].sent + 10000) < timenow) {
+                console.log('Expiring call id ' + currentCalls[i].id + ' : no response received');
+                currentCalls.splice(i, 1);
+            }
+        }
+
+        if (currentCalls.length < 1) {
+            clearInterval(expireTimer);
+            expireTimer = undefined;
+        }
+    }
+
+    // make a remote call (public)
+    this.call = function (methodToCall, params, callbackFunction) {
+        // create the base call object
+        var invocation = {
+            jsonrpc: '2.0',
+            method: methodToCall
+        };
+
+        // add params if supplied
+        if (typeof params === 'object' && params !== null) {
+            invocation.params = params;
+        }
+
+        // no callback indicates a notification
+        if (typeof callbackFunction === 'function') {
+            invocation.id = currentRpcId;
+            currentCalls.push({ id: currentRpcId, callback: callbackFunction, sent: new Date().getTime() });
+            currentRpcId += 1;
+
+            // wrap the id when it gets large...
+            if (currentRpcId > 0x2000000) {
+                currentRpcId = 1;
+            }
+
+            // start the expire timer if not already running
+            if (expireTimer === undefined) {
+                expireTimer = setInterval(expireCalls, 10000);
+            }
+        }
+
+        socket.send(JSON.stringify(invocation));
+    };
+
+    // socket error
+    socket.onerror = function (event) {
+        // this never seems to contain any pertinent information
+        console.log('Websocket error (' + event.toString() + ')');
+    };
+
+    // socket closed
+    socket.onclose = function () {
+        if (typeof socketStatusChanged === 'function') { socketStatusChanged(torc.SocketNotConnected); }
+    };
+
+    // socket opened
+    socket.onopen = function () {
+        // connected
+        if (typeof socketStatusChanged === 'function') { socketStatusChanged(torc.SocketConnected); }
+    };
+
+    // handle individual responses
+    function processResult(data) {
+        var i, id, callback, method;
+
+        // we only understand JSON-RPC 2.0
+        if (!(data.hasOwnProperty('jsonrpc') && data.jsonrpc === '2.0')) {
+            console.log('Result is not JSON-RPC 2.0');
+            return;
+        }
+
+        if (data.hasOwnProperty('result') && data.hasOwnProperty('id')) {
+            // this is the result of a successful call
+            id = parseInt(data.id, 10);
+
+            for (i = 0; i < currentCalls.length; i += 1) {
+                if (currentCalls[i].id === id) {
+                    callback = currentCalls[i].callback;
+                    currentCalls.splice(i, 1);
+                    if (typeof callback === 'function') {
+                        callback(data.result);
+                    }
+                    return;
+                }
+            }
+
+            console.log('Unknown RPC result for id:' + id);
+        } else if (data.hasOwnProperty('method')) {
+            // there is no support for calls to the browser...
+            if (data.hasOwnProperty('id')) {
+                console.log('Unsupported call');
+                return;
+            }
+
+            // notification
+            method = data.method;
+
+            if (eventHandlers[method]) {
+                callback = eventHandlers[method].callback;
+                callback(data.method, data.params);
+            } else {
+                console.log('No event handler for ' + method);
+            }
+        } else if (data.hasOwnProperty('error')) {
+            // error...
+
+            if (data.hasOwnProperty('id')) {
+                // call failed (but valid JSON)
+                id = parseInt(data.id, 10);
+                for (i = 0; i < currentCalls.length; i += 1) {
+                    if (currentCalls[i].id === id) {
+                        currentCalls.splice(i, 1);
+                    }
+                }
+            }
+
+            console.log('JSON-RPC error: ' + (data.error.hasOwnProperty('code') ? data.error.code : null) +
+                        '(' + (data.error.hasOwnProperty('code') ? data.error.message : 'unknown') + ')');
+        }
+    }
+
+    // socket message
+    socket.onmessage = function (event) {
+        var i,
+
+        // parse the JSON result
+        data = $.parseJSON(event.data);
+
+        if (typeof data === 'object') {
+            // single object
+            processResult(data);
+        } else if (typeof data === 'array') {
+            // array of objects (batch)
+            for (i = 0; i < data.length; i += 1) {
+                processResult(data[i]);
+            }
+        }
+    };
+};
