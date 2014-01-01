@@ -112,8 +112,8 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
 
         // we only understand JSON-RPC 2.0
         if (!(data.hasOwnProperty('jsonrpc') && data.jsonrpc === '2.0')) {
-            console.log('Result is not JSON-RPC 2.0');
-            return;
+            id = data.hasOwnProperty('id') ? data.id : null;
+            return {jsonrpc: '2.0', error: {code: '-32600', message: 'Invalid request'}, id: id};
         }
 
         if (data.hasOwnProperty('result') && data.hasOwnProperty('id')) {
@@ -135,8 +135,7 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
         } else if (data.hasOwnProperty('method')) {
             // there is no support for calls to the browser...
             if (data.hasOwnProperty('id')) {
-                console.log('Unsupported call');
-                return;
+                return {jsonrpc: '2.0', error: {code: '-32601', message: 'Method not found'}, id: data.id};
             }
 
             // notification
@@ -168,19 +167,29 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
 
     // socket message
     socket.onmessage = function (event) {
-        var i,
+        var i, result, batchresult,
 
         // parse the JSON result
         data = $.parseJSON(event.data);
 
         if (typeof data === 'object') {
             // single object
-            processResult(data);
+            result = processResult(data);
+
+            if (typeof result === 'object') { socket.send(JSON.stringify(result)); }
         } else if (typeof data === 'array') {
             // array of objects (batch)
+            batchresult = [];
+
             for (i = 0; i < data.length; i += 1) {
-                processResult(data[i]);
+                result = processResult(data[i]);
+                if (typeof result === 'object') { batchresult.push(result); }
             }
+
+            // a batch call of notifications requires no response
+            if (batchresult.length > 0) { socket.send(JSON.stringify(batchresult)); }
+        } else {
+            socket.send(JSON.stringify({jsonrpc: '2.0', error: {code: '-32700', message: 'Parse error'}, id: null}));
         }
     };
 };
