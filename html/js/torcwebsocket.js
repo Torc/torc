@@ -38,13 +38,13 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
     url = 'ws://' + torc.ServerAuthority,
     socket = (typeof MozWebSocket === 'function') ? new MozWebSocket(url, 'torc.json-rpc') : new WebSocket(url, 'torc.json-rpc');
 
-    // clear out any old remote calls (over 10 seconds) for which we did not receive a response
+    // clear out any old remote calls (over 60 seconds) for which we did not receive a response
     function expireCalls() {
         var i,
         timenow = new Date().getTime();
 
         for (i = currentCalls.length - 1; i >= 0; i -= 1) {
-            if ((currentCalls[i].sent + 10000) < timenow) {
+            if ((currentCalls[i].sent + 60000) < timenow) {
                 console.log('Expiring call id ' + currentCalls[i].id + ' : no response received');
                 currentCalls.splice(i, 1);
             }
