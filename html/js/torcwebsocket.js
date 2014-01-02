@@ -40,13 +40,15 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
 
     // clear out any old remote calls (over 60 seconds) for which we did not receive a response
     function expireCalls() {
-        var i,
+        var i, callback,
         timenow = new Date().getTime();
 
         for (i = currentCalls.length - 1; i >= 0; i -= 1) {
             if ((currentCalls[i].sent + 60000) < timenow) {
                 console.log('Expiring call id ' + currentCalls[i].id + ' : no response received');
+                callback = currentCalls[i].failure;
                 currentCalls.splice(i, 1);
+                if (typeof callback === 'function') { callback(); }
             }
         }
 
@@ -57,7 +59,7 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
     }
 
     // make a remote call (public)
-    this.call = function (methodToCall, params, callbackFunction) {
+    this.call = function (methodToCall, params, successCallback, failureCallback) {
         // create the base call object
         var invocation = {
             jsonrpc: '2.0',
@@ -70,9 +72,9 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
         }
 
         // no callback indicates a notification
-        if (typeof callbackFunction === 'function') {
+        if (typeof successCallback === 'function') {
             invocation.id = currentRpcId;
-            currentCalls.push({ id: currentRpcId, callback: callbackFunction, sent: new Date().getTime() });
+            currentCalls.push({ id: currentRpcId, success: successCallback, failure: failureCallback, sent: new Date().getTime() });
             currentRpcId += 1;
 
             // wrap the id when it gets large...
@@ -122,7 +124,7 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
 
             for (i = 0; i < currentCalls.length; i += 1) {
                 if (currentCalls[i].id === id) {
-                    callback = currentCalls[i].callback;
+                    callback = currentCalls[i].success;
                     currentCalls.splice(i, 1);
                     if (typeof callback === 'function') {
                         callback(data.result);
@@ -155,7 +157,9 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
                 id = parseInt(data.id, 10);
                 for (i = 0; i < currentCalls.length; i += 1) {
                     if (currentCalls[i].id === id) {
+                        callback = currentCalls[i].failure;
                         currentCalls.splice(i, 1);
+                        if (typeof callback === 'function') { callback(); }
                     }
                 }
             }
