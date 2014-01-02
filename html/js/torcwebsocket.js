@@ -176,12 +176,7 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
         // parse the JSON result
         data = $.parseJSON(event.data);
 
-        if (typeof data === 'object') {
-            // single object
-            result = processResult(data);
-
-            if (typeof result === 'object') { socket.send(JSON.stringify(result)); }
-        } else if (typeof data === 'array') {
+        if ($.isArray(data)) {
             // array of objects (batch)
             batchresult = [];
 
@@ -192,6 +187,11 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
 
             // a batch call of notifications requires no response
             if (batchresult.length > 0) { socket.send(JSON.stringify(batchresult)); }
+        } else if (typeof data === 'object') {
+            // single object
+            result = processResult(data);
+
+            if (typeof result === 'object') { socket.send(JSON.stringify(result)); }
         } else {
             socket.send(JSON.stringify({jsonrpc: '2.0', error: {code: '-32700', message: 'Parse error'}, id: null}));
         }
