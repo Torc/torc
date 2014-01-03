@@ -39,6 +39,7 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
     void                AddState               (int State);
     void                SetID                  (int ID);
     void                AddParameter           (const QString &Name, const QVariant &Value);
+    void                AddPositionalParameter (const QVariant &Value);
     void                SetReply               (const QVariant &Reply);
 
     int                 GetState               (void);
@@ -48,6 +49,8 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
     const QVariant&     GetReply               (void);
     const QList<QPair<QString,QVariant> >&
                         GetParameters          (void);
+    const QList<QVariant>&
+                        GetPositionalParameters(void);
     QByteArray&         GetData                (void);
 
   private:
@@ -66,6 +69,7 @@ class TORC_CORE_PUBLIC TorcRPCRequest : public TorcReferenceCounter
     QMutex             *m_parentLock;
     bool                m_validParent;
     QList<QPair<QString,QVariant> > m_parameters;
+    QList<QVariant>     m_positionalParameters;
     QByteArray          m_serialisedData;
     QVariant            m_reply;
 };

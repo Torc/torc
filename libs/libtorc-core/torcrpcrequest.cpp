@@ -315,7 +315,10 @@ void TorcRPCRequest::SetParent(QObject *Parent)
     }
 }
 
-///\brief Serialise the request for the given protocol.
+/*! \brief Serialise the request for the given protocol.
+ *
+ * \note QJsonValue may not be flexbible enough for all types.
+*/
 QByteArray& TorcRPCRequest::SerialiseRequest(TorcWebSocket::WSSubProtocol Protocol)
 {
     if (Protocol == TorcWebSocket::SubProtocolJSONRPC)
@@ -324,11 +327,20 @@ QByteArray& TorcRPCRequest::SerialiseRequest(TorcWebSocket::WSSubProtocol Protoc
         object.insert("jsonrpc", QString("2.0"));
         object.insert("method",  m_method);
 
+        // named paramaters are preferred over positional
         if (!m_parameters.isEmpty())
         {
             QJsonObject params;
             for (int i = 0; i < m_parameters.size(); ++i)
-                params.insert(m_parameters[i].first, m_parameters[i].second.toString());
+                params.insert(m_parameters[i].first, QJsonValue::fromVariant(m_parameters[i].second));
+            object.insert("params", params);
+        }
+        else if (!m_positionalParameters.isEmpty())
+        {
+            // NB positional parameters are serialised as an array (ordered)
+            QJsonArray params;
+            for (int i = 0; i < m_positionalParameters.size(); ++i)
+                params.append(QJsonValue::fromVariant(m_positionalParameters[i]));
             object.insert("params", params);
         }
 
@@ -368,6 +380,16 @@ void TorcRPCRequest::AddParameter(const QString &Name, const QVariant &Value)
     m_parameters.append(QPair<QString,QVariant>(Name, Value));
 }
 
+/*! \brief Add a positional parameter.
+ *
+ * Positional parameters are unnamed and ordered. They are only added if the normal (preferred)
+ * parameter list is empty.
+*/
+void TorcRPCRequest::AddPositionalParameter(const QVariant &Value)
+{
+    m_positionalParameters.append(Value);
+}
+
 void TorcRPCRequest::SetReply(const QVariant &Reply)
 {
     m_reply = Reply;
@@ -401,6 +423,11 @@ const QVariant& TorcRPCRequest::GetReply(void)
 const QList<QPair<QString,QVariant> >& TorcRPCRequest::GetParameters(void)
 {
     return m_parameters;
+}
+
+const QList<QVariant>& TorcRPCRequest::GetPositionalParameters(void)
+{
+    return m_positionalParameters;
 }
 
 QByteArray& TorcRPCRequest::GetData(void)
