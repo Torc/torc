@@ -520,8 +520,8 @@ void TorcWebSocket::PropertyChanged(void)
     TorcHTTPService *service = dynamic_cast<TorcHTTPService*>(sender());
     if (service && senderSignalIndex() > -1)
     {
-        QString signal = service->GetMethod(senderSignalIndex());
-        TorcRPCRequest *request = new TorcRPCRequest(service->Signature() + signal);
+        TorcRPCRequest *request = new TorcRPCRequest(service->Signature() + service->GetMethod(senderSignalIndex()));
+        request->AddPositionalParameter(service->GetProperty(senderSignalIndex()));
         SendFrame(m_subProtocolFrameFormat, request->SerialiseRequest(m_subProtocol));
     }
 }
