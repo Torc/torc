@@ -688,6 +688,22 @@ QString TorcHTTPService::GetMethod(int Index)
     return QString();
 }
 
+/*! \brief Get the value of a given property.
+ *
+ * \note Index is the method index for the property's getter - not the property itself.
+*/
+QVariant TorcHTTPService::GetProperty(int Index)
+{
+    QVariant result;
+
+    if (m_properties.contains(Index))
+        result = m_parent->metaObject()->property(m_properties.value(Index)).read(m_parent);
+    else
+        LOG(VB_GENERAL, LOG_ERR, "Failed to retrieve property");
+
+    return result;
+}
+
 void TorcHTTPService::HandleSubscriberDeleted(QObject *Subscriber)
 {
     QMutexLocker locker(m_subscriberLock);

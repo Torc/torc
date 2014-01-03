@@ -27,6 +27,7 @@ class TORC_CORE_PUBLIC TorcHTTPService : public TorcHTTPHandler
     void         ProcessHTTPRequest       (TorcHTTPRequest *Request, TorcHTTPConnection *Connection);
     QVariantMap  ProcessRequest           (const QString &Method, const QVariant &Parameters, QObject *Connection);
     QString      GetMethod                (int Index);
+    QVariant     GetProperty              (int Index);
 
     virtual QString GetUIName             (void);
 
