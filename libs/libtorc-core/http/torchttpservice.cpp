@@ -537,7 +537,7 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                     // notify success and provide appropriate details about properties, notifications, get'ers etc
                     QVariantMap result;
                     QVariantMap details;
-                    QVariantList properties;
+                    QVariantMap properties;
                     QVariantList methods;
 
                     QMap<int,int>::const_iterator it = m_properties.begin();
@@ -553,17 +553,16 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                         // NB for some reason, QMetaProperty doesn't provide the QMetaMethod for the read and write
                         // slots, so try to infer them (and check the result)
                         QMetaProperty property = m_parent->metaObject()->property(it.value());
-                        QVariantMap map;
-
+                        QVariantMap description;
                         QString name = QString::fromLatin1(property.name());
-                        map.insert("name", name);
-                        map.insert("notification", QString::fromLatin1(m_parent->metaObject()->method(it.key()).name()));
+
+                        description.insert("notification", QString::fromLatin1(m_parent->metaObject()->method(it.key()).name()));
 
                         // a property is always readable
                         QString read = QString("Get") + name.left(1).toUpper() + name.mid(1);
 
                         if (m_parent->metaObject()->indexOfSlot(QMetaObject::normalizedSignature(QString(read + "()").toLatin1())) > -1)
-                            map.insert("read", read);
+                            description.insert("read", read);
                         else
                             LOG(VB_GENERAL, LOG_ERR, QString("Failed to deduce 'read' slot for property '%1' in service '%2'").arg(name).arg(m_signature));
 
@@ -573,15 +572,15 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                             QString write = QString("Set%1%2").arg(name.left(1).toUpper()).arg(name.mid(1));
 
                             if (m_parent->metaObject()->indexOfSlot(QMetaObject::normalizedSignature(QString("%1(%2)").arg(write).arg(property.typeName()).toLatin1())) > -1)
-                                map.insert("write", write);
+                                description.insert("write", write);
                             else
                                 LOG(VB_GENERAL, LOG_ERR, QString("Failed to deduce 'write' slot for property '%1' in service '%2'").arg(name).arg(m_signature));
                         }
 
                         // and add the initial value
-                        map.insert("value", property.read(m_parent));
+                        description.insert("value", property.read(m_parent));
 
-                        properties.append(map);
+                        properties.insert(name, description);
                     }
 
                     QMap<QString,MethodParameters*>::const_iterator it2 = m_methods.begin();
