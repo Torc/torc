@@ -31,7 +31,7 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
     // current calls
     currentCalls = [],
     // event handlers for notifications
-    eventHandlers = {},
+    eventHandlers = [],
     // interval timer to check for call expiry/failure
     expireTimer,
     // create the socket
@@ -56,6 +56,11 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
             clearInterval(expireTimer);
             expireTimer = undefined;
         }
+    }
+
+    // add event callback
+    this.listen = function (id, method, callback) {
+        eventHandlers[method] = { id: id, callback: callback };
     }
 
     // make a remote call (public)
@@ -144,8 +149,7 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
             method = data.method;
 
             if (eventHandlers[method]) {
-                callback = eventHandlers[method].callback;
-                callback(data.method, data.params);
+                eventHandlers[method].callback(eventHandlers[method].id, data.params);
             } else {
                 console.log('No event handler for ' + method);
             }
