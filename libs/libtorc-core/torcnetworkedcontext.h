@@ -28,6 +28,7 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
     Q_PROPERTY (QString     uuid              READ GetUuid         CONSTANT)
     Q_PROPERTY (int         port              READ GetPort         CONSTANT)
     Q_PROPERTY (QString     uiAddress         READ GetAddress      CONSTANT)
+    Q_PROPERTY (QString     host              READ GetHost         CONSTANT)
     Q_PROPERTY (qint64      startTime         READ GetStartTime    NOTIFY StartTimeChanged)
     Q_PROPERTY (int         priority          READ GetPriority     NOTIFY PriorityChanged)
     Q_PROPERTY (QString     apiVersion        READ GetAPIVersion   NOTIFY ApiVersionChanged)
@@ -43,6 +44,7 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
     QString                 GetName           (void);
     QString                 GetUuid           (void);
     int                     GetPort           (void);
+    QString                 GetHost           (void);
     QStringList             GetAddresses      (void);
     QString                 GetAddress        (void);
     qint64                  GetStartTime      (void);
@@ -74,6 +76,7 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
     QString                 name;
     QString                 uuid;
     int                     port;
+    QString                 host;
     QString                 uiAddress;
     qint64                  startTime;
     int                     priority;
@@ -81,7 +84,6 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
     bool                    connected;
 
     QString                 m_debugString;
-    QString                 m_host;
     QStringList             m_addresses;
     int                     m_preferredAddress;
     int                     m_abort;

@@ -175,12 +175,10 @@ void TorcNetworkService::Connect(void)
         return;
     }
 
-    // use the host if available, otherwise the preferred address (IPV4 over IPv6)
-    QString host = m_host.isEmpty() ? m_addresses[m_preferredAddress] : m_host;
-
     LOG(VB_GENERAL, LOG_INFO, QString("Trying to connect to %1").arg(m_debugString));
 
-    m_webSocketThread = new TorcWebSocketThread(host, port);
+    // use the host if available, otherwise the preferred address (IPV4 over IPv6)
+    m_webSocketThread = new TorcWebSocketThread(host.isEmpty() ? m_addresses[m_preferredAddress] : host, port);
     connect(m_webSocketThread,           SIGNAL(Finished()),              this, SLOT(Disconnected()));
     connect(m_webSocketThread->Socket(), SIGNAL(ConnectionEstablished()), this, SLOT(Connected()));
 
@@ -200,6 +198,11 @@ QString TorcNetworkService::GetUuid(void)
 int TorcNetworkService::GetPort(void)
 {
     return port;
+}
+
+QString TorcNetworkService::GetHost(void)
+{
+    return host;
 }
 
 QString TorcNetworkService::GetAddress(void)
@@ -420,9 +423,6 @@ void TorcNetworkService::QueryPeerDetails(void)
 {
     // this is a private method only called from Connect. No need to validate m_addresses or current details.
 
-    // use the host if available, otherwise the preferred address (IPV4 over IPv6)
-    QString host = m_host.isEmpty() ? m_addresses[m_preferredAddress] : m_host;
-
     if (!m_webSocketThread)
     {
         if (m_getPeerDetails)
@@ -433,7 +433,8 @@ void TorcNetworkService::QueryPeerDetails(void)
 
         LOG(VB_GENERAL, LOG_INFO, "Querying peer details over HTTP");
 
-        QUrl url(host);
+        // use the host if available, otherwise the preferred address (IPV4 over IPv6)
+        QUrl url(host.isEmpty() ? m_addresses[m_preferredAddress] : host);
         url.setPort(port);
         url.setScheme("http");
         url.setPath("/services/GetDetails");
@@ -510,11 +511,12 @@ void TorcNetworkService::CancelRequest(TorcRPCRequest *Request)
 QVariant TorcNetworkService::ToMap(void)
 {
     QVariantMap result;
-    result.insert("name", name);
-    result.insert("uuid", uuid);
-    result.insert("port", port);
+    result.insert("name",      name);
+    result.insert("uuid",      uuid);
+    result.insert("port",      port);
     result.insert("uiAddress", uiAddress);
-
+    result.insert("address",   m_addresses[m_preferredAddress]);
+    result.insert("host",      host);
     return result;
 }
 
@@ -525,8 +527,8 @@ QStringList TorcNetworkService::GetAddresses(void)
 
 void TorcNetworkService::SetHost(const QString &Host)
 {
-    m_host = Host;
-    m_debugString = m_host + ":" + QString::number(port);
+    host = Host;
+    m_debugString = host + ":" + QString::number(port);
 }
 
 void TorcNetworkService::SetStartTime(qint64 StartTime)
