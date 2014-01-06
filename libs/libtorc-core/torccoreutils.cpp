@@ -34,6 +34,11 @@
 #include "torclogging.h"
 #include "torccoreutils.h"
 
+// zlib
+#if defined(CONFIG_ZLIB) && CONFIG_ZLIB
+#include "zlib.h"
+#endif
+
 /// \brief Parse a QDataTime from the given QString
 QDateTime TorcCoreUtils::DateTimeFromString(const QString &String)
 {
@@ -122,4 +127,138 @@ void TorcCoreUtils::QtMessage(QtMsgType Type, const QMessageLogContext &Context,
             LOG(VB_GENERAL, LOG_ERR, message);
             break;
     }
+}
+
+///\brief Return true if zlib support is available.
+bool TorcCoreUtils::HasZlib(void)
+{
+#if defined(CONFIG_ZLIB) && CONFIG_ZLIB
+    return true;
+#else
+    return false;
+#endif
+}
+
+/*! \brief Compress the supplied data using GZip.
+ *
+ * The returned data is suitable for sending as part of an HTTP response when the requestor accepts
+ * gzip compression.
+*/
+QByteArray* TorcCoreUtils::GZipCompress(QByteArray *Source)
+{
+    QByteArray *result = NULL;
+
+#if defined(CONFIG_ZLIB) && CONFIG_ZLIB
+    // this shouldn't happen
+    if (!Source || (Source && Source->size() < 0))
+        return result;
+
+    // initialise zlib (see zlib usage examples)
+    static int chunksize = 16384;
+    char outputbuffer[chunksize];
+
+    z_stream stream;
+    stream.zalloc   = NULL;
+    stream.zfree    = NULL;
+    stream.opaque   = NULL;
+    stream.avail_in = Source->size();
+    stream.next_in  = (Bytef*)Source->data();
+
+    if (Z_OK != deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY))
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to setup zlip decompression");
+        return result;
+    }
+
+    result = new QByteArray();
+
+    do
+    {
+        stream.avail_out = chunksize;
+        stream.next_out  = (Bytef*)outputbuffer;
+
+        int error = deflate(&stream, Z_FINISH);
+
+        if (Z_NEED_DICT == error || error < Z_OK)
+        {
+            LOG(VB_GENERAL, LOG_ERR, "Failed to compress data");
+            deflateEnd(&stream);
+            return result;
+        }
+
+        result->append(outputbuffer, chunksize - stream.avail_out);
+    } while (stream.avail_out == 0);
+
+    deflateEnd(&stream);
+#endif
+
+    return result;
+}
+
+/*! \brief Compress the given file using GZip.
+ *
+ * The returned data is suitable for sending as part of an HTTP response when the requestor accepts
+ * gzip compression.
+*/
+QByteArray* TorcCoreUtils::GZipCompressFile(QFile *Source)
+{
+    QByteArray *result = NULL;
+
+#if defined(CONFIG_ZLIB) && CONFIG_ZLIB
+    // this shouldn't happen
+    if (!Source || (Source && Source->size() < 0))
+        return result;
+
+    // initialise zlib (see zlib usage examples)
+    static int chunksize = 32768;
+    char inputbuffer[chunksize];
+    char outputbuffer[chunksize];
+
+    z_stream stream;
+    stream.zalloc   = NULL;
+    stream.zfree    = NULL;
+    stream.opaque   = NULL;
+
+    if (Z_OK != deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY))
+    {
+        LOG(VB_GENERAL, LOG_ERR, "Failed to setup zlip decompression");
+        return result;
+    }
+
+    // this should have been checked already
+    if (!Source->open(QIODevice::ReadOnly))
+        return result;
+
+    result = new QByteArray();
+
+    while (Source->bytesAvailable() > 0)
+    {
+        stream.avail_out = chunksize;
+        stream.next_out  = (Bytef*)outputbuffer;
+
+        qint64 read = Source->read(inputbuffer, qMin(Source->bytesAvailable(), (qint64)chunksize));
+
+        if (read > 0)
+        {
+            stream.avail_in = read;
+            stream.next_in  = (Bytef*)inputbuffer;
+
+            int error = deflate(&stream, Source->bytesAvailable() ? Z_SYNC_FLUSH : Z_FINISH);
+
+            if (error == Z_OK || error == Z_STREAM_END)
+            {
+                result->append(outputbuffer, chunksize - stream.avail_out);
+                continue;
+            }
+        }
+
+        LOG(VB_GENERAL, LOG_ERR, "Failed to compress file");
+        deflateEnd(&stream);
+        return result;
+    }
+
+    deflateEnd(&stream);
+#endif
+
+    return result;
 }

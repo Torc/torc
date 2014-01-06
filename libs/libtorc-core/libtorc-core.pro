@@ -162,6 +162,10 @@ inf.files += torcwebsocket.h
 inc.files += torcssdp.h
 inc.files += torcserialiser.h
 
+contains(CONFIG_ZLIB, yes) {
+    LIBS += $$ZLIB
+}
+
 unix:contains(CONFIG_LIBUDEV, yes) {
     HEADERS += platforms/torcusbprivunix.h
     SOURCES += platforms/torcusbprivunix.cpp
