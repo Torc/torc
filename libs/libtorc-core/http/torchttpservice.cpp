@@ -428,6 +428,7 @@ void TorcHTTPService::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConne
             TorcSerialiser *serialiser = Request->GetSerialiser();
             Request->SetResponseType(serialiser->ResponseType());
             Request->SetResponseContent(serialiser->Serialise(result, type));
+            Request->SetAllowGZip(true);
             delete serialiser;
         }
         else
