@@ -66,6 +66,7 @@ void TorcHTMLStaticContent::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTT
     if (subpath == STATIC_DIRECTORY + "js/torcconfiguration.js")
     {
         GetJavascriptConfiguration(Request, Connection);
+        Request->SetAllowGZip(true);
         return;
     }
 
@@ -87,6 +88,7 @@ void TorcHTMLStaticContent::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTT
             {
                 Request->SetResponseFile(file);
                 Request->SetStatus(HTTP_OK);
+                Request->SetAllowGZip(true);
                 return;
             }
             else

@@ -76,5 +76,6 @@ void TorcHTMLHandler::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConne
 
     Request->SetResponseContent(result);
     Request->SetResponseType(HTTPResponseHTML);
+    Request->SetAllowGZip(true);
     Request->SetStatus(HTTP_OK);
 }
