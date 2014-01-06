@@ -105,6 +105,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     void                   SetResponseFile          (QFile *File);
     void                   SetResponseHeader        (const QString &Header, const QString &Value);
     void                   SetAllowed               (int Allowed);
+    void                   SetAllowGZip             (bool Allowed);
     HTTPStatus             GetHTTPStatus            (void);
     HTTPType               GetHTTPType              (void);
     HTTPRequestType        GetHTTPRequestType       (void);
@@ -136,6 +137,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     QMap<QString,QString>  m_queries;
     QByteArray            *m_content;
 
+    bool                   m_allowGZip;
     int                    m_allowed;
     HTTPResponseType       m_responseType;
     HTTPStatus             m_responseStatus;

@@ -33,6 +33,7 @@
 // Torc
 #include "version.h"
 #include "torclogging.h"
+#include "torccoreutils.h"
 #include "torcmime.h"
 #include "torchttpserver.h"
 #include "torcserialiser.h"
@@ -61,6 +62,7 @@
  * \sa TorcHTTPConnection
  *
  * \todo Add support for multiple headers of the same type (e.g. Sec-WebSocket-Protocol).
+ * \todo Support gzip compression for range requests (if it is possible?)
 */
 
 QRegExp gRegExp = QRegExp("[ \r\n][ \r\n]*");
@@ -72,6 +74,7 @@ TorcHTTPRequest::TorcHTTPRequest(TorcHTTPReader *Reader)
     m_connection(HTTPConnectionClose),
     m_headers(NULL),
     m_content(NULL),
+    m_allowGZip(false),
     m_allowed(0),
     m_responseType(HTTPResponseUnknown),
     m_responseStatus(HTTP_NotFound),
@@ -100,6 +103,7 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
     m_connection(HTTPConnectionClose),
     m_headers(Headers),
     m_content(Content),
+    m_allowGZip(false),
     m_allowed(0),
     m_responseType(HTTPResponseUnknown),
     m_responseStatus(HTTP_NotFound),
@@ -247,6 +251,12 @@ void TorcHTTPRequest::SetAllowed(int Allowed)
     m_allowed = Allowed;
 }
 
+///\brief Allow gzip compression for the contents of this request.
+void TorcHTTPRequest::SetAllowGZip(bool Allowed)
+{
+    m_allowGZip = Allowed;
+}
+
 HTTPStatus TorcHTTPRequest::GetHTTPStatus(void)
 {
     return m_responseStatus;
@@ -358,6 +368,24 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
     response << "Server: " << TorcHTTPServer::PlatformName() << "\r\n";
     response << "Connection: " << TorcHTTPRequest::ConnectionToString(m_connection) << "\r\n";
     response << "Accept-Ranges: bytes\r\n";
+
+    // Use compression if:-
+    //  - it was requested by the client.
+    //  - zlip support is available locally.
+    //  - the responder allows gzip responses.
+    //  - there is some content and it is smaller than 1Mb in size (arbitrary limit)
+    //  - the response is not a range request with single or multipart response
+    if (m_allowGZip && totalsize > 0 && totalsize < 0x100000 && TorcCoreUtils::HasZlib() && m_responseStatus == HTTP_OK &&
+        m_headers->contains("Accept-Encoding") && m_headers->value("Accept-Encoding").contains("gzip", Qt::CaseInsensitive))
+    {
+        if (m_responseContent)
+            SetResponseContent(TorcCoreUtils::GZipCompress(m_responseContent));
+        else
+            SetResponseContent(TorcCoreUtils::GZipCompressFile(m_responseFile));
+
+        sendsize = m_responseContent->size();
+        response << "Content-Encoding: gzip\r\n";
+    }
 
     if (multipart)
         response << "Content-Type: multipart/byteranges; boundary=STaRT\r\n";
