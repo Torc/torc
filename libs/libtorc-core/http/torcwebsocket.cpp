@@ -521,7 +521,7 @@ void TorcWebSocket::PropertyChanged(void)
     if (service && senderSignalIndex() > -1)
     {
         TorcRPCRequest *request = new TorcRPCRequest(service->Signature() + service->GetMethod(senderSignalIndex()));
-        request->AddPositionalParameter(service->GetProperty(senderSignalIndex()));
+        request->AddParameter("value", service->GetProperty(senderSignalIndex()));
         SendFrame(m_subProtocolFrameFormat, request->SerialiseRequest(m_subProtocol));
     }
 }
