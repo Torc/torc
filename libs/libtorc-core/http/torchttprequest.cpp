@@ -304,6 +304,8 @@ const QMap<QString,QString>& TorcHTTPRequest::Queries(void)
 
 void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
 {
+    static const char dateformat[] = "ddd, dd MMM yyyy HH:mm:ss 'GMT'";
+
     if (!Socket)
         return;
 
@@ -364,7 +366,7 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
     QTextStream response(headers.data());
 
     response << TorcHTTPRequest::ProtocolToString(m_protocol) << " " << TorcHTTPRequest::StatusToString(m_responseStatus) << "\r\n";
-    response << "Date: " << QDateTime::currentDateTimeUtc().toString("d MMM yyyy hh:mm:ss 'GMT'") << "\r\n";
+    response << "Date: " << QDateTime::currentDateTimeUtc().toString(dateformat) << "\r\n";
     response << "Server: " << TorcHTTPServer::PlatformName() << "\r\n";
     response << "Connection: " << TorcHTTPRequest::ConnectionToString(m_connection) << "\r\n";
     response << "Accept-Ranges: bytes\r\n";
