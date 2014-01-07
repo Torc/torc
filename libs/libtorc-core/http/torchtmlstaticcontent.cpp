@@ -86,6 +86,19 @@ void TorcHTMLStaticContent::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTT
         {
             if (file->size() > 0)
             {
+                QDateTime modified = QFileInfo(*file).lastModified();
+
+                // set cache handling before we check for modification. This ensures the modification check is
+                // performed and the correct cache headers are re-sent with any 304 Not Modified response.
+                Request->SetCache(HTTPCacheLongLife | HTTPCacheLastModified, modified.toString(TorcHTTPRequest::DateFormat));
+
+                // Unmodified will handle the response
+                if (Request->Unmodified(modified))
+                {
+                    delete file;
+                    return;
+                }
+
                 Request->SetResponseFile(file);
                 Request->SetStatus(HTTP_OK);
                 Request->SetAllowGZip(true);
