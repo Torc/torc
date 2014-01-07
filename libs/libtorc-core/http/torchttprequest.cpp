@@ -66,6 +66,7 @@
 */
 
 QRegExp gRegExp = QRegExp("[ \r\n][ \r\n]*");
+char TorcHTTPRequest::DateFormat[] = "ddd, dd MMM yyyy HH:mm:ss 'GMT'";
 
 TorcHTTPRequest::TorcHTTPRequest(TorcHTTPReader *Reader)
   : m_type(HTTPRequest),
@@ -77,6 +78,8 @@ TorcHTTPRequest::TorcHTTPRequest(TorcHTTPReader *Reader)
     m_allowGZip(false),
     m_allowed(0),
     m_responseType(HTTPResponseUnknown),
+    m_cache(HTTPCacheNone),
+    m_cacheTag(QString("")),
     m_responseStatus(HTTP_NotFound),
     m_responseContent(NULL),
     m_responseFile(NULL),
@@ -106,6 +109,8 @@ TorcHTTPRequest::TorcHTTPRequest(const QString &Method, QMap<QString,QString> *H
     m_allowGZip(false),
     m_allowed(0),
     m_responseType(HTTPResponseUnknown),
+    m_cache(HTTPCacheNone),
+    m_cacheTag(QString("")),
     m_responseStatus(HTTP_NotFound),
     m_responseContent(NULL),
     m_responseFile(NULL),
@@ -257,6 +262,21 @@ void TorcHTTPRequest::SetAllowGZip(bool Allowed)
     m_allowGZip = Allowed;
 }
 
+/*! \brief Set the caching behaviour for this response.
+ *
+ * The default behaviour is to to try and enforce no caching. Standard caching can be enabled
+ * with HTTPCacheShortLife or HTTPCacheLongLife with optional use of 'last modified' or ETag for
+ * conditional requests. The 'last-modified' and 'ETag' fields are set with the Tag parameter.
+ *
+ * \note If a subclass of TorcHTTPHandler uses the 'last-modified' or 'ETag' headers, it must also
+ * be capable of handling the appropriate conditional requests and responding with a '304 Not Modified' as necessary.
+ */
+void TorcHTTPRequest::SetCache(int Cache, const QString Tag /*= QString("")*/)
+{
+    m_cache = Cache;
+    m_cacheTag = Tag;
+}
+
 HTTPStatus TorcHTTPRequest::GetHTTPStatus(void)
 {
     return m_responseStatus;
@@ -304,8 +324,6 @@ const QMap<QString,QString>& TorcHTTPRequest::Queries(void)
 
 void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
 {
-    static const char dateformat[] = "ddd, dd MMM yyyy HH:mm:ss 'GMT'";
-
     if (!Socket)
         return;
 
@@ -366,10 +384,32 @@ void TorcHTTPRequest::Respond(QTcpSocket *Socket, int *Abort)
     QTextStream response(headers.data());
 
     response << TorcHTTPRequest::ProtocolToString(m_protocol) << " " << TorcHTTPRequest::StatusToString(m_responseStatus) << "\r\n";
-    response << "Date: " << QDateTime::currentDateTimeUtc().toString(dateformat) << "\r\n";
+    response << "Date: " << QDateTime::currentDateTimeUtc().toString(DateFormat) << "\r\n";
     response << "Server: " << TorcHTTPServer::PlatformName() << "\r\n";
     response << "Connection: " << TorcHTTPRequest::ConnectionToString(m_connection) << "\r\n";
     response << "Accept-Ranges: bytes\r\n";
+
+    if (m_cache & HTTPCacheNone)
+    {
+        response << "Cache-Control: private, no-cache, no-store, must-revalidate\r\nExpires: 0\r\nPragma: no-cache\r\n";
+    }
+    else
+    {
+        // cache-control (in preference to expires for its simplicity)
+        if (m_cache & HTTPCacheShortLife)
+            response << "Cache-Control: public, max-age=3600\r\n"; // 1 hour
+        else if (m_cache & HTTPCacheLongLife)
+            response << "Cache-Control: public, max-age=31536000\r\n"; // 1 year (max per spec)
+
+        // either last-modified or etag (not both) if requested
+        if (!m_cacheTag.isEmpty())
+        {
+            if (m_cache & HTTPCacheETag)
+                response << QString("ETag: \"%1\"\r\n").arg(m_cacheTag);
+            else if (m_cache & HTTPCacheLastModified)
+                response << QString("Last-Modified: %1\r\n").arg(m_cacheTag);
+        }
+    }
 
     // Use compression if:-
     //  - it was requested by the client.
@@ -739,6 +779,7 @@ HTTPStatus TorcHTTPRequest::StatusFromString(const QString &Status)
     if (Status.startsWith("101")) return HTTP_SwitchingProtocols;
     if (Status.startsWith("206")) return HTTP_PartialContent;
     if (Status.startsWith("301")) return HTTP_MovedPermanently;
+    if (Status.startsWith("304")) return HTTP_NotModified;
     //if (Status.startsWith("400")) return HTTP_BadRequest;
     if (Status.startsWith("401")) return HTTP_Unauthorized;
     if (Status.startsWith("402")) return HTTP_Forbidden;
@@ -771,6 +812,7 @@ QString TorcHTTPRequest::StatusToString(HTTPStatus Status)
         case HTTP_OK:                  return QString("200 OK");
         case HTTP_PartialContent:      return QString("206 Partial Content");
         case HTTP_MovedPermanently:    return QString("301 Moved Permanently");
+        case HTTP_NotModified:         return QString("304 Not Modified");
         case HTTP_BadRequest:          return QString("400 Bad Request");
         case HTTP_Unauthorized:        return QString("401 Unauthorized");
         case HTTP_Forbidden:           return QString("403 Forbidden");
@@ -980,4 +1022,49 @@ TorcSerialiser* TorcHTTPRequest::GetSerialiser(void)
 
     LOG(VB_GENERAL, LOG_WARNING, QString("Failed to find serialiser for '%1' - defaulting to XML").arg(accept));
     return new TorcXMLSerialiser();
+}
+
+/*! \brief Return true if the resource is unmodified.
+ *
+ * The client must have supplied the 'If-Modified-Since' header and the request must have
+ * last-modified caching enabled.
+*/
+bool TorcHTTPRequest::Unmodified(const QDateTime &LastModified)
+{
+    if ((m_cache & HTTPCacheLastModified) && m_headers->contains("If-Modified-Since"))
+    {
+        QDateTime since = QDateTime::fromString(m_headers->value("If-Modified-Since"), DateFormat);
+
+        if (LastModified <= since)
+        {
+            SetStatus(HTTP_NotModified);
+            SetResponseType(HTTPResponseNone);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/*! \brief Check whether the resource is equivalent to the last seen version.
+ *
+ * This method validates the ETag header, which must have been set locally and the client must
+ * have sent the 'If-None-Match' header.
+ *
+ * \note ETag's are enclosed in parentheses. This code expects m_cacheTag to already be enclosed (i.e. the incoming
+ * ETag is not stripped).
+*/
+bool TorcHTTPRequest::Unmodified(void)
+{
+    if ((m_cache & HTTPCacheETag) && !m_cacheTag.isEmpty() && m_headers->contains("If-None-Match"))
+    {
+        if (m_cacheTag == m_headers->value("If-None-Match"))
+        {
+            SetStatus(HTTP_NotModified);
+            SetResponseType(HTTPResponseNone);
+            return true;
+        }
+    }
+
+    return false;
 }

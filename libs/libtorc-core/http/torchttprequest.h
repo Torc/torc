@@ -5,6 +5,7 @@
 #include <QMap>
 #include <QPair>
 #include <QString>
+#include <QDateTime>
 
 // Torc
 #include "torccoreexport.h"
@@ -60,6 +61,7 @@ typedef enum
     HTTP_OK                  = 200,
     HTTP_PartialContent      = 206,
     HTTP_MovedPermanently    = 301,
+    HTTP_NotModified         = 304,
     HTTP_BadRequest          = 400,
     HTTP_Unauthorized        = 401,
     HTTP_Forbidden           = 402,
@@ -75,6 +77,15 @@ typedef enum
     HTTPConnectionKeepAlive = 1,
     HTTPConnectionUpgrade   = 2
 } HTTPConnection;
+
+typedef enum
+{
+    HTTPCacheNone           = (1 << 0),
+    HTTPCacheShortLife      = (1 << 1),
+    HTTPCacheLongLife       = (1 << 2),
+    HTTPCacheLastModified   = (1 << 3),
+    HTTPCacheETag           = (1 << 4)
+} HTTPCacheing;
 
 #define READ_CHUNK_SIZE (1024 *64)
 
@@ -93,6 +104,8 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     static QList<QPair<quint64,quint64> > StringToRanges (const QString &Ranges, qint64 Size, qint64& SizeToSend);
     static QString         RangeToString            (const QPair<quint64,quint64> &Range, qint64 Size);
 
+    static char            DateFormat[];
+
   public:
     TorcHTTPRequest(TorcHTTPReader *Reader);
     TorcHTTPRequest(const QString &Method, QMap<QString,QString> *Headers, QByteArray *Content);
@@ -106,6 +119,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     void                   SetResponseHeader        (const QString &Header, const QString &Value);
     void                   SetAllowed               (int Allowed);
     void                   SetAllowGZip             (bool Allowed);
+    void                   SetCache                 (int Cache, const QString Tag = QString(""));
     HTTPStatus             GetHTTPStatus            (void);
     HTTPType               GetHTTPType              (void);
     HTTPRequestType        GetHTTPRequestType       (void);
@@ -118,6 +132,8 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     void                   Respond                  (QTcpSocket *Socket, int* Abort);
     void                   Redirected               (const QString &Redirected);
     TorcSerialiser*        GetSerialiser            (void);
+    bool                   Unmodified               (const QDateTime &LastModified);
+    bool                   Unmodified               (void);
 
   protected:
     void                   Initialise               (const QString &Method);
@@ -140,6 +156,8 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     bool                   m_allowGZip;
     int                    m_allowed;
     HTTPResponseType       m_responseType;
+    int                    m_cache;
+    QString                m_cacheTag;
     HTTPStatus             m_responseStatus;
     QByteArray            *m_responseContent;
     QFile                 *m_responseFile;
