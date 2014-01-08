@@ -37,6 +37,9 @@
  * TorcPowerOSX uses the IOKit framework to monitor the system's power status.
  *
  * \sa TorcRunLoopOSX
+ *
+ * \bug Power callbacks are no longer being received by torc-server. Could be a Qt update but more
+ *      likely an OS X update affecting only console applications (torc-tv is fine).
 */
 
 static OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend);
