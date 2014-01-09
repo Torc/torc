@@ -247,6 +247,8 @@ QString TorcHTTPServer::PlatformName(void)
  * \sa TorcHTTPConnection
  *
  * \todo Fix potential socket and request leak in UpgradeSocket.
+ * \todo Add setting for authentication (and hence full username/password requirement).
+ * \todo Add setting for SSL.
 */
 
 TorcHTTPServer* TorcHTTPServer::gWebServer = NULL;
@@ -257,6 +259,7 @@ TorcHTTPServer::TorcHTTPServer()
   : QTcpServer(),
     m_enabled(NULL),
     m_port(NULL),
+    m_requiresAuthentication(false),
     m_defaultHandler(NULL),
     m_servicesHelpHandler(NULL),
     m_staticContent(NULL),
@@ -345,6 +348,62 @@ TorcHTTPServer::~TorcHTTPServer()
     }
 
     delete m_webSocketsLock;
+}
+
+/*! \brief Ensures remote user is authorised to access this server.
+ *
+ * The 'Authorization' header is used for standard HTTP requests.
+ *
+ * Authentication credentials supplied via the url are used for WebSocket upgrade requests - and it is assumed the if the
+ * initial request is authenticated, the entire socket is then authenticated for that user. This needs a lot of
+ * further work and consideration:
+ *
+ * - for the remote html based interface, the user will be asked to authenticate but the authentication details are
+ *   not available in javascript. Hence an additional authentication form will be needed to supply credentials
+ *   to the WebSocket url. There are numerous possible alternative approaches - don't require authentication for
+ *   static content (only for the socket, which provides all of the content anyway), perform socket authentication after
+ *   connecting by way of a token/salt that is retrieved via the HTTP interface (which will supply the necessary
+ *   'Authorization' header.
+ * - Basic HTTP authorization does not explicitly handle logging out.
+ * - for peers connecting to one another via sockets, some form of centralised user tracking is required....
+ *
+ * \todo Use proper username and password.
+*/
+bool TorcHTTPServer::Authenticated(TorcHTTPRequest *Request)
+{
+    if (!m_requiresAuthentication)
+        return true;
+
+    if (Request)
+    {
+        static QString username("admin");
+        static QString password("1234");
+
+        // explicit authorization header
+        if (Request->Headers()->contains("Authorization"))
+        {
+            QStringList authentication = Request->Headers()->value("Authorization").split(" ", QString::SkipEmptyParts);
+
+            if (authentication.size() == 2 && authentication[0].trimmed().compare("basic", Qt::CaseInsensitive) == 0)
+            {
+                QStringList userinfo = QString(QByteArray::fromBase64(authentication[1].trimmed().toUtf8())).split(':');
+
+                if (userinfo.size() == 2 && userinfo[0] == username && userinfo[1] == password)
+                    return true;
+            }
+        }
+
+        // login credentials supplied in the url
+        if (Request->Queries().contains("torcuser") && Request->Queries().contains("torcpassword"))
+            if (Request->Queries().value("torcuser") == username && Request->Queries().value("torcpassword") == password)
+                return true;
+
+        Request->SetResponseType(HTTPResponseNone);
+        Request->SetStatus(HTTP_Unauthorized);
+        Request->SetResponseHeader("WWW-Authenticate", QString("Basic realm=\"%1\"").arg(QCoreApplication::applicationName()));
+    }
+
+    return false;
 }
 
 void TorcHTTPServer::Enable(bool Enable)
