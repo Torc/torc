@@ -20,6 +20,9 @@
 * USA.
 */
 
+// Qt
+#include <QCoreApplication>
+
 // Torc
 #include "torclogging.h"
 #include "torchttprequest.h"
@@ -213,7 +216,7 @@ void TorcHTTPConnection::run(void)
     TorcHTTPReader *reader  = new TorcHTTPReader();
     bool connectionupgraded = false;
 
-    while (!(*m_abort) && m_socket->state() == QAbstractSocket::ConnectedState)
+    while (m_server && !(*m_abort) && m_socket->state() == QAbstractSocket::ConnectedState)
     {
         // wait for data
         int count = 0;
@@ -251,7 +254,7 @@ void TorcHTTPConnection::run(void)
         {
             // if the connection is upgraded, both request and m_socket will be transferred
             // to a new thread. DO NOT DELETE!
-            if (TorcWebSocket::ProcessUpgradeRequest(this, request, m_socket))
+            if (m_server->Authenticated(request) && TorcWebSocket::ProcessUpgradeRequest(this, request, m_socket))
             {
                 connectionupgraded = true;
                 break;
@@ -263,7 +266,8 @@ void TorcHTTPConnection::run(void)
         }
         else
         {
-            m_server->HandleRequest(this, request);
+            if (m_server->Authenticated(request))
+                m_server->HandleRequest(this, request);
             if (m_socket)
                 request->Respond(m_socket, m_abort);
         }
