@@ -33,10 +33,8 @@ var TorcSubscription = function (socket, serviceName, servicePath, subscribedCha
 
     // callback for changes in property values. Properties are sent as an object with one property - 'value'
     function propertyChanged(name, params) {
-        console.log(params);
         if (listeners[name] && typeof listeners[name] === 'function' &&
             typeof params === 'object' && params.hasOwnProperty('value')) {
-            console.log(name);
             listeners[name](name, params.value);
         }
     }
