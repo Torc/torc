@@ -39,9 +39,12 @@ $(document).ready(function() {
         $(".torc-socket-status").text(status);
 
         if (status === torc.SocketNotConnected) {
-            $(".torc-socket-address").text('');
+            // remove current address details
+            $(".torc-socket-address").remove();
         } else if (status === torc.SocketConnected) {
-            $(".torc-socket-address").text(torc.ConnectedTo + torc.ServerAuthority);
+            $(".torc-peer-menu").append($('<li/>',
+                                         { class: "torc-socket-address",
+                                           html: $('<a/>', { href: '#', html: torc.ConnectedTo + torc.ServerAuthority }),} ));
         } else if (status === torc.SocketReady) {
             torcconnection.subscribe('peers', ['peers'], peerListChanged, peerSubscriptionChanged);
         }
