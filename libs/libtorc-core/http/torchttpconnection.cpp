@@ -193,6 +193,11 @@ QTcpSocket* TorcHTTPConnection::GetSocket(void)
     return m_socket;
 }
 
+TorcHTTPServer* TorcHTTPConnection::GetServer(void)
+{
+    return m_server;
+}
+
 void TorcHTTPConnection::run(void)
 {
     if (!m_socketDescriptor)
@@ -266,10 +271,8 @@ void TorcHTTPConnection::run(void)
         }
         else
         {
-            if (m_server->Authenticated(request))
-                m_server->HandleRequest(this, request);
-            if (m_socket)
-                request->Respond(m_socket, m_abort);
+            m_server->HandleRequest(this, request);
+            request->Respond(m_socket, m_abort);
         }
 
         // this will delete content and headers

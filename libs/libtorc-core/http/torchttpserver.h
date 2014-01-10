@@ -44,7 +44,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
 
   public:
     virtual       ~TorcHTTPServer     ();
-    bool           Authenticated      (TorcHTTPRequest *Request);
+    bool           Authenticated      (TorcHTTPRequest *Request, TorcHTTPHandler *Handler = NULL);
 
   signals:
     void           HandlersChanged    (void);

@@ -43,6 +43,7 @@ class TORC_CORE_PUBLIC TorcHTTPConnection : public QRunnable
   public:
     void                     run            (void);
     QTcpSocket*              GetSocket      (void);
+    TorcHTTPServer*          GetServer      (void);
 
   protected:
     int                     *m_abort;

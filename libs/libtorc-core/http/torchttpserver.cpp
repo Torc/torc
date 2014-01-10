@@ -112,7 +112,8 @@ void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPReque
         if (it != gHandlers.end())
         {
             // direct path match
-            (*it)->ProcessHTTPRequest(Request, Connection);
+            if (Connection->GetServer()->Authenticated(Request, *it))
+                (*it)->ProcessHTTPRequest(Request, Connection);
         }
         else
         {
@@ -122,7 +123,8 @@ void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPReque
             {
                 if ((*it)->GetRecursive() && path.startsWith(it.key()))
                 {
-                    (*it)->ProcessHTTPRequest(Request, Connection);
+                    if (Connection->GetServer()->Authenticated(Request, *it))
+                        (*it)->ProcessHTTPRequest(Request, Connection);
                     break;
                 }
             }
@@ -369,9 +371,12 @@ TorcHTTPServer::~TorcHTTPServer()
  *
  * \todo Use proper username and password.
 */
-bool TorcHTTPServer::Authenticated(TorcHTTPRequest *Request)
+bool TorcHTTPServer::Authenticated(TorcHTTPRequest *Request, TorcHTTPHandler *Handler /*= NULL*/)
 {
     if (!m_requiresAuthentication)
+        return true;
+
+    if (Handler && !Handler->IsProtected())
         return true;
 
     if (Request)
