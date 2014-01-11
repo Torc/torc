@@ -117,6 +117,7 @@ class TORC_CORE_PUBLIC TorcHTTPRequest
     void                   SetResponseContent       (QByteArray *Content);
     void                   SetResponseFile          (QFile *File);
     void                   SetResponseHeader        (const QString &Header, const QString &Value);
+    void                   SetQuery                 (const QString &Key, const QString &Value);
     void                   SetAllowed               (int Allowed);
     void                   SetAllowGZip             (bool Allowed);
     void                   SetCache                 (int Cache, const QString Tag = QString(""));
