@@ -45,7 +45,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
   public:
     virtual       ~TorcHTTPServer     ();
     QString        GetWebSocketToken  (TorcHTTPRequest *Request);
-    bool           Authenticated      (TorcHTTPRequest *Request, TorcHTTPHandler *Handler = NULL);
+    bool           Authenticated      (TorcHTTPRequest *Request);
 
   signals:
     void           HandlersChanged    (void);

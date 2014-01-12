@@ -41,7 +41,6 @@
 TorcHTTPHandler::TorcHTTPHandler(const QString &Signature, const QString &Name)
   : m_signature(Signature),
     m_recursive(false),
-    m_protected(true),
     m_name(Name)
 {
     if (!m_signature.endsWith("/"))
@@ -60,16 +59,6 @@ QString TorcHTTPHandler::Signature(void)
 bool TorcHTTPHandler::GetRecursive(void)
 {
     return m_recursive;
-}
-
-/*! \brief Returns true if this handler's path requires user authentication (when enabled in the server).
- *
- * Paths are protected by default and authentication should only be disabled for paths/services
- * which provide authentication services.
-*/
-bool TorcHTTPHandler::IsProtected(void)
-{
-    return m_protected;
 }
 
 QString TorcHTTPHandler::Name(void)

@@ -22,7 +22,6 @@ class TORC_CORE_PUBLIC TorcHTTPHandler
 
     QString             Signature          (void);
     bool                GetRecursive       (void);
-    bool                IsProtected        (void);
     QString             Name               (void);
     virtual void        ProcessHTTPRequest (TorcHTTPRequest *Request, TorcHTTPConnection *Connection) = 0;
     virtual QVariantMap ProcessRequest     (const QString &Method, const QVariant &Parameters, QObject *Connection);
@@ -30,7 +29,6 @@ class TORC_CORE_PUBLIC TorcHTTPHandler
   protected:
     QString             m_signature;
     bool                m_recursive;
-    bool                m_protected;
     QString             m_name;
 };
 
