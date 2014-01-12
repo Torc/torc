@@ -251,12 +251,6 @@ void TorcHTTPRequest::SetResponseHeader(const QString &Header, const QString &Va
     m_responseHeaders->insert(Header, Value);
 }
 
-
-void TorcHTTPRequest::SetQuery(const QString &Key, const QString &Value)
-{
-    m_queries.insert(Key, Value);
-}
-
 void TorcHTTPRequest::SetAllowed(int Allowed)
 {
     m_allowed = Allowed;
