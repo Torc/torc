@@ -265,7 +265,7 @@ TorcHTTPServer::TorcHTTPServer()
   : QTcpServer(),
     m_enabled(NULL),
     m_port(NULL),
-    m_requiresAuthentication(true),
+    m_requiresAuthentication(false),
     m_defaultHandler(NULL),
     m_servicesHelpHandler(NULL),
     m_staticContent(NULL),
