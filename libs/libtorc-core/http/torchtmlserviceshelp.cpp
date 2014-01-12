@@ -32,6 +32,7 @@
 #include "torchttpserver.h"
 #include "torchttprequest.h"
 #include "torchttpservice.h"
+#include "torchttpconnection.h"
 #include "torchtmlserviceshelp.h"
 
 TorcHTMLServicesHelp::TorcHTMLServicesHelp(TorcHTTPServer *Server)
@@ -58,6 +59,33 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTP
     // handle own service
     if (!Request->GetMethod().isEmpty())
     {
+        // we handle GetWebSocketToken manually as it needs access to the authentication headers.`
+        if (Request->GetMethod() == "GetWebSocketToken")
+        {
+            HTTPRequestType type = Request->GetHTTPRequestType();
+            if (type == HTTPOptions)
+            {
+                Request->SetStatus(HTTP_OK);
+                Request->SetResponseType(HTTPResponseDefault);
+                Request->SetAllowed(HTTPGet | HTTPOptions);
+            }
+            else if (type == HTTPGet)
+            {
+                Request->SetStatus(HTTP_OK);
+                TorcSerialiser *serialiser = Request->GetSerialiser();
+                Request->SetResponseType(serialiser->ResponseType());
+                Request->SetResponseContent(serialiser->Serialise(Connection->GetServer()->GetWebSocketToken(Request), "accesstoken"));
+                delete serialiser;
+            }
+            else
+            {
+                Request->SetStatus(HTTP_BadRequest);
+                Request->SetResponseType(HTTPResponseDefault);
+            }
+
+            return;
+        }
+
         TorcHTTPService::ProcessHTTPRequest(Request, Connection);
         return;
     }
@@ -151,6 +179,16 @@ int TorcHTMLServicesHelp::GetPriority(void)
 QString TorcHTMLServicesHelp::GetUuid(void)
 {
     return gLocalContext->GetUuid();
+}
+
+/*! \brief Return a WebSocket token for connecting a WebSocket when authentication is required.
+ *
+ * \note This is a dummy method as there is no point in calling it internally. The actual implementation
+ *       is captured in ProcessHTTPRequest as it requires access to the underlying HTTP headers to authenticate.
+*/
+QString TorcHTMLServicesHelp::GetWebSocketToken(void)
+{
+    return QString("");
 }
 
 void TorcHTMLServicesHelp::HandlersChanged(void)

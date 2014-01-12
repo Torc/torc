@@ -16,12 +16,13 @@ class TorcHTTPConnection;
 class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public QObject, public TorcHTTPService
 {
     Q_OBJECT
-    Q_CLASSINFO("Version",        "1.0.0")
-    Q_CLASSINFO("GetServiceList", "type=services")
-    Q_CLASSINFO("GetStartTime",   "type=starttime")
-    Q_CLASSINFO("GetPriority",    "type=priority")
-    Q_CLASSINFO("GetUuid",        "type=uuid")
-    Q_CLASSINFO("GetDetails",     "type=details")
+    Q_CLASSINFO("Version",           "1.0.0")
+    Q_CLASSINFO("GetServiceList",    "type=services")
+    Q_CLASSINFO("GetStartTime",      "type=starttime")
+    Q_CLASSINFO("GetPriority",       "type=priority")
+    Q_CLASSINFO("GetUuid",           "type=uuid")
+    Q_CLASSINFO("GetDetails",        "type=details")
+    Q_CLASSINFO("GetWebSocketToken", "type=accesstoken")
 
     Q_PROPERTY(QMap serviceList READ GetServiceList NOTIFY ServiceListChanged)
 
@@ -42,6 +43,7 @@ class TORC_CORE_PUBLIC TorcHTMLServicesHelp : public QObject, public TorcHTTPSer
     qint64         GetStartTime         (void);
     int            GetPriority          (void);
     QString        GetUuid              (void);
+    QString        GetWebSocketToken    (void);
     void           HandlersChanged      (void);
 
   private:

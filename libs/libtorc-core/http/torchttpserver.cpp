@@ -30,6 +30,7 @@
 #include "torccompat.h"
 #include "torclocalcontext.h"
 #include "torclogging.h"
+#include "torccoreutils.h"
 #include "torcadminthread.h"
 #include "torcnetwork.h"
 #include "torchttpconnection.h"
@@ -50,6 +51,9 @@
 QMap<QString,TorcHTTPHandler*> gHandlers;
 QReadWriteLock*                gHandlersLock = new QReadWriteLock(QReadWriteLock::Recursive);
 QString                        gServicesDirectory(SERVICES_DIRECTORY);
+
+QMap<QString,QPair<quint64,QString> > gWebSocketTokens;
+QMutex* gWebSocketTokensLock = new QMutex(QMutex::Recursive);
 
 void TorcHTTPServer::RegisterHandler(TorcHTTPHandler *Handler)
 {
@@ -261,7 +265,7 @@ TorcHTTPServer::TorcHTTPServer()
   : QTcpServer(),
     m_enabled(NULL),
     m_port(NULL),
-    m_requiresAuthentication(false),
+    m_requiresAuthentication(true),
     m_defaultHandler(NULL),
     m_servicesHelpHandler(NULL),
     m_staticContent(NULL),
@@ -352,6 +356,29 @@ TorcHTTPServer::~TorcHTTPServer()
     delete m_webSocketsLock;
 }
 
+/*! \brief Retrieve an authentication token for the given request.
+ *
+ * The request must contain a valid 'Authorization' header for a known user, in which case
+ * a unique token is returned. The token is single use, expires after 10 seconds and must
+ * be appended to the url used to open a WebSocket with the server (e.g. ws://localhost:port?accesstoken=YOURTOKENHERE).
+*/
+QString TorcHTTPServer::GetWebSocketToken(TorcHTTPRequest *Request)
+{
+    ExpireWebSocketTokens();
+
+    QString user;
+    if (m_requiresAuthentication && Request && Request->Headers()->contains("Authorization") &&
+        AuthenticateUser(Request->Headers()->value("Authorization"), user))
+    {
+        QMutexLocker locker(gWebSocketTokensLock);
+        QString uuid = QUuid::createUuid().toString().mid(1, 36);
+        gWebSocketTokens.insert(uuid, QPair<quint64,QString>(TorcCoreUtils::GetMicrosecondCount(), user));
+        return uuid;
+    }
+
+    return QString("");
+}
+
 /*! \brief Ensures remote user is authorised to access this server.
  *
  * The 'Authorization' header is used for standard HTTP requests.
@@ -381,31 +408,68 @@ bool TorcHTTPServer::Authenticated(TorcHTTPRequest *Request, TorcHTTPHandler *Ha
 
     if (Request)
     {
-        static QString username("admin");
-        static QString password("1234");
-
         // explicit authorization header
-        if (Request->Headers()->contains("Authorization"))
+        QString dummy;
+        if (Request->Headers()->contains("Authorization") && AuthenticateUser(Request->Headers()->value("Authorization"), dummy))
+            return true;
+
+        // authentication token supplied in the url (WebSocket)
+        if (Request->Queries().contains("accesstoken"))
         {
-            QStringList authentication = Request->Headers()->value("Authorization").split(" ", QString::SkipEmptyParts);
+            ExpireWebSocketTokens();
 
-            if (authentication.size() == 2 && authentication[0].trimmed().compare("basic", Qt::CaseInsensitive) == 0)
             {
-                QStringList userinfo = QString(QByteArray::fromBase64(authentication[1].trimmed().toUtf8())).split(':');
+                QMutexLocker locker(gWebSocketTokensLock);
+                QString token = Request->Queries().value("accesstoken");
 
-                if (userinfo.size() == 2 && userinfo[0] == username && userinfo[1] == password)
+                if (gWebSocketTokens.contains(token))
+                {
+                    gWebSocketTokens.remove(token);
                     return true;
+                }
             }
         }
-
-        // login credentials supplied in the url
-        if (Request->Queries().contains("torcuser") && Request->Queries().contains("torcpassword"))
-            if (Request->Queries().value("torcuser") == username && Request->Queries().value("torcpassword") == password)
-                return true;
 
         Request->SetResponseType(HTTPResponseNone);
         Request->SetStatus(HTTP_Unauthorized);
         Request->SetResponseHeader("WWW-Authenticate", QString("Basic realm=\"%1\"").arg(QCoreApplication::applicationName()));
+    }
+
+    return false;
+}
+
+void TorcHTTPServer::ExpireWebSocketTokens(void)
+{
+    QMutexLocker locker(gWebSocketTokensLock);
+
+    quint64 tooold = TorcCoreUtils::GetMicrosecondCount() - 10000000;
+
+    QStringList old;
+    QMap<QString,QPair<quint64,QString> >::iterator it = gWebSocketTokens.begin();
+    for ( ; it != gWebSocketTokens.end(); ++it)
+        if (it.value().first < tooold)
+            old.append(it.key());
+
+    foreach (QString expire, old)
+        gWebSocketTokens.remove(expire);
+}
+
+bool TorcHTTPServer::AuthenticateUser(const QString &Header, QString &UserName)
+{
+    static QString username("admin");
+    static QString password("1234");
+
+    QStringList authentication = Header.split(" ", QString::SkipEmptyParts);
+
+    if (authentication.size() == 2 && authentication[0].trimmed().compare("basic", Qt::CaseInsensitive) == 0)
+    {
+        QStringList userinfo = QString(QByteArray::fromBase64(authentication[1].trimmed().toUtf8())).split(':');
+
+        if (userinfo.size() == 2 && userinfo[0] == username && userinfo[1] == password)
+        {
+            UserName = username;
+            return true;
+        }
     }
 
     return false;

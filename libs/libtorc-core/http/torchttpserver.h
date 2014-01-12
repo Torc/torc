@@ -44,6 +44,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
 
   public:
     virtual       ~TorcHTTPServer     ();
+    QString        GetWebSocketToken  (TorcHTTPRequest *Request);
     bool           Authenticated      (TorcHTTPRequest *Request, TorcHTTPHandler *Handler = NULL);
 
   signals:
@@ -68,6 +69,10 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
 
   private slots:
     void           Enable             (bool Enable);
+
+  private:
+    static void    ExpireWebSocketTokens (void);
+    bool           AuthenticateUser   (const QString &Header, QString &UserName);
 
   private:
     TorcSetting                      *m_enabled;
