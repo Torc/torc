@@ -259,7 +259,7 @@ void TorcHTTPConnection::run(void)
         {
             // if the connection is upgraded, both request and m_socket will be transferred
             // to a new thread. DO NOT DELETE!
-            if (m_server->Authenticated(request) && TorcWebSocket::ProcessUpgradeRequest(this, request, m_socket))
+            if (m_server->Authenticated(this, request) && TorcWebSocket::ProcessUpgradeRequest(this, request, m_socket))
             {
                 connectionupgraded = true;
                 break;

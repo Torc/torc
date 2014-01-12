@@ -48,11 +48,28 @@
 #include <sys/utsname.h>
 #endif
 
+///\brief A simple container for authenticaion tokens.
+class WebSocketAuthentication
+{
+  public:
+    WebSocketAuthentication() { }
+    WebSocketAuthentication(quint64 Timestamp, const QString &UserName, const QString &Host)
+      : m_timeStamp(Timestamp),
+        m_userName(UserName),
+        m_host(Host)
+    {
+    }
+
+    quint64 m_timeStamp;
+    QString m_userName;
+    QString m_host;
+};
+
 QMap<QString,TorcHTTPHandler*> gHandlers;
 QReadWriteLock*                gHandlersLock = new QReadWriteLock(QReadWriteLock::Recursive);
 QString                        gServicesDirectory(SERVICES_DIRECTORY);
 
-QMap<QString,QPair<quint64,QString> > gWebSocketTokens;
+QMap<QString,WebSocketAuthentication> gWebSocketTokens;
 QMutex* gWebSocketTokensLock = new QMutex(QMutex::Recursive);
 
 void TorcHTTPServer::RegisterHandler(TorcHTTPHandler *Handler)
@@ -116,7 +133,7 @@ void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPReque
         if (it != gHandlers.end())
         {
             // direct path match
-            if (Connection->GetServer()->Authenticated(Request))
+            if (Connection->GetServer()->Authenticated(Connection, Request))
                 (*it)->ProcessHTTPRequest(Request, Connection);
         }
         else
@@ -127,7 +144,7 @@ void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPReque
             {
                 if ((*it)->GetRecursive() && path.startsWith(it.key()))
                 {
-                    if (Connection->GetServer()->Authenticated(Request))
+                    if (Connection->GetServer()->Authenticated(Connection, Request))
                         (*it)->ProcessHTTPRequest(Request, Connection);
                     break;
                 }
@@ -265,7 +282,7 @@ TorcHTTPServer::TorcHTTPServer()
   : QTcpServer(),
     m_enabled(NULL),
     m_port(NULL),
-    m_requiresAuthentication(false),
+    m_requiresAuthentication(true),
     m_defaultHandler(NULL),
     m_servicesHelpHandler(NULL),
     m_staticContent(NULL),
@@ -362,7 +379,7 @@ TorcHTTPServer::~TorcHTTPServer()
  * a unique token is returned. The token is single use, expires after 10 seconds and must
  * be appended to the url used to open a WebSocket with the server (e.g. ws://localhost:port?accesstoken=YOURTOKENHERE).
 */
-QString TorcHTTPServer::GetWebSocketToken(TorcHTTPRequest *Request)
+QString TorcHTTPServer::GetWebSocketToken(TorcHTTPConnection *Connection, TorcHTTPRequest *Request)
 {
     ExpireWebSocketTokens();
 
@@ -372,7 +389,8 @@ QString TorcHTTPServer::GetWebSocketToken(TorcHTTPRequest *Request)
     {
         QMutexLocker locker(gWebSocketTokensLock);
         QString uuid = QUuid::createUuid().toString().mid(1, 36);
-        gWebSocketTokens.insert(uuid, QPair<quint64,QString>(TorcCoreUtils::GetMicrosecondCount(), user));
+        QString host = Connection->GetSocket() ? Connection->GetSocket()->peerAddress().toString() : QString("ErrOR");
+        gWebSocketTokens.insert(uuid, WebSocketAuthentication(TorcCoreUtils::GetMicrosecondCount(), user, host));
         return uuid;
     }
 
@@ -398,7 +416,7 @@ QString TorcHTTPServer::GetWebSocketToken(TorcHTTPRequest *Request)
  *
  * \todo Use proper username and password.
 */
-bool TorcHTTPServer::Authenticated(TorcHTTPRequest *Request)
+bool TorcHTTPServer::Authenticated(TorcHTTPConnection *Connection, TorcHTTPRequest *Request)
 {
     if (!m_requiresAuthentication)
         return true;
@@ -421,8 +439,16 @@ bool TorcHTTPServer::Authenticated(TorcHTTPRequest *Request)
 
                 if (gWebSocketTokens.contains(token))
                 {
-                    gWebSocketTokens.remove(token);
-                    return true;
+                    QString host = Connection->GetSocket() ? Connection->GetSocket()->peerAddress().toString() : QString("eRROr");
+                    if (gWebSocketTokens.value(token).m_host == host)
+                    {
+                        gWebSocketTokens.remove(token);
+                        return true;
+                    }
+                    else
+                    {
+                        LOG(VB_GENERAL, LOG_ERR, "Host mismatch for websocket authentication");
+                    }
                 }
             }
         }
@@ -442,9 +468,9 @@ void TorcHTTPServer::ExpireWebSocketTokens(void)
     quint64 tooold = TorcCoreUtils::GetMicrosecondCount() - 10000000;
 
     QStringList old;
-    QMap<QString,QPair<quint64,QString> >::iterator it = gWebSocketTokens.begin();
+    QMap<QString,WebSocketAuthentication>::iterator it = gWebSocketTokens.begin();
     for ( ; it != gWebSocketTokens.end(); ++it)
-        if (it.value().first < tooold)
+        if (it.value().m_timeStamp < tooold)
             old.append(it.key());
 
     foreach (QString expire, old)

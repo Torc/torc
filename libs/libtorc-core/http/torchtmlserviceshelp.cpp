@@ -74,7 +74,7 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTP
                 Request->SetStatus(HTTP_OK);
                 TorcSerialiser *serialiser = Request->GetSerialiser();
                 Request->SetResponseType(serialiser->ResponseType());
-                Request->SetResponseContent(serialiser->Serialise(Connection->GetServer()->GetWebSocketToken(Request), "accesstoken"));
+                Request->SetResponseContent(serialiser->Serialise(Connection->GetServer()->GetWebSocketToken(Connection, Request), "accesstoken"));
                 delete serialiser;
             }
             else
