@@ -34,9 +34,8 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
     eventHandlers = [],
     // interval timer to check for call expiry/failure
     expireTimer,
-    // create the socket
-    url = 'ws://' + torc.ServerAuthority,
-    socket = (typeof MozWebSocket === 'function') ? new MozWebSocket(url, 'torc.json-rpc') : new WebSocket(url, 'torc.json-rpc');
+    // socket
+    socket;
 
     // clear out any old remote calls (over 60 seconds) for which we did not receive a response
     function expireCalls() {
@@ -61,7 +60,7 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
     // add event callback
     this.listen = function (id, method, callback) {
         eventHandlers[method] = { id: id, callback: callback };
-    }
+    };
 
     // make a remote call (public)
     this.call = function (methodToCall, params, successCallback, failureCallback) {
@@ -94,23 +93,6 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
         }
 
         socket.send(JSON.stringify(invocation));
-    };
-
-    // socket error
-    socket.onerror = function (event) {
-        // this never seems to contain any pertinent information
-        console.log('Websocket error (' + event.toString() + ')');
-    };
-
-    // socket closed
-    socket.onclose = function () {
-        if (typeof socketStatusChanged === 'function') { socketStatusChanged(torc.SocketNotConnected); }
-    };
-
-    // socket opened
-    socket.onopen = function () {
-        // connected
-        if (typeof socketStatusChanged === 'function') { socketStatusChanged(torc.SocketConnected); }
     };
 
     // handle individual responses
@@ -173,31 +155,60 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
         }
     }
 
-    // socket message
-    socket.onmessage = function (event) {
-        var i, result, batchresult,
+    function connect(token) {
+        var url = 'ws://' + torc.ServerAuthority + '?accesstoken=' + token;
+        socket = (typeof MozWebSocket === 'function') ? new MozWebSocket(url, 'torc.json-rpc') : new WebSocket(url, 'torc.json-rpc');
 
-        // parse the JSON result
-        data = $.parseJSON(event.data);
+        // socket error
+        socket.onerror = function (event) {
+            // this never seems to contain any pertinent information
+            console.log('Websocket error (' + event.toString() + ')');
+        };
 
-        if ($.isArray(data)) {
-            // array of objects (batch)
-            batchresult = [];
+        // socket closed
+        socket.onclose = function () {
+            if (typeof socketStatusChanged === 'function') { socketStatusChanged(torc.SocketNotConnected); }
+        };
 
-            for (i = 0; i < data.length; i += 1) {
-                result = processResult(data[i]);
-                if (typeof result === 'object') { batchresult.push(result); }
+        // socket opened
+        socket.onopen = function () {
+            // connected
+            if (typeof socketStatusChanged === 'function') { socketStatusChanged(torc.SocketConnected); }
+        };
+
+        // socket message
+        socket.onmessage = function (event) {
+            var i, result, batchresult,
+
+            // parse the JSON result
+            data = $.parseJSON(event.data);
+
+            if ($.isArray(data)) {
+                // array of objects (batch)
+                batchresult = [];
+
+                for (i = 0; i < data.length; i += 1) {
+                    result = processResult(data[i]);
+                    if (typeof result === 'object') { batchresult.push(result); }
+                }
+
+                // a batch call of notifications requires no response
+                if (batchresult.length > 0) { socket.send(JSON.stringify(batchresult)); }
+            } else if (typeof data === 'object') {
+                // single object
+                result = processResult(data);
+
+                if (typeof result === 'object') { socket.send(JSON.stringify(result)); }
+            } else {
+                socket.send(JSON.stringify({jsonrpc: '2.0', error: {code: '-32700', message: 'Parse error'}, id: null}));
             }
+        };
+    }
 
-            // a batch call of notifications requires no response
-            if (batchresult.length > 0) { socket.send(JSON.stringify(batchresult)); }
-        } else if (typeof data === 'object') {
-            // single object
-            result = processResult(data);
+    // start the connection by requesting a token. If authentication is not required, it will be silently ignored.
+    $.ajax({ url: 'http://' + torc.ServerAuthority + torc.ServicesPath + 'GetWebSocketToken',
+             dataType: "json",
+             xhrFields: { withCredentials: true }
+           }).done(function(result) { connect(result.accesstoken); });
 
-            if (typeof result === 'object') { socket.send(JSON.stringify(result)); }
-        } else {
-            socket.send(JSON.stringify({jsonrpc: '2.0', error: {code: '-32700', message: 'Parse error'}, id: null}));
-        }
-    };
 };
