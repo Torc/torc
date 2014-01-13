@@ -197,6 +197,11 @@ QString ConfigurationTypeToString(QNetworkConfiguration::Type Type)
     return QString();
 }
 
+/*! \class TorcNetwork
+ *  \brief Subclass of QNetworkAccessManager for sending network requests and monitoring the network state.
+ *
+ * \todo Check whether authenticationRequired signal is being emitted.
+*/
 TorcNetwork::TorcNetwork()
   : QNetworkAccessManager(),
     m_online(false),
@@ -251,6 +256,9 @@ TorcNetwork::TorcNetwork()
     connect(this, SIGNAL(CancelRequest(TorcNetworkRequest*)), this, SLOT(CancelSafe(TorcNetworkRequest*)));
     connect(this, SIGNAL(PokeRequest(TorcNetworkRequest*)),   this, SLOT(PokeSafe(TorcNetworkRequest*)));
     connect(this, SIGNAL(NewAsyncRequest(TorcNetworkRequest*,QObject*)), this, SLOT(GetAsynchronousSafe(TorcNetworkRequest*,QObject*)));
+
+    // direct connection for authentication requests
+    connect(this, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)), this, SLOT(Authenticate(QNetworkReply*,QAuthenticator*)), Qt::DirectConnection);
 
     // hide the network group if there is nothing to change
     m_networkGroup->SetActive(gLocalContext->FlagIsSet(Torc::Network));
@@ -633,6 +641,11 @@ void TorcNetwork::DownloadProgress(qint64 Received, qint64 Total)
 
     if (reply && m_requests.contains(reply))
         m_requests.value(reply)->DownloadProgress(Received, Total);
+}
+
+void TorcNetwork::Authenticate(QNetworkReply *Reply, QAuthenticator *Authenticator)
+{
+    LOG(VB_GENERAL, LOG_INFO, "Authentication required");
 }
 
 /*! \brief Cancel all current network requests.
