@@ -384,17 +384,21 @@ QString TorcHTTPServer::GetWebSocketToken(TorcHTTPConnection *Connection, TorcHT
     ExpireWebSocketTokens();
 
     QString user;
-    if (m_requiresAuthentication && Request && Request->Headers()->contains("Authorization") &&
-        AuthenticateUser(Request->Headers()->value("Authorization"), user))
+    if (m_requiresAuthentication && Request)
     {
-        QMutexLocker locker(gWebSocketTokensLock);
-        QString uuid = QUuid::createUuid().toString().mid(1, 36);
-        QString host = Connection->GetSocket() ? Connection->GetSocket()->peerAddress().toString() : QString("ErrOR");
-        gWebSocketTokens.insert(uuid, WebSocketAuthentication(TorcCoreUtils::GetMicrosecondCount(), user, host));
-        return uuid;
+        if (Request->Headers()->contains("Authorization") && AuthenticateUser(Request->Headers()->value("Authorization"), user))
+        {
+            QMutexLocker locker(gWebSocketTokensLock);
+            QString uuid = QUuid::createUuid().toString().mid(1, 36);
+            QString host = Connection->GetSocket() ? Connection->GetSocket()->peerAddress().toString() : QString("ErrOR");
+            gWebSocketTokens.insert(uuid, WebSocketAuthentication(TorcCoreUtils::GetMicrosecondCount(), user, host));
+            return uuid;
+        }
+
+        return QString("NoCredentials");
     }
 
-    return QString("");
+    return QString("NotRequired");
 }
 
 /*! \brief Ensures remote user is authorised to access this server.
@@ -458,6 +462,7 @@ bool TorcHTTPServer::Authenticated(TorcHTTPConnection *Connection, TorcHTTPReque
         Request->SetResponseHeader("WWW-Authenticate", QString("Basic realm=\"%1\"").arg(QCoreApplication::applicationName()));
     }
 
+    LOG(VB_NETWORK, LOG_WARNING, "Not authorised");
     return false;
 }
 
