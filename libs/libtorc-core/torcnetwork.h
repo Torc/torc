@@ -68,6 +68,9 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     void    SSLErrors               (const QList<QSslError> &Errors);
     void    DownloadProgress        (qint64 Received, qint64 Total);
 
+    // QNetworkAccessManager
+    void    Authenticate            (QNetworkReply* Reply, QAuthenticator* Authenticator);
+
   private slots:
     // Torc
     void    SetAllowed              (bool Allow);
