@@ -1155,7 +1155,7 @@ void TorcWebSocket::Connected(void)
 
     stream << "GET / HTTP/1.1\r\n";
     stream << "User-Agent: " << TorcHTTPServer::PlatformName() << "\r\n";
-    stream << "Host: " << TorcNetwork::IPAddressToLiteral(host) << ":" << QString::number(m_port) << "\r\n";
+    stream << "Host: " << TorcNetwork::IPAddressToLiteral(host, m_port) << "\r\n";
     stream << "Upgrade: WebSocket\r\n";
     stream << "Connection: Upgrade\r\n";
     stream << "Sec-WebSocket-Version: 13\r\n";

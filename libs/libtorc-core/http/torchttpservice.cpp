@@ -759,8 +759,7 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
         stream << method << ") (" << TorcHTTPRequest::AllowedToString(params->m_allowedRequestTypes) << ")<br>";
     }
 
-    QString url = Connection->GetSocket() ? QString("http://") + TorcNetwork::IPAddressToLiteral(Connection->GetSocket()->localAddress())
-                                            + ":" + QString::number(Connection->GetSocket()->localPort()) : QObject::tr("Error");
+    QString url = Connection->GetSocket() ? QString("http://") + TorcNetwork::IPAddressToLiteral(Connection->GetSocket()->localAddress(), Connection->GetSocket()->localPort()) : QObject::tr("Error");
 
     if (example != m_methods.end())
     {

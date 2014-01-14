@@ -155,8 +155,7 @@ void TorcHTMLStaticContent::GetJavascriptConfiguration(TorcHTTPRequest *Request,
     }
 
     // generate this instance's authority (host + port)
-    QString authority = (Connection && Connection->GetSocket()) ? TorcNetwork::IPAddressToLiteral(Connection->GetSocket()->localAddress()) : "unknown";
-    authority += ":" + QString::number(TorcHTTPServer::GetPort());
+    QString authority = (Connection && Connection->GetSocket()) ? TorcNetwork::IPAddressToLiteral(Connection->GetSocket()->localAddress(), TorcHTTPServer::GetPort()) : "unknown";
 
     // generate dynamic variables
     QMap<QString,QString> dynamics;

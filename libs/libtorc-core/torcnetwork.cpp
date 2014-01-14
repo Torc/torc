@@ -147,17 +147,29 @@ bool TorcNetwork::GetAsynchronous(TorcNetworkRequest *Request, QObject *Parent)
  * For an IPv4 address, this is a no-op. For IPv6 addresses, we need to remove the scope Id if present
  * and wrap the remainder in braces.
 */
-QString TorcNetwork::IPAddressToLiteral(const QHostAddress &Address)
+QString TorcNetwork::IPAddressToLiteral(const QHostAddress &Address, int Port /*= 0*/)
 {
+    QString result;
+
     if (Address.isLoopback())
-        return QString("localhost");
+    {
+        result = QString("localhost");
+    }
+    else if (Address.protocol() == QAbstractSocket::IPv4Protocol)
+    {
+        result = Address.toString();
+    }
+    else
+    {
+        QHostAddress address(Address);
+        address.setScopeId("");
+        result = "[" + address.toString() +"]";
+    }
 
-    if (Address.protocol() == QAbstractSocket::IPv4Protocol)
-        return Address.toString();
+    if (Port)
+        result += ":" + QString::number(Port);
 
-    QHostAddress address(Address);
-    address.setScopeId("");
-    return "[" + address.toString() +"]";
+    return result;
 }
 
 void TorcNetwork::Setup(bool Create)
