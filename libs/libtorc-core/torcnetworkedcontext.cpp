@@ -169,7 +169,7 @@ void TorcNetworkService::Connect(void)
 
     // matching priority, longer running app acts as the server.
     // In the unlikely event that the start times are the same, use the UUID
-    if (priority == gLocalContext->GetPriority() && (startTime > gLocalContext->GetStartTime() || uuid > gLocalContext->GetUuid()))
+    if (priority == gLocalContext->GetPriority() && (startTime > gLocalContext->GetStartTime() || (startTime == gLocalContext->GetStartTime() && uuid > gLocalContext->GetUuid())))
     {
         LOG(VB_GENERAL, LOG_INFO, QString("Not connecting to %1 - we started earlier").arg(m_debugString));
         return;
