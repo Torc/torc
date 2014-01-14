@@ -65,6 +65,7 @@
 TorcWebSocket::TorcWebSocket(TorcQThread *Parent, TorcHTTPRequest *Request, QTcpSocket *Socket)
   : QObject(),
     m_parent(Parent),
+    m_authenticate(false),
     m_handShaking(false),
     m_upgradeResponseReader(NULL),
     m_address(QString()),
@@ -107,9 +108,10 @@ TorcWebSocket::TorcWebSocket(TorcQThread *Parent, TorcHTTPRequest *Request, QTcp
     }
 }
 
-TorcWebSocket::TorcWebSocket(TorcQThread *Parent, const QString &Address, quint16 Port, WSSubProtocol Protocol)
+TorcWebSocket::TorcWebSocket(TorcQThread *Parent, const QString &Address, quint16 Port, bool Authenticate, WSSubProtocol Protocol)
   : QObject(),
     m_parent(Parent),
+    m_authenticate(Authenticate),
     m_handShaking(true),
     m_upgradeResponseReader(new TorcHTTPReader()),
     m_address(Address),
@@ -1162,6 +1164,8 @@ void TorcWebSocket::Connected(void)
     stream << "Torc-Port: " << QString::number(TorcHTTPServer::GetPort()) << "\r\n";
     if (m_subProtocol != SubProtocolNone)
         stream << "Sec-WebSocket-Protocol: " << SubProtocolsToString(m_subProtocol) << "\r\n";
+    if (m_authenticate)
+        stream << "Authorization: " << QByteArray("Basic " + QByteArray("admin:1234").toBase64()) << "\r\n";
     stream << "\r\n";
     stream.flush();
 
@@ -1556,9 +1560,9 @@ TorcWebSocketThread::TorcWebSocketThread(TorcHTTPRequest *Request, QTcpSocket *S
     m_webSocket->moveToThread(this);
 }
 
-TorcWebSocketThread::TorcWebSocketThread(const QString &Address, quint16 Port, TorcWebSocket::WSSubProtocol Protocol)
+TorcWebSocketThread::TorcWebSocketThread(const QString &Address, quint16 Port, bool Authenticate, TorcWebSocket::WSSubProtocol Protocol)
   : TorcQThread("WebSocket"),
-    m_webSocket(new TorcWebSocket(this, Address, Port, Protocol))
+    m_webSocket(new TorcWebSocket(this, Address, Port, Authenticate, Protocol))
 {
     m_webSocket->moveToThread(this);
 }

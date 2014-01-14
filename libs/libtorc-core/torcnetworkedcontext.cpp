@@ -178,7 +178,7 @@ void TorcNetworkService::Connect(void)
     LOG(VB_GENERAL, LOG_INFO, QString("Trying to connect to %1").arg(m_debugString));
 
     // use the host if available, otherwise the preferred address (IPV4 over IPv6)
-    m_webSocketThread = new TorcWebSocketThread(host.isEmpty() ? m_addresses[m_preferredAddress] : host, port);
+    m_webSocketThread = new TorcWebSocketThread(host.isEmpty() ? m_addresses[m_preferredAddress] : host, port, true);
     connect(m_webSocketThread,           SIGNAL(Finished()),              this, SLOT(Disconnected()));
     connect(m_webSocketThread->Socket(), SIGNAL(ConnectionEstablished()), this, SLOT(Connected()));
 
