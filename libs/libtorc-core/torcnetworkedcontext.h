@@ -3,6 +3,7 @@
 
 // Qt
 #include <QObject>
+#include <QHostAddress>
 #include <QAbstractListModel>
 
 // Torc
@@ -21,7 +22,7 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
     Q_OBJECT
 
   public:
-    TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QStringList &Addresses);
+    TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QList<QHostAddress> &Addresses);
     ~TorcNetworkService();
 
     Q_PROPERTY (QString     name              READ GetName         CONSTANT)
@@ -45,7 +46,7 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
     QString                 GetUuid           (void);
     int                     GetPort           (void);
     QString                 GetHost           (void);
-    QStringList             GetAddresses      (void);
+    QList<QHostAddress>     GetAddresses      (void);
     QString                 GetAddress        (void);
     qint64                  GetStartTime      (void);
     int                     GetPriority       (void);
@@ -84,8 +85,8 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
     bool                    connected;
 
     QString                 m_debugString;
-    QStringList             m_addresses;
-    int                     m_preferredAddress;
+    QList<QHostAddress>     m_addresses;
+    int                     m_preferredAddressIndex;
     int                     m_abort;
     TorcRPCRequest         *m_getPeerDetailsRPC;
     TorcNetworkRequest     *m_getPeerDetails;

@@ -68,7 +68,7 @@ TorcWebSocket::TorcWebSocket(TorcQThread *Parent, TorcHTTPRequest *Request, QTcp
     m_authenticate(false),
     m_handShaking(false),
     m_upgradeResponseReader(NULL),
-    m_address(QString()),
+    m_address(QHostAddress()),
     m_port(0),
     m_upgradeRequest(Request),
     m_socket(Socket),
@@ -108,7 +108,7 @@ TorcWebSocket::TorcWebSocket(TorcQThread *Parent, TorcHTTPRequest *Request, QTcp
     }
 }
 
-TorcWebSocket::TorcWebSocket(TorcQThread *Parent, const QString &Address, quint16 Port, bool Authenticate, WSSubProtocol Protocol)
+TorcWebSocket::TorcWebSocket(TorcQThread *Parent, const QHostAddress &Address, quint16 Port, bool Authenticate, WSSubProtocol Protocol)
   : QObject(),
     m_parent(Parent),
     m_authenticate(Authenticate),
@@ -1177,7 +1177,7 @@ void TorcWebSocket::Connected(void)
     }
 
     LOG(VB_GENERAL, LOG_INFO, QString("Client WebSocket connected to '%1' (SubProtocol: %2)")
-        .arg(m_address + ":" + QString::number(m_port)).arg(SubProtocolsToString(m_subProtocol)));
+        .arg(TorcNetwork::IPAddressToLiteral(m_address, (m_port))).arg(SubProtocolsToString(m_subProtocol)));
 
     LOG(VB_NETWORK, LOG_DEBUG, QString("Data...\r\n%1").arg(upgrade->data()));
 }
@@ -1560,7 +1560,7 @@ TorcWebSocketThread::TorcWebSocketThread(TorcHTTPRequest *Request, QTcpSocket *S
     m_webSocket->moveToThread(this);
 }
 
-TorcWebSocketThread::TorcWebSocketThread(const QString &Address, quint16 Port, bool Authenticate, TorcWebSocket::WSSubProtocol Protocol)
+TorcWebSocketThread::TorcWebSocketThread(const QHostAddress &Address, quint16 Port, bool Authenticate, TorcWebSocket::WSSubProtocol Protocol)
   : TorcQThread("WebSocket"),
     m_webSocket(new TorcWebSocket(this, Address, Port, Authenticate, Protocol))
 {

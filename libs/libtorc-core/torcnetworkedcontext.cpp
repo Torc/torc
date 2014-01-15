@@ -44,7 +44,7 @@ TorcNetworkedContext *gNetworkedContext = NULL;
  * \todo Should retries be limited? If support is added for manually specified peers (e.g. remote) and that
  *       peer is offline, need a better approach.
 */
-TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QStringList &Addresses)
+TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QList<QHostAddress> &Addresses)
   : QObject(),
     name(Name),
     uuid(UUID),
@@ -55,7 +55,7 @@ TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID,
     apiVersion(QString()),
     connected(false),
     m_addresses(Addresses),
-    m_preferredAddress(0),
+    m_preferredAddressIndex(0),
     m_abort(0),
     m_getPeerDetailsRPC(NULL),
     m_getPeerDetails(NULL),
@@ -66,14 +66,13 @@ TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID,
     QString ports = QString::number(port);
     for (int i = 0; i < m_addresses.size(); ++i)
     {
-        // Qt5.0/5.1 network requests fail with link local IPv6 addresses (due to the scope ID). So we use
-        // the host if available but otherwise try to use an IPv4 address in preference to IPv6.
-        if (QHostAddress(m_addresses[i]).protocol() == QAbstractSocket::IPv4Protocol)
-            m_preferredAddress = i;
-        uiAddress += m_addresses[i] + ":" + ports + " ";
+        if (m_addresses.at(i).protocol() == QAbstractSocket::IPv4Protocol)
+            m_preferredAddressIndex = i;
+
+        uiAddress += TorcNetwork::IPAddressToLiteral(m_addresses.at(i), port) + ((i == m_addresses.size() - 1) ? "" : ", ");
     }
 
-    m_debugString = m_addresses[m_preferredAddress] + ":" + ports;
+    m_debugString = TorcNetwork::IPAddressToLiteral(m_addresses[m_preferredAddressIndex], port);
 }
 
 /*! \brief Destroy this service.
@@ -177,8 +176,7 @@ void TorcNetworkService::Connect(void)
 
     LOG(VB_GENERAL, LOG_INFO, QString("Trying to connect to %1").arg(m_debugString));
 
-    // use the host if available, otherwise the preferred address (IPV4 over IPv6)
-    m_webSocketThread = new TorcWebSocketThread(host.isEmpty() ? m_addresses[m_preferredAddress] : host, port, true);
+    m_webSocketThread = new TorcWebSocketThread(m_addresses.at(m_preferredAddressIndex), port, true);
     connect(m_webSocketThread,           SIGNAL(Finished()),              this, SLOT(Disconnected()));
     connect(m_webSocketThread->Socket(), SIGNAL(ConnectionEstablished()), this, SLOT(Connected()));
 
@@ -433,8 +431,7 @@ void TorcNetworkService::QueryPeerDetails(void)
 
         LOG(VB_GENERAL, LOG_INFO, "Querying peer details over HTTP");
 
-        // use the host if available, otherwise the preferred address (IPV4 over IPv6)
-        QUrl url(host.isEmpty() ? m_addresses[m_preferredAddress] : host);
+        QUrl url(m_addresses[m_preferredAddressIndex].toString());
         url.setPort(port);
         url.setScheme("http");
         url.setPath("/services/GetDetails");
@@ -515,12 +512,12 @@ QVariant TorcNetworkService::ToMap(void)
     result.insert("uuid",      uuid);
     result.insert("port",      port);
     result.insert("uiAddress", uiAddress);
-    result.insert("address",   m_addresses[m_preferredAddress]);
+    result.insert("address",   TorcNetwork::IPAddressToLiteral(m_addresses[m_preferredAddressIndex]));
     result.insert("host",      host);
     return result;
 }
 
-QStringList TorcNetworkService::GetAddresses(void)
+QList<QHostAddress> TorcNetworkService::GetAddresses(void)
 {
     return m_addresses;
 }
@@ -716,8 +713,11 @@ bool TorcNetworkedContext::event(QEvent *Event)
                         int priority          = map.value("priority").toInt();
                         QString host          = event->Data().value("host").toString();
 
+                        QList<QHostAddress> hosts;
+                        foreach (QString address, addresses)
+                            hosts.append(QHostAddress(address));
                         // create the new peer
-                        TorcNetworkService *service = new TorcNetworkService(name, uuid, event->Data().value("port").toInt(), addresses);
+                        TorcNetworkService *service = new TorcNetworkService(name, uuid, event->Data().value("port").toInt(), hosts);
                         service->SetAPIVersion(version);
                         service->SetPriority(priority);
                         service->SetStartTime(starttime);
@@ -892,8 +892,8 @@ void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *S
             name = agent.left(index);
 
         LOG(VB_GENERAL, LOG_INFO, QString("Received WebSocket for new peer ('%1')").arg(name));
-        QStringList address;
-        address.append(Socket->peerAddress().toString());
+        QList<QHostAddress> address;
+        address << (Socket->peerAddress());
         service = new TorcNetworkService(name, uuid, port < 1 ? Socket->peerPort() : port, address);
         Add(service);
     }

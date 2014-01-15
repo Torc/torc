@@ -2,9 +2,10 @@
 #define TORCWEBSOCKET_H
 
 // Qt
-#include <QTcpSocket>
-#include <QObject>
 #include <QUrl>
+#include <QObject>
+#include <QTcpSocket>
+#include <QHostAddress>
 
 // Torc
 #include "torccoreexport.h"
@@ -84,7 +85,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
 
   public:
     TorcWebSocket(TorcQThread *Parent, TorcHTTPRequest *Request, QTcpSocket *Socket);
-    TorcWebSocket(TorcQThread *Parent, const QString &Address, quint16 Port, bool Authenticate, WSSubProtocol Protocol = SubProtocolJSONRPC);
+    TorcWebSocket(TorcQThread *Parent, const QHostAddress &Address, quint16 Port, bool Authenticate, WSSubProtocol Protocol = SubProtocolJSONRPC);
     ~TorcWebSocket();
 
     static bool     ProcessUpgradeRequest (TorcHTTPConnection *Connection, TorcHTTPRequest *Request, QTcpSocket *Socket);
@@ -145,7 +146,7 @@ class TORC_CORE_PUBLIC TorcWebSocket : public QObject
     bool             m_handShaking;
     TorcHTTPReader  *m_upgradeResponseReader;
     QString          m_challengeResponse;
-    QString          m_address;
+    QHostAddress     m_address;
     quint16          m_port;
     TorcHTTPRequest *m_upgradeRequest;
     QTcpSocket      *m_socket;
@@ -184,7 +185,7 @@ class TORC_CORE_PUBLIC TorcWebSocketThread : public TorcQThread
 {
   public:
     TorcWebSocketThread(TorcHTTPRequest *Request, QTcpSocket *Socket);
-    TorcWebSocketThread(const QString &Address, quint16 Port, bool Authenticate = false, TorcWebSocket::WSSubProtocol Protocol = TorcWebSocket::SubProtocolJSONRPC);
+    TorcWebSocketThread(const QHostAddress &Address, quint16 Port, bool Authenticate = false, TorcWebSocket::WSSubProtocol Protocol = TorcWebSocket::SubProtocolJSONRPC);
     ~TorcWebSocketThread();
 
     TorcWebSocket*      Socket   (void);
