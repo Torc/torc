@@ -45,6 +45,9 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static void Cancel              (TorcNetworkRequest* Request);
     static void Poke                (TorcNetworkRequest* Request);
     static bool GetAsynchronous     (TorcNetworkRequest* Request, QObject *Parent);
+    static void AddHostName         (const QString &Host);
+    static void RemoveHostName      (const QString &Host);
+    static QStringList GetHostNames (void);
     static QString IPAddressToLiteral (const QHostAddress& Address, int Port, bool UseLocalhost = true);
 
   signals:
@@ -70,6 +73,9 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
 
     // QNetworkAccessManager
     void    Authenticate            (QNetworkReply* Reply, QAuthenticator* Authenticator);
+
+    // QHostInfo
+    void    NewHostName             (const QHostInfo &Info);
 
   private slots:
     // Torc
@@ -109,6 +115,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     QNetworkConfigurationManager    *m_manager;
     QNetworkConfiguration            m_configuration;
     QNetworkInterface                m_interface;
+    QStringList                      m_hostNames;
 
     QMap<QNetworkReply*,TorcNetworkRequest*> m_requests;
     QMap<TorcNetworkRequest*,QNetworkReply*> m_reverseRequests;

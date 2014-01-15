@@ -28,8 +28,10 @@
 #include "torcnetwork.h"
 #include "torccoreutils.h"
 
-TorcNetwork* gNetwork = NULL;
-QMutex*      gNetworkLock = new QMutex(QMutex::Recursive);
+TorcNetwork*    gNetwork = NULL;
+QMutex*         gNetworkLock = new QMutex(QMutex::Recursive);
+QStringList     gNetworkHostNames;
+QReadWriteLock* gNetworkHostNamesLock = new QReadWriteLock();
 
 bool TorcNetwork::IsAvailable(void)
 {
@@ -140,6 +142,73 @@ bool TorcNetwork::GetAsynchronous(TorcNetworkRequest *Request, QObject *Parent)
     }
 
     return false;
+}
+
+/*! \brief Register a known host name for this application.
+ *
+ * Host names are currently used to validate cross domain HTTP requests. New host names are added via reverse DNS
+ * lookup when an external network connection becomes available and via successful Bonjour services registration
+ * events (Bonjour typically uses a different host name).
+ *
+ * \sa RemoveHostName
+ * \sa GetHostNames
+*/
+void TorcNetwork::AddHostName(const QString &Host)
+{
+    bool changed = false;
+
+    {
+        QWriteLocker locker(gNetworkHostNamesLock);
+
+        if (gNetworkHostNames.size() > 10)
+        {
+            LOG(VB_GENERAL, LOG_WARNING, QString("Number of host names > 10 - ignoring new name '%1' (%2)").arg(Host).arg(gNetworkHostNames.join(",")));
+        }
+        else if (!gNetworkHostNames.contains(Host))
+        {
+            LOG(VB_GENERAL, LOG_INFO, QString("New host name '%1'").arg(Host));
+            gNetworkHostNames.append(Host);
+            changed = true;
+        }
+    }
+
+    if (changed && gLocalContext)
+        gLocalContext->NotifyEvent(Torc::NetworkHostNamesChanged);
+}
+
+/*! \brief Remove a host name from the known list of host names.
+ *
+ * \sa AddHostName
+ * \sa GetHostNames
+*/
+void TorcNetwork::RemoveHostName(const QString &Host)
+{
+    bool changed = false;
+
+    {
+        QWriteLocker locker(gNetworkHostNamesLock);
+
+        if (gNetworkHostNames.contains(Host))
+        {
+            LOG(VB_GENERAL, LOG_INFO, QString("Removed host name '%1'").arg(Host));
+            gNetworkHostNames.removeAll(Host);
+            changed = true;
+        }
+    }
+
+    if (changed && gLocalContext)
+        gLocalContext->NotifyEvent(Torc::NetworkHostNamesChanged);
+}
+
+/*! \brief Retrieve the list of currently identified host names.
+ *
+ * \sa AddHostName
+ * \sa RemoveHostName
+ */
+QStringList TorcNetwork::GetHostNames(void)
+{
+    QReadLocker locker(gNetworkHostNamesLock);
+    return gNetworkHostNames;
 }
 
 /*! \brief Convert an IP address to a string literal.
@@ -660,6 +729,16 @@ void TorcNetwork::Authenticate(QNetworkReply *Reply, QAuthenticator *Authenticat
     LOG(VB_GENERAL, LOG_INFO, "Authentication required");
 }
 
+///\brief Receives host name updates from QHostInfo
+void TorcNetwork::NewHostName(const QHostInfo &Info)
+{
+    if (!Info.hostName().isEmpty())
+    {
+        m_hostNames.append(Info.hostName());
+        AddHostName(Info.hostName());
+    }
+}
+
 /*! \brief Cancel all current network requests.
  *
  * This method can be called when the TorcNetwork singleton is being destroyed, when network access has
@@ -715,7 +794,11 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
         QStringList addresses;
         QList<QNetworkAddressEntry> entries = m_interface.addressEntries();
         foreach (QNetworkAddressEntry entry, entries)
-            addresses << entry.ip().toString();
+        {
+            QString address = entry.ip().toString();
+            addresses << address;
+            QHostInfo::lookupHost(address, this, SLOT(NewHostName(QHostInfo)));
+        }
 
         LOG(VB_GENERAL, LOG_INFO, QString("Network up (%1)").arg(addresses.join(", ")));
     }
@@ -726,6 +809,10 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
         gLocalContext->NotifyEvent(Torc::NetworkUnavailable);
         gLocalContext->UserMessage(Torc::InternalMessage, Torc::Local, Torc::DefaultTimeout,
                                    tr("Network"), tr("Network unavailable"));
+
+        foreach (QString host, m_hostNames)
+            RemoveHostName(host);
+        m_hostNames = QStringList();
     }
 }
 
