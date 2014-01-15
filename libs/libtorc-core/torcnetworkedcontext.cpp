@@ -701,37 +701,47 @@ bool TorcNetworkedContext::event(QEvent *Event)
                 {
                     QByteArray uuid  = records.value("uuid");
 
-                    if (event->GetEvent() == Torc::ServiceDiscovered && !m_serviceList.contains(uuid) &&
-                        uuid != gLocalContext->GetUuid().toLatin1())
+                    if (event->GetEvent() == Torc::ServiceDiscovered && !m_serviceList.contains(uuid))
                     {
-                        QByteArray name       = event->Data().value("name").toByteArray();
-                        QStringList addresses = event->Data().value("addresses").toStringList();
-                        QByteArray txtrecords = event->Data().value("txtrecords").toByteArray();
-                        QMap<QByteArray,QByteArray> map = TorcBonjour::TxtRecordToMap(txtrecords);
-                        QString version       = QString(map.value("apiversion"));
-                        qint64 starttime      = map.value("starttime").toULongLong();
-                        int priority          = map.value("priority").toInt();
-                        QString host          = event->Data().value("host").toString();
+                        if (uuid == gLocalContext->GetUuid().toLatin1())
+                        {
+                            // this is our own external Bonjour host name
+                            TorcNetwork::AddHostName(event->Data().value("host").toString());
+                        }
+                        else
+                        {
+                            QByteArray name       = event->Data().value("name").toByteArray();
+                            QStringList addresses = event->Data().value("addresses").toStringList();
+                            QByteArray txtrecords = event->Data().value("txtrecords").toByteArray();
+                            QMap<QByteArray,QByteArray> map = TorcBonjour::TxtRecordToMap(txtrecords);
+                            QString version       = QString(map.value("apiversion"));
+                            qint64 starttime      = map.value("starttime").toULongLong();
+                            int priority          = map.value("priority").toInt();
+                            QString host          = event->Data().value("host").toString();
 
-                        QList<QHostAddress> hosts;
-                        foreach (QString address, addresses)
-                            hosts.append(QHostAddress(address));
-                        // create the new peer
-                        TorcNetworkService *service = new TorcNetworkService(name, uuid, event->Data().value("port").toInt(), hosts);
-                        service->SetAPIVersion(version);
-                        service->SetPriority(priority);
-                        service->SetStartTime(starttime);
-                        service->SetHost(host);
+                            QList<QHostAddress> hosts;
+                            foreach (QString address, addresses)
+                                hosts.append(QHostAddress(address));
+                            // create the new peer
+                            TorcNetworkService *service = new TorcNetworkService(name, uuid, event->Data().value("port").toInt(), hosts);
+                            service->SetAPIVersion(version);
+                            service->SetPriority(priority);
+                            service->SetStartTime(starttime);
+                            service->SetHost(host);
 
-                        // and insert into the list model
-                        Add(service);
+                            // and insert into the list model
+                            Add(service);
 
-                        // try and connect - the txt records should have given us everything we need to know
-                        service->Connect();
+                            // try and connect - the txt records should have given us everything we need to know
+                            service->Connect();
+                        }
                     }
                     else if (event->GetEvent() == Torc::ServiceWentAway)
                     {
-                        Delete(uuid);
+                        if (uuid == gLocalContext->GetUuid().toLatin1())
+                            TorcNetwork::RemoveHostName(event->Data().value("host").toString());
+                        else
+                            Delete(uuid);
                     }
                 }
 #endif
