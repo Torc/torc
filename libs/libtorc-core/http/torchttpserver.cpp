@@ -125,6 +125,10 @@ void TorcHTTPServer::HandleRequest(TorcHTTPConnection *Connection, TorcHTTPReque
 {
     if (Request && Connection)
     {
+        // verify cross domain requests
+        // should an invalid origin fail?
+        Connection->GetServer()->ValidateOrigin(Request);
+
         QReadLocker locker(gHandlersLock);
 
         QString path = Request->GetPath();
@@ -340,6 +344,9 @@ TorcHTTPServer::TorcHTTPServer()
     // set thread pool max size
     m_connectionPool.setMaxThreadCount(50);
 
+    // listen for host name updates
+    gLocalContext->AddObserver(this);
+
     // and start
     // NB this will start and stop purely on the basis of the setting, irrespective
     // of network availability and hence is still available via 'localhost'
@@ -349,6 +356,8 @@ TorcHTTPServer::TorcHTTPServer()
 TorcHTTPServer::~TorcHTTPServer()
 {
     disconnect();
+
+    gLocalContext->RemoveObserver(this);
 
     delete m_defaultHandler;
     delete m_servicesHelpHandler;
@@ -466,6 +475,21 @@ bool TorcHTTPServer::Authenticated(TorcHTTPConnection *Connection, TorcHTTPReque
     return false;
 }
 
+/*! \brief Check the Origin header for validity and respond appropriately.
+ *
+ * Cross domain requests are not common from well behaved clients/browsers. There can however be confusion
+ * when the IP address is a localhost (IPv4 or IPv6) and we can never guarantee that the domain will 'look' equivalent.
+ * So validate the incoming origin (which is good practice anyway) and set the outgoing headers as necessary.
+*/
+void TorcHTTPServer::ValidateOrigin(TorcHTTPRequest *Request)
+{
+    if (Request && Request->Headers()->contains("Origin") && m_originWhitelist.contains(Request->Headers()->value("Origin"), Qt::CaseInsensitive))
+    {
+        Request->SetResponseHeader("Access-Control-Allow-Origin", Request->Headers()->value("Origin"));
+        Request->SetResponseHeader("Access-Control-Allow-Credentials", "true");
+    }
+}
+
 void TorcHTTPServer::ExpireWebSocketTokens(void)
 {
     QMutexLocker locker(gWebSocketTokensLock);
@@ -501,6 +525,32 @@ bool TorcHTTPServer::AuthenticateUser(const QString &Header, QString &UserName)
     }
 
     return false;
+}
+
+/*! \brief Create the 'Origin' whitelist for cross domain requests
+ *
+ * \note This assumes the server is listening on all interfaces (currently true).
+*/
+void TorcHTTPServer::UpdateOriginWhitelist(void)
+{
+    int port = m_port->GetValue().toInt();
+
+    // localhost first
+    m_originWhitelist = "http://localhost:" + QString::number(port) + " ";
+
+    // all known raw IP addresses
+    QList<QHostAddress> addresses = QNetworkInterface::allAddresses();
+    for (int i = 0; i < addresses.size(); ++i)
+        m_originWhitelist += QString("%1%2 ").arg("http://").arg(TorcNetwork::IPAddressToLiteral(addresses[i], port, false));
+
+    // and any known host names
+    QStringList hosts = TorcNetwork::GetHostNames();
+    foreach (QString host, hosts)
+        if (!host.isEmpty())
+            m_originWhitelist += QString("%1%2:%3 ").arg("http://").arg(host).arg(port);
+
+    LOG(VB_NETWORK, LOG_INFO, "Origin whitelist: " + m_originWhitelist);
+
 }
 
 void TorcHTTPServer::Enable(bool Enable)
@@ -577,8 +627,13 @@ bool TorcHTTPServer::Open(void)
             m_torcBonjourReference = TorcBonjour::Instance()->Register(port, "_torc._tcp", name, map);
     }
 #endif
+
     if (!waslistening)
+    {
         LOG(VB_GENERAL, LOG_INFO, QString("Web server listening on port %1").arg(port));
+        UpdateOriginWhitelist();
+    }
+
     return true;
 }
 
@@ -630,8 +685,17 @@ bool TorcHTTPServer::event(QEvent *Event)
         TorcEvent* torcevent = dynamic_cast<TorcEvent*>(Event);
         if (torcevent)
         {
-            if (torcevent->GetEvent() == Torc::NetworkAvailable)
-                Enable(true);
+            switch (torcevent->GetEvent())
+            {
+                case Torc::NetworkAvailable:
+                    Enable(true);
+                    break;
+                case Torc::NetworkHostNamesChanged:
+                    UpdateOriginWhitelist();
+                    break;
+                default:
+                    break;
+            }
         }
     }
 

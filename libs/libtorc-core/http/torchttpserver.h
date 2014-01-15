@@ -46,6 +46,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
     virtual       ~TorcHTTPServer     ();
     QString        GetWebSocketToken  (TorcHTTPConnection *Connection, TorcHTTPRequest *Request);
     bool           Authenticated      (TorcHTTPConnection *Connection, TorcHTTPRequest *Request);
+    void           ValidateOrigin     (TorcHTTPRequest *Request);
 
   signals:
     void           HandlersChanged    (void);
@@ -73,6 +74,7 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
   private:
     static void    ExpireWebSocketTokens (void);
     bool           AuthenticateUser   (const QString &Header, QString &UserName);
+    void           UpdateOriginWhitelist (void);
 
   private:
     TorcSetting                      *m_enabled;
@@ -90,6 +92,8 @@ class TORC_CORE_PUBLIC TorcHTTPServer : public QTcpServer
 
     QList<TorcWebSocketThread*>       m_webSockets;
     QMutex*                           m_webSocketsLock;
+
+    QString                           m_originWhitelist;
 };
 
 Q_DECLARE_METATYPE(TorcHTTPRequest*);
