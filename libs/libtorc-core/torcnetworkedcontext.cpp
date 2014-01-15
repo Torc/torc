@@ -512,7 +512,7 @@ QVariant TorcNetworkService::ToMap(void)
     result.insert("uuid",      uuid);
     result.insert("port",      port);
     result.insert("uiAddress", uiAddress);
-    result.insert("address",   TorcNetwork::IPAddressToLiteral(m_addresses[m_preferredAddressIndex]));
+    result.insert("address",   TorcNetwork::IPAddressToLiteral(m_addresses[m_preferredAddressIndex], 0));
     result.insert("host",      host);
     return result;
 }

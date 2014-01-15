@@ -45,7 +45,7 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static void Cancel              (TorcNetworkRequest* Request);
     static void Poke                (TorcNetworkRequest* Request);
     static bool GetAsynchronous     (TorcNetworkRequest* Request, QObject *Parent);
-    static QString IPAddressToLiteral (const QHostAddress& Address, int Port = 0);
+    static QString IPAddressToLiteral (const QHostAddress& Address, int Port, bool UseLocalhost = true);
 
   signals:
     void        NewRequest          (TorcNetworkRequest* Request);

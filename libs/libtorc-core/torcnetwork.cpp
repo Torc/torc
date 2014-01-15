@@ -147,11 +147,11 @@ bool TorcNetwork::GetAsynchronous(TorcNetworkRequest *Request, QObject *Parent)
  * For an IPv4 address, this is a no-op. For IPv6 addresses, we need to remove the scope Id if present
  * and wrap the remainder in braces.
 */
-QString TorcNetwork::IPAddressToLiteral(const QHostAddress &Address, int Port /*= 0*/)
+QString TorcNetwork::IPAddressToLiteral(const QHostAddress &Address, int Port, bool UseLocalhost /*= true*/)
 {
     QString result;
 
-    if (Address.isLoopback())
+    if (UseLocalhost && Address.isLoopback())
     {
         result = QString("localhost");
     }
