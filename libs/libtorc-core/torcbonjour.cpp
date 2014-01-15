@@ -683,6 +683,7 @@ class TorcBonjourPriv
                     data.insert("name", it.value().m_name.data());
                     data.insert("type", it.value().m_type.data());
                     data.insert("txtrecords", it.value().m_txt);
+                    data.insert("host", it.value().m_host);
                     TorcEvent event(Torc::ServiceWentAway, data);
                     gLocalContext->Notify(event);
 
