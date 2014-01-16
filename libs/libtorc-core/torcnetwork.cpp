@@ -830,7 +830,8 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
         {
             QString address = entry.ip().toString();
             addresses << address;
-            QHostInfo::lookupHost(address, this, SLOT(NewHostName(QHostInfo)));
+            if (IsExternal(entry.ip()))
+                QHostInfo::lookupHost(address, this, SLOT(NewHostName(QHostInfo)));
         }
 
         LOG(VB_GENERAL, LOG_INFO, QString("Network up (%1)").arg(addresses.join(", ")));
