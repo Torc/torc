@@ -156,7 +156,7 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
     }
 
     function connect(token) {
-        var url = 'ws://' + torc.ServerAuthority + '?accesstoken=' + token;
+        var url = 'ws://' + window.location.host + '?accesstoken=' + token;
         socket = (typeof MozWebSocket === 'function') ? new MozWebSocket(url, 'torc.json-rpc') : new WebSocket(url, 'torc.json-rpc');
 
         // socket error
@@ -206,7 +206,7 @@ var TorcWebsocket = function ($, torc, socketStatusChanged) {
     }
 
     // start the connection by requesting a token. If authentication is not required, it will be silently ignored.
-    $.ajax({ url: 'http://' + torc.ServerAuthority + torc.ServicesPath + 'GetWebSocketToken',
+    $.ajax({ url: torc.ServicesPath + 'GetWebSocketToken',
              dataType: "json",
              xhrFields: { withCredentials: true }
            }).done(function(result) { connect(result.accesstoken); });

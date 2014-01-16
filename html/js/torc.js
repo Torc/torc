@@ -44,7 +44,7 @@ $(document).ready(function() {
         } else if (status === torc.SocketConnected) {
             $(".torc-peer-menu").append($('<li/>',
                                          { class: "torc-socket-address",
-                                           html: $('<a/>', { href: '#', html: torc.ConnectedTo + torc.ServerAuthority }),} ));
+                                           html: $('<a/>', { href: '#', html: torc.ConnectedTo + window.location.host }),} ));
         } else if (status === torc.SocketReady) {
             torcconnection.subscribe('peers', ['peers'], peerListChanged, peerSubscriptionChanged);
         }
