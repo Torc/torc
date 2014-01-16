@@ -175,6 +175,7 @@ class TORC_CORE_PUBLIC Torc
         NetworkDisabled,
         NetworkAvailable,
         NetworkUnavailable,
+        NetworkChanged,
         NetworkHostNamesChanged,
         // appearance
         EnableStudioLevels = 7000,
