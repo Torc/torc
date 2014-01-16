@@ -216,7 +216,7 @@ QStringList TorcNetwork::GetHostNames(void)
     QReadLocker locker(gNetworkHostNamesLock);
     QStringList result = gNetworkHostNames;
     result.removeDuplicates();
-    return results;
+    return result;
 }
 
 /*! \brief Convert an IP address to a string literal.
