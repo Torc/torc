@@ -543,6 +543,8 @@ void TorcNetworkService::SetAPIVersion(const QString &Version)
     apiVersion = Version;
 }
 
+#define BLACKLIST QString("submit,revert")
+
 /*! \class TorcNetworkedContext
  *  \brief A class to discover and connect to other Torc applications.
  *
@@ -560,7 +562,7 @@ void TorcNetworkService::SetAPIVersion(const QString &Version)
  */
 TorcNetworkedContext::TorcNetworkedContext()
   : QAbstractListModel(),
-    TorcHTTPService(this, "peers", "peers", TorcNetworkedContext::staticMetaObject),
+    TorcHTTPService(this, "peers", "peers", TorcNetworkedContext::staticMetaObject, BLACKLIST),
     m_discoveredServicesLock(new QReadWriteLock(QReadWriteLock::Recursive)),
     m_bonjourBrowserReference(0)
 {
