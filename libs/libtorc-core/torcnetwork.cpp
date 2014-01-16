@@ -170,7 +170,7 @@ void TorcNetwork::AddHostName(const QString &Host)
         {
             LOG(VB_GENERAL, LOG_WARNING, QString("Number of host names > 10 - ignoring new name '%1' (%2)").arg(Host).arg(gNetworkHostNames.join(",")));
         }
-        else if (!gNetworkHostNames.contains(Host))
+        else
         {
             LOG(VB_GENERAL, LOG_INFO, QString("New host name '%1'").arg(Host));
             gNetworkHostNames.append(Host);
@@ -197,7 +197,7 @@ void TorcNetwork::RemoveHostName(const QString &Host)
         if (gNetworkHostNames.contains(Host))
         {
             LOG(VB_GENERAL, LOG_INFO, QString("Removed host name '%1'").arg(Host));
-            gNetworkHostNames.removeAll(Host);
+            gNetworkHostNames.removeOne(Host);
             changed = true;
         }
     }
@@ -214,7 +214,9 @@ void TorcNetwork::RemoveHostName(const QString &Host)
 QStringList TorcNetwork::GetHostNames(void)
 {
     QReadLocker locker(gNetworkHostNamesLock);
-    return gNetworkHostNames;
+    QStringList result = gNetworkHostNames;
+    result.removeDuplicates();
+    return results;
 }
 
 /*! \brief Convert an IP address to a string literal.
