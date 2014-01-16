@@ -134,6 +134,8 @@ void TorcHTMLStaticContent::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTT
 */
 void TorcHTMLStaticContent::GetJavascriptConfiguration(TorcHTTPRequest *Request, TorcHTTPConnection *Connection)
 {
+    (void)Connection;
+
     if (!Request)
         return;
 
@@ -154,12 +156,8 @@ void TorcHTMLStaticContent::GetJavascriptConfiguration(TorcHTTPRequest *Request,
         statics.insert("ConnectedTo",             QObject::tr("Connected to "));
     }
 
-    // generate this instance's authority (host + port)
-    QString authority = (Connection && Connection->GetSocket()) ? TorcNetwork::IPAddressToLiteral(Connection->GetSocket()->localAddress(), TorcHTTPServer::GetPort()) : "unknown";
-
     // generate dynamic variables
     QMap<QString,QString> dynamics;
-    dynamics.insert("ServerAuthority", authority);
     dynamics.insert("ServicesPath", SERVICES_DIRECTORY);
 
     // and generate javascript
