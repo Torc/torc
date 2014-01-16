@@ -802,9 +802,11 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
 {
     QNetworkConfiguration configuration = m_manager->defaultConfiguration();
     bool wasonline = m_online;
+    bool changed = false;
 
     if (configuration != m_configuration || Creating)
     {
+        changed = true;
         m_configuration = configuration;
 
         if (m_configuration.isValid())
@@ -849,6 +851,11 @@ void TorcNetwork::UpdateConfiguration(bool Creating)
         foreach (QString host, m_hostNames)
             RemoveHostName(host);
         m_hostNames = QStringList();
+    }
+    else if (changed)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Network configuration changed");
+        gLocalContext->NotifyEvent(Torc::NetworkChanged);
     }
 }
 
