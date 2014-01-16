@@ -33,6 +33,12 @@ QMutex*         gNetworkLock = new QMutex(QMutex::Recursive);
 QStringList     gNetworkHostNames;
 QReadWriteLock* gNetworkHostNamesLock = new QReadWriteLock();
 
+QPair<QHostAddress,int> gIPv4LinkLocal = QHostAddress::parseSubnet("169.254.0.0/16");
+QPair<QHostAddress,int> gIPv6LinkLocal = QHostAddress::parseSubnet("fe80::/10");
+QPair<QHostAddress,int> gIPv4PrivateA  = QHostAddress::parseSubnet("10.0.0.0/8");
+QPair<QHostAddress,int> gIPv4PrivateB  = QHostAddress::parseSubnet("172.16.0.0/12");
+QPair<QHostAddress,int> gIPv4PrivateC  = QHostAddress::parseSubnet("192.168.0.0/16");
+
 bool TorcNetwork::IsAvailable(void)
 {
     QMutexLocker locker(gNetworkLock);
@@ -239,6 +245,33 @@ QString TorcNetwork::IPAddressToLiteral(const QHostAddress &Address, int Port, b
         result += ":" + QString::number(Port);
 
     return result;
+}
+
+///\brief Returns true if the address is accessible from other devices.
+bool TorcNetwork::IsExternal(const QHostAddress &Address, bool IncludeLinkLocal /*= false*/)
+{
+    if (Address.isNull() || Address.isLoopback())
+        return false;
+
+    if (Address.isInSubnet(Address.protocol() == QAbstractSocket::IPv4Protocol ? gIPv4LinkLocal : gIPv6LinkLocal))
+        return IncludeLinkLocal;
+
+    return true;
+}
+
+///\brief Returns true if the address is globally accessible (i.e. exposed to the real world!)
+bool TorcNetwork::IsGlobal(const QHostAddress &Address)
+{
+    // internal/loopback and link local
+    if (!IsExternal(Address))
+        return false;
+
+    // private
+    if (Address.protocol() == QAbstractSocket::IPv4Protocol)
+        if (Address.isInSubnet(gIPv4PrivateA) || Address.isInSubnet(gIPv4PrivateB) || Address.isInSubnet(gIPv4PrivateC))
+            return false;
+
+    return true;
 }
 
 void TorcNetwork::Setup(bool Create)

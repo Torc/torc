@@ -48,7 +48,10 @@ class TORC_CORE_PUBLIC TorcNetwork : QNetworkAccessManager
     static void AddHostName         (const QString &Host);
     static void RemoveHostName      (const QString &Host);
     static QStringList GetHostNames (void);
+
     static QString IPAddressToLiteral (const QHostAddress& Address, int Port, bool UseLocalhost = true);
+    static bool IsExternal          (const QHostAddress &Address, bool IncludeLinkLocal = false);
+    static bool IsGlobal            (const QHostAddress &Address);
 
   signals:
     void        NewRequest          (TorcNetworkRequest* Request);
