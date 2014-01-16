@@ -687,9 +687,11 @@ bool TorcHTTPServer::event(QEvent *Event)
         {
             switch (torcevent->GetEvent())
             {
+                // these events all notify that the list of interfaces and addresses the server is
+                // listening on will have been updated
                 case Torc::NetworkAvailable:
-                    Enable(true);
-                    break;
+                case Torc::NetworkUnavailable:
+                case Torc::NetworkChanged:
                 case Torc::NetworkHostNamesChanged:
                     UpdateOriginWhitelist();
                     break;
