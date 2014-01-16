@@ -307,7 +307,7 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
             }
             else
             {
-                LOG(VB_GENERAL, LOG_ERR, QString("Unable to determine request types of method '%1' - ignoring").arg(name));
+                LOG(VB_GENERAL, LOG_ERR, QString("Unable to determine request types of method '%1' for '%2' - ignoring").arg(name).arg(m_name));
                 continue;
             }
 
