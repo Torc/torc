@@ -29,6 +29,15 @@ var TorcConnection = function ($, torc, statusChanged) {
     serviceList = defaultServiceList,
     that = this;
 
+    this.call = function(serviceName, method, params, success, failure) {
+        if (socket !== undefined && subscriptions[serviceName] && subscriptions[serviceName].methods[method]) {
+            socket.call(serviceName + method, params, success, failure);
+            return;
+        }
+
+        console.log('Failed to call ' + serviceName + method);
+    };
+
     this.subscribe = function (serviceName, properties, propertyChanges, subscriptionChanges) {
         // is this a known service
         if (!serviceList.hasOwnProperty(serviceName)) {
@@ -74,6 +83,9 @@ var TorcConnection = function ($, torc, statusChanged) {
                     subscriptions[name].subscription.listen(element, subscriptions[name].propertyChanges);
                 }});
         }
+
+        // save the methods for validating calls
+        subscriptions[name].methods = methods;
 
         // and notifiy subscriber
         if (typeof subscriptions[name].subscriptionChanges === 'function') {
