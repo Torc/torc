@@ -155,12 +155,15 @@ inc.files += torcdecoder.h
 inc.files += torcnetwork.h
 inc.files += torcnetworkrequest.h
 inc.files += torcsetting.h
-inc.files += torchttpserver.h
-inc.files += torchtmlhandler.h
-inc.files += torchttpservice.h
-inf.files += torcwebsocket.h
-inc.files += torcssdp.h
-inc.files += torcserialiser.h
+inc.files += http/torchttpserver.h
+inc.files += http/torchtmlhandler.h
+inc.files += http/torchttpservice.h
+inf.files += http/torcwebsocket.h
+inc.files += http/torchttphandler.h
+inc.files += http/torcserialiser.h
+inc.files += http/torchttprequest.h
+inc.files += upnp/torcupnp.h
+inc.files += upnp/torcssdp.h
 
 contains(CONFIG_ZLIB, yes) {
     LIBS += $$ZLIB
