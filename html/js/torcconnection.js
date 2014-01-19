@@ -31,7 +31,7 @@ var TorcConnection = function ($, torc, statusChanged) {
 
     this.call = function(serviceName, method, params, success, failure) {
         if (socket !== undefined && subscriptions[serviceName] && subscriptions[serviceName].methods[method]) {
-            socket.call(serviceName + method, params, success, failure);
+            socket.call(serviceList[serviceName].path + method, params, success, failure);
             return;
         }
 
