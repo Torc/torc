@@ -539,7 +539,7 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                     QVariantMap result;
                     QVariantMap details;
                     QVariantMap properties;
-                    QVariantList methods;
+                    QVariantMap methods;
 
                     QMap<int,int>::const_iterator it = m_properties.begin();
                     for ( ; it != m_properties.end(); ++it)
@@ -588,7 +588,6 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                     for ( ; it2 != m_methods.end(); ++it2)
                     {
                         QVariantMap map;
-                        map.insert("name", it2.key());
                         QVariantList params;
 
                         MethodParameters *parameters = it2.value();
@@ -596,7 +595,7 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                             params.append(parameters->m_names[i].data());
                         map.insert("params", params);
                         map.insert("returns", TorcJSONRPC::QMetaTypetoJavascriptType(parameters->m_types[0]));
-                        methods.append(map);
+                        methods.insert(it2.key(), map);
                     }
 
                     // and implicit Subscribe/Unsubscribe
@@ -604,16 +603,14 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                     QVariant returns("object");
 
                     QVariantMap subscribe;
-                    subscribe.insert("name", "Subscribe");
                     subscribe.insert("params", params);
                     subscribe.insert("returns", returns);
-                    methods.append(subscribe);
+                    methods.insert("Subscribe", subscribe);
 
                     QVariantMap unsubscribe;
-                    unsubscribe.insert("name", "Unsubscribe");
                     unsubscribe.insert("params", params);
                     unsubscribe.insert("returns", returns);
-                    methods.append(unsubscribe);
+                    methods.insert("Unsubscribe", unsubscribe);
 
                     details.insert("version", m_version);
                     details.insert("properties", properties);
