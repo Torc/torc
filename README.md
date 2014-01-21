@@ -29,7 +29,7 @@ The following guide is subject to change and is based on a fresh installation of
 * Run `raspi-config` and set the video memory to at least 128mb. You will probably want to enable SSH as well.
 * Add the Qt5 Raspbian repository provided by Sébastien Noel. Details can be found at http://twolife.be/raspbian
 * Run `sudo apt-get update` followed by `sudo apt-get upgrade` to ensure your Pi is fully up to date.
-* Run `sudo apt-get install qtdeclarative5-dev qt5-qmake qtdeclarative5-qtquick2-plugin build-essential git-core libudev-dev libavahi-compat-libdnssd-dev yasm libasound2-dev ccache libass-dev libcec-dev libfreetype6-dev`.
+* Run `sudo apt-get install qtdeclarative5-dev qt5-qmake qtdeclarative5-qtquick2-plugin build-essential git-core libudev-dev libavahi-compat-libdnssd-dev yasm libasound2-dev ccache libass-dev libcec-dev libfreetype6-dev upower`.
 * Checkout the Torc source with `git clone https://github.com/Torc/torc.git`.
 * Enter the torc directory and run `./configure`.
 * If the configure script fails due to a lack of qmake for Qt5, you will need to specify the path to qmake with something like `./configure --qmake=/usr/lib/arm-linux-gnueabihf/qt5/bin/qmake`.
