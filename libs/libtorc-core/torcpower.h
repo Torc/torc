@@ -65,6 +65,11 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
     Q_CLASSINFO("Suspend",   "methods=PUT")
     Q_CLASSINFO("Hibernate", "methods=PUT")
     Q_CLASSINFO("Restart",   "methods=PUT")
+    Q_PROPERTY(bool canShutdown  READ GetCanShutdown  NOTIFY CanShutdownChanged)
+    Q_PROPERTY(bool canSuspend   READ GetCanSuspend   NOTIFY CanSuspendChanged)
+    Q_PROPERTY(bool canHibernate READ GetCanHibernate NOTIFY CanHibernateChanged)
+    Q_PROPERTY(bool canRestart   READ GetCanRestart   NOTIFY CanRestartChanged)
+    Q_PROPERTY(int  batteryLevel READ GetBatteryLevel NOTIFY BatteryLevelChanged)
 
     Q_ENUMS(PowerLevels)
 
@@ -88,6 +93,13 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
     void BatteryUpdated  (int Level);
     QString GetUIName    (void);
 
+  signals:
+    void CanShutdownChanged  (bool CanShutdown);
+    void CanSuspendChanged   (bool CanSuspend);
+    void CanHibernateChanged (bool CanHibernate);
+    void CanRestartChanged   (bool CanRestart);
+    void BatteryLevelChanged (int  BatteryLevel);
+
   public slots:
     void SubscriberDeleted (QObject *Subscriber);
 
@@ -96,6 +108,7 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
     bool GetCanHibernate (void);
     bool GetCanRestart   (void);
     int  GetBatteryLevel (void);
+    QVariantMap GetPowerStatus (void);
 
     bool Shutdown        (void);
     bool Suspend         (void);
@@ -110,6 +123,16 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
     void LowBattery      (void);
     void Refresh         (void);
 
+  protected slots:
+    void CanShutdownActiveChanged  (bool Active);
+    void CanSuspendActiveChanged   (bool Active);
+    void CanHibernateActiveChanged (bool Active);
+    void CanRestartActiveChanged   (bool Active);
+    void CanShutdownValueChanged   (bool Value);
+    void CanSuspendValueChanged    (bool Value);
+    void CanHibernateValueChanged  (bool Value);
+    void CanRestartValueChanged    (bool Value);
+
   protected:
     TorcPower();
 
@@ -122,6 +145,12 @@ class TORC_CORE_PUBLIC TorcPower : public QObject, public TorcHTTPService
     TorcSetting          *m_allowRestart;
     int                   m_lastBatteryLevel;
     TorcPowerPriv        *m_priv;
+
+    bool                  canShutdown;  // dummy
+    bool                  canSuspend;   // dummy
+    bool                  canHibernate; // dummy
+    bool                  canRestart;   // dummy
+    bool                  batteryLevel; // dummy
 };
 
 extern TORC_CORE_PUBLIC TorcPower *gPower;
