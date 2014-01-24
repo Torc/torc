@@ -36,16 +36,17 @@ $(document).ready(function() {
     }
 
     function statusChanged (status) {
-        $(".torc-socket-status").text(status);
-
         if (status === torc.SocketNotConnected) {
-            // remove current address details
-            $(".torc-socket-address").remove();
+            $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-ok-circle glyphicon-question-sign").addClass("glyphicon-exclamation-sign")
+            $(".torc-socket-status-text").text(torc.SocketNotConnected);
+        } else if (status === torc.SocketConnecting) {
+            $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-ok-circle glyphicon-exclamation-sign").addClass("glyphicon-question-sign")
+            $(".torc-socket-status-text").text(torc.SocketConnecting);
         } else if (status === torc.SocketConnected) {
-            $(".torc-peer-menu").append($('<li/>',
-                                         { class: "torc-socket-address",
-                                           html: $('<a/>', { href: '#', html: torc.ConnectedTo + window.location.host }),} ));
+            $(".torc-socket-status-glyph").removeClass("glyphicon-exclamation-sign glyphicon-ok-circle glyphicon-question-sign").addClass("glyphicon-ok")
+            $(".torc-socket-status-text").text(torc.ConnectedTo + window.location.host);
         } else if (status === torc.SocketReady) {
+            $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-exclamation-sign glyphicon-question-sign").addClass("glyphicon-ok-circle")
             torcconnection.subscribe('peers', ['peers'], peerListChanged, peerSubscriptionChanged);
         }
     }
