@@ -186,7 +186,7 @@ bool TorcPowerUnixDBus::Shutdown(void)
     if (m_consoleInterface && m_canShutdown->GetValue().toBool())
     {
         QList<QVariant> dummy;
-        if (m_upowerInterface->callWithCallback(QLatin1String("Stop"), dummy, (QObject*)this, SLOT(DBusCallback()), SLOT(DBusError(QDBusError))))
+        if (m_consoleInterface->callWithCallback(QLatin1String("Stop"), dummy, (QObject*)this, SLOT(DBusCallback()), SLOT(DBusError(QDBusError))))
             return true;
 
         LOG(VB_GENERAL, LOG_ERR, "Shutdown call failed");
@@ -230,7 +230,7 @@ bool TorcPowerUnixDBus::Restart(void)
     if (m_consoleInterface && m_canRestart->GetValue().toBool())
     {
         QList<QVariant> dummy;
-        if (m_upowerInterface->callWithCallback(QLatin1String("Restart"), dummy, (QObject*)this, SLOT(DBusCallback()), SLOT(DBusError(QDBusError))))
+        if (m_consoleInterface->callWithCallback(QLatin1String("Restart"), dummy, (QObject*)this, SLOT(DBusCallback()), SLOT(DBusError(QDBusError))))
             return true;
 
         LOG(VB_GENERAL, LOG_ERR, "Restart call failed");
