@@ -23,6 +23,17 @@
 // Torc
 #include "torctranslation.h"
 
+/*! \class TorcStringFactory
+ *  \brief A factory class to register translatable strings for use with external interfaces/applications.
+ *
+ * A translatable string is registered with a string constant that should uniquely identify it. The list
+ * of registered constants and their *current* translations can be retrieved with GetTorcStrings.
+ *
+ * Objects that wish to register strings should sub-class TorcStringFactory and implement GetStrings.
+ *
+ * The string list is made available to web interfaces via the dynamically generated torcconfiguration.js file
+ * and is exported directly to all QML contexts.
+*/
 TorcStringFactory* TorcStringFactory::gTorcStringFactory = NULL;
 
 TorcStringFactory::TorcStringFactory()
@@ -45,6 +56,8 @@ TorcStringFactory* TorcStringFactory::NextFactory(void) const
     return nextTorcStringFactory;
 }
 
+/*! \brief Return a map of string constants and their translations.
+*/
 QMap<QString,QString> TorcStringFactory::GetTorcStrings(void)
 {
     QMap<QString, QString> strings;
