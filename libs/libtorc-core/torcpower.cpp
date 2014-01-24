@@ -26,6 +26,7 @@
 // Torc
 #include "torclocalcontext.h"
 #include "torcadminthread.h"
+#include "torctranslation.h"
 #include "torcpower.h"
 
 TorcPower *gPower = NULL;
@@ -516,12 +517,24 @@ void TorcPower::Refresh(void)
 /*! \class TorcPowerObject
  *  \brief A static class used to create the TorcPower singleton in the admin thread.
 */
-static class TorcPowerObject : public TorcAdminObject
+static class TorcPowerObject : public TorcAdminObject, public TorcStringFactory
 {
   public:
     TorcPowerObject()
       : TorcAdminObject(TORC_ADMIN_MED_PRIORITY)
     {
+    }
+
+    void GetStrings(QMap<QString,QString> &Strings)
+    {
+        Strings.insert("Suspend",          "Suspend");
+        Strings.insert("Shutdown",         "Shutdown");
+        Strings.insert("Hibernate",        "Hibernate");
+        Strings.insert("Restart",          "Restart");
+        Strings.insert("ConfirmSuspend",   "Are you sure you want to suspend the device?");
+        Strings.insert("ConfirmShutdown",  "Are you sure you want to shutdown the device?");
+        Strings.insert("ConfirmHibernate", "Are you sure you want to hibernate the device?");
+        Strings.insert("ConfirmRestart",   "Are you sure you want to restart the device?");
     }
 
     void Create(void)
