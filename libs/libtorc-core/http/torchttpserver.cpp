@@ -766,13 +766,15 @@ class TorcHTTPServerObject : public TorcAdminObject, public TorcStringFactory
     void GetStrings(QMap<QString,QString> &Strings)
     {
         Strings.insert("ServerApplication",       QCoreApplication::applicationName());
-        Strings.insert("SocketNotConnected",      "Not connected");
-        Strings.insert("SocketConnecting",        "Connecting");
-        Strings.insert("SocketConnected",         "Connected");
-        Strings.insert("SocketReady",             "Ready");
-        Strings.insert("SocketReconnectAfterMs", "10000"); // try and reconnect every 10 seconds
-        Strings.insert("ConnectedTo",             "Connected to ");
-        Strings.insert("ConnectTo",               "Connect to ");
+
+        Strings.insert("SocketNotConnected",      QObject::tr("Not connected"));
+        Strings.insert("SocketConnecting",        QObject::tr("Connecting"));
+        Strings.insert("SocketConnected",         QObject::tr("Connected"));
+        Strings.insert("SocketReady",             QObject::tr("Ready"));
+        Strings.insert("ConnectedTo",             QObject::tr("Connected to "));
+        Strings.insert("ConnectTo",               QObject::tr("Connect to "));
+
+        Strings.insert("SocketReconnectAfterMs",  "10000"); // try and reconnect every 10 seconds
     }
 
     void Create(void)
