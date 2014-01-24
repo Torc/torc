@@ -29,6 +29,7 @@
 #include "version.h"
 #include "torccompat.h"
 #include "torclocalcontext.h"
+#include "torctranslation.h"
 #include "torclogging.h"
 #include "torccoreutils.h"
 #include "torcadminthread.h"
@@ -751,7 +752,7 @@ void TorcHTTPServer::WebSocketClosed(void)
     }
 }
 
-class TorcHTTPServerObject : public TorcAdminObject
+class TorcHTTPServerObject : public TorcAdminObject, public TorcStringFactory
 {
   public:
     TorcHTTPServerObject()
@@ -760,6 +761,18 @@ class TorcHTTPServerObject : public TorcAdminObject
         qRegisterMetaType<TorcHTTPRequest*>();
         qRegisterMetaType<TorcHTTPService*>();
         qRegisterMetaType<QTcpSocket*>();
+    }
+
+    void GetStrings(QMap<QString,QString> &Strings)
+    {
+        Strings.insert("ServerApplication",       QCoreApplication::applicationName());
+        Strings.insert("SocketNotConnected",      "Not connected");
+        Strings.insert("SocketConnecting",        "Connecting");
+        Strings.insert("SocketConnected",         "Connected");
+        Strings.insert("SocketReady",             "Ready");
+        Strings.insert("SocketReconnectAfterMs", "10000"); // try and reconnect every 10 seconds
+        Strings.insert("ConnectedTo",             "Connected to ");
+        Strings.insert("ConnectTo",               "Connect to ");
     }
 
     void Create(void)

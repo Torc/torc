@@ -25,6 +25,7 @@
 
 // Torc
 #include "torclogging.h"
+#include "torctranslation.h"
 #include "torcdirectories.h"
 #include "torcnetwork.h"
 #include "torchttpserver.h"
@@ -140,25 +141,10 @@ void TorcHTMLStaticContent::GetJavascriptConfiguration(TorcHTTPRequest *Request,
         return;
 
     // populate the list of static constants and translations
-    static QMap<QString,QString> statics;
-    static bool initialised = false;
-
-    if (!initialised)
-    {
-        initialised = true;
-
-        statics.insert("ServerApplication",       QCoreApplication::applicationName());
-        statics.insert("SocketNotConnected",      QObject::tr("Not connected"));
-        statics.insert("SocketConnecting",        QObject::tr("Connecting"));
-        statics.insert("SocketConnected",         QObject::tr("Connected"));
-        statics.insert("SocketReady",             QObject::tr("Ready"));
-        statics.insert("SocketReconnectAfterMs", "10000"); // try and reconnect every 10 seconds
-        statics.insert("ConnectedTo",             QObject::tr("Connected to "));
-    }
+    QMap<QString,QString> strings = TorcStringFactory::GetTorcStrings();
 
     // generate dynamic variables
-    QMap<QString,QString> dynamics;
-    dynamics.insert("ServicesPath", SERVICES_DIRECTORY);
+    strings.insert("ServicesPath", SERVICES_DIRECTORY);
 
     // and generate javascript
     QByteArray *result = new QByteArray();
@@ -166,18 +152,8 @@ void TorcHTMLStaticContent::GetJavascriptConfiguration(TorcHTTPRequest *Request,
 
     stream << QString("var torc = {\r\n");
     bool first = true;
-    QMap<QString,QString>::iterator it = statics.begin();
-    for ( ; it != statics.end(); ++it)
-    {
-        if (!first)
-            stream << ",\r\n";
-        stream << "  ";
-        first = false;
-        stream << it.key() << ": '" << it.value() << "'";
-    }
-
-    it = dynamics.begin();
-    for ( ; it != dynamics.end(); ++it)
+    QMap<QString,QString>::iterator it = strings.begin();
+    for ( ; it != strings.end(); ++it)
     {
         if (!first)
             stream << ",\r\n";
