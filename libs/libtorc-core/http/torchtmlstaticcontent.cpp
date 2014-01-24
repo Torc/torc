@@ -141,33 +141,19 @@ void TorcHTMLStaticContent::GetJavascriptConfiguration(TorcHTTPRequest *Request,
         return;
 
     // populate the list of static constants and translations
-    QMap<QString,QString> strings = TorcStringFactory::GetTorcStrings();
+    QVariantMap strings = TorcStringFactory::GetTorcStrings();
 
     // generate dynamic variables
     strings.insert("ServicesPath", SERVICES_DIRECTORY);
 
     // and generate javascript
-    QByteArray *result = new QByteArray();
-    QTextStream stream(result);
+    QJsonObject json = QJsonObject::fromVariantMap(strings);
+    QByteArray *result = new QByteArray("var torc = ");
+    result->append(QJsonDocument(json).toJson());
+    if (result->endsWith("\n"))
+        result->chop(1);
+    result->append(";\r\n\r\nif (Object.freeze) { Object.freeze(torc); }\r\n");
 
-    stream << QString("var torc = {\r\n");
-    bool first = true;
-    QMap<QString,QString>::iterator it = strings.begin();
-    for ( ; it != strings.end(); ++it)
-    {
-        if (!first)
-            stream << ",\r\n";
-        stream << "  ";
-        first = false;
-        stream << it.key() << ": '" << it.value() << "'";
-    }
-
-    if (!first)
-        stream << "\r\n";
-    stream << QString("};\r\n\r\n");
-    stream << QString("if (Object.freeze) { Object.freeze(torc); }\r\n");
-
-    stream.flush();
     Request->SetStatus(HTTP_OK);
     Request->SetResponseType(HTTPResponseJSONJavascript);
     Request->SetResponseContent(result);

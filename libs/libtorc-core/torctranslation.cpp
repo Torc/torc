@@ -58,9 +58,9 @@ TorcStringFactory* TorcStringFactory::NextFactory(void) const
 
 /*! \brief Return a map of string constants and their translations.
 */
-QMap<QString,QString> TorcStringFactory::GetTorcStrings(void)
+QVariantMap TorcStringFactory::GetTorcStrings(void)
 {
-    QMap<QString, QString> strings;
+    QVariantMap strings;
     TorcStringFactory* factory = TorcStringFactory::GetTorcStringFactory();
     for ( ; factory; factory = factory->NextFactory())
         factory->GetStrings(strings);

@@ -525,16 +525,22 @@ static class TorcPowerObject : public TorcAdminObject, public TorcStringFactory
     {
     }
 
-    void GetStrings(QMap<QString,QString> &Strings)
+    void GetStrings(QVariantMap &Strings)
     {
-        Strings.insert("Suspend",          "Suspend");
-        Strings.insert("Shutdown",         "Shutdown");
-        Strings.insert("Hibernate",        "Hibernate");
-        Strings.insert("Restart",          "Restart");
-        Strings.insert("ConfirmSuspend",   "Are you sure you want to suspend the device?");
-        Strings.insert("ConfirmShutdown",  "Are you sure you want to shutdown the device?");
-        Strings.insert("ConfirmHibernate", "Are you sure you want to hibernate the device?");
-        Strings.insert("ConfirmRestart",   "Are you sure you want to restart the device?");
+        Strings.insert("Suspend",          QObject::tr("Suspend"));
+        Strings.insert("Shutdown",         QObject::tr("Shutdown"));
+        Strings.insert("Hibernate",        QObject::tr("Hibernate"));
+        Strings.insert("Restart",          QObject::tr("Restart"));
+        Strings.insert("ConfirmSuspend",   QObject::tr("Are you sure you want to suspend the device?"));
+        Strings.insert("ConfirmShutdown",  QObject::tr("Are you sure you want to shutdown the device?"));
+        Strings.insert("ConfirmHibernate", QObject::tr("Are you sure you want to hibernate the device?"));
+        Strings.insert("ConfirmRestart",   QObject::tr("Are you sure you want to restart the device?"));
+        Strings.insert("ACPowerTr",        QObject::tr("On AC Power"));
+        Strings.insert("UnknownPowerTr",   QObject::tr("Unknown power status"));
+
+        // string constants
+        Strings.insert("ACPower",          TorcPower::ACPower);
+        Strings.insert("UnknownPower",     TorcPower::UnknownPower);
     }
 
     void Create(void)

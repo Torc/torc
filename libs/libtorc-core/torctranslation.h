@@ -2,7 +2,7 @@
 #define TORCTRANSLATION_H
 
 // Qt
-#include <QMap>
+#include <QVariant>
 #include <QString>
 
 // Torc
@@ -14,11 +14,11 @@ class TORC_CORE_PUBLIC TorcStringFactory
     TorcStringFactory();
     virtual ~TorcStringFactory();
 
-    static QMap<QString,QString> GetTorcStrings         (void);
+    static QVariantMap           GetTorcStrings         (void);
     static TorcStringFactory*    GetTorcStringFactory   (void);
     TorcStringFactory*           NextFactory            (void) const;
 
-    virtual void                 GetStrings             (QMap<QString,QString> &Strings) = 0;
+    virtual void                 GetStrings             (QVariantMap &Strings) = 0;
 
   protected:
     static TorcStringFactory*    gTorcStringFactory;

@@ -763,7 +763,7 @@ class TorcHTTPServerObject : public TorcAdminObject, public TorcStringFactory
         qRegisterMetaType<QTcpSocket*>();
     }
 
-    void GetStrings(QMap<QString,QString> &Strings)
+    void GetStrings(QVariantMap &Strings)
     {
         Strings.insert("ServerApplication",       QCoreApplication::applicationName());
 
@@ -774,7 +774,7 @@ class TorcHTTPServerObject : public TorcAdminObject, public TorcStringFactory
         Strings.insert("ConnectedTo",             QObject::tr("Connected to "));
         Strings.insert("ConnectTo",               QObject::tr("Connect to "));
 
-        Strings.insert("SocketReconnectAfterMs",  "10000"); // try and reconnect every 10 seconds
+        Strings.insert("SocketReconnectAfterMs",  10000); // try and reconnect every 10 seconds
     }
 
     void Create(void)
