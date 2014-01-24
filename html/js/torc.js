@@ -35,6 +35,72 @@ $(document).ready(function() {
         peerListChanged('peers', []);
     }
 
+    function powerChanged(name, value) {
+        var li, translatedName, translatedConfirmation, method;
+
+        if (name === 'batteryLevel') {
+            if (value === undefined) {
+                translatedName = '';
+            } else if (value === torc.ACPower) {
+                translatedName = torc.ACPowerTr;
+            } else if (value === torc.UnknownPower) {
+                translatedName = torc.UnknownPowerTr;
+            } else {
+                translatedName = value + '%';
+            }
+
+            $('.torc-power-status').text(translatedName);
+            return;
+        } else if (name === 'canSuspend') {
+            translatedName = torc.Suspend;
+            translatedConfirmation = torc.ConfirmSuspend;
+            method = 'Suspend';
+        } else if (name === 'canShutdown') {
+            translatedName = torc.Shutdown;
+            translatedConfirmation = torc.ConfirmShutdown;
+            method = 'Shutdown';
+        } else if (name === 'canHibernate') {
+            translatedName = torc.Hibernate;
+            translatedConfirmation = torc.ConfirmHibernate;
+            method = 'Hibernate';
+        } else if (name === 'canRestart') {
+            translatedName = torc.Restart;
+            translatedConfirmation = torc.ConfirmRestart;
+            method = 'Restart';
+        } else { return; }
+
+        if (value === false || value === undefined) {
+            $('.torc-' + name).remove();
+        } else {
+            li = $('<li/>', { class: 'torc-' + name,
+                              html: '<a>' + translatedName + '...</span></a>'})
+            .click(function() {
+                bootbox.confirm(translatedConfirmation, function(result) {
+                    if (result === true) {
+                        torcconnection.call('power', method);
+                    }
+                })});
+            $(".torc-power-menu").append(li);
+        }
+    }
+
+    function powerSubscriptionChanged(version, methods, properties) {
+        if (version !== undefined && typeof properties === 'object') {
+            powerChanged('canSuspend', properties.canSuspend.value);
+            powerChanged('canShutdown', properties.canShutdown.value);
+            powerChanged('canHibernate', properties.canHibernate.value);
+            powerChanged('canRestart', properties.canRestart.value);
+            powerChanged('batteryLevel', properties.batteryLevel.value);
+            return;
+        }
+
+        powerChanged('canSuspend');
+        powerChanged('canShutdown');
+        powerChanged('canHibernate');
+        powerChanged('canRestart');
+        powerChanged('batteryLevel');
+    }
+
     function statusChanged (status) {
         if (status === torc.SocketNotConnected) {
             $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-ok-circle glyphicon-question-sign").addClass("glyphicon-exclamation-sign")
@@ -48,6 +114,7 @@ $(document).ready(function() {
         } else if (status === torc.SocketReady) {
             $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-exclamation-sign glyphicon-question-sign").addClass("glyphicon-ok-circle")
             torcconnection.subscribe('peers', ['peers'], peerListChanged, peerSubscriptionChanged);
+            torcconnection.subscribe('power', ['canShutdown', 'canSuspend', 'canRestart', 'canHibernate', 'batteryLevel'], powerChanged, powerSubscriptionChanged);
         }
     }
 
