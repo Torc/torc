@@ -54,6 +54,7 @@ TorcNetworkService::TorcNetworkService(const QString &Name, const QString &UUID,
     priority(-1),
     apiVersion(QString()),
     connected(false),
+    m_sources(Spontaneous),
     m_addresses(Addresses),
     m_preferredAddressIndex(0),
     m_abort(0),
@@ -543,6 +544,21 @@ void TorcNetworkService::SetAPIVersion(const QString &Version)
     apiVersion = Version;
 }
 
+void TorcNetworkService::SetSource(ServiceSource Source)
+{
+    m_sources |= Source;
+}
+
+TorcNetworkService::ServiceSources TorcNetworkService::GetSources(void)
+{
+    return m_sources;
+}
+
+void TorcNetworkService::RemoveSource(ServiceSource Source)
+{
+    m_sources &= !Source;
+}
+
 #define BLACKLIST QString("submit,revert")
 
 /*! \class TorcNetworkedContext
@@ -684,6 +700,10 @@ void TorcNetworkedContext::Disconnected(TorcNetworkService *Peer)
         return;
 
     emit PeerDisconnected(Peer->GetName(), Peer->GetUuid());
+
+    // we need to delete the service if it was not discovered (i.e. a disconnection means it went away
+    // and we will receive no other notifications).
+    Remove(Peer->GetUuid());
 }
 
 bool TorcNetworkedContext::event(QEvent *Event)
@@ -703,12 +723,20 @@ bool TorcNetworkedContext::event(QEvent *Event)
                 {
                     QByteArray uuid  = records.value("uuid");
 
-                    if (event->GetEvent() == Torc::ServiceDiscovered && !m_serviceList.contains(uuid))
+                    if (event->GetEvent() == Torc::ServiceDiscovered)
                     {
                         if (uuid == gLocalContext->GetUuid().toLatin1())
                         {
                             // this is our own external Bonjour host name
                             TorcNetwork::AddHostName(event->Data().value("host").toString());
+                        }
+                        else if (m_serviceList.contains(uuid))
+                        {
+                            // register this as an additional source
+                            QWriteLocker locker(m_discoveredServicesLock);
+                            for (int i = 0; i < m_discoveredServices.size(); ++i)
+                                if (m_discoveredServices.at(i)->GetUuid() == uuid)
+                                    m_discoveredServices.at(i)->SetSource(TorcNetworkService::Bonjour);
                         }
                         else
                         {
@@ -730,6 +758,7 @@ bool TorcNetworkedContext::event(QEvent *Event)
                             service->SetPriority(priority);
                             service->SetStartTime(starttime);
                             service->SetHost(host);
+                            service->SetSource(TorcNetworkService::Bonjour);
 
                             // and insert into the list model
                             Add(service);
@@ -743,7 +772,7 @@ bool TorcNetworkedContext::event(QEvent *Event)
                         if (uuid == gLocalContext->GetUuid().toLatin1())
                             TorcNetwork::RemoveHostName(event->Data().value("host").toString());
                         else
-                            Delete(uuid);
+                            Remove(uuid, TorcNetworkService::Bonjour);
                     }
                 }
 #endif
@@ -919,6 +948,7 @@ void TorcNetworkedContext::HandleUpgrade(TorcHTTPRequest *Request, QTcpSocket *S
             LOG(VB_GENERAL, LOG_WARNING, "WebSocket not successfully disconnected before closing");
         Socket->close();
         Socket->deleteLater();
+        return;
     }
 
     // create the socket
@@ -943,21 +973,26 @@ void TorcNetworkedContext::Add(TorcNetworkService *Peer)
     }
 }
 
-void TorcNetworkedContext::Delete(const QString &UUID)
+void TorcNetworkedContext::Remove(const QString &UUID, TorcNetworkService::ServiceSource Source)
 {
     if (m_serviceList.contains(UUID))
     {
-        (void)m_serviceList.removeAll(UUID);
-
         {
             QWriteLocker locker(m_discoveredServicesLock);
             for (int i = 0; i < m_discoveredServices.size(); ++i)
             {
                 if (m_discoveredServices.at(i)->GetUuid() == UUID)
                 {
+                    // remove the source first - this acts as a form a reference counting
+                    m_discoveredServices.at(i)->RemoveSource(Source);
+
+                    // don't delete if the service is still advertised by other means
+                    if (m_discoveredServices.at(i)->GetSources() > TorcNetworkService::Spontaneous)
+                        return;
+
                     // remove the item from the model
                     beginRemoveRows(QModelIndex(), i, i);
-                    delete m_discoveredServices.takeAt(i);
+                    m_discoveredServices.takeAt(i)->deleteLater();
                     endRemoveRows();
 
                     break;
@@ -965,6 +1000,7 @@ void TorcNetworkedContext::Delete(const QString &UUID)
             }
         }
 
+        (void)m_serviceList.removeAll(UUID);
         emit PeersChanged();
         LOG(VB_GENERAL, LOG_INFO, QString("Torc peer %1 went away").arg(UUID));
     }

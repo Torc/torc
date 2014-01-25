@@ -20,6 +20,17 @@ class QTcpSocket;
 class TORC_CORE_PUBLIC TorcNetworkService : public QObject
 {
     Q_OBJECT
+    Q_FLAGS(ServiceSource)
+
+  public:
+    enum ServiceSource
+    {
+        Spontaneous = (0 << 0),
+        Bonjour     = (1 << 0),
+        UPnP        = (1 << 1)
+    };
+
+    Q_DECLARE_FLAGS(ServiceSources, ServiceSource);
 
   public:
     TorcNetworkService(const QString &Name, const QString &UUID, int Port, const QList<QHostAddress> &Addresses);
@@ -64,6 +75,9 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
     void                    SetStartTime      (qint64 StartTime);
     void                    SetPriority       (int    Priority);
     void                    SetAPIVersion     (const QString &Version);
+    void                    SetSource         (ServiceSource Source);
+    ServiceSources          GetSources        (void);
+    void                    RemoveSource      (ServiceSource Source);
     void                    CreateSocket      (TorcHTTPRequest *Request, QTcpSocket *Socket);
     void                    RemoteRequest     (TorcRPCRequest *Request);
     void                    CancelRequest     (TorcRPCRequest *Request);
@@ -84,6 +98,7 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
     QString                 apiVersion;
     bool                    connected;
 
+    ServiceSources          m_sources;
     QString                 m_debugString;
     QList<QHostAddress>     m_addresses;
     int                     m_preferredAddressIndex;
@@ -96,6 +111,7 @@ class TORC_CORE_PUBLIC TorcNetworkService : public QObject
 };
 
 Q_DECLARE_METATYPE(TorcNetworkService*);
+Q_DECLARE_OPERATORS_FOR_FLAGS(TorcNetworkService::ServiceSources);
 
 class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public TorcHTTPService
 {
@@ -149,7 +165,7 @@ class TORC_CORE_PUBLIC TorcNetworkedContext: public QAbstractListModel, public T
 
   private:
     void                       Add                 (TorcNetworkService* Peer);
-    void                       Delete              (const QString &UUID);
+    void                       Remove              (const QString &UUID, TorcNetworkService::ServiceSource Source = TorcNetworkService::Spontaneous);
 
   private:
     QList<TorcNetworkService*> m_discoveredServices;
