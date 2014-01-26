@@ -393,12 +393,22 @@ class TorcBonjourPriv
         }
 
         DNSServiceRef dnssref = NULL;
-        DNSServiceErrorType result =
-            DNSServiceRegister(&dnssref, 0,
-                               0, (const char*)Name.data(),
-                               (const char*)Type.data(),
-                               NULL, 0, htons(Port), Txt.size(), (void*)Txt.data(),
-                               BonjourRegisterCallback, this);
+        DNSServiceErrorType result = kDNSServiceErr_NameConflict;
+        int tries = 0;
+
+        // the avahi compatability layer doesn't appear to be automatically renaming as it should
+        while (tries < 20 && kDNSServiceErr_NameConflict == result)
+        {
+            QByteArray name(Name);
+            if (tries > 0)
+                name.append(QString(" [%1]").arg(tries + 1));
+            result = DNSServiceRegister(&dnssref, 0,
+                                        0, (const char*)name.data(),
+                                        (const char*)Type.data(),
+                                        NULL, 0, htons(Port), Txt.size(), (void*)Txt.data(),
+                                        BonjourRegisterCallback, this);
+            tries++;
+        }
 
         if (kDNSServiceErr_NoError != result)
         {
