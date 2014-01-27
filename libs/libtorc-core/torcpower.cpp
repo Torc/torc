@@ -22,6 +22,7 @@
 
 // Qt
 #include <QtGlobal>
+#include <QCoreApplication>
 
 // Torc
 #include "torclocalcontext.h"
@@ -235,16 +236,16 @@ TorcPower::TorcPower()
                                        tr("Enable power management"),
                                        TorcSetting::Checkbox, true, QVariant((bool)true));
     m_allowShutdown  = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowShutdown"),
-                                       tr("Allow Torc to shutdown the system."),
+                                       tr("Allow Torc to shutdown the system"),
                                        TorcSetting::Checkbox, true, QVariant((bool)true));
     m_allowSuspend   = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowSuspend"),
-                                       tr("Allow Torc to suspend the system."),
+                                       tr("Allow Torc to suspend the system"),
                                        TorcSetting::Checkbox, true, QVariant((bool)true));
     m_allowHibernate = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowHibernate"),
-                                       tr("Allow Torc to hibernate the system."),
+                                       tr("Allow Torc to hibernate the system"),
                                        TorcSetting::Checkbox, true, QVariant((bool)true));
     m_allowRestart   = new TorcSetting(m_powerEnabled, QString(TORC_CORE + "AllowRestart"),
-                                       tr("Allow Torc to restart the system."),
+                                       tr("Allow Torc to restart the system"),
                                        TorcSetting::Checkbox, true, QVariant((bool)true));
 
     m_powerEnabled->SetActive(gLocalContext->FlagIsSet(Torc::Power));
@@ -519,6 +520,8 @@ void TorcPower::Refresh(void)
 */
 static class TorcPowerObject : public TorcAdminObject, public TorcStringFactory
 {
+    Q_DECLARE_TR_FUNCTIONS(TorcPowerObject)
+
   public:
     TorcPowerObject()
       : TorcAdminObject(TORC_ADMIN_MED_PRIORITY)
@@ -527,16 +530,16 @@ static class TorcPowerObject : public TorcAdminObject, public TorcStringFactory
 
     void GetStrings(QVariantMap &Strings)
     {
-        Strings.insert("Suspend",          QObject::tr("Suspend"));
-        Strings.insert("Shutdown",         QObject::tr("Shutdown"));
-        Strings.insert("Hibernate",        QObject::tr("Hibernate"));
-        Strings.insert("Restart",          QObject::tr("Restart"));
-        Strings.insert("ConfirmSuspend",   QObject::tr("Are you sure you want to suspend the device?"));
-        Strings.insert("ConfirmShutdown",  QObject::tr("Are you sure you want to shutdown the device?"));
-        Strings.insert("ConfirmHibernate", QObject::tr("Are you sure you want to hibernate the device?"));
-        Strings.insert("ConfirmRestart",   QObject::tr("Are you sure you want to restart the device?"));
-        Strings.insert("ACPowerTr",        QObject::tr("On AC Power"));
-        Strings.insert("UnknownPowerTr",   QObject::tr("Unknown power status"));
+        Strings.insert("Suspend",          tr("Suspend"));
+        Strings.insert("Shutdown",         tr("Shutdown"));
+        Strings.insert("Hibernate",        tr("Hibernate"));
+        Strings.insert("Restart",          tr("Restart"));
+        Strings.insert("ConfirmSuspend",   tr("Are you sure you want to suspend the device?"));
+        Strings.insert("ConfirmShutdown",  tr("Are you sure you want to shutdown the device?"));
+        Strings.insert("ConfirmHibernate", tr("Are you sure you want to hibernate the device?"));
+        Strings.insert("ConfirmRestart",   tr("Are you sure you want to restart the device?"));
+        Strings.insert("ACPowerTr",        tr("On AC Power"));
+        Strings.insert("UnknownPowerTr",   tr("Unknown power status"));
 
         // string constants
         Strings.insert("ACPower",          TorcPower::ACPower);

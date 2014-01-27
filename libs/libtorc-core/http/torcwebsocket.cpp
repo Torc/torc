@@ -569,7 +569,7 @@ void TorcWebSocket::RemoteRequest(TorcRPCRequest *Request)
  *
  * \note We assume the request will only ever be referenced by its owner and by TorcWebSocket.
 */
-void TorcWebSocket::CancelRequest(TorcRPCRequest *Request, int Wait /*= 1000 ms*/)
+void TorcWebSocket::CancelRequest(TorcRPCRequest *Request, int Wait /* = 1000 ms*/)
 {
     if (Request && !Request->IsNotification())
     {

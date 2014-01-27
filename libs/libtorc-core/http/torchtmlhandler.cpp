@@ -21,7 +21,6 @@
 */
 
 // Qt
-#include <QCoreApplication>
 #include <QObject>
 
 // Torc
@@ -70,8 +69,8 @@ void TorcHTMLHandler::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTPConne
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
     stream << "<body><h1>" << QCoreApplication::applicationName() << "</h1>";
-    stream << "<p><a href='" << SERVICES_DIRECTORY << "'>" << QObject::tr("Services") << "</a>";
-    stream << "<p><a href='" << STATIC_DIRECTORY << "index.html'>" << QObject::tr("Interface") << "</a>";
+    stream << "<p><a href='" << SERVICES_DIRECTORY << "'>" << tr("Services") << "</a>";
+    stream << "<p><a href='" << STATIC_DIRECTORY << "index.html'>" << tr("Interface") << "</a>";
     stream << "</body></html>";
 
     Request->SetResponseContent(result);

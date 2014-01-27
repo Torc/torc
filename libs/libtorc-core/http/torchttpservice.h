@@ -5,6 +5,7 @@
 #include <QMap>
 #include <QMutex>
 #include <QMetaObject>
+#include <QCoreApplication>
 
 // Torc
 #include "torccoreexport.h"
@@ -19,6 +20,8 @@ class MethodParameters;
 
 class TORC_CORE_PUBLIC TorcHTTPService : public TorcHTTPHandler
 {
+    Q_DECLARE_TR_FUNCTIONS(TorcHTTPService)
+
   public:
     TorcHTTPService(QObject *Parent, const QString &Signature, const QString &Name,
                     const QMetaObject &MetaObject, const QString &Blacklist = QString(""));

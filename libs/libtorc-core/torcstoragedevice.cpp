@@ -20,9 +20,6 @@
 * USA.
 */
 
-// Qt
-#include <QObject>
-
 // Torc
 #include "torcstoragedevice.h"
 
@@ -56,13 +53,13 @@ QString TorcStorageDevice::TypeToString(StorageType Type)
 {
     switch (Type)
     {
-        case FixedDisk:     return QObject::tr("Fixed Disk");
-        case RemovableDisk: return QObject::tr("Removable Disk");
-        case Optical:       return QObject::tr("Optical Disk");
-        case DVD:           return QObject::tr("DVD");
-        case CD:            return QObject::tr("CD");
-        case BD:            return QObject::tr("BD");
-        case HDDVD:         return QObject::tr("HDDVD");
+        case FixedDisk:     return tr("Fixed Disk");
+        case RemovableDisk: return tr("Removable Disk");
+        case Optical:       return tr("Optical Disk");
+        case DVD:           return tr("DVD");
+        case CD:            return tr("CD");
+        case BD:            return tr("BD");
+        case HDDVD:         return tr("HDDVD");
         default:            break;
     }
 

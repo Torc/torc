@@ -271,7 +271,7 @@ void TorcHTTPRequest::SetAllowGZip(bool Allowed)
  * \note If a subclass of TorcHTTPHandler uses the 'last-modified' or 'ETag' headers, it must also
  * be capable of handling the appropriate conditional requests and responding with a '304 Not Modified' as necessary.
  */
-void TorcHTTPRequest::SetCache(int Cache, const QString Tag /*= QString("")*/)
+void TorcHTTPRequest::SetCache(int Cache, const QString Tag /* = QString("")*/)
 {
     m_cache = Cache;
     m_cacheTag = Tag;

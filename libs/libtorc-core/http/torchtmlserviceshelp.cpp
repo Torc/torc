@@ -111,11 +111,11 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTP
 
     if (services.isEmpty())
     {
-        stream << "<h3>" << QObject::tr("No services are registered") << "</h3>";
+        stream << "<h3>" << tr("No services are registered") << "</h3>";
     }
     else
     {
-        stream << "<h3>" << QObject::tr("Available services") << "</h3>";
+        stream << "<h3>" << tr("Available services") << "</h3>";
         QVariantMap::iterator it = services.begin();
         for ( ; it != services.end(); ++it)
         {
@@ -124,7 +124,7 @@ void TorcHTMLServicesHelp::ProcessHTTPRequest(TorcHTTPRequest *Request, TorcHTTP
         }
     }
 
-    stream << "<h3>" << QObject::tr("Supported return formats") << ":</h3>";
+    stream << "<h3>" << tr("Supported return formats") << ":</h3>";
     TorcSerialiserFactory *factory = TorcSerialiserFactory::GetTorcSerialiserFactory();
     for ( ; factory; factory = factory->NextTorcSerialiserFactory())
         stream << factory->Description() << " (" << factory->Accepts() << ")</br>";

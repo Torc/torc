@@ -832,7 +832,7 @@ void TorcNetworkedContext::RemoteRequest(const QString &UUID, TorcRPCRequest *Re
  *
  * \sa TorcWebSocket::CancelRequest
 */
-void TorcNetworkedContext::CancelRequest(const QString &UUID, TorcRPCRequest *Request, int Wait /*= 1000ms*/)
+void TorcNetworkedContext::CancelRequest(const QString &UUID, TorcRPCRequest *Request, int Wait /* = 1000ms*/)
 {
     if (!Request || UUID.isEmpty())
         return;

@@ -2,6 +2,7 @@
 #define TORCSTORAGEDEVICE_H
 
 // Qt
+#include <QCoreApplication>
 #include <QVariant>
 #include <QString>
 
@@ -10,6 +11,8 @@
 
 class TORC_CORE_PUBLIC TorcStorageDevice
 {
+    Q_DECLARE_TR_FUNCTIONS(TorcStorageDevice)
+
   public:
     enum StorageType
     {

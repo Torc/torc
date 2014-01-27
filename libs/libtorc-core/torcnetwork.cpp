@@ -224,7 +224,7 @@ QStringList TorcNetwork::GetHostNames(void)
  * For an IPv4 address, this is a no-op. For IPv6 addresses, we need to remove the scope Id if present
  * and wrap the remainder in braces.
 */
-QString TorcNetwork::IPAddressToLiteral(const QHostAddress &Address, int Port, bool UseLocalhost /*= true*/)
+QString TorcNetwork::IPAddressToLiteral(const QHostAddress &Address, int Port, bool UseLocalhost /* = true*/)
 {
     QString result;
 
@@ -250,7 +250,7 @@ QString TorcNetwork::IPAddressToLiteral(const QHostAddress &Address, int Port, b
 }
 
 ///\brief Returns true if the address is accessible from other devices.
-bool TorcNetwork::IsExternal(const QHostAddress &Address, bool IncludeLinkLocal /*= false*/)
+bool TorcNetwork::IsExternal(const QHostAddress &Address, bool IncludeLinkLocal /* = false*/)
 {
     if (Address.isNull() || Address.isLoopback())
         return false;

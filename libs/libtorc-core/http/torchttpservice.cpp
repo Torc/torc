@@ -21,7 +21,6 @@
 */
 
 // Qt
-#include <QCoreApplication>
 #include <QObject>
 #include <QMetaType>
 #include <QMetaMethod>
@@ -722,9 +721,9 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
 
     stream << "<html><head><title>" << QCoreApplication::applicationName() << "</title></head>";
     stream << "<body><h1><a href='/'>" << QCoreApplication::applicationName() << "</a> ";
-    stream << "<a href='" << SERVICES_DIRECTORY << "'>" << QObject::tr("Services") << "</a> " << GetUIName() << "</h1>";
+    stream << "<a href='" << SERVICES_DIRECTORY << "'>" << tr("Services") << "</a> " << GetUIName() << "</h1>";
 
-    stream << "<h3>" << QObject::tr("Method list for ") << m_signature << " (Version: " << m_version << ")</h3>";
+    stream << "<h3>" << tr("Method list for ") << m_signature << " (Version: " << m_version << ")</h3>";
     stream << "QString GetVersion() (HEAD,GET,OPTIONS)<br>";
 
     int count   = 0;
@@ -756,7 +755,7 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
         stream << method << ") (" << TorcHTTPRequest::AllowedToString(params->m_allowedRequestTypes) << ")<br>";
     }
 
-    QString url = Connection->GetSocket() ? QString("http://") + TorcNetwork::IPAddressToLiteral(Connection->GetSocket()->localAddress(), Connection->GetSocket()->localPort()) : QObject::tr("Error");
+    QString url = Connection->GetSocket() ? QString("http://") + TorcNetwork::IPAddressToLiteral(Connection->GetSocket()->localAddress(), Connection->GetSocket()->localPort()) : tr("Error");
 
     if (example != m_methods.end())
     {
@@ -768,16 +767,16 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
             for (int i = 1; i < example.value()->m_types.size(); ++i)
                 usage += QString("%1%2=Value%3").arg(i == 1 ? "" : "&").arg(example.value()->m_names[i].data()).arg(i);
         }
-        stream << "<p><h3>" << QObject::tr("Example usage:") << "</h3><p>" << usage;
+        stream << "<p><h3>" << tr("Example usage") << ":</h3><p>" << usage;
     }
 
-    stream << "<h3>" << QObject::tr("Websocket methods") << "</h3>";
+    stream << "<h3>" << tr("Websocket methods") << "</h3>";
     stream << "Subscribe()</br>";
     stream << "Unsubscribe()</br>";
 
     if (!m_properties.isEmpty())
     {
-        stream << "<h3>" << QObject::tr("Properties") << "</h3>";
+        stream << "<h3>" << tr("Properties") << "</h3>";
 
         QMap<int,int>::const_iterator it = m_properties.begin();
         for ( ; it != m_properties.end(); ++it)

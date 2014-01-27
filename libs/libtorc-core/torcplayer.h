@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QString>
 #include <QVariant>
+#include <QCoreApplication>
 
 // Torc
 #include "torccoreexport.h"
@@ -164,6 +165,8 @@ class TORC_CORE_PUBLIC PlayerFactory
 
 class TORC_CORE_PUBLIC  TorcPlayerInterface : public TorcHTTPService
 {
+    Q_DECLARE_TR_FUNCTIONS(TorcPlayerInterface)
+
   public:
     TorcPlayerInterface(QObject* Derived, const QMetaObject &MetaObject, const QString &Blacklist, bool Standalone);
     virtual ~TorcPlayerInterface();

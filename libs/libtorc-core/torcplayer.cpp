@@ -21,7 +21,6 @@
 */
 
 // Qt
-#include <QCoreApplication>
 #include <QMetaType>
 #include <QTimerEvent>
 #include <QThread>
@@ -55,6 +54,8 @@ TorcSetting* TorcPlayer::gVideoSettings = NULL;
 
 class TorcPlayerSettings : public TorcAdminObject
 {
+    Q_DECLARE_TR_FUNCTIONS(TorcPlayerSettings)
+
   public:
     TorcPlayerSettings()
       : TorcAdminObject(TORC_ADMIN_HIGH_PRIORITY)
@@ -67,8 +68,8 @@ class TorcPlayerSettings : public TorcAdminObject
         if (created || !gRootSetting)
             return;
 
-        TorcPlayer::gAudioSettings = new TorcSettingGroup(gRootSetting, QObject::tr("Audio"));
-        TorcPlayer::gVideoSettings = new TorcSettingGroup(gRootSetting, QObject::tr("Video"));
+        TorcPlayer::gAudioSettings = new TorcSettingGroup(gRootSetting, tr("Audio"));
+        TorcPlayer::gVideoSettings = new TorcSettingGroup(gRootSetting, tr("Video"));
 
         created = true;
     }
@@ -308,14 +309,14 @@ bool TorcPlayer::PlayMedia(const QString &URI, bool StartPaused)
     if (URI.isEmpty())
     {
         LOG(VB_GENERAL, LOG_ERR, "Invalid uri");
-        SendUserMessage(QObject::tr("Failed to open '%1' (invalid filename)").arg(URI));
+        SendUserMessage(tr("Failed to open '%1' (invalid filename)").arg(URI));
         return false;
     }
 
     if (m_switching)
     {
         LOG(VB_GENERAL, LOG_ERR, "Player busy");
-        SendUserMessage(QObject::tr("Player busy"));
+        SendUserMessage(tr("Player busy"));
         return false;
     }
 
@@ -330,7 +331,7 @@ bool TorcPlayer::PlayMedia(const QString &URI, bool StartPaused)
     if (!m_nextDecoder)
     {
         LOG(VB_GENERAL, LOG_ERR, "Failed to open decoder");
-        SendUserMessage(QObject::tr("Failed to open media decoder"));
+        SendUserMessage(tr("Failed to open media decoder"));
         m_nextUri = QString();
         return false;
     }
@@ -338,7 +339,7 @@ bool TorcPlayer::PlayMedia(const QString &URI, bool StartPaused)
     if (!m_nextDecoder->Open())
     {
         LOG(VB_GENERAL, LOG_ERR, "Failed to open decoder");
-        SendUserMessage(QObject::tr("Failed to opend media decoder"));
+        SendUserMessage(tr("Failed to open media decoder"));
         m_nextUri = QString();
         delete m_nextDecoder;
         m_nextDecoder = NULL;
@@ -552,7 +553,7 @@ bool TorcPlayer::Refresh(quint64 TimeNow, const QSizeF &Size, bool Visible)
     {
         if (m_decoder->GetState() == TorcDecoder::Errored)
         {
-            SendUserMessage(QObject::tr("Fatal error decoding media"));
+            SendUserMessage(tr("Fatal error decoding media"));
             LOG(VB_GENERAL, LOG_ERR, "Fatal decoder error detected. Stopping playback");
             SetState(Errored);
             return false;
@@ -644,7 +645,7 @@ void TorcPlayer::DestroyNextDecoder(void)
     LOG(VB_GENERAL, LOG_ERR, "Failed to create new decoder");
 
     if (m_switching)
-        SendUserMessage(QObject::tr("Failed to open media decoder"));
+        SendUserMessage(tr("Failed to open media decoder"));
 
     m_nextUri = QString();
     delete m_nextDecoder;
@@ -671,7 +672,7 @@ void TorcPlayer::SendUserMessage(const QString &Message)
     if (!Message.isEmpty())
     {
         TorcLocalContext::UserMessage(Torc::GenericError, Torc::Internal,Torc::DefaultTimeout,
-                                      QObject::tr("Playback"), Message);
+                                      tr("Playback"), Message);
     }
 }
 
@@ -861,5 +862,5 @@ void TorcPlayerInterface::SetURI(const QString &URI)
 
 QString TorcPlayerInterface::GetUIName(void)
 {
-    return QObject::tr("Player");
+    return tr("Player");
 }
