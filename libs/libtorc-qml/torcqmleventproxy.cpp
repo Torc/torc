@@ -29,7 +29,7 @@
 #include "torcqmldisplay.h"
 #include "torcqmleventproxy.h"
 
-TorcQMLEventProxy::TorcQMLEventProxy(QWindow *Window, bool Hidemouse /*= false*/)
+TorcQMLEventProxy::TorcQMLEventProxy(QWindow *Window, bool Hidemouse /* = false*/)
   : QObject(),
     m_window(Window),
     m_callbackLock(new QMutex()),
