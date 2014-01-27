@@ -9,7 +9,7 @@ ApplicationWindow {
     id: window
     width: 800
     height: 600
-    title: qsTr("torc-desktop")
+    title: "torc-desktop"
 
     Component.onCompleted: window.title = TorcLocalContext.GetUuid()
 
