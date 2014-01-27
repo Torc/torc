@@ -10,6 +10,8 @@ class AudioOutput;
 
 class TORC_AUDIO_PUBLIC AudioWrapper
 {
+    Q_DECLARE_TR_FUNCTIONS(AudioWrapper)
+
     friend class AudioDecoder;
 
   public:

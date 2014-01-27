@@ -110,7 +110,7 @@ bool AudioWrapper::Initialise(void)
         if (!m_audioOutput)
         {
             LOG(VB_GENERAL, LOG_ERR, "Audio disabled (Failed to open audio device)");
-            m_parent->SendUserMessage(QObject::tr("Failed to open audio device."));
+            m_parent->SendUserMessage(tr("Failed to open audio device"));
             m_noAudioOut = true;
         }
         else
@@ -118,7 +118,7 @@ bool AudioWrapper::Initialise(void)
             if (m_audioOutput->IsErrored())
             {
                 LOG(VB_GENERAL, LOG_ERR, "Audio disabled");
-                m_parent->SendUserMessage(QObject::tr("Audio disabled"));
+                m_parent->SendUserMessage(tr("Audio disabled"));
                 m_noAudioOut = true;
             }
             else
@@ -138,7 +138,7 @@ bool AudioWrapper::Initialise(void)
         if (m_audioOutput->IsErrored())
         {
             LOG(VB_GENERAL, LOG_ERR, "Audio disabled");
-            m_parent->SendUserMessage(QObject::tr("Audio disabled"));
+            m_parent->SendUserMessage(tr("Audio disabled"));
             m_noAudioOut = true;
         }
         else

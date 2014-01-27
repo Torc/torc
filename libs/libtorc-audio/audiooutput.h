@@ -44,6 +44,8 @@ class TORC_AUDIO_PUBLIC AudioDeviceConfig
 
 class TORC_AUDIO_PUBLIC AudioOutput : public TorcQThread, public AudioVolume, public AudioOutputListeners
 {
+    Q_OBJECT
+
   public:
     enum
     {

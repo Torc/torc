@@ -1916,14 +1916,14 @@ AudioDeviceConfig* AudioOutput::GetAudioDeviceConfig(const QString &Name, const 
 
     if (settings.IsInvalid())
     {
-        QString msg = QObject::tr("Invalid or unuseable audio device");
+        QString msg = tr("Invalid or unuseable audio device");
          return new AudioDeviceConfig(Name, msg);
     }
 
     QString capabilities = Description;
 
     if (settings.HasELD())
-        capabilities += QObject::tr(" (%1 connected to %2)").arg(settings.GetELD().GetProductName()).arg(settings.GetELD().GetConnectionName());
+        capabilities += tr(" (%1 connected to %2)").arg(settings.GetELD().GetProductName()).arg(settings.GetELD().GetConnectionName());
 
     QString speakers;
     int maxchannels = settings.BestSupportedChannelsELD();
@@ -1940,7 +1940,7 @@ AudioDeviceConfig* AudioOutput::GetAudioDeviceConfig(const QString &Name, const 
             break;
     }
 
-    capabilities += QObject::tr(" Supports up to %1").arg(speakers);
+    capabilities += tr(" Supports up to %1").arg(speakers);
 
     if (settings.CanPassthrough() != PassthroughNo)
     {
@@ -1951,11 +1951,11 @@ AudioDeviceConfig* AudioOutput::GetAudioDeviceConfig(const QString &Name, const 
         else
         {
             int mask = (settings.CanLPCM() << 0) | (settings.CanAC3()  << 1) |(settings.CanDTS()  << 2);
-            static const QString names[3] = { QObject::tr("LPCM"), QObject::tr("AC3"), QObject::tr("DTS") };
+            static const QString names[3] = { tr("LPCM"), tr("AC3"), tr("DTS") };
 
             if (mask != 0)
             {
-                capabilities += QObject::tr(" (guessing: ");
+                capabilities += tr(" (guessing: ");
                 bool found_one = false;
                 for (unsigned int i = 0; i < 3; i++)
                 {

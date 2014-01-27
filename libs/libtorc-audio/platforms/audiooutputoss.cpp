@@ -23,7 +23,7 @@ void FillSelectionFromDir(const QDir &dir, QList<AudioDeviceConfig> &DeviceList)
     for (QFileInfoList::Iterator it = il.begin(); it != il.end(); ++it )
     {
         QString name = (*it).absoluteFilePath();
-        AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(name, QObject::tr("OSS device"));
+        AudioDeviceConfig *config = AudioOutput::GetAudioDeviceConfig(name, "OSS");
         if (!config)
             continue;
 
