@@ -329,7 +329,7 @@ void VideoBuffers::ReleaseFrameFromDecoded(VideoFrame *Frame)
     }
 }
 
-bool VideoBuffers::GetNextVideoTimeStamp(qint64 &TimeStamp, int WaitUSecs /*= 0*/)
+bool VideoBuffers::GetNextVideoTimeStamp(qint64 &TimeStamp, int WaitUSecs /* = 0*/)
 {
     bool result = false;
 
@@ -355,7 +355,7 @@ bool VideoBuffers::GetNextVideoTimeStamp(qint64 &TimeStamp, int WaitUSecs /*= 0*
     return result;
 }
 
-VideoFrame* VideoBuffers::GetFrameForDisplaying(int WaitUSecs /*= 0*/)
+VideoFrame* VideoBuffers::GetFrameForDisplaying(int WaitUSecs /* = 0*/)
 {
     VideoFrame *frame = NULL;
 

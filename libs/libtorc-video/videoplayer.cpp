@@ -20,6 +20,9 @@
 * USA.
 */
 
+// Qt
+#include <QCoreApplication>
+
 // Torc
 #include "torcadminthread.h"
 #include "torclogging.h"
@@ -44,6 +47,8 @@ TorcSetting* VideoPlayer::gAllowOtherAcceleration = NULL;
 */
 class TorcVideoPlayerSettings : public TorcAdminObject
 {
+    Q_DECLARE_TR_FUNCTIONS(TorcVideoPlayerSettings)
+
   public:
     TorcVideoPlayerSettings()
       : TorcAdminObject(TORC_ADMIN_MED_PRIORITY),
@@ -58,18 +63,18 @@ class TorcVideoPlayerSettings : public TorcAdminObject
 
         VideoPlayer::gEnableAcceleration = new TorcSetting(TorcPlayer::gVideoSettings,
                                                           TORC_VIDEO + "AllowAcceleration",
-                                                          QObject::tr("Enable accelerated video decoding"),
+                                                          tr("Enable accelerated video decoding"),
                                                           TorcSetting::Checkbox, true, QVariant((bool)true));
 
         // allow crystalhd/vda etc
         VideoPlayer::gAllowOtherAcceleration = new TorcSetting(VideoPlayer::gEnableAcceleration,
                                                                TORC_VIDEO + "AllowOtherAcceleration",
-                                                               QObject::tr("Allow non GPU video acceleration"),
+                                                               tr("Allow non GPU video acceleration"),
                                                                TorcSetting::Checkbox, true, QVariant((bool)true));
         // GPU based acceleration
         VideoPlayer::gAllowGPUAcceleration = new TorcSetting(VideoPlayer::gEnableAcceleration,
                                                              TORC_VIDEO + "AllowGPUAcceleration",
-                                                             QObject::tr("Allow GPU video acceleration"),
+                                                             tr("Allow GPU video acceleration"),
                                                              TorcSetting::Checkbox, true, QVariant((bool)true));
 
         VideoPlayer::gEnableAcceleration->SetActive(true);
