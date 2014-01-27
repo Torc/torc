@@ -20,9 +20,13 @@
 * USA.
 */
 
+// Qt
+#include <QCoreApplication>
+
 // Torc
 #include "torclogging.h"
 #include "torclocalcontext.h"
+#include "torcdirectories.h"
 #include "torclanguage.h"
 
 QMap<QString,int> TorcLanguage::gLanguageMap;
@@ -37,6 +41,7 @@ QMap<QString,int> TorcLanguage::gLanguageMap;
  * \todo Add action notifiers for a local change.
 */
 TorcLanguage::TorcLanguage()
+  : m_translator(new QTranslator())
 {
     Initialise();
 
@@ -46,10 +51,26 @@ TorcLanguage::TorcLanguage()
         .arg(m_locale.name()).arg(qgetenv("LANG").data()));
 }
 
+TorcLanguage::~TorcLanguage()
+{
+    delete m_translator;
+}
+
 /// \brief Return the current language.
 QLocale::Language TorcLanguage::GetLanguage(void)
 {
     return m_locale.language();
+}
+
+void TorcLanguage::LoadTranslator(void)
+{
+    QCoreApplication::removeTranslator(m_translator);
+
+    QString filename = QString("torc_%1.qm").arg(m_locale.name());
+    if (!m_translator->load(filename, GetTorcTransDir()))
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to load translation file '%1' from '%2'").arg(filename).arg(GetTorcTransDir()));
+    else
+        QCoreApplication::installTranslator(m_translator);
 }
 
 /*! \brief Load the user's preferred Language and Country settings
@@ -58,23 +79,24 @@ QLocale::Language TorcLanguage::GetLanguage(void)
 */
 void TorcLanguage::LoadPreferences(void)
 {
-    QString language = gLocalContext->GetSetting(TORC_CORE + "Language", QString(""));
-    QString country  = gLocalContext->GetSetting(TORC_CORE + "Country", QString(""));
+    QString language = gLocalContext->GetSetting(TORC_CORE + "Language", QString("en"));
+    QString country  = gLocalContext->GetSetting(TORC_CORE + "Country", QString("GB"));
 
     if (language.isEmpty())
-        return;
+        language = "en";
 
-    QString name = language;
+    if (country.isEmpty())
+        country = "GB";
 
-    if (!country.isEmpty())
-        name = name + "_" +country;
-
+    QString name = language + "_" +country;
     m_locale = QLocale(name);
 
     LOG(VB_GENERAL, LOG_INFO, QString("Language changed: %1 (%2) (%3)(env - %4)")
         .arg(QLocale::languageToString(m_locale.language()))
         .arg(QLocale::countryToString(m_locale.country()))
         .arg(m_locale.name()).arg(qgetenv("LANG").data()));
+
+    LoadTranslator();
 }
 
 /// \brief Return a user readable string for the current language.

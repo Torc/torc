@@ -4,6 +4,7 @@
 // Qt
 #include <QMap>
 #include <QLocale>
+#include <QTranslator>
 
 // Torc
 #include "torccoreexport.h"
@@ -25,11 +26,14 @@ class TORC_CORE_PUBLIC TorcLanguage
 
   public:
     TorcLanguage();
+    ~TorcLanguage();
+    void               LoadTranslator  (void);
     void               LoadPreferences (void);
     QLocale::Language  GetLanguage     (void);
 
   private:
-    QLocale m_locale;
+    QLocale            m_locale;
+    QTranslator       *m_translator;
 };
 
 #endif // TORCLANGUAGE_H
