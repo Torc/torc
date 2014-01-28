@@ -773,8 +773,8 @@ class TorcHTTPServerObject : public TorcAdminObject, public TorcStringFactory
         Strings.insert("SocketConnecting",        tr("Connecting"));
         Strings.insert("SocketConnected",         tr("Connected"));
         Strings.insert("SocketReady",             tr("Ready"));
-        Strings.insert("ConnectedTo",             tr("Connected to "));
-        Strings.insert("ConnectTo",               tr("Connect to "));
+        Strings.insert("ConnectedTo",             tr("Connected to"));
+        Strings.insert("ConnectTo",               tr("Connect to"));
 
         Strings.insert("SocketReconnectAfterMs",  10000); // try and reconnect every 10 seconds
     }
