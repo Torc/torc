@@ -27,7 +27,7 @@
 // Torc
 #include "torclocalcontext.h"
 #include "torcadminthread.h"
-#include "torctranslation.h"
+#include "torclanguage.h"
 #include "torcpower.h"
 
 TorcPower *gPower = NULL;

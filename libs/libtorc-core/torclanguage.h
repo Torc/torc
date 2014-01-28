@@ -36,4 +36,21 @@ class TORC_CORE_PUBLIC TorcLanguage
     QTranslator       *m_translator;
 };
 
+class TORC_CORE_PUBLIC TorcStringFactory
+{
+  public:
+    TorcStringFactory();
+    virtual ~TorcStringFactory();
+
+    static QVariantMap           GetTorcStrings         (void);
+    static TorcStringFactory*    GetTorcStringFactory   (void);
+    TorcStringFactory*           NextFactory            (void) const;
+
+    virtual void                 GetStrings             (QVariantMap &Strings) = 0;
+
+  protected:
+    static TorcStringFactory*    gTorcStringFactory;
+    TorcStringFactory*           nextTorcStringFactory;
+};
+
 #endif // TORCLANGUAGE_H

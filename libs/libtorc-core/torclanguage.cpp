@@ -404,3 +404,47 @@ void TorcLanguage::Initialise(void)
     gLanguageMap.insert("ton", QLocale::Tongan);
     gLanguageMap.insert("tsn", QLocale::Tswana);
 }
+
+/*! \class TorcStringFactory
+ *  \brief A factory class to register translatable strings for use with external interfaces/applications.
+ *
+ * A translatable string is registered with a string constant that should uniquely identify it. The list
+ * of registered constants and their *current* translations can be retrieved with GetTorcStrings.
+ *
+ * Objects that wish to register strings should sub-class TorcStringFactory and implement GetStrings.
+ *
+ * The string list is made available to web interfaces via the dynamically generated torcconfiguration.js file
+ * and is exported directly to all QML contexts.
+*/
+TorcStringFactory* TorcStringFactory::gTorcStringFactory = NULL;
+
+TorcStringFactory::TorcStringFactory()
+{
+    nextTorcStringFactory = gTorcStringFactory;
+    gTorcStringFactory = this;
+}
+
+TorcStringFactory::~TorcStringFactory()
+{
+}
+
+TorcStringFactory* TorcStringFactory::GetTorcStringFactory(void)
+{
+    return gTorcStringFactory;
+}
+
+TorcStringFactory* TorcStringFactory::NextFactory(void) const
+{
+    return nextTorcStringFactory;
+}
+
+/*! \brief Return a map of string constants and their translations.
+*/
+QVariantMap TorcStringFactory::GetTorcStrings(void)
+{
+    QVariantMap strings;
+    TorcStringFactory* factory = TorcStringFactory::GetTorcStringFactory();
+    for ( ; factory; factory = factory->NextFactory())
+        factory->GetStrings(strings);
+    return strings;
+}

@@ -29,7 +29,7 @@
 #include "version.h"
 #include "torccompat.h"
 #include "torclocalcontext.h"
-#include "torctranslation.h"
+#include "torclanguage.h"
 #include "torclogging.h"
 #include "torccoreutils.h"
 #include "torcadminthread.h"
