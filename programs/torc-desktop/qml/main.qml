@@ -77,13 +77,13 @@ ApplicationWindow {
                             text: qsTr("Search using")
                             menu: Menu {
                                 MenuItem {
-                                    text: "Name"
+                                    text: qsTr("Name")
                                     checkable: true
                                     checked: mediaFilter.filterByName
                                     onTriggered: mediaFilter.filterByName = true
                                 }
                                 MenuItem {
-                                    text: "Location"
+                                    text: qsTr("Location")
                                     checkable: true
                                     checked: !mediaFilter.filterByName
                                     onTriggered: mediaFilter.filterByName = false
