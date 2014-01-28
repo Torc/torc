@@ -38,7 +38,7 @@ $(document).ready(function() {
             if ($.isArray(value) && value.length) {
                 value.forEach( function (element) {
                     item = $('<li/>', {
-                        html: $('<a/>', { href: 'http://' + element.address + ':' + element.port + '/html/index.html', html: torc.ConnectTo + element.name }),
+                        html: $('<a/>', { href: 'http://' + element.address + ':' + element.port + '/html/index.html', html: torc.ConnectTo + '&nbsp' + element.name }),
                         class: "torc-peer"
                     });
 
@@ -74,7 +74,7 @@ $(document).ready(function() {
                 translatedName = value + '%';
             }
 
-            $('.torc-power-status a').text(translatedName);
+            $('.torc-power-status a').html(translatedName);
             return;
         } else if (name === 'canSuspend') {
             translatedName = torc.Suspend;
@@ -128,13 +128,13 @@ $(document).ready(function() {
     function statusChanged (status) {
         if (status === torc.SocketNotConnected) {
             $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-ok-circle glyphicon-question-sign").addClass("glyphicon-exclamation-sign")
-            $(".torc-socket-status-text a").text(torc.SocketNotConnected);
+            $(".torc-socket-status-text a").html(torc.SocketNotConnected);
         } else if (status === torc.SocketConnecting) {
             $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-ok-circle glyphicon-exclamation-sign").addClass("glyphicon-question-sign")
-            $(".torc-socket-status-text a").text(torc.SocketConnecting);
+            $(".torc-socket-status-text a").html(torc.SocketConnecting);
         } else if (status === torc.SocketConnected) {
             $(".torc-socket-status-glyph").removeClass("glyphicon-exclamation-sign glyphicon-ok-circle glyphicon-question-sign").addClass("glyphicon-ok")
-            $(".torc-socket-status-text a").text(torc.ConnectedTo + window.location.host);
+            $(".torc-socket-status-text a").html(torc.ConnectedTo + '&nbsp' + window.location.host);
         } else if (status === torc.SocketReady) {
             $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-exclamation-sign glyphicon-question-sign").addClass("glyphicon-ok-circle")
             torcconnection.subscribe('peers', ['peers'], peerListChanged, peerSubscriptionChanged);
@@ -143,7 +143,7 @@ $(document).ready(function() {
     }
 
     // set 'brand'
-    $(".navbar-brand").text(torc.ServerApplication);
+    $(".navbar-brand").html(torc.ServerApplication);
 
     // add a socket status/connection dropdown with icon
     addNavbarDropdown('', 'torc-socket-status-glyph', 'torc-socket-menu');
