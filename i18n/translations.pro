@@ -1,0 +1,19 @@
+SOURCES  = ../libs/libtorc-core/*.cpp
+SOURCES += ../libs/libtorc-core/http/*.cpp
+SOURCES += ../libs/libtorc-core/upnp/*.cpp
+SOURCES += ../libs/libtorc-core/platforms/*.cpp
+SOURCES += ../libs/libtorc-audio/*.cpp
+SOURCES += ../libs/libtorc-audio/raop/*.cpp
+SOURCES += ../libs/libtorc-audio/platforms/*.cpp
+SOURCES += ../libs/libtorc-video/*.cpp
+SOURCES += ../libs/libtorc-video/platforms/*.cpp
+SOURCES += ../libs/libtorc-media/*.cpp
+SOURCES += ../libs/libtorc-qml/*.cpp
+SOURCES += ../libs/libtorc-qml/platforms/*.cpp
+SOURCES += ../libs/libtorc-qml/peripherals/*.cpp
+SOURCES += ../html/js/*.js
+SOURCES += ../programs/torc-desktop/qml/*.qml
+SOURCES += ../programs/torc-tv/qml/*.qml
+
+TRANSLATIONS += torc_en_GB.ts
+TRANSLATIONS += torc_fr.ts
