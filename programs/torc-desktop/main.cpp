@@ -16,6 +16,7 @@
 #include "torclocalcontext.h"
 #include "torcnetworkedcontext.h"
 #include "torcdirectories.h"
+#include "torclanguage.h"
 #include "torcexitcodes.h"
 #include "torccommandline.h"
 #include "torcmediamaster.h"
@@ -71,6 +72,7 @@ int main(int argc, char *argv[])
     TorcQMLUtils::AddProperty("TorcLocalContext",     gLocalContext,     context);
     TorcQMLUtils::AddProperty("RootSetting",          gRootSetting,      context);
     TorcQMLUtils::AddProperty("TorcNetworkedContext", gNetworkedContext, context);
+    TorcQMLUtils::AddProperty("TorcLanguage",         gLocalContext->GetLanguage(), context);
     TorcQMLUtils::AddProperty("TorcMediaMaster",      gTorcMediaMaster,  context);
 
     // load the 'theme'

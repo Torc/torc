@@ -7,6 +7,7 @@
 // Torc
 #include "torclocalcontext.h"
 #include "torcnetworkedcontext.h"
+#include "torclanguage.h"
 #include "torcdirectories.h"
 #include "torcexitcodes.h"
 #include "torccommandline.h"
@@ -79,6 +80,7 @@ int main(int argc, char *argv[])
         TorcQMLUtils::AddProperty("torcPower",            gPower,            context);
         TorcQMLUtils::AddProperty("torcMediaMaster",      gTorcMediaMaster,  context);
         TorcQMLUtils::AddProperty("torcFPS",              fps.data(),        context);
+        TorcQMLUtils::AddProperty("torcLanguage",         gLocalContext->GetLanguage(), context);
 
         // load qml
         view->setSource(GetTorcShareDir() + "torc-tv/qml/main.qml");
