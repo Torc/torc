@@ -530,16 +530,16 @@ static class TorcPowerObject : public TorcAdminObject, public TorcStringFactory
 
     void GetStrings(QVariantMap &Strings)
     {
-        Strings.insert("Suspend",          tr("Suspend"));
-        Strings.insert("Shutdown",         tr("Shutdown"));
-        Strings.insert("Hibernate",        tr("Hibernate"));
-        Strings.insert("Restart",          tr("Restart"));
-        Strings.insert("ConfirmSuspend",   tr("Are you sure you want to suspend the device?"));
-        Strings.insert("ConfirmShutdown",  tr("Are you sure you want to shutdown the device?"));
-        Strings.insert("ConfirmHibernate", tr("Are you sure you want to hibernate the device?"));
-        Strings.insert("ConfirmRestart",   tr("Are you sure you want to restart the device?"));
-        Strings.insert("ACPowerTr",        tr("On AC Power"));
-        Strings.insert("UnknownPowerTr",   tr("Unknown power status"));
+        Strings.insert("Suspend",          QCoreApplication::translate("TorcPower", "Suspend"));
+        Strings.insert("Shutdown",         QCoreApplication::translate("TorcPower", "Shutdown"));
+        Strings.insert("Hibernate",        QCoreApplication::translate("TorcPower", "Hibernate"));
+        Strings.insert("Restart",          QCoreApplication::translate("TorcPower", "Restart"));
+        Strings.insert("ConfirmSuspend",   QCoreApplication::translate("TorcPower", "Are you sure you want to suspend the device?"));
+        Strings.insert("ConfirmShutdown",  QCoreApplication::translate("TorcPower", "Are you sure you want to shutdown the device?"));
+        Strings.insert("ConfirmHibernate", QCoreApplication::translate("TorcPower", "Are you sure you want to hibernate the device?"));
+        Strings.insert("ConfirmRestart",   QCoreApplication::translate("TorcPower", "Are you sure you want to restart the device?"));
+        Strings.insert("ACPowerTr",        QCoreApplication::translate("TorcPower", "On AC Power"));
+        Strings.insert("UnknownPowerTr",   QCoreApplication::translate("TorcPower", "Unknown power status"));
 
         // string constants
         Strings.insert("ACPower",          TorcPower::ACPower);
