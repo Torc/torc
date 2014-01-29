@@ -14,7 +14,7 @@ qtHaveModule(widgets) {
     QT += widgets
 }
 
-DEPENDPATH  += ../../libs/libtorc-core
+DEPENDPATH  += ../../libs/libtorc-core ../../libs/libtorc-core/http
 DEPENDPATH  += ../../libs/libtorc-media
 DEPENDPATH  += ../../libs/libtorc-qml
 DEPENDPATH  += ../../libs/libtorc-av

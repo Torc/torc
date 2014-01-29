@@ -12,6 +12,7 @@ QT += qml quick
 
 DEPENDPATH  += ../libtorc-core
 DEPENDPATH  += ../libtorc-core/platforms
+DEPENDPATH  += ../libtorc-core/http
 DEPENDPATH  += ../libtorc-av
 DEPENDPATH  += ../libtorc-audio
 DEPENDPATH  += ../libtorc-video

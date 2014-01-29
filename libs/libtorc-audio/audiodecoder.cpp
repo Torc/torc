@@ -2686,7 +2686,7 @@ bool AudioDecoder::SelectStream(TorcStreamTypes Type)
     }
 
     // pick one
-    QLocale::Language language = gLocalContext->GetLanguage();
+    QLocale::Language language = gLocalContext->GetLocale().language();
     int index = 0;
     int score = 0;
 

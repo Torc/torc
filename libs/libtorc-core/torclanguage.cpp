@@ -21,6 +21,7 @@
 */
 
 // Qt
+#include <QDir>
 #include <QCoreApplication>
 
 // Torc
@@ -31,72 +32,193 @@
 
 QMap<QString,int> TorcLanguage::gLanguageMap;
 
+#define BLACKLIST QString("submit,revert")
+
 /*! \class TorcLanguage
- *  \brief A class to track and manage language and locale settings.
+ *  \brief A class to track and manage language and locale settings and available translations.
  *
- * \note Currently incomplete and only used for media decoding and playback.
+ * TorcLanguage uses the 2 or 4 character language/country code to identify a language (e.g. en_GB, en_US, en).
+ * If a specific language has not been set in the settings database, the system language will be used (with a
+ * final fallback to en_GB). The current language can be set with SetLanguageCode and retrieved with GetLanguageCode.
+ * GetLanguageString returns a translated, user presentable string naming the language.
  *
- * \todo The mast TorcLanguage object is created before logging has started.
- * \todo Should locale settings be a setting or preference.
- * \todo Add action notifiers for a local change.
+ * GetLanguages returns a list of available translations.
+ *
+ * GetTranslation provides a context sensitive translation service for strings. It is intended for dynamically
+ * translated strings (e.g. plurals) retrieved via the HTTP interface. Other strings should be loaded once only.
+ *
+ * Various utility functions are available for interfacing with 3rd party libraries (From2CharCode etc).
+ *
+ * TorcLanguage is available from QML via QAbstractListModel inheritance and from the HTTP interface via TorcHTTPService.
+ *
+ * \todo The master TorcLanguage object is created before logging has started.
+ * \todo Check whether QTranslator::load is thread safe.
+ * \todo Add support for multiple translation files (e.g. plugins as well ).
 */
 TorcLanguage::TorcLanguage()
-  : m_translator(new QTranslator())
+  : QAbstractListModel(),
+    TorcHTTPService(this, "languages", "languages", TorcLanguage::staticMetaObject, BLACKLIST),
+    m_translator(new QTranslator()),
+    m_lock(new QReadWriteLock(QReadWriteLock::Recursive))
 {
-    Initialise();
+    QCoreApplication::installTranslator(m_translator);
 
     LOG(VB_GENERAL, LOG_INFO, QString("System language: %1 (%2) (%3)(env - %4)")
         .arg(QLocale::languageToString(m_locale.language()))
         .arg(QLocale::countryToString(m_locale.country()))
         .arg(m_locale.name()).arg(qgetenv("LANG").data()));
+
+    Initialise();
 }
 
 TorcLanguage::~TorcLanguage()
 {
-    delete m_translator;
+    {
+        QWriteLocker locker(m_lock);
+        QCoreApplication::removeTranslator(m_translator);
+        delete m_translator;
+    }
+
+    delete m_lock;
 }
 
-/// \brief Return the current language.
-QLocale::Language TorcLanguage::GetLanguage(void)
+QVariant TorcLanguage::data(const QModelIndex &Index, int Role) const
 {
-    return m_locale.language();
+    QReadLocker locker(m_lock);
+
+    int row = Index.row();
+
+    if (row < 0 || row >= m_languages.size())
+        return QVariant();
+
+    switch (Role)
+    {
+        case (Qt::UserRole + 2):
+            return QVariant::fromValue(m_languages.at(row).name());
+        case (Qt::UserRole + 1):
+        default:
+            break;
+    }
+
+    return QVariant::fromValue(m_languages.at(row).nativeLanguageName());
 }
 
-void TorcLanguage::LoadTranslator(void)
+QHash<int,QByteArray> TorcLanguage::roleNames(void) const
 {
-    QCoreApplication::removeTranslator(m_translator);
-
-    QString filename = QString("torc_%1.qm").arg(m_locale.name());
-    if (!m_translator->load(filename, GetTorcTransDir()))
-        LOG(VB_GENERAL, LOG_ERR, QString("Failed to load translation file '%1' from '%2'").arg(filename).arg(GetTorcTransDir()));
-    else
-        QCoreApplication::installTranslator(m_translator);
+    QReadLocker locker(m_lock);
+    QHash<int,QByteArray> roles;
+    roles.insert(Qt::UserRole + 1, "languageCode");
+    roles.insert(Qt::UserRole + 2, "languageString");
+    return roles;
 }
 
-/*! \brief Load the user's preferred Language and Country settings
+int TorcLanguage::rowCount(const QModelIndex&) const
+{
+    QReadLocker locker(m_lock);
+    return m_languages.size();
+}
+
+/*! \brief Set the current language for this application.
  *
- * This will override the default locale detected from the system.
+ * \note We let QTranslator provide the heuristics around fallback translations (e.g. en_GB to en) and hence
+ *       do not validate the new language/locale against known/available translations.
 */
-void TorcLanguage::LoadPreferences(void)
+void TorcLanguage::SetLanguageCode(const QString &Language)
 {
-    QString language = gLocalContext->GetSetting(TORC_CORE + "Language", QString("en"));
-    QString country  = gLocalContext->GetSetting(TORC_CORE + "Country", QString("GB"));
+    QWriteLocker locker(m_lock);
 
-    if (language.isEmpty())
-        language = "en";
+    // ignore unnecessary changes
+    QLocale locale(Language);
+    if (m_locale == locale)
+    {
+        LOG(VB_GENERAL, LOG_INFO, "Requested language already set - ignoring");
+        return;
+    }
 
-    if (country.isEmpty())
-        country = "GB";
-
-    QString name = language + "_" +country;
-    m_locale = QLocale(name);
+    // set new details
+    m_locale       = locale;
+    languageCode   = m_locale.name();
+    languageString = m_locale.nativeLanguageName();
 
     LOG(VB_GENERAL, LOG_INFO, QString("Language changed: %1 (%2) (%3)(env - %4)")
         .arg(QLocale::languageToString(m_locale.language()))
         .arg(QLocale::countryToString(m_locale.country()))
         .arg(m_locale.name()).arg(qgetenv("LANG").data()));
 
-    LoadTranslator();
+    // load the new translation. This will replace the existing translation.
+    // NB it's not clear from the docs whether this is thread safe.
+    // NB this only supports installing a single translation file. So other 'modules' cannot
+    // currently be loaded.
+
+    QString filename = QString("torc_%1.qm").arg(m_locale.name());
+    if (!m_translator->load(filename, GetTorcTransDir()))
+        LOG(VB_GENERAL, LOG_ERR, QString("Failed to load translation file '%1' from '%2'").arg(filename).arg(GetTorcTransDir()));
+
+    // notify change
+    emit LanguageCodeChanged(languageCode);
+    emit LanguageStringChanged(languageString);
+}
+
+/// \brief Return the current language.
+QString TorcLanguage::GetLanguageCode(void)
+{
+    QReadLocker locker(m_lock);
+    return languageCode;
+}
+
+QLocale TorcLanguage::GetLocale(void)
+{
+    QReadLocker locker(m_lock);
+    return m_locale;
+}
+
+QString TorcLanguage::GetLanguageString(void)
+{
+    QReadLocker locker(m_lock);
+    return languageString;
+}
+
+QVariantMap TorcLanguage::GetLanguages(void)
+{
+    QReadLocker locker(m_lock);
+
+    QVariantMap results;
+    for (int i = 0; i < m_languages.size(); ++i)
+        results.insert(m_languages.at(i).name(), m_languages.at(i).nativeLanguageName());
+    return results;
+}
+
+QString TorcLanguage::GetTranslation(const QString &Context, const QString &String, const QString &Disambiguation, int Number)
+{
+    return QCoreApplication::translate(String.toUtf8().constData(), Context.toUtf8().constData(),
+                                       Disambiguation.toUtf8().constData(), Number);
+}
+
+void TorcLanguage::SubscriberDeleted(QObject *Subscriber)
+{
+    TorcHTTPService::HandleSubscriberDeleted(Subscriber);
+}
+
+/*! \brief Load the user's preferred Language and Country settings
+ *
+ * If a language has not been specifically set and stored in the database, then we fall back
+ * to the system language, otherwise assume en_GB.
+*/
+void TorcLanguage::LoadPreferences(void)
+{
+    InitialiseTranslations();
+
+    QString language = gLocalContext->GetSetting(TORC_CORE + "Language", QString(""));
+
+    if (language.isEmpty())
+    {
+        language = m_locale.name(); // somewhat circular
+
+        if (language.isEmpty())
+            language = "en_GB";
+    }
+
+    SetLanguageCode(language);
 }
 
 /// \brief Return a user readable string for the current language.
@@ -147,6 +269,28 @@ QLocale::Language TorcLanguage::From3CharCode(const QString &Code)
     }
 
     return DEFAULT_QT_LANGUAGE;
+}
+
+void TorcLanguage::InitialiseTranslations(void)
+{
+    QWriteLocker locker(m_lock);
+
+    // clear out old (just in case)
+    m_languages.clear();
+
+    // retrieve list of installed translation files
+    QDir directory(GetTorcTransDir());
+    QStringList files = directory.entryList(QStringList("torc_*.qm"),
+                                            QDir::Files | QDir::Readable | QDir::NoSymLinks | QDir::NoDotAndDotDot,
+                                            QDir::Name);
+
+    // create a reference list
+    LOG(VB_GENERAL, LOG_INFO, QString("Found %1 translations").arg(files.size()));
+    foreach (QString file, files)
+    {
+        file.chop(3);
+        m_languages.append(QLocale(file.mid(5)));
+    }
 }
 
 /*! \brief Initialise the list of supported languages.

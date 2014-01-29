@@ -11,7 +11,7 @@ INSTALLS = target
 QT += xml
 QT -= gui
 
-DEPENDPATH  += ../libtorc-core
+DEPENDPATH  += ../libtorc-core ../libtorc-core/http
 DEPENDPATH  += ../libtorc-av
 DEPENDPATH  += ../libtorc-audio
 DEPENDPATH  += ./platforms

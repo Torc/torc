@@ -10,7 +10,6 @@
 #include "torcconfig.h"
 #include "torccoreexport.h"
 #include "torcsetting.h"
-#include "torclanguage.h"
 #include "torcobservable.h"
 #include "torccommandline.h"
 
@@ -19,6 +18,7 @@
 #endif
 
 class TorcAdminObject;
+class TorcLanguage;
 
 class TORC_CORE_PUBLIC Torc
 {
@@ -242,14 +242,14 @@ class TORC_CORE_PUBLIC TorcLocalContext : public QObject, public TorcObservable
     Q_INVOKABLE   qint64     GetStartTime  (void);
     Q_INVOKABLE   int        GetPriority   (void);
 
-    QLocale::Language        GetLanguage   (void);
+    QLocale                  GetLocale     (void);
+    TorcLanguage*            GetLanguage   (void);
     void                     SetUIObject   (QObject* UI);
     void                     CloseDatabaseConnections (void);
 
   public slots:
     void                     RegisterQThread          (void);
     void                     DeregisterQThread        (void);
-
 
   private:
     TorcLocalContext(TorcCommandLine* CommandLine, Torc::ApplicationFlags ApplicationFlags);

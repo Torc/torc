@@ -11,7 +11,7 @@ INSTALLS = target
 QT -= gui
 
 DEPENDPATH  += ./platforms ./samplerate ./soundtouch ./freesurround ../libtorc-av
-INCLUDEPATH += ../libtorc-core ../libtorc-core/platforms
+INCLUDEPATH += ../libtorc-core ../libtorc-core/platforms ../libtorc-core/http
 INCLUDEPATH += ../.. ../
 INCLUDEPATH += $$DEPENDPATH
 

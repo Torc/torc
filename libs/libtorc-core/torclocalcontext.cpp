@@ -38,6 +38,7 @@
 #include "torcevent.h"
 #include "torcloggingimp.h"
 #include "torclogging.h"
+#include "torclanguage.h"
 #include "torcexitcodes.h"
 #include "torcsqlitedb.h"
 #include "torcadminthread.h"
@@ -383,6 +384,7 @@ void TorcLocalContext::UserMessage(int Type, int Destination, int Timeout,
  *  \brief TorcLocalContext is the core Torc object.
  *
  * \todo Add priority generation based on role and maybe user setting.
+ * \todo Convert Q_INVOKABLEs to public slots.
 */
 TorcLocalContext::TorcLocalContext(TorcCommandLine* CommandLine, Torc::ApplicationFlags ApplicationFlags)
   : QObject(),
@@ -523,9 +525,14 @@ QObject* TorcLocalContext::GetUIObject(void)
     return m_priv->m_UIObject;
 }
 
-QLocale::Language TorcLocalContext::GetLanguage(void)
+QLocale TorcLocalContext::GetLocale(void)
 {
-    return m_priv->m_language.GetLanguage();
+    return m_priv->m_language.GetLocale();
+}
+
+TorcLanguage* TorcLocalContext::GetLanguage(void)
+{
+    return &m_priv->m_language;
 }
 
 void TorcLocalContext::CloseDatabaseConnections(void)
