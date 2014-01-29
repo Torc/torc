@@ -189,7 +189,7 @@ QVariantMap TorcLanguage::GetLanguages(void)
 
 QString TorcLanguage::GetTranslation(const QString &Context, const QString &String, const QString &Disambiguation, int Number)
 {
-    return QCoreApplication::translate(String.toUtf8().constData(), Context.toUtf8().constData(),
+    return QCoreApplication::translate(Context.toUtf8().constData(), String.toUtf8().constData(),
                                        Disambiguation.toUtf8().constData(), Number);
 }
 
