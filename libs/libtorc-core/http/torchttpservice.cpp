@@ -324,10 +324,14 @@ TorcHTTPService::TorcHTTPService(QObject *Parent, const QString &Signature, cons
     {
         QMetaProperty property = m_metaObject.property(i);
 
-        if (property.hasNotifySignal() && property.isReadable() && property.notifySignalIndex() > -1)
+        if (property.isReadable() && ((property.hasNotifySignal() && property.notifySignalIndex() > -1) || property.isConstant()))
         {
+            // NB this will potentially insert multiple entries with key -1 for constant properties
             m_properties.insert(property.notifySignalIndex(), property.propertyIndex());
-            LOG(VB_GENERAL, LOG_DEBUG, QString("Adding property '%1' with signal index %2").arg(property.name()).arg(property.notifySignalIndex()));
+            if (property.notifySignalIndex() > -1)
+                LOG(VB_GENERAL, LOG_DEBUG, QString("Adding property '%1' with signal index %2").arg(property.name()).arg(property.notifySignalIndex()));
+            else
+                LOG(VB_GENERAL, LOG_DEBUG, QString("Adding constant property '%1'").arg(property.name()));
         }
     }
 
@@ -545,7 +549,8 @@ QVariantMap TorcHTTPService::ProcessRequest(const QString &Method, const QVarian
                     {
                         // and connect property change notifications to the one slot
                         // NB we use the parent's metaObject here - not the staticMetaObject (or m_metaObject)
-                        QObject::connect(m_parent, m_parent->metaObject()->method(it.key()), Connection, Connection->metaObject()->method(change));
+                        if (it.key() > -1)
+                            QObject::connect(m_parent, m_parent->metaObject()->method(it.key()), Connection, Connection->metaObject()->method(change));
 
                         // clean up subscriptions if the subscriber is deleted
                         QObject::connect(Connection, SIGNAL(destroyed(QObject*)), m_parent, SLOT(SubscriberDeleted(QObject*)));
@@ -692,7 +697,7 @@ QVariant TorcHTTPService::GetProperty(int Index)
 {
     QVariant result;
 
-    if (m_properties.contains(Index))
+    if (Index > -1 && m_properties.contains(Index))
         result = m_parent->metaObject()->property(m_properties.value(Index)).read(m_parent);
     else
         LOG(VB_GENERAL, LOG_ERR, "Failed to retrieve property");
@@ -782,7 +787,12 @@ void TorcHTTPService::UserHelp(TorcHTTPRequest *Request, TorcHTTPConnection *Con
         for ( ; it != m_properties.end(); ++it)
         {
             QMetaProperty property = m_parent->metaObject()->property(it.value());
-            stream << property.name() << "&nbsp(" << property.typeName() << ")</br>";
+            stream << property.name() << "&nbsp(" << property.typeName() << ")";
+
+            if (property.hasNotifySignal())
+                stream << "&nbsp" << tr("Signal") << ":&nbsp" << property.notifySignal().name() << "</br>";
+            else
+                stream << "&nbsp(" << tr("Constant") << ")</br>";
         }
     }
 
