@@ -51,7 +51,6 @@ QMap<QString,int> TorcLanguage::gLanguageMap;
  *
  * TorcLanguage is available from QML via QAbstractListModel inheritance and from the HTTP interface via TorcHTTPService.
  *
- * \todo The master TorcLanguage object is created before logging has started.
  * \todo Check whether QTranslator::load is thread safe.
  * \todo Add support for multiple translation files (e.g. plugins as well ).
 */

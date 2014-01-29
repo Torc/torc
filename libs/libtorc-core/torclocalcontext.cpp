@@ -86,7 +86,7 @@ class TorcLocalContextPriv
     QReadWriteLock       *m_preferencesLock;
     QObject              *m_UIObject;
     TorcAdminThread      *m_adminThread;
-    TorcLanguage          m_language;
+    TorcLanguage         *m_language;
     QUuid                 m_uuid;
     QString               m_uuidString;
     TorcPlugin           *m_plugins;
@@ -100,6 +100,7 @@ TorcLocalContextPriv::TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFla
     m_preferencesLock(new QReadWriteLock(QReadWriteLock::Recursive)),
     m_UIObject(NULL),
     m_adminThread(NULL),
+    m_language(NULL),
     m_uuid(QUuid::createUuid()),
     m_plugins(NULL)
 {
@@ -116,6 +117,9 @@ TorcLocalContextPriv::TorcLocalContextPriv(Torc::ApplicationFlags ApplicationFla
 
 TorcLocalContextPriv::~TorcLocalContextPriv()
 {
+    // delete language
+    delete m_language;
+
     // close and cleanup the admin thread
     if (m_adminThread)
     {
@@ -176,6 +180,10 @@ bool TorcLocalContextPriv::Init(void)
         }
     }
 
+    // Load language and translation preferences
+    m_language = new TorcLanguage();
+    m_language->LoadPreferences();
+
     // Open the local database
     if (m_flags & Torc::Database)
     {
@@ -222,9 +230,6 @@ bool TorcLocalContextPriv::Init(void)
     // Qt version?
     LOG(VB_GENERAL, LOG_INFO, QString("Qt runtime version '%1' (compiled with '%2')")
         .arg(qVersion()).arg(QT_VERSION_STR));
-
-    // Load language preferences
-    m_language.LoadPreferences();
 
     // Load any plugins (MUST happen before TorcAdminThread initialisation)
     m_plugins = new TorcPlugin();
@@ -527,12 +532,12 @@ QObject* TorcLocalContext::GetUIObject(void)
 
 QLocale TorcLocalContext::GetLocale(void)
 {
-    return m_priv->m_language.GetLocale();
+    return m_priv->m_language->GetLocale();
 }
 
 TorcLanguage* TorcLocalContext::GetLanguage(void)
 {
-    return &m_priv->m_language;
+    return m_priv->m_language;
 }
 
 void TorcLocalContext::CloseDatabaseConnections(void)
