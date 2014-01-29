@@ -769,12 +769,12 @@ class TorcHTTPServerObject : public TorcAdminObject, public TorcStringFactory
     {
         Strings.insert("ServerApplication",       QCoreApplication::applicationName());
 
-        Strings.insert("SocketNotConnected",      tr("Not connected"));
-        Strings.insert("SocketConnecting",        tr("Connecting"));
-        Strings.insert("SocketConnected",         tr("Connected"));
-        Strings.insert("SocketReady",             tr("Ready"));
-        Strings.insert("ConnectedTo",             tr("Connected to"));
-        Strings.insert("ConnectTo",               tr("Connect to"));
+        Strings.insert("SocketNotConnected",      QCoreApplication::translate("TorcHTTPServer", "Not connected"));
+        Strings.insert("SocketConnecting",        QCoreApplication::translate("TorcHTTPServer", "Connecting"));
+        Strings.insert("SocketConnected",         QCoreApplication::translate("TorcHTTPServer", "Connected"));
+        Strings.insert("SocketReady",             QCoreApplication::translate("TorcHTTPServer", "Ready"));
+        Strings.insert("ConnectedTo",             QCoreApplication::translate("TorcHTTPServer", "Connected to"));
+        Strings.insert("ConnectTo",               QCoreApplication::translate("TorcHTTPServer", "Connect to"));
 
         Strings.insert("SocketReconnectAfterMs",  10000); // try and reconnect every 10 seconds
     }
