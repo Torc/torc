@@ -1,6 +1,15 @@
 $(document).ready(function() {
     "use strict";
 
+    function qsTranslate(context, string, disambiguation, plural, callback) {
+        if (disambiguation === undefined) { disambiguation = ''; }
+        if (plural === undefined) { plural = 0; }
+        torcconnection.call('languages', 'GetTranslation',
+                            { Context: context, String: string, Disambiguation: disambiguation, Number: plural},
+                            function (translated) { if (typeof callback === 'function') { callback(translated); }},
+                            function () { if (typeof callback === 'function') { callback(); }});
+    }
+
     function addNavbarDropdown(dropdownClass, toggleClass, listClass) {
         $('<li/>', { class: 'dropdown ' + dropdownClass})
           .append($('<a/>', {
@@ -33,24 +42,29 @@ $(document).ready(function() {
 
             // remove old peers
             $(".torc-peer").remove();
+            $(".torc-peer-status").remove();
 
             // and add new
             if ($.isArray(value) && value.length) {
-                value.forEach( function (element) {
-                    item = $('<li/>', {
-                        html: $('<a/>', { href: 'http://' + element.address + ':' + element.port + '/html/index.html', html: torc.ConnectTo + '&nbsp' + element.name }),
-                        class: "torc-peer"
-                    });
-
+                addDropdownMenuItem('torc-peer-menu', 'torc-peer-status', '#', '');
+                qsTranslate('TorcNetworkedContext', '%n other Torc device(s) discovered', '', value.length,
+                            function(result) { $(".torc-peer-status a").html(result); });
+                addDropdownMenuDivider('torc-peer-menu', 'torc-peer');
+                value.forEach( function (element, index) {
+                    addDropdownMenuItem('torc-peer-menu', 'torc-peer torc-peer' + index, 'http://' + element.address + ':' + element.port + '/html/index.html', '');
                     $(".torc-peer-menu").append(item);
+                    qsTranslate('TorcNetworkedContext', 'Connect to %1', '', 0,
+                                function(result) { $(".torc-peer" + index + " a").html('<span class=\'glyphicon glyphicon-share\'>&nbsp</span>' + result.replace("%1", element.name)); });
                 });
+            } else {
+                addDropdownMenuItem('torc-peer-menu', 'torc-peer-status', '#', torc.NoPeers);
             }
         }
     }
 
     function peerSubscriptionChanged(version, methods, properties) {
         if (version !== undefined && typeof properties === 'object' && properties.hasOwnProperty('peers') &&
-            properties.peers.hasOwnProperty('value') && $.isArray(properties.peers.value) && properties.peers.value.length) {
+            properties.peers.hasOwnProperty('value') && $.isArray(properties.peers.value)) {
             addNavbarDropdown('torc-peer-dropdown', 'glyphicon-link', 'torc-peer-menu');
             peerListChanged('peers', properties.peers.value);
             return;
@@ -60,6 +74,18 @@ $(document).ready(function() {
         removeNavbarDropdown('torc-peer-dropdown');
     }
 
+    function languageChanged(name, value) {
+    }
+
+    function languageSubscriptionChanged(version, methods, properties) {
+        if (version !== undefined && typeof properties === 'object') {
+            // this should happen when the socket status transitions to Connected but we don't have the
+            // translation service at that point
+            qsTranslate('TorcNetworkedContext', 'Connected to %1', '', 0,
+                        function (result) { $(".torc-socket-status-text a").html(result.replace('%1', window.location.host)); });
+        }
+    }
+
     function powerChanged(name, value) {
         var li, translatedName, translatedConfirmation, method;
 
@@ -67,29 +93,31 @@ $(document).ready(function() {
             if (value === undefined) {
                 translatedName = '';
             } else if (value === torc.ACPower) {
-                translatedName = torc.ACPowerTr;
+                translatedName = '<span class=\'glyphicon glyphicon-flash\'>&nbsp</span>' + torc.ACPowerTr;
             } else if (value === torc.UnknownPower) {
                 translatedName = torc.UnknownPowerTr;
             } else {
-                translatedName = value + '%';
+                translatedName = '<span class=\'glyphicon glyphicon-dashboard\'>&nbsp</span>' + value + '%';
+                qsTranslate('TorcPower', 'Battery %n%', '', value,
+                            function (result) { $('.torc-power-status a').html('<span class=\'glyphicon glyphicon-dashboard\'>&nbsp</span>' + result); });
             }
 
             $('.torc-power-status a').html(translatedName);
             return;
         } else if (name === 'canSuspend') {
-            translatedName = torc.Suspend;
+            translatedName = '<span class=\'glyphicon glyphicon-remove\'>&nbsp</span>' + torc.Suspend;
             translatedConfirmation = torc.ConfirmSuspend;
             method = 'Suspend';
         } else if (name === 'canShutdown') {
-            translatedName = torc.Shutdown;
+            translatedName = '<span class=\'glyphicon glyphicon-remove-circle\'>&nbsp</span>' + torc.Shutdown;
             translatedConfirmation = torc.ConfirmShutdown;
             method = 'Shutdown';
         } else if (name === 'canHibernate') {
-            translatedName = torc.Hibernate;
+            translatedName = '<span class=\'glyphicon glyphicon-remove\'>&nbsp</span>' + torc.Hibernate;
             translatedConfirmation = torc.ConfirmHibernate;
             method = 'Hibernate';
         } else if (name === 'canRestart') {
-            translatedName = torc.Restart;
+            translatedName = '<span class=\'glyphicon glyphicon-refresh\'>&nbsp</span>' + torc.Restart;
             translatedConfirmation = torc.ConfirmRestart;
             method = 'Restart';
         } else { return; }
@@ -98,13 +126,13 @@ $(document).ready(function() {
             $('.torc-' + name).remove();
         } else {
             li = $('<li/>', { class: 'torc-' + name,
-                              html: '<a>' + translatedName + '...</span></a>'})
+                              html: '<a>' + translatedName + '</a>'})
             .click(function() {
                 bootbox.confirm(translatedConfirmation, function(result) {
                     if (result === true) {
                         torcconnection.call('power', method);
                     }
-                })});
+                }); });
             $(".torc-power-menu").append(li);
         }
     }
@@ -122,21 +150,21 @@ $(document).ready(function() {
             return;
         }
 
-        removeNavbarDropdown('torc-power-dropdown')
+        removeNavbarDropdown('torc-power-dropdown');
     }
 
     function statusChanged (status) {
         if (status === torc.SocketNotConnected) {
-            $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-ok-circle glyphicon-question-sign").addClass("glyphicon-exclamation-sign")
+            $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-ok-circle glyphicon-question-sign").addClass("glyphicon-exclamation-sign");
             $(".torc-socket-status-text a").html(torc.SocketNotConnected);
         } else if (status === torc.SocketConnecting) {
-            $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-ok-circle glyphicon-exclamation-sign").addClass("glyphicon-question-sign")
+            $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-ok-circle glyphicon-exclamation-sign").addClass("glyphicon-question-sign");
             $(".torc-socket-status-text a").html(torc.SocketConnecting);
         } else if (status === torc.SocketConnected) {
-            $(".torc-socket-status-glyph").removeClass("glyphicon-exclamation-sign glyphicon-ok-circle glyphicon-question-sign").addClass("glyphicon-ok")
-            $(".torc-socket-status-text a").html(torc.ConnectedTo + '&nbsp' + window.location.host);
+            $(".torc-socket-status-glyph").removeClass("glyphicon-exclamation-sign glyphicon-ok-circle glyphicon-question-sign").addClass("glyphicon-ok");
         } else if (status === torc.SocketReady) {
-            $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-exclamation-sign glyphicon-question-sign").addClass("glyphicon-ok-circle")
+            $(".torc-socket-status-glyph").removeClass("glyphicon-ok glyphicon-exclamation-sign glyphicon-question-sign").addClass("glyphicon-ok-circle");
+            torcconnection.subscribe('languages', ['languageString', 'languages'], languageChanged, languageSubscriptionChanged);
             torcconnection.subscribe('peers', ['peers'], peerListChanged, peerSubscriptionChanged);
             torcconnection.subscribe('power', ['canShutdown', 'canSuspend', 'canRestart', 'canHibernate', 'batteryLevel'], powerChanged, powerSubscriptionChanged);
         }
