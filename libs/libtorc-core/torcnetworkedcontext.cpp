@@ -23,6 +23,7 @@
 // Torc
 #include "torcconfig.h"
 #include "torcadminthread.h"
+#include "torclanguage.h"
 #include "torcnetwork.h"
 #if defined(CONFIG_LIBDNS_SD) && CONFIG_LIBDNS_SD
 #include "torcbonjour.h"
@@ -1006,7 +1007,7 @@ void TorcNetworkedContext::Remove(const QString &UUID, TorcNetworkService::Servi
     }
 }
 
-static class TorcNetworkedContextObject : public TorcAdminObject
+static class TorcNetworkedContextObject : public TorcAdminObject, public TorcStringFactory
 {
   public:
     TorcNetworkedContextObject()
@@ -1018,6 +1019,11 @@ static class TorcNetworkedContextObject : public TorcAdminObject
     ~TorcNetworkedContextObject()
     {
         Destroy();
+    }
+
+    void GetStrings(QVariantMap &Strings)
+    {
+        Strings.insert("NoPeers", QCoreApplication::translate("TorcNetworkedContext", "No other Torc devices detected"));
     }
 
     void Create(void)
