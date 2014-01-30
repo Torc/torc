@@ -36,7 +36,7 @@ class TORC_CORE_PUBLIC TorcStorageDevice
         Removable = 0x0010
     };
 
-    static QString TypeToString(StorageType Type);
+    static QString TypeToString(StorageType Type, bool Translate = false);
 
   public:
     TorcStorageDevice();

@@ -49,17 +49,17 @@ TorcStorageDevice::~TorcStorageDevice()
 }
 
 ///brief Return a human readable string for the given type.
-QString TorcStorageDevice::TypeToString(StorageType Type)
+QString TorcStorageDevice::TypeToString(StorageType Type, bool Translate /* = failse */)
 {
     switch (Type)
     {
-        case FixedDisk:     return tr("Fixed Disk");
-        case RemovableDisk: return tr("Removable Disk");
-        case Optical:       return tr("Optical Disk");
-        case DVD:           return tr("DVD");
-        case CD:            return tr("CD");
-        case BD:            return tr("BD");
-        case HDDVD:         return tr("HDDVD");
+        case FixedDisk:     return Translate ? tr("Fixed Disk") :     "Fixed Disk";
+        case RemovableDisk: return Translate ? tr("Removable Disk") : "Removable Disk";
+        case Optical:       return Translate ? tr("Optical Disk") :   "Optical Disk";
+        case DVD:           return Translate ? tr("DVD") :            "DVD";
+        case CD:            return Translate ? tr("CD") :             "CD";
+        case BD:            return Translate ? tr("BD") :             "BD";
+        case HDDVD:         return Translate ? tr("HDDVD") :          "HDDVD";
         default:            break;
     }
 
@@ -74,7 +74,7 @@ QVariantMap TorcStorageDevice::ToMap(void)
     result.insert("systemname",  m_systemName);
     result.insert("description", m_description);
     result.insert("optical",     IsOpticalDisk());
-    result.insert("type",        TypeToString(m_type));
+    result.insert("type",        TypeToString(m_type, true));
     result.insert("busy",        (bool)(m_properties & Busy));
     result.insert("mounted",     (bool)(m_properties & Mounted));
     result.insert("writeable",   (bool)(m_properties & Writeable));
