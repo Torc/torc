@@ -20,7 +20,7 @@ ApplicationWindow {
         anchors.margins: Qt.platform.os === "osx" ? 12 : 2
 
         Tab {
-            title: qsTr("Media")
+            title: qsTranslate("TorcMediaMaster", "Media")
 
             SplitView {
                 anchors.fill: parent
@@ -51,13 +51,13 @@ ApplicationWindow {
 
                         TableViewColumn {
                             width: 250
-                            title: qsTr("Name")
+                            title: qsTranslate("TorcMediaMaster", "Name")
                             role: "name"
                         }
 
                         TableViewColumn {
                             width: 350
-                            title: qsTr("Location")
+                            title: qsTranslate("TorcMediaMaster", "Location")
                             role: "url"
                         }
                     }
@@ -65,7 +65,7 @@ ApplicationWindow {
                     Row {
                         spacing: 12
                         Text {
-                            text: qsTr("Search")
+                            text: qsTranslate("TorcMediaMaster", "Search")
                         }
 
                         TextField {
@@ -74,16 +74,16 @@ ApplicationWindow {
                         }
 
                         Button {
-                            text: qsTr("Search using")
+                            text: qsTranslate("TorcMediaMaster", "Search using")
                             menu: Menu {
                                 MenuItem {
-                                    text: qsTr("Name")
+                                    text: qsTranslate("TorcMediaMaster", "Name")
                                     checkable: true
                                     checked: mediaFilter.filterByName
                                     onTriggered: mediaFilter.filterByName = true
                                 }
                                 MenuItem {
-                                    text: qsTr("Location")
+                                    text: qsTranslate("TorcMediaMaster", "Location")
                                     checkable: true
                                     checked: !mediaFilter.filterByName
                                     onTriggered: mediaFilter.filterByName = false
@@ -95,19 +95,19 @@ ApplicationWindow {
                             anchors.leftMargin: 16
                             id: videoCheckbox
                             checked: true
-                            text: qsTr("Videos")
+                            text: qsTranslate("TorcMediaMaster", "Videos")
                             onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Video, checked)
                         }
                         CheckBox{
                             id: musicCheckbox
                             checked: true
-                            text: qsTr("Music")
+                            text: qsTranslate("TorcMediaMaster", "Music")
                             onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Audio, checked)
                         }
                         CheckBox{
                             id: photosCheckbox
                             checked: true
-                            text: qsTr("Photos")
+                            text: qsTranslate("TorcMediaMaster", "Photos")
                             onClicked: mediaFilter.SetMediaTypeFilter(TorcMedia.Image, checked)
                         }
                     }
@@ -116,7 +116,7 @@ ApplicationWindow {
         }
 
         Tab {
-            title: qsTr("Status")
+            title: qsTranslate("TorcNetworkedContext", "Status")
 
             SplitView {
                 anchors.fill: parent
@@ -130,7 +130,7 @@ ApplicationWindow {
                     visible: !haveDevices && TorcNetworkedContext
                     anchors.margins: 8
                     Layout.fillWidth: true
-                    title: qsTr("No other Torc devices detected on this network")
+                    title: qsTranslate("TorcNetworkedContext", "No other Torc devices discovered")
                 }
 
                 GroupBox {
@@ -139,7 +139,7 @@ ApplicationWindow {
                     anchors.margins: 8
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    title: qsTr("Other Torc devices on this network")
+                    title: qsTranslate("TorcNetworkedContext", "Other Torc devices on this network")
 
                     TableView {
                         id: torcDevicesView
@@ -150,46 +150,34 @@ ApplicationWindow {
 
                         TableViewColumn {
                             width: 250
-                            title: qsTr("Name")
+                            title: qsTranslate("TorcNetworkedContext", "Name")
                             role: "name"
                         }
 
                         TableViewColumn {
                             width: 200
-                            title: qsTr("Address")
+                            title: qsTranslate("TorcNetworkedContext", "Address")
                             role: "uiAddress"
                         }
 
                         TableViewColumn {
                             width: 100
-                            title: qsTr("API Version")
+                            title: qsTranslate("TorcNetworkedContext", "API Version")
                             role: "apiVersion"
                         }
 
                         TableViewColumn {
                             width: 100
-                            title: qsTr("Connected")
+                            title: qsTranslate("TorcNetworkedContext", "Connected")
                             role: "connected"
                         }
                     }
-                }
-
-                GroupBox {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    title: qsTr("Other interesting stuff")
-                }
-
-                GroupBox {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    title: qsTr("Really interesting stuff")
                 }
             }
         }
 
         Tab {
-            title: qsTr("Settings")
+            title: qsTranslate("TorcSetting", "Settings")
 
             SplitView {
                 id: settings
