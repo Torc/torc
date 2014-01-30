@@ -96,71 +96,78 @@
         <source>Enable internal web server</source>
         <translation>Activer le serveur Web interne</translation>
     </message>
-</context>
-<context>
-    <name>TorcHTTPServerObject</name>
     <message>
         <location filename="../libs/libtorc-core/http/torchttpserver.cpp" line="772"/>
         <source>Not connected</source>
-        <translation>Non connecté</translation>
+        <translation type="unfinished">Non connecté</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/http/torchttpserver.cpp" line="773"/>
         <source>Connecting</source>
-        <translation>Tentative de connexion</translation>
+        <translation type="unfinished">Tentative de connexion</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/http/torchttpserver.cpp" line="774"/>
         <source>Connected</source>
-        <translation>Lié</translation>
+        <translation type="unfinished">Lié</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/http/torchttpserver.cpp" line="775"/>
         <source>Ready</source>
-        <translation>Prêt</translation>
+        <translation type="unfinished">Prêt</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/http/torchttpserver.cpp" line="776"/>
         <source>Connected to</source>
-        <translation>Connecté à</translation>
+        <translation type="unfinished">Connecté à</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/http/torchttpserver.cpp" line="777"/>
         <source>Connect to</source>
-        <translation>Connectez-vous à</translation>
+        <translation type="unfinished">Connectez-vous à</translation>
     </message>
 </context>
 <context>
     <name>TorcHTTPService</name>
     <message>
-        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="724"/>
+        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="729"/>
         <source>Services</source>
         <translation>Services</translation>
     </message>
     <message>
-        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="726"/>
+        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="731"/>
         <source>Method list for </source>
         <translation>Liste des méthodes de</translation>
     </message>
     <message>
-        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="758"/>
+        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="763"/>
         <source>Error</source>
         <translation>Erreur</translation>
     </message>
     <message>
-        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="770"/>
+        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="775"/>
         <source>Example usage</source>
         <translation>Exemple d&apos;utilisation</translation>
     </message>
     <message>
-        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="773"/>
+        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="778"/>
         <source>Websocket methods</source>
         <translation>Méthodes de WebSocket</translation>
     </message>
     <message>
-        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="779"/>
+        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="784"/>
         <source>Properties</source>
         <translation>Propriétés</translation>
+    </message>
+    <message>
+        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="793"/>
+        <source>Signal</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../libs/libtorc-core/http/torchttpservice.cpp" line="795"/>
+        <source>Constant</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -172,9 +179,54 @@
     </message>
 </context>
 <context>
+    <name>TorcMediaMaster</name>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="23"/>
+        <source>Media</source>
+        <translation type="unfinished">Médias</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="54"/>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="80"/>
+        <source>Name</source>
+        <translation type="unfinished">Nom</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="60"/>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="86"/>
+        <source>Location</source>
+        <translation type="unfinished">Emplacement</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="68"/>
+        <source>Search</source>
+        <translation type="unfinished">Recherche</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="77"/>
+        <source>Search using</source>
+        <translation type="unfinished">Recherche par</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="98"/>
+        <source>Videos</source>
+        <translation type="unfinished">Vidéos</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="104"/>
+        <source>Music</source>
+        <translation type="unfinished">Musique</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="110"/>
+        <source>Photos</source>
+        <translation type="unfinished">Photos</translation>
+    </message>
+</context>
+<context>
     <name>TorcMediaSourceDirectory</name>
     <message>
-        <location filename="../libs/libtorc-media/torcmediasourcedirectory.cpp" line="212"/>
+        <location filename="../libs/libtorc-media/torcmediasourcedirectory.cpp" line="210"/>
         <source>Files</source>
         <translation>Fichiers</translation>
     </message>
@@ -217,9 +269,73 @@
 <context>
     <name>TorcNetworkedContext</name>
     <message>
-        <location filename="../libs/libtorc-core/torcnetworkedcontext.cpp" line="648"/>
+        <location filename="../libs/libtorc-core/torcnetworkedcontext.cpp" line="649"/>
         <source>Peers</source>
         <translation>Pairs</translation>
+    </message>
+    <message>
+        <location filename="../libs/libtorc-core/torcnetworkedcontext.cpp" line="1026"/>
+        <source>No other Torc devices detected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../html/js/torc.js" line="50"/>
+        <source>%n other Torc device(s) discovered</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../html/js/torc.js" line="55"/>
+        <source>Connect to %1</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../html/js/torc.js" line="83"/>
+        <source>Connected to %1</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="119"/>
+        <source>Status</source>
+        <translation type="unfinished">Statut</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="133"/>
+        <source>No other Torc devices discovered</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="142"/>
+        <source>Other Torc devices on this network</source>
+        <translation type="unfinished">D&apos;autres dispositifs Torc sur ce réseau</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="153"/>
+        <source>Name</source>
+        <translation type="unfinished">Nom</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="159"/>
+        <source>Address</source>
+        <translation type="unfinished">Adresse</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="165"/>
+        <source>API Version</source>
+        <translation type="unfinished">Version de l&apos;API</translation>
+    </message>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="171"/>
+        <source>Connected</source>
+        <translation type="unfinished">Lié</translation>
     </message>
 </context>
 <context>
@@ -306,58 +422,63 @@
         <source>Allow Torc to restart the system</source>
         <translation>Laisser Torque pour redémarrer le système</translation>
     </message>
-</context>
-<context>
-    <name>TorcPowerObject</name>
     <message>
         <location filename="../libs/libtorc-core/torcpower.cpp" line="533"/>
         <source>Suspend</source>
-        <translation>Suspendre</translation>
+        <translation type="unfinished">Suspendre</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/torcpower.cpp" line="534"/>
         <source>Shutdown</source>
-        <translation>Fermeture</translation>
+        <translation type="unfinished">Fermeture</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/torcpower.cpp" line="535"/>
         <source>Hibernate</source>
-        <translation>Hiberner</translation>
+        <translation type="unfinished">Hiberner</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/torcpower.cpp" line="536"/>
         <source>Restart</source>
-        <translation>Redémarrer</translation>
+        <translation type="unfinished">Redémarrer</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/torcpower.cpp" line="537"/>
         <source>Are you sure you want to suspend the device?</source>
-        <translation>Etes-vous sûr de vouloir suspendre le dispositif?</translation>
+        <translation type="unfinished">Etes-vous sûr de vouloir suspendre le dispositif?</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/torcpower.cpp" line="538"/>
         <source>Are you sure you want to shutdown the device?</source>
-        <translation>Etes-vous sûr de vouloir arrêter le dispositif?</translation>
+        <translation type="unfinished">Etes-vous sûr de vouloir arrêter le dispositif?</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/torcpower.cpp" line="539"/>
         <source>Are you sure you want to hibernate the device?</source>
-        <translation>Etes-vous sûr de vouloir hiberner l&apos;appareil?</translation>
+        <translation type="unfinished">Etes-vous sûr de vouloir hiberner l&apos;appareil?</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/torcpower.cpp" line="540"/>
         <source>Are you sure you want to restart the device?</source>
-        <translation>Etes-vous sûr de vouloir redémarrer l&apos;appareil?</translation>
+        <translation type="unfinished">Etes-vous sûr de vouloir redémarrer l&apos;appareil?</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/torcpower.cpp" line="541"/>
         <source>On AC Power</source>
-        <translation>Sur le courant alternatif</translation>
+        <translation type="unfinished">Sur le courant alternatif</translation>
     </message>
     <message>
         <location filename="../libs/libtorc-core/torcpower.cpp" line="542"/>
         <source>Unknown power status</source>
-        <translation>Statut de puissance inconnue</translation>
+        <translation type="unfinished">Statut de puissance inconnue</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../html/js/torc.js" line="100"/>
+        <source>Battery %n%</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
     </message>
 </context>
 <context>
@@ -374,6 +495,14 @@
         <location filename="../libs/libtorc-audio/raop/torcraopdevice.cpp" line="75"/>
         <source>Enable AirTunes playback</source>
         <translation>Activer AirTunes</translation>
+    </message>
+</context>
+<context>
+    <name>TorcSetting</name>
+    <message>
+        <location filename="../programs/torc-desktop/qml/main.qml" line="180"/>
+        <source>Settings</source>
+        <translation type="unfinished">Paramètres</translation>
     </message>
 </context>
 <context>
@@ -446,95 +575,6 @@
         <location filename="../libs/libtorc-video/videoplayer.cpp" line="77"/>
         <source>Allow GPU video acceleration</source>
         <translation>Autoriser vidéo accélération GPU</translation>
-    </message>
-</context>
-<context>
-    <name>main</name>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="23"/>
-        <source>Media</source>
-        <translation>Médias</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="54"/>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="153"/>
-        <source>Name</source>
-        <translation>Nom</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="60"/>
-        <source>Location</source>
-        <translation>Emplacement</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="68"/>
-        <source>Search</source>
-        <translation>Recherche</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="77"/>
-        <source>Search using</source>
-        <translation>Recherche par</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="98"/>
-        <source>Videos</source>
-        <translation>Vidéos</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="104"/>
-        <source>Music</source>
-        <translation>Musique</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="110"/>
-        <source>Photos</source>
-        <translation>Photos</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="119"/>
-        <source>Status</source>
-        <translation>Statut</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="133"/>
-        <source>No other Torc devices detected on this network</source>
-        <translation>Pas d&apos;autres appareils Torc détectés sur ce réseau</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="142"/>
-        <source>Other Torc devices on this network</source>
-        <translation>D&apos;autres dispositifs Torc sur ce réseau</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="159"/>
-        <source>Address</source>
-        <translation>Adresse</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="165"/>
-        <source>API Version</source>
-        <translation>Version de l&apos;API</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="171"/>
-        <source>Connected</source>
-        <translation>Lié</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="180"/>
-        <source>Other interesting stuff</source>
-        <translation>Autres choses intéressantes</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="186"/>
-        <source>Really interesting stuff</source>
-        <translation>Des trucs vraiment intéressants</translation>
-    </message>
-    <message>
-        <location filename="../programs/torc-desktop/qml/main.qml" line="192"/>
-        <source>Settings</source>
-        <translation>Paramètres</translation>
     </message>
 </context>
 </TS>
