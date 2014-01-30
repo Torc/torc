@@ -32,14 +32,14 @@ $(document).ready(function() {
         $('.' + menu).append($('<li/>', { class: 'divider ' + identifier} ));
     }
 
-    function addDropdownMenuItem(menu, identifier, link, text) {
-        $('<li/>', { class: identifier }).append($('<a/>', { href: link, html: text } )).appendTo($('.' + menu));
+    function addDropdownMenuItem(menu, identifier, link, text, click) {
+        var item = $('<li/>', { class: identifier }).append($('<a/>', { href: link, html: text } ));
+        if (typeof click === 'function') { item.click(click); }
+        item.appendTo($('.' + menu));
     }
 
     function peerListChanged(name, value) {
         if (name === 'peers') {
-            var item;
-
             // remove old peers
             $(".torc-peer").remove();
             $(".torc-peer-status").remove();
@@ -52,7 +52,6 @@ $(document).ready(function() {
                 addDropdownMenuDivider('torc-peer-menu', 'torc-peer');
                 value.forEach( function (element, index) {
                     addDropdownMenuItem('torc-peer-menu', 'torc-peer torc-peer' + index, 'http://' + element.address + ':' + element.port + '/html/index.html', '');
-                    $(".torc-peer-menu").append(item);
                     qsTranslate('TorcNetworkedContext', 'Connect to %1', '', 0,
                                 function(result) { $(".torc-peer" + index + " a").html('<span class=\'glyphicon glyphicon-share\'>&nbsp</span>' + result.replace("%1", element.name)); });
                 });
@@ -87,7 +86,7 @@ $(document).ready(function() {
     }
 
     function powerChanged(name, value) {
-        var li, translatedName, translatedConfirmation, method;
+        var translatedName, translatedConfirmation, method;
 
         if (name === 'batteryLevel') {
             if (value === undefined) {
@@ -125,15 +124,11 @@ $(document).ready(function() {
         if (value === false || value === undefined) {
             $('.torc-' + name).remove();
         } else {
-            li = $('<li/>', { class: 'torc-' + name,
-                              html: '<a>' + translatedName + '</a>'})
-            .click(function() {
-                bootbox.confirm(translatedConfirmation, function(result) {
-                    if (result === true) {
-                        torcconnection.call('power', method);
-                    }
-                }); });
-            $(".torc-power-menu").append(li);
+            addDropdownMenuItem('torc-power-menu', 'torc-' + name, '#', translatedName,
+                                function () {
+                                    bootbox.confirm(translatedConfirmation, function(result) {
+                                    if (result === true) { torcconnection.call('power', method); }
+                                }); });
         }
     }
 
