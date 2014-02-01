@@ -89,7 +89,7 @@ TorcQMLMediaElement::~TorcQMLMediaElement()
     // stop listening for events
     gLocalContext->RemoveObserver(this);
 
-    // stop the updat timer
+    // stop the update timer
     delete m_refreshTimer;
 
     // delete the player
