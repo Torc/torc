@@ -1,6 +1,6 @@
 import QtQuick 2.0
 
-Rectangle {
+FocusScope {
     id: modal
     z: 100
     visible: false
