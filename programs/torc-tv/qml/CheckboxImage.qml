@@ -26,15 +26,11 @@ Checkbox {
         source: image
         color: (hovered | activeFocus) ? "#aa000000" : dropcolor
         verticalOffset: (hovered | activeFocus) ? 6 : 3
+        focus: true
     }
 
-    Text {
+    TextIcon {
         id: check
-        anchors.centerIn: parent
-        color: '#111111'
-        font.pointSize: 35
-        font.family: webfont.name
         text: checkbox.enabled ? "\uf05d" : "\uf10c"
-        Behavior on text { PropertyAnimation {} }
     }
 }
