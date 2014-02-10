@@ -24,8 +24,8 @@ Checkbox {
 
     Dropshadow {
         source: image
-        color: (hovered | activeFocus) ? "#aa000000" : dropcolor
-        verticalOffset: (hovered | activeFocus) ? 6 : 3
+        color: (hovered | checkbox.activeFocus) ? "#aa000000" : dropcolor
+        verticalOffset: (hovered | checkbox.activeFocus) ? 6 : 3
         focus: true
     }
 
