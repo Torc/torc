@@ -3,11 +3,20 @@ import QtQuick 2.0
 FocusScope {
     id: button
     signal clicked (var event)
-    Keys.onEnterPressed: clicked(undefined)
-    Keys.onReturnPressed: clicked(undefined)
+    Keys.onPressed: {
+        if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
+            keypressed = true;
+            clicked(undefined);
+        }
+    }
+    Keys.onReleased: {
+        if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return)
+            keypressed = false;
+    }
     property alias mouseArea: mousearea
-    property bool pressed: mousearea.pressed
+    property bool pressed: mousearea.pressed || keypressed
     property bool hovered: mousearea.containsMouse
+    property bool keypressed: false
 
     MouseArea {
         id: mousearea

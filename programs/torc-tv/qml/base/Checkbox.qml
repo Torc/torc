@@ -1,17 +1,25 @@
 import QtQuick 2.0
 
-Item {
+FocusScope {
     id: checkbox
-    property bool enabled: false
-
     signal clicked (var event)
-    Keys.onEnterPressed: clicked()
-    Keys.onReturnPressed: clicked()
+    Keys.onPressed: {
+        if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
+            keypressed = true;
+            clicked(undefined);
+        }
+    }
+    Keys.onReleased: {
+        if (event.key === Qt.Key_Enter || event.key === Qt.Key_Return)
+            keypressed = false;
+    }
     property alias mouseArea: mousearea
-    property bool pressed: mousearea.pressed
+    property bool enabled: false
+    property bool pressed: mousearea.pressed || keypressed
     property bool hovered: mousearea.containsMouse
+    property bool keypressed: false
 
-    onClicked: enabled = !enabled
+    onClicked: enabled = !enabled;
 
     MouseArea {
         id: mousearea
