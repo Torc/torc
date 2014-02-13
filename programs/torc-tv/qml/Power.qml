@@ -5,8 +5,6 @@ FocusScope {
     ListModel { id: powerModel }
     anchors.fill: parent
 
-    signal deleted
-
     Keys.onPressed: {
         if (event.key === Qt.Key_Escape || event.key === Qt.Key_Left) {
             event.accepted = true;
@@ -33,16 +31,10 @@ FocusScope {
             menuText: qsTranslate('TorcPower', 'Restart'),
             confirm: qsTranslate('TorcPower', 'Are you sure you want to restart the device?')
         });
-
-        console.log('created');
     }
-
-    onDeleted: console.log('deleted')
 
     ListView {
         id: powerView
-        //x: topMenuView.width
-        //y:
         width: 200
         height: 500
         model: powerModel
@@ -61,7 +53,7 @@ FocusScope {
             minimumWidth: 150
             maxmimumWidth: 150
             anchors.horizontalCenter: parent.horizontalCenter
-            text.text:  menuText
+            text.text: menuText
             focus: loader.ListView.isCurrentItem;
             Behavior on scale { PropertyAnimation{ duration: 100 } }
             MouseArea {
