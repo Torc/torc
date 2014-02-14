@@ -5,26 +5,28 @@ Button {
     id: button
     property alias image: image
     property alias text:  text
+    property bool  shrinkToFit: true
     property int   minimumWidth: 10
     property int   maxmimumWidth: 200
     property int   minimumHeight: 10
     property int   maximumHeight: 100
     property int   maximumLineCount: 2
+    property int   padding: 20
     property color basecolor: '#d9d9d9'
 
-    width: text.contentWidth + 20
-    height: text.contentHeight + 20
+    width: text.contentWidth + padding
+    height: text.contentHeight + padding
 
     Rectangle {
         id: image
         anchors.fill: parent
-        radius: 5
+        radius: 10
         gradient: Gradient {
             GradientStop { position: 0; color: 'white' }
             GradientStop { position: 0.5; color: basecolor }
         }
-        border.color: 'lightgray'
-        border.width: 1
+        border.color: 'white'
+        border.width: 2
         visible: false
     }
 
@@ -32,7 +34,7 @@ Button {
         source: image
         color: (hovered | activeFocus) ? "#aa000000" : dropcolor
         verticalOffset: (hovered | activeFocus) ? 6 : 3
-        opacity: button.pressed ? 0.75 : 1.0
+        opacity: pressed ? 0.75 : 1.0
         focus: true
     }
 
@@ -42,8 +44,10 @@ Button {
         clip: true
 
         onContentSizeChanged: {
-            width = Math.max(button.minimumWidth, Math.min(button.maxmimumWidth, width))
-            height = Math.max(button.minimumHeight, Math.min(button.maximumHeight, height))
+            button.width = Math.max(minimumWidth, Math.min(maxmimumWidth, contentWidth)) + padding
+            button.height = Math.max(minimumHeight, Math.min(maximumHeight, contentHeight)) + padding
+
+            if (shrinkToFit && contentWidth > maxmimumWidth) { font.pointSize -= 1; }
         }
     }
 }
