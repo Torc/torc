@@ -8,7 +8,8 @@ Modal {
     Rectangle {
         id: background
         anchors.fill: parent
-        opacity: 0.75
-        color: 'darkgray'
+        opacity: visible ? 0.7 : 0.0
+        color: 'black'
+        Behavior on opacity { PropertyAnimation { duration: 75} }
     }
 }
