@@ -242,6 +242,7 @@ void TorcPowerOSX::PowerCallBack(void *Reference, io_service_t Service,
                 break;
             case kIOMessageSystemWillRestart:
                 IOAllowPowerChange(power->m_rootPowerDomain, (long)Data);
+                parent->Restarting();
                 break;
             case kIOMessageSystemWillSleep:
                 IOAllowPowerChange(power->m_rootPowerDomain, (long)Data);
