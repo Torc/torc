@@ -86,11 +86,10 @@ TorcPowerOSX::TorcPowerOSX(TorcPower *Parent)
             CFRunLoopAddSource(gAdminRunLoop, m_powerRef, kCFRunLoopDefaultMode);
             Refresh();
         }
-        else
-        {
-            LOG(VB_GENERAL, LOG_ERR, "Failed to setup power source callback");
-        }
     }
+
+    if (!m_powerRef)
+        LOG(VB_GENERAL, LOG_ERR, "Failed to setup power source callback");
 
     // Set capabilities
     m_canShutdown->SetValue(QVariant((bool)true));
