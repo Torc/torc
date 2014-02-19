@@ -1352,7 +1352,7 @@ void TorcWebSocket::HandlePong(QByteArray &Payload)
 void TorcWebSocket::HandleCloseRequest(QByteArray &Close)
 {
     CloseCode newclosecode = CloseNormal;
-    CloseCode closecode = CloseNormal;
+    int closecode = CloseNormal;
     QString reason;
 
     if (Close.size() < 1)
@@ -1368,19 +1368,16 @@ void TorcWebSocket::HandleCloseRequest(QByteArray &Close)
         LOG(VB_GENERAL, LOG_ERR, "Invalid close payload size (<2)");
         newclosecode = CloseProtocolError;
     }
-
     // check close code if present
     else if (Close.size() > 1)
     {
-        closecode = (CloseCode)qFromBigEndian<quint16>(reinterpret_cast<const uchar *>(Close.data()));
-        if ("Unknown" == CloseCodeToString(closecode) || closecode == CloseReserved1004 ||
+        closecode = qFromBigEndian<quint16>(reinterpret_cast<const uchar *>(Close.data()));
+
+        if (closecode < CloseNormal || closecode > 4999 || closecode == CloseReserved1004 ||
             closecode == CloseStatusCodeMissing || closecode == CloseAbnormal || closecode == CloseTLSHandshakeError)
         {
-            if (!(closecode >= 3000 && closecode <= 4999))
-            {
-                LOG(VB_GENERAL, LOG_ERR, "Invalid close code");
-                newclosecode = CloseProtocolError;
-            }
+            LOG(VB_GENERAL, LOG_ERR, "Invalid close code");
+            newclosecode = CloseProtocolError;
         }
     }
 
@@ -1407,7 +1404,7 @@ void TorcWebSocket::HandleCloseRequest(QByteArray &Close)
     }
     else
     {
-        LOG(VB_NETWORK, LOG_INFO, QString("Received Close: %1 ('%2')").arg(CloseCodeToString(closecode)).arg(reason));
+        LOG(VB_NETWORK, LOG_INFO, QString("Received Close: %1 ('%2')").arg(CloseCodeToString((CloseCode)closecode)).arg(reason));
     }
 
     m_closeReceived = true;
