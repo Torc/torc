@@ -187,6 +187,10 @@ contains(CONFIG_LIBFREETYPE, yes):contains(CONFIG_BLURAYJAVA, yes) {
     DEFINES         += TORC_LIBBLURAY_JAR_LOCATION=\\\"$${PREFIX}/share/$${PROJECTNAME}/jars/libbluray.jar\\\"
     INSTALLS        += installjar
     QMAKE_CLEAN     += libbluray.jar
+} else {
+    warning("XXXXXXXXXXXXX")
+    warning("libfreetype2 not available - BDJ support will not be built")
+    warning("XXXXXXXXXXXXX")
 }
 
 contains(CONFIG_VDA, yes) {
