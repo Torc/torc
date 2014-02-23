@@ -139,7 +139,7 @@ int TorcBlurayBuffer::BestBufferSize(void)
 }
 
 /*! \class TorcBlurayBufferFactory
- *  \brief A static class to create an bluray disc buffer.
+ *  \brief A static class to create a bluray disc buffer.
 */
 static class TorcBlurayBufferFactory : public TorcBufferFactory
 {
