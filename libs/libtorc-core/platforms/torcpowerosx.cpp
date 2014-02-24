@@ -121,6 +121,7 @@ TorcPowerOSX::~TorcPowerOSX()
     }
 }
 
+///Shutdown the system.
 bool TorcPowerOSX::Shutdown(void)
 {
     OSStatus error = SendAppleEventToSystemProcess(kAEShutDown);
@@ -136,6 +137,7 @@ bool TorcPowerOSX::Shutdown(void)
     return false;
 }
 
+///Suspend the system.
 bool TorcPowerOSX::Suspend(void)
 {
     OSStatus error = SendAppleEventToSystemProcess(kAESleep);
@@ -150,11 +152,13 @@ bool TorcPowerOSX::Suspend(void)
     return false;
 }
 
+///Hibernate the system.
 bool TorcPowerOSX::Hibernate(void)
 {
     return Suspend();
 }
 
+///Restart the system.
 bool TorcPowerOSX::Restart(void)
 {
     OSStatus error = SendAppleEventToSystemProcess(kAERestart);
@@ -169,6 +173,11 @@ bool TorcPowerOSX::Restart(void)
     return false;
 }
 
+/*! \brief Update the current power supply status.
+ *
+ * A change to the current status is notified from PowerSourceCallback, which calls this method to
+ * check for the actual change.
+*/
 void TorcPowerOSX::Refresh(void)
 {
     if (!m_powerRef)
@@ -216,6 +225,13 @@ void TorcPowerOSX::Refresh(void)
     ((TorcPower*)parent())->BatteryUpdated(m_batteryLevel);
 }
 
+/*! \brief Receive notification of power status changes.
+ *
+ *  The OS will call this function when the power state is about to change. We can
+ *  then make the appropriate internal calls to handle any necessary state changes.
+ *
+ *  In the case of system requests to ask whether power changes can proceed, we always allow.
+*/
 void TorcPowerOSX::PowerCallBack(void *Reference, io_service_t Service,
                                  natural_t Type, void *Data)
 {
@@ -254,6 +270,12 @@ void TorcPowerOSX::PowerCallBack(void *Reference, io_service_t Service,
     }
 }
 
+/*! \brief Receive notification of changes to the power supply.
+ *
+ *  Changes may be a change in the battery level or switches between mains power and battery.
+ *
+ * \note This is currently not being called using torc-server from the command line.
+*/
 void TorcPowerOSX::PowerSourceCallBack(void *Reference)
 {
     CocoaAutoReleasePool pool;
@@ -298,6 +320,7 @@ OSStatus SendAppleEventToSystemProcess(AEEventID EventToSend)
     return error;
 }
 
+///Create a TorcPowerOSX singleton to handle power status.
 class PowerFactoryOSX : public PowerFactory
 {
     void Score(int &Score)
