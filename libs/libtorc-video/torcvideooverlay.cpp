@@ -100,7 +100,7 @@ TorcVideoOverlayItem::TorcVideoOverlayItem(QList<bd_overlay_s *> *Overlays)
     }
 }
 
-///brief Construct a TorcVideoOverlayItem that wraps a list of bd_overlay_s structures.
+///brief Construct a TorcVideoOverlayItem that wraps a list of bd_argb_overlay_s structures.
 TorcVideoOverlayItem::TorcVideoOverlayItem(QList<bd_argb_overlay_s *> *Overlays)
   : m_valid(false),
     m_streamIndex(-1),
